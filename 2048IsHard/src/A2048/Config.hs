@@ -6,22 +6,20 @@ import Control.Lens
 import Graphics.SvgTree
 import A2048.HexColour
 
-data Config = Config
+data TileConfig = TileConfig
   { _tileSize :: Double
   , _tileRadius :: Double
-  , _tileGapSize :: Double
   , _tileFillColour :: [Texture]
   , _tileTextColour :: [Texture]
   , _useLogarithm :: Bool
   } deriving stock (Show)
 
-makeClassy ''Config
+makeClassy ''TileConfig
 
-defaultConfig :: Config
-defaultConfig = Config
+defaultTileConfig :: TileConfig
+defaultTileConfig = TileConfig
   { _tileSize = 1.2
-  , _tileRadius = 0.07
-  , _tileGapSize = 0.2
+  , _tileRadius = 0.09
   , _tileFillColour = tileBgColours
   , _tileTextColour = tileFgColours
   , _useLogarithm = False
@@ -41,8 +39,32 @@ tileFgColours =
   , [rgba|f9f6f2|], [rgba|f9f6f2|], [rgba|f9f6f2|], [rgba|f9f6f2|]
   ]
 
-tileFillColourOf :: HasConfig c => Int -> c -> Texture
-tileFillColourOf l cfg = view tileFillColour cfg !! l
+tileFillColourOf :: HasTileConfig c => Int -> c -> Texture
+tileFillColourOf l cfg = view tileFillColour cfg !! (l - 1)
 
-tileTextColourOf :: HasConfig c => Int -> c -> Texture
-tileTextColourOf l cfg = view tileTextColour cfg !! l
+tileTextColourOf :: HasTileConfig c => Int -> c -> Texture
+tileTextColourOf l cfg = view tileTextColour cfg !! (l - 1)
+
+data BoardConfig = BoardConfig
+  { _boardTileConfig :: TileConfig
+  , _boardWidth :: Int
+  , _boardHeight :: Int
+  , _boardGapSize :: Double
+  , _boardGridColour :: Texture
+  , _boardFillColour :: Texture
+  } deriving stock (Show)
+
+makeClassy ''BoardConfig
+
+defaultBoardConfig :: BoardConfig
+defaultBoardConfig = BoardConfig
+  { _boardTileConfig = defaultTileConfig
+  , _boardWidth = 4
+  , _boardHeight = 4
+  , _boardGapSize = 0.2
+  , _boardGridColour = [rgba|eee4da|]
+  , _boardFillColour = [rgba|bbada0|]
+  }
+
+instance HasTileConfig BoardConfig where
+  tileConfig = boardTileConfig
