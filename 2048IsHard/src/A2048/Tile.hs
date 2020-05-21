@@ -41,4 +41,6 @@ tile l = do
   usingLog <- asks (view useLogarithm)
   let label = if usingLog then show l else show (2 ^ l :: Int)
   let txt = latex (T.pack label) & fillColor .~ Last (Just fg)
-  pure (mkGroup [rect, center txt])
+  let ratio = a * 0.85 / svgWidth txt
+  let txt' = if ratio < 1 then scale ratio txt else txt
+  pure (mkGroup [rect, center txt'])
