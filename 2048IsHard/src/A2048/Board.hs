@@ -61,19 +61,19 @@ snapshot = do
   g <- asks (view boardGapSize)
   w <- fromIntegral <$> asks (view boardWidth)
   h <- fromIntegral <$> asks (view boardHeight)
-  let bw = w * a + (w + 1) * g
-  let bh = h * a + (h + 1) * g
+  let bw = w * a + (w + 2) * g
+  let bh = h * a + (h + 2) * g
   grid <- get
   bg <- asks (view boardFillColour)
   let boardRect = roundedRect bw bh r & fillColor .~ Last (Just bg)
   mkGroup . (boardRect :) <$> sequenceA
     [ translate x y <$> if l == 0 then emptyTile else tile l
-    | let x0 = - bw / 2 + g + a / 2
-    , let y0 = bh / 2 - g - a / 2
+    | let sx = (w - 1) / 2
+    , let sy = (h - 1) / 2
     , (m, row) <- zip [0 :: Int .. ] grid
-    , let y = y0 - fromIntegral m * (a + g)
+    , let y = (sy - fromIntegral m) * (a + g)
     , (n, l) <- zip [0 :: Int .. ] row
-    , let x = x0 + fromIntegral n * (a + g) ]
+    , let x = (fromIntegral n - sx) * (a + g) ]
 
 hold :: Monad2048 a m => Double -> m ()
 hold t = tellA . staticFrame t =<< snapshot

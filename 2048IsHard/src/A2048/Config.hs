@@ -62,7 +62,7 @@ defaultBoardConfig = BoardConfig
   , _boardWidth = 4
   , _boardHeight = 4
   , _boardGapSize = 0.2
-  , _boardGridColour = [rgba|eee4da|]
+  , _boardGridColour = [rgba|cdc0b4|]
   , _boardFillColour = [rgba|bbada0|]
   }
 
