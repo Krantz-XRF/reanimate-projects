@@ -58,11 +58,12 @@ snapshot :: Monad2048 a m => m SVG
 snapshot = do
   a <- asks (view tileSize)
   r <- asks (view tileRadius)
+  b <- asks (view boardBorderSize)
   g <- asks (view boardGapSize)
   w <- fromIntegral <$> asks (view boardWidth)
   h <- fromIntegral <$> asks (view boardHeight)
-  let bw = w * a + (w + 2) * g
-  let bh = h * a + (h + 2) * g
+  let bw = w * a + (w - 1) * g + b * 2
+  let bh = h * a + (h - 1) * g + b * 2
   grid <- get
   bg <- asks (view boardFillColour)
   let boardRect = roundedRect bw bh r & fillColor .~ Last (Just bg)

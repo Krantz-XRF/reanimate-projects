@@ -50,6 +50,7 @@ data BoardConfig = BoardConfig
   , _boardWidth :: Int
   , _boardHeight :: Int
   , _boardGapSize :: Double
+  , _boardBorderSize :: Double
   , _boardGridColour :: Texture
   , _boardFillColour :: Texture
   } deriving stock (Show)
@@ -62,6 +63,7 @@ defaultBoardConfig = BoardConfig
   , _boardWidth = 4
   , _boardHeight = 4
   , _boardGapSize = 0.2
+  , _boardBorderSize = 0.3
   , _boardGridColour = [rgba|cdc0b4|]
   , _boardFillColour = [rgba|bbada0|]
   }
