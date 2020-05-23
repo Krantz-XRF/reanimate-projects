@@ -1,3 +1,12 @@
+{-|
+Module      : Control.Monad.ST.Class
+Description : The missing MonadST class in mtl.
+Copyright   : (c) Xie Ruifeng, 2020
+License     : AGPL-3
+Maintainer  : krantz.xrf@outlook.com
+Stability   : experimental
+Portability : portable
+-}
 {-# LANGUAGE TypeFamilies #-}
 module Control.Monad.ST.Class
   ( module Control.Monad.ST
@@ -9,6 +18,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer.CPS
 
+-- |Lift a 'ST' monad up a deep monad transformer stack.
 class Monad m => MonadST m where
   type WorldType m :: *
   liftST :: ST (WorldType m) a -> m a

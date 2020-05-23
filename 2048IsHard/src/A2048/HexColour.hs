@@ -1,5 +1,14 @@
+{-|
+Module      : A2048.HexColour
+Description : Hexadecimal colour representation.
+Copyright   : (c) Xie Ruifeng, 2020
+License     : AGPL-3
+Maintainer  : krantz.xrf@outlook.com
+Stability   : experimental
+Portability : portable
+-}
 {-# LANGUAGE TemplateHaskell #-}
-module A2048.HexColour where
+module A2048.HexColour (rgba) where
 
 import Data.Char
 import Data.Word
@@ -10,6 +19,8 @@ import Language.Haskell.TH.Quote
 import Graphics.SvgTree.Types
 import Codec.Picture.Types
 
+-- |The 'rgba' Quasi-Quoter.
+-- Accepted format: RGB, RGBA, RRGGBB, RRGGBBAA
 rgba :: QuasiQuoter
 rgba = QuasiQuoter
   { quoteExp = makeRgba

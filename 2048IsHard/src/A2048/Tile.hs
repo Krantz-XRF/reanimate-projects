@@ -1,3 +1,12 @@
+{-|
+Module      : A2048.Tile
+Description : Tiles for the 2048 game.
+Copyright   : (c) Xie Ruifeng, 2020
+License     : AGPL-3
+Maintainer  : krantz.xrf@outlook.com
+Stability   : experimental
+Portability : portable
+-}
 module A2048.Tile where
 
 import Data.Monoid
@@ -11,6 +20,7 @@ import Graphics.SvgTree
 
 import A2048.Config
 
+-- |Make a rounded rectangle.
 roundedRect :: Double -> Double -> Double -> SVG
 roundedRect w h r = RectangleTree
   $ defaultSvg
@@ -19,18 +29,22 @@ roundedRect w h r = RectangleTree
   & rectUpperLeftCorner .~ (Num $ -w / 2, Num $ -h / 2)
   & rectCornerRadius .~ (Just $ Num r, Just $ Num r)
 
+-- |Make a rounded square.
 roundedSquare :: Double -> Double -> SVG
 roundedSquare a = roundedRect a a
 
+-- |Raw tile: coloured rounded rectangle.
 rawTile :: Texture -> Double -> Double -> SVG
 rawTile bg a r = roundedSquare a r & fillColor .~ Last (Just bg)
 
+-- |Empty tile. Read configuration to determine size and colour.
 emptyTile :: (HasTileConfig c, HasBoardConfig c, MonadReader c m) => m SVG
 emptyTile = rawTile
   <$> asks (view boardGridColour)
   <*> asks (view tileSize)
   <*> asks (view tileRadius)
 
+-- |Tile with number. Read configuration to determine size and colour.
 tile :: (HasTileConfig c, MonadReader c m) => Int -> m SVG
 tile 0 = pure None
 tile l = do
