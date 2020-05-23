@@ -32,6 +32,7 @@ emptyTile = rawTile
   <*> asks (view tileRadius)
 
 tile :: (HasTileConfig c, MonadReader c m) => Int -> m SVG
+tile 0 = pure None
 tile l = do
   bg <- asks (tileFillColourOf l)
   fg <- asks (tileTextColourOf l)
