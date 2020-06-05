@@ -18,11 +18,14 @@ jobs:
       run: sudo apt-get install -y libblas-dev liblapack-dev
     - run: stack haddock
     - name: Find Local Doc Root
-      run: echo "::set-env name=LOCAL_DOC_ROOT::$(stack path --local-doc-root)"
+      run: |
+        echo "::set-env name=LOCAL_DOC_ROOT::$(stack path --local-doc-root)"
+        echo "::set-env name=PROJECT_ROOT::$(stack path --project-root)"
+        echo "::set-env name=DOC_PATH::$(python3 -c "import os.path; print(os.path.relpath(r'$LOCAL_DOC_ROOT', r'$PROJECT_ROOT'))")"
     - name: Suppress Jekyll
       run: touch .nojekyll
     - name: Deploy Documentation
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ${{ env.LOCAL_DOC_ROOT }}
+        publish_dir: ${{ env.DOC_PATH }}
