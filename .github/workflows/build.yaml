@@ -9,19 +9,20 @@ jobs:
     name: Build and Deploy Doc
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-haskell@v1
-        with:
-          ghc-version: '8.8.3'
-          stack-version: 'latest'
-      - name: Build Package
-        run: stack haddock
-      - name: Find Local Doc Root
-        run: echo "::set-env name=LOCAL_DOC_ROOT::$(stack path --local-doc-root)"
-      - name: Suppress Jekyll
-        run: touch .nojekyll
-      - name: Deploy Documentation
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ${{ env.LOCAL_DOC_ROOT }}
+    - uses: actions/checkout@v2
+    - uses: actions/setup-haskell@v1
+      with:
+        ghc-version: '8.8.3'
+        stack-version: 'latest'
+    - name: Install blas/lapack
+      run: sudo apt-get install -y libblas-dev liblapack-dev
+    - run: stack haddock
+    - name: Find Local Doc Root
+      run: echo "::set-env name=LOCAL_DOC_ROOT::$(stack path --local-doc-root)"
+    - name: Suppress Jekyll
+      run: touch .nojekyll
+    - name: Deploy Documentation
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ${{ env.LOCAL_DOC_ROOT }}
