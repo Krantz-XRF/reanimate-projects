@@ -120,8 +120,9 @@ boardSVG = do
   let bh = h * _tileSize + (h - 1) * _boardGapSize + _boardBorderSize * 2
   let bg = Last (Just _boardFillColour)
   let boardRect = roundedRect bw bh _tileRadius & fillColor .~ bg
-  prerenderSvg (BoardBGCache _boardWidth _boardHeight)
-    . mkGroup . (boardRect :) <$> foreachGrid (const emptyTile)
+  cacheId <- asks bgCacheId
+  prerenderSvg cacheId . mkGroup . (boardRect :)
+    <$> foreachGrid (const emptyTile)
 
 -- |Take a snapshot of the current game status.
 snapshot :: Monad2048 a m => m SVG

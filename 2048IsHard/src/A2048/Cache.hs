@@ -7,14 +7,24 @@ Maintainer  : krantz.xrf@outlook.com
 Stability   : experimental
 Portability : portable
 -}
-{-# LANGUAGE DeriveAnyClass #-}
 module A2048.Cache where
 
 import GHC.Generics
 import Data.Hashable
+import Control.Lens
 
-data A2048Cache
-  = BoardBGCache !Int !Int
+import A2048.Config
+
+-- |Cache ID for 2048 game scene.
+data A2048CacheId
+  = BoardBGCache !Int !Int !Double
   | BoardStatusCache [[Int]]
   deriving stock (Eq, Show, Generic)
   deriving anyclass (Hashable)
+
+-- |Board background cache ID, assuming resize happens coherently.
+bgCacheId :: BoardConfig -> A2048CacheId
+bgCacheId cfg = BoardBGCache
+  (view boardWidth cfg)
+  (view boardHeight cfg)
+  (view tileSize cfg)

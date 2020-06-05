@@ -9,6 +9,7 @@ Portability : portable
 -}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE Strict #-}
 module A2048.Config where
 
 import Control.Lens
