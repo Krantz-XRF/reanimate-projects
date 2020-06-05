@@ -22,9 +22,11 @@ import Control.Lens
 
 import Graphics.SvgTree
 import Reanimate
+import Reanimate.Raster
 
 import A2048.Tile
 import A2048.Config
+import A2048.Cache
 
 -- |Mutable game board information, for use in the 'ST' monad.
 newtype STBoard s = STBoard { unwrapSTBoard :: V.STVector s Int }
@@ -118,7 +120,8 @@ boardSVG = do
   let bh = h * _tileSize + (h - 1) * _boardGapSize + _boardBorderSize * 2
   let bg = Last (Just _boardFillColour)
   let boardRect = roundedRect bw bh _tileRadius & fillColor .~ bg
-  mkGroup . (boardRect :) <$> foreachGrid (const emptyTile)
+  prerenderSvg (BoardBGCache _boardWidth _boardHeight)
+    . mkGroup . (boardRect :) <$> foreachGrid (const emptyTile)
 
 -- |Take a snapshot of the current game status.
 snapshot :: Monad2048 a m => m SVG
