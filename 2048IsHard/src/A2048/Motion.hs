@@ -17,7 +17,9 @@ type MonadMotion m = (Monad2048 m, MonadScene m)
 
 -- |Perform a game move to a given 'Direction'.
 performMove :: MonadMotion m => Direction -> m ()
-performMove d = do
+performMove d = simultaneously $ do
+  dt <- asks (view motionDuration)
+  tellP . staticFrame dt =<< boardSVG
   w <- asks (view boardWidth)
   h <- asks (view boardHeight)
   es <- events w h d <$> get
@@ -25,7 +27,6 @@ performMove d = do
     [ eventAnim (x, y) a
     | (y, row) <- zip [0 ..] es
     , (x, a) <- zip [0 ..] row ]
-  pure ()
 
 rush :: Animation -> Animation
 rush = signalA (fromToS 0.5 1 . curveS 2)
