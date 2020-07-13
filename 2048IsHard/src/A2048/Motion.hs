@@ -27,6 +27,10 @@ performMove d = simultaneously $ do
     [ eventAnim (x, y) a
     | (y, row) <- zip [0 ..] es
     , (x, a) <- zip [0 ..] row ]
+  let toTile TileVanish = 0
+      toTile (TileMove l _) = l
+      toTile (TileMerge l _ _) = l
+  put (map (map toTile) es)
 
 rush :: Animation -> Animation
 rush = signalA (fromToS 0.5 1 . curveS 2)
