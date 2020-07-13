@@ -2,6 +2,7 @@
 module Main where
 
 import Control.Lens
+import Control.Monad.State.Class
 
 import Reanimate
 import A2048.Config
@@ -14,7 +15,7 @@ config = defaultGame2048Config
 
 main :: IO ()
 main = reanimate $ gameAnimation config $ do
-  putBoard [[1, 2, 3, 4, 0]
-           ,[5, 6, 7, 8, 0]
-           ,[9, 10, 11, 12, 0]]
+  put [[1, 2, 3, 4, 0]
+      ,[5, 6, 7, 8, 0]
+      ,[9, 10, 11, 12, 0]]
   hold 1

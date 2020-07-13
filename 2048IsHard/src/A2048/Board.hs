@@ -11,13 +11,11 @@ module A2048.Board where
 
 import Data.Monoid
 import Data.Coerce
-import qualified Data.Vector.Mutable as V
 
 import Control.Applicative
 import Control.Monad.Writer.CPS
 import Control.Monad.State
 import Control.Monad.Reader
-import Control.Monad.ST.Class
 import Control.Lens
 
 import Graphics.SvgTree
@@ -28,8 +26,7 @@ import A2048.Tile
 import A2048.Config
 import A2048.Cache
 
--- |Mutable game board information, for use in the 'ST' monad.
-newtype STBoard s = STBoard { unwrapSTBoard :: V.STVector s Int }
+type Board = [[Int]]
 
 -- |Sequenced animations, 'Monoid' instance using 'seqA'.
 newtype SeqAnim = SeqAnim { unwrapSeqAnim :: Animation }
@@ -50,38 +47,17 @@ instance Monoid ParAnim where
   mempty = ParAnim (staticFrame 0 None)
 
 -- |The 2048 game monad, a concrete instance for 'Monad2048' constraint.
-type Game s a x = ReaderT Game2048Config (WriterT a (StateT (STBoard s) (ST s))) x
+type Game s a x = ReaderT Game2048Config (WriterT a (State Board)) x
 
 -- |'SeqAnim' and 'ParAnim'.
 type IsAnim a = Coercible Animation a
 
 -- |All game actions run in a 'Monad2048' monad.
 type Monad2048 a m =
-  ( MonadST m, IsAnim a
+  ( IsAnim a
   , MonadWriter a m
-  , MonadState (STBoard (WorldType m)) m
+  , MonadState Board m
   , MonadReader Game2048Config m)
-
--- |Set up a game board, board = [row], row = [tile].
-putBoard :: Monad2048 a m => [[Int]] -> m ()
-putBoard b = sequence_
-  [ setGrid m n x
-  | (n, row) <- zip [0..] b
-  , (m, x) <- zip [0..] row ]
-
--- |Get a tile in the board. Zero for empty, and non-zero for some tile.
-getGrid :: Monad2048 a m => Int -> Int -> m Int
-getGrid m n = do
-  b <- gets unwrapSTBoard
-  w <- asks (view boardWidth)
-  liftST $ V.read b (m + n * w)
-
--- |Set a tile in the board. Zero for empty, and non-zero for some tile.
-setGrid :: Monad2048 a m => Int -> Int -> Int -> m ()
-setGrid m n v = do
-  b <- gets unwrapSTBoard
-  w <- asks (view boardWidth)
-  liftST $ V.write b (m + n * w) v
 
 -- |Emit an animation, sequential by default.
 tellA :: (IsAnim a, MonadWriter a m) => Animation -> m ()
@@ -104,11 +80,10 @@ translateGrid m n t = do
 
 -- |Traverse all grids.
 foreachGrid :: Monad2048 a m => (Int -> m SVG) -> m [SVG]
-foreachGrid g = do
-  w <- asks (view boardWidth)
-  h <- asks (view boardHeight)
-  let t m n = getGrid m n >>= g
-  sequenceA [translateGrid m n (t m n) | m <- [0 .. w-1], n <- [0 .. h-1]]
+foreachGrid g = get >>= \board -> sequenceA
+  [ translateGrid m n (g x)
+  | (n, row) <- zip [0 ..] board
+  , (m, x) <- zip [0 ..] row ]
 
 -- |Generate an SVG image for the empty board.
 boardSVG :: Monad2048 a m => m SVG
@@ -134,7 +109,6 @@ hold t = tellA . staticFrame t =<< snapshot
 
 -- |Convert a 'Monad2048' action to an animation.
 gameAnimation :: Game2048Config -> (forall s . Game s SeqAnim a) -> Animation
-gameAnimation cfg g = coerce $ snd $ runST $ do
-  b <- V.new (view boardWidth cfg * view boardHeight cfg)
-  V.set b 0
-  evalStateT (runWriterT $ runReaderT g cfg) (STBoard b)
+gameAnimation cfg g = coerce $ snd $ runIdentity $ do
+  let b = replicate (view boardHeight cfg) $ replicate (view boardWidth cfg) 0
+  evalStateT (runWriterT $ runReaderT g cfg) b
