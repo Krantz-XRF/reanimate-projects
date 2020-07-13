@@ -79,9 +79,9 @@ rotateTo Right = map reverse
 rotateTo Up    = transpose
 rotateTo Down  = map reverse . transpose
 
--- |Perform a move to a given 'Direction'.
-performMove :: Int -> Int -> Direction -> [[Int]] -> [[GameEvent Int (Int, Int)]]
-performMove w h d = rotated (transIndices . boardMerge) . mapInput where
+-- |Gather game events on a game move to a given 'Direction'.
+events :: Int -> Int -> Direction -> [[Int]] -> [[GameEvent Int (Int, Int)]]
+events w h d = rotated (transIndices . boardMerge) . mapInput where
   mapInput = mapBoard $ \case 0 -> Nothing; n -> Just n
   transIndices = mapBoard $ second $ idxTrans w h d
   rotated f = rotateTo d . f . rotateTo d

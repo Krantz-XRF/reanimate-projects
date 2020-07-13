@@ -29,6 +29,8 @@ data Game2048Config = Game2048Config
   , _boardBorderSize :: Double
   , _boardGridColour :: Texture
   , _boardFillColour :: Texture
+  , _motionFillPadding :: Bool
+  , _motionDuration :: Double
   } deriving stock (Show)
 
 -- |Classy lens for 'Game2048Config'.
@@ -48,6 +50,8 @@ defaultGame2048Config = Game2048Config
   , _boardBorderSize = 0.3
   , _boardGridColour = [rgba|cdc0b4|]
   , _boardFillColour = [rgba|bbada0|]
+  , _motionFillPadding = False
+  , _motionDuration = 0.4
   }
 
 -- |Tile background colours.
