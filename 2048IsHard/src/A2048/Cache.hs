@@ -17,14 +17,18 @@ import A2048.Config
 
 -- |Cache ID for 2048 game scene.
 data A2048CacheId
-  = BoardBGCache !Int !Int !Double
+  = TileCache !Int !Double
+  | BoardBGCache !Int !Int !Double
   | BoardStatusCache [[Int]]
   deriving stock (Eq, Show, Generic)
   deriving anyclass (Hashable)
 
 -- |Board background cache ID, assuming resize happens coherently.
-bgCacheId :: Game2048Config -> A2048CacheId
-bgCacheId cfg = BoardBGCache
-  (view boardWidth cfg)
-  (view boardHeight cfg)
-  (view tileSize cfg)
+bgCacheId :: HasGame2048Config c => c -> A2048CacheId
+bgCacheId cfg =
+  let c = view game2048Config cfg
+  in BoardBGCache (view boardWidth c) (view boardHeight c) (view tileSize c)
+
+-- |Tile cache ID, assuming resize happens coherently.
+tileCacheId :: Int -> Game2048Config -> A2048CacheId
+tileCacheId x cfg = TileCache x (view (game2048Config . tileSize) cfg)

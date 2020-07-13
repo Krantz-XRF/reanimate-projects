@@ -16,9 +16,11 @@ import Control.Lens
 import Control.Monad.Reader.Class
 
 import Reanimate
+import Reanimate.Raster
 import Graphics.SvgTree
 
 import A2048.Config
+import A2048.Cache
 
 -- |Make a rounded rectangle.
 roundedRect :: Double -> Double -> Double -> SVG
@@ -47,7 +49,7 @@ emptyTile = rawTile
 -- |Tile with number. Read configuration to determine size and colour.
 tile :: (HasGame2048Config c, MonadReader c m) => Int -> m SVG
 tile 0 = pure None
-tile l = do
+tile l = prerenderSvg <$> asks (tileCacheId l . view game2048Config) <*> do
   bg <- asks (tileFillColourOf l)
   fg <- asks (tileTextColourOf l)
   a <- asks (view tileSize)
