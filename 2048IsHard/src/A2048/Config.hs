@@ -16,26 +16,38 @@ import Control.Lens
 import Graphics.SvgTree
 import A2048.HexColour
 
--- |Configurations related to tiles.
-data TileConfig = TileConfig
+-- |Configurations for the 2048 Game.
+data Game2048Config = Game2048Config
   { _tileSize :: Double
   , _tileRadius :: Double
   , _tileFillColour :: [Texture]
   , _tileTextColour :: [Texture]
   , _useLogarithm :: Bool
+  , _boardWidth :: Int
+  , _boardHeight :: Int
+  , _boardGapSize :: Double
+  , _boardBorderSize :: Double
+  , _boardGridColour :: Texture
+  , _boardFillColour :: Texture
   } deriving stock (Show)
 
--- |Classy lens for 'TileConfig'.
-makeClassy ''TileConfig
+-- |Classy lens for 'Game2048Config'.
+makeClassy ''Game2048Config
 
 -- |Default configuration for tiles.
-defaultTileConfig :: TileConfig
-defaultTileConfig = TileConfig
+defaultGame2048Config :: Game2048Config
+defaultGame2048Config = Game2048Config
   { _tileSize = 1.2
   , _tileRadius = 0.09
   , _tileFillColour = tileBgColours
   , _tileTextColour = tileFgColours
   , _useLogarithm = False
+  , _boardWidth = 4
+  , _boardHeight = 4
+  , _boardGapSize = 0.2
+  , _boardBorderSize = 0.3
+  , _boardGridColour = [rgba|cdc0b4|]
+  , _boardFillColour = [rgba|bbada0|]
   }
 
 -- |Tile background colours.
@@ -55,38 +67,9 @@ tileFgColours =
   ]
 
 -- |Short-cut for tile background colour.
-tileFillColourOf :: HasTileConfig c => Int -> c -> Texture
+tileFillColourOf :: HasGame2048Config c => Int -> c -> Texture
 tileFillColourOf l cfg = view tileFillColour cfg !! (l - 1)
 
 -- |Short-cut for tile foreground colour.
-tileTextColourOf :: HasTileConfig c => Int -> c -> Texture
+tileTextColourOf :: HasGame2048Config c => Int -> c -> Texture
 tileTextColourOf l cfg = view tileTextColour cfg !! (l - 1)
-
--- |Configurations related to the board.
-data BoardConfig = BoardConfig
-  { _boardTileConfig :: TileConfig
-  , _boardWidth :: Int
-  , _boardHeight :: Int
-  , _boardGapSize :: Double
-  , _boardBorderSize :: Double
-  , _boardGridColour :: Texture
-  , _boardFillColour :: Texture
-  } deriving stock (Show)
-
--- |Classy lens for 'BoardConfig'.
-makeClassy ''BoardConfig
-
--- |Default configuration for the board.
-defaultBoardConfig :: BoardConfig
-defaultBoardConfig = BoardConfig
-  { _boardTileConfig = defaultTileConfig
-  , _boardWidth = 4
-  , _boardHeight = 4
-  , _boardGapSize = 0.2
-  , _boardBorderSize = 0.3
-  , _boardGridColour = [rgba|cdc0b4|]
-  , _boardFillColour = [rgba|bbada0|]
-  }
-
-instance HasTileConfig BoardConfig where
-  tileConfig = boardTileConfig

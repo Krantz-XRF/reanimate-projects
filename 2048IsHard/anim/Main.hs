@@ -7,8 +7,8 @@ import Reanimate
 import A2048.Config
 import A2048.Board
 
-config :: BoardConfig
-config = defaultBoardConfig
+config :: Game2048Config
+config = defaultGame2048Config
   & boardWidth .~ 5
   & boardHeight .~ 3
 

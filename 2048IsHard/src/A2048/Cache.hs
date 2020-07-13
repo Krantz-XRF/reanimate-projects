@@ -23,7 +23,7 @@ data A2048CacheId
   deriving anyclass (Hashable)
 
 -- |Board background cache ID, assuming resize happens coherently.
-bgCacheId :: BoardConfig -> A2048CacheId
+bgCacheId :: Game2048Config -> A2048CacheId
 bgCacheId cfg = BoardBGCache
   (view boardWidth cfg)
   (view boardHeight cfg)

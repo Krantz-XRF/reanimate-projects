@@ -38,14 +38,14 @@ rawTile :: Texture -> Double -> Double -> SVG
 rawTile bg a r = roundedSquare a r & fillColor .~ Last (Just bg)
 
 -- |Empty tile. Read configuration to determine size and colour.
-emptyTile :: (HasTileConfig c, HasBoardConfig c, MonadReader c m) => m SVG
+emptyTile :: (HasGame2048Config c, MonadReader c m) => m SVG
 emptyTile = rawTile
   <$> asks (view boardGridColour)
   <*> asks (view tileSize)
   <*> asks (view tileRadius)
 
 -- |Tile with number. Read configuration to determine size and colour.
-tile :: (HasTileConfig c, MonadReader c m) => Int -> m SVG
+tile :: (HasGame2048Config c, MonadReader c m) => Int -> m SVG
 tile 0 = pure None
 tile l = do
   bg <- asks (tileFillColourOf l)

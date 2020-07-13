@@ -50,7 +50,7 @@ instance Monoid ParAnim where
   mempty = ParAnim (staticFrame 0 None)
 
 -- |The 2048 game monad, a concrete instance for 'Monad2048' constraint.
-type Game s a x = ReaderT BoardConfig (WriterT a (StateT (STBoard s) (ST s))) x
+type Game s a x = ReaderT Game2048Config (WriterT a (StateT (STBoard s) (ST s))) x
 
 -- |'SeqAnim' and 'ParAnim'.
 type IsAnim a = Coercible Animation a
@@ -60,7 +60,7 @@ type Monad2048 a m =
   ( MonadST m, IsAnim a
   , MonadWriter a m
   , MonadState (STBoard (WorldType m)) m
-  , MonadReader BoardConfig m)
+  , MonadReader Game2048Config m)
 
 -- |Set up a game board, board = [row], row = [tile].
 putBoard :: Monad2048 a m => [[Int]] -> m ()
@@ -95,7 +95,7 @@ simultaneously m = writerT $ fmap parToSeq <$> runWriterT m
 -- |Translate to the selected grid.
 translateGrid :: Monad2048 a m => Int -> Int -> m SVG -> m SVG
 translateGrid m n t = do
-  BoardConfig{_boardTileConfig = TileConfig{..}, ..} <- ask
+  Game2048Config{..} <- ask
   let sx = (fromIntegral _boardWidth - 1) / 2
   let sy = (fromIntegral _boardHeight - 1) / 2
   let x = (fromIntegral m - sx) * (_tileSize + _boardGapSize)
@@ -113,7 +113,7 @@ foreachGrid g = do
 -- |Generate an SVG image for the empty board.
 boardSVG :: Monad2048 a m => m SVG
 boardSVG = do
-  BoardConfig{_boardTileConfig = TileConfig{..}, ..} <- ask
+  Game2048Config{..} <- ask
   let w = fromIntegral _boardWidth
   let h = fromIntegral _boardHeight
   let bw = w * _tileSize + (w - 1) * _boardGapSize + _boardBorderSize * 2
@@ -133,7 +133,7 @@ hold :: Monad2048 a m => Double -> m ()
 hold t = tellA . staticFrame t =<< snapshot
 
 -- |Convert a 'Monad2048' action to an animation.
-gameAnimation :: BoardConfig -> (forall s . Game s SeqAnim a) -> Animation
+gameAnimation :: Game2048Config -> (forall s . Game s SeqAnim a) -> Animation
 gameAnimation cfg g = coerce $ snd $ runST $ do
   b <- V.new (view boardWidth cfg * view boardHeight cfg)
   V.set b 0
