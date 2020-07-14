@@ -19,6 +19,7 @@ import Control.Lens
 
 import Graphics.SvgTree
 import Reanimate
+import Reanimate.Animation
 
 import A2048.Tile
 import A2048.Config
@@ -38,30 +39,39 @@ class Monad m => MonadScene m where
   -- |Embed a 'Scene' monad.
   liftScene :: Scene (WorldType m) a -> m a
   -- |Wait for a 'Scene' to finish.
-  simultaneously :: m a -> m a
+  liftMap :: (forall b . Scene (WorldType m) b -> Scene (WorldType m) b)
+          -> m a -> m a
 
--- |Emit an animation sequentially.
-tellS :: MonadScene m => Animation -> m ()
-tellS = liftScene . play
+-- |Play an 'Animation' in a 'Scene'.
+playA :: MonadScene m => Animation -> m ()
+playA = liftScene . play
 
--- |Emit an animation sequentially.
-tellP :: MonadScene m => Animation -> m ()
-tellP = liftScene . fork . play
+-- |Run the 'Scene' without advancing the time.
+forkA :: MonadScene m => m a -> m a
+forkA = liftMap fork
+
+-- |Wait for the 'Scene' until it stops.
+waitOnA :: MonadScene m => m a -> m a
+waitOnA = liftMap waitOn
+
+-- |Wait for a time 'Duration'.
+waitA :: MonadScene m => Duration -> m ()
+waitA = liftScene . wait
 
 instance MonadScene (Scene s) where
   type WorldType (Scene s) = s
   liftScene = id
-  simultaneously = waitOn
+  liftMap f = f
 
 instance MonadScene m => MonadScene (StateT s m) where
   type WorldType (StateT s m) = WorldType m
   liftScene = lift . liftScene
-  simultaneously m = StateT (simultaneously . runStateT m)
+  liftMap f m = StateT (liftMap f . runStateT m)
 
 instance MonadScene m => MonadScene (ReaderT r m) where
   type WorldType (ReaderT r m) = WorldType m
   liftScene = lift . liftScene
-  simultaneously m = ReaderT (simultaneously . runReaderT m)
+  liftMap f m = ReaderT (liftMap f . runReaderT m)
 
 -- |Translate to the selected grid, pure function.
 translateGrid :: Game2048Config -> Double -> Double -> SVG -> SVG
@@ -100,7 +110,7 @@ snapshot = mkGroup <$> liftA2 (:) boardSVG (foreachGrid tile)
 
 -- |Emit a static animation for the current game status.
 hold :: (Monad2048 m, MonadScene m) => Double -> m ()
-hold t = tellS . staticFrame t =<< snapshot
+hold t = playA . staticFrame t =<< snapshot
 
 -- |Convert a 'Monad2048' action to an animation.
 gameAnimation :: Game2048Config -> (forall s . Game s ()) -> Animation

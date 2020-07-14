@@ -17,14 +17,14 @@ type MonadMotion m = (Monad2048 m, MonadScene m)
 
 -- |Perform a game move to a given 'Direction'.
 performMove :: MonadMotion m => Direction -> m ()
-performMove d = simultaneously $ do
+performMove d = waitOnA $ do
   dt <- asks (view motionDuration)
-  tellP . staticFrame dt =<< boardSVG
+  forkA $ playA . staticFrame dt =<< boardSVG
   w <- asks (view boardWidth)
   h <- asks (view boardHeight)
   es <- events w h d <$> get
   sequence_
-    [ eventAnim (x, y) a
+    [ forkA (eventAnim (x, y) a)
     | (y, row) <- zip [0 ..] es
     , (x, a) <- zip [0 ..] row ]
   let toTile TileVanish = 0
@@ -32,32 +32,37 @@ performMove d = simultaneously $ do
       toTile (TileMerge l _ _) = l
   put (map (map toTile) es)
 
-rush :: Animation -> Animation
-rush = signalA (fromToS 0.5 1 . curveS 2)
-
-moveTile :: MonadMotion m => Int -> (Int, Int) -> (Int, Int) -> m ()
-moveTile l (x, y) (x', y') = do
+moveTile :: MonadMotion m => Bool -> Int -> (Int, Int) -> (Int, Int) -> m ()
+moveTile fade l (x, y) (x', y') = do
   dt <- asks (view motionDuration)
   let lerp r a b = r * fromIntegral a + (1 - r) * fromIntegral b
   let p r = (lerp r x' x, lerp r y' y)
   cfg <- ask
   tl <- tile l
   let f t = uncurry (translateGrid cfg) (p t) tl
-  tellP $ setDuration dt $ rush $ animate f
+  playA $ setDuration dt $ animate $ if fade then fadeOutE dt 0 . f else f
 
 emergeTile :: MonadMotion m => Int -> (Int, Int) -> m ()
 emergeTile l (x, y) = do
   dt <- asks (view motionDuration)
-  tl <- translateGridM (fromIntegral x) (fromIntegral y) (tile l)
-  tellP $ setDuration dt $ rush $ animate (`scale` tl)
+  tl <- tile l
+  cfg <- ask
+  let trans = translateGrid cfg (fromIntegral x) (fromIntegral y)
+  let func t = trans (scale t tl)
+  let growAnim = setDuration (dt / 4) (signalA (fromToS 0 1.2) (animate func))
+  let shrinkAnim = setDuration (dt / 2) (signalA (fromToS 1.2 1) (animate func))
+  playA growAnim
+  playA shrinkAnim
 
 -- |Emit an animation according to a game event.
 eventAnim :: MonadMotion m => (Int, Int) -> GameEvent Int (Int, Int) -> m ()
 eventAnim (x, y) TileVanish = do
   f <- asks (view motionFillPadding)
   when f $ emergeTile (1 + (x + y + 1) `rem` 2) (x, y)
-eventAnim p (TileMove l p') = moveTile l p' p
+eventAnim p (TileMove l p') = moveTile False l p' p
 eventAnim p (TileMerge l p1 p2) = do
-  moveTile (pred l) p1 p
-  moveTile (pred l) p2 p
+  forkA $ moveTile True (pred l) p1 p
+  forkA $ moveTile True (pred l) p2 p
+  dt <- asks (view motionDuration)
+  waitA (dt / 4)
   emergeTile l p
