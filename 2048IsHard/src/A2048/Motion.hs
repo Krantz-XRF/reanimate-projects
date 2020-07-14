@@ -40,7 +40,8 @@ moveTile fade l (x, y) (x', y') = do
   cfg <- ask
   tl <- tile l
   let f t = uncurry (translateGrid cfg) (p t) tl
-  playA $ setDuration dt $ animate $ if fade then fadeOutE dt 0 . f else f
+  let fadeOrNot = if fade then fadeOutE else constE id
+  playA $ setDuration dt $ applyE fadeOrNot (animate f)
 
 emergeTile :: MonadMotion m => Int -> (Int, Int) -> m ()
 emergeTile l (x, y) = do
