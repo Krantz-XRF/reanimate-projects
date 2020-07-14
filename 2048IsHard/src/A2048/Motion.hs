@@ -57,7 +57,7 @@ moveTile fade l (x, y) (x', y') = do
   tl <- tile l
   let f t = uncurry (translateGrid cfg) (p t) tl
   let fadeOrNot = if fade then fadeOutE else constE id
-  playA $ setDuration dt $ applyE fadeOrNot (animate f)
+  playA $ setDuration dt $ signalA (curveS 2) $ applyE fadeOrNot (animate f)
 
 -- |Emerge a tile from thin air at a given position.
 emergeTile :: MonadMotion m => Int -> (Int, Int) -> m ()
@@ -68,7 +68,7 @@ emergeTile l (x, y) = do
   let trans = translateGrid cfg (fromIntegral x) (fromIntegral y)
   let func t = trans (scale t tl)
   let growAnim = setDuration (dt / 4) (signalA (fromToS 0 1.2) (animate func))
-  let shrinkAnim = setDuration (dt / 2) (signalA (fromToS 1.2 1) (animate func))
+  let shrinkAnim = setDuration (dt / 4) (signalA (fromToS 1.2 1) (animate func))
   playA growAnim
   playA shrinkAnim
 
@@ -82,5 +82,5 @@ eventAnim p (TileMerge l p1 p2) = do
   forkA $ moveTile True (pred l) p1 p
   forkA $ moveTile True (pred l) p2 p
   dt <- asks (view motionDuration)
-  waitA (dt / 4)
+  waitA (dt / 2)
   emergeTile l p
