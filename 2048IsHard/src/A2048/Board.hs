@@ -24,6 +24,7 @@ import Reanimate.Animation
 import A2048.Tile
 import A2048.Config
 
+-- |Game board: board = [row], row = [tile].
 type Board = [[Int]]
 
 -- |The 2048 game monad, a concrete instance for 'Monad2048' constraint.

@@ -1,3 +1,12 @@
+{-|
+Module      : A2048.Motion
+Description : 2048 Game moves.
+Copyright   : (c) Xie Ruifeng, 2020
+License     : AGPL-3
+Maintainer  : krantz.xrf@outlook.com
+Stability   : experimental
+Portability : portable
+-}
 module A2048.Motion where
 
 import Control.Monad
@@ -13,6 +22,7 @@ import A2048.Tile
 import A2048.Board
 import A2048.Logic
 
+-- |All 2048 game moves happen in a 'MonadMotion'.
 type MonadMotion m = (Monad2048 m, MonadScene m)
 
 -- |Perform a game move to a given 'Direction'.
@@ -32,7 +42,13 @@ performMove d = waitOnA $ do
       toTile (TileMerge l _ _) = l
   put (map (map toTile) es)
 
-moveTile :: MonadMotion m => Bool -> Int -> (Int, Int) -> (Int, Int) -> m ()
+-- |Move one tile to another position.
+moveTile :: MonadMotion m
+         => Bool        -- ^Whether this tile should fade out.
+         -> Int         -- ^Level of this tile.
+         -> (Int, Int)  -- ^Departure.
+         -> (Int, Int)  -- ^Destination.
+         -> m ()
 moveTile fade l (x, y) (x', y') = do
   dt <- asks (view motionDuration)
   let lerp r a b = r * fromIntegral a + (1 - r) * fromIntegral b
@@ -43,6 +59,7 @@ moveTile fade l (x, y) (x', y') = do
   let fadeOrNot = if fade then fadeOutE else constE id
   playA $ setDuration dt $ applyE fadeOrNot (animate f)
 
+-- |Emerge a tile from thin air at a given position.
 emergeTile :: MonadMotion m => Int -> (Int, Int) -> m ()
 emergeTile l (x, y) = do
   dt <- asks (view motionDuration)
