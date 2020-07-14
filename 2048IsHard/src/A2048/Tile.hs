@@ -10,6 +10,7 @@ Portability : portable
 module A2048.Tile where
 
 import Data.Monoid
+import Text.Printf
 import qualified Data.Text as T
 
 import Control.Lens
@@ -55,7 +56,8 @@ tile l = do
   let rect = rawTile bg a r
   usingLog <- asks (view useLogarithm)
   let label = if usingLog then show l else show (2 ^ l :: Int)
-  let txt = latex (T.pack label) & fillColor .~ Last (Just fg)
+  let tex = if a >= 0.8 then printf "\\textbf{%s}" label else label
+  let txt = latex (T.pack tex) & fillColor .~ Last (Just fg)
   let ratio = a * 0.85 / svgWidth txt
   let txt' = if ratio < 1 then scale ratio txt else txt
   pure (mkGroup [rect, center txt'])
