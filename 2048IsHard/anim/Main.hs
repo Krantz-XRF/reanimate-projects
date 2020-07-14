@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}  
 module Main where
 
-import Control.Lens
+import Prelude hiding (Left, Right)
+
 import Control.Monad.State.Class
 
 import Reanimate
@@ -12,14 +13,16 @@ import A2048.Motion
 
 config :: Game2048Config
 config = defaultGame2048Config
-  & boardWidth .~ 5
-  & boardHeight .~ 3
 
 main :: IO ()
 main = reanimate $ gameAnimation config $ do
-  put [[1, 2, 3, 4, 0]
-      ,[1, 2, 3, 4, 0]
-      ,[9, 10, 11, 12, 0]]
+  put [[3,  0, 1, 1]
+      ,[0,  4, 0, 0]
+      ,[5,  2, 6, 7]
+      ,[10, 9, 0, 8]]
   hold 1
-  performMove Up
+  mapM_ performMove
+    [ Left, Up, Left, Up
+    , Down, Left, Right
+    , Up, Left, Left ]
   hold 1
