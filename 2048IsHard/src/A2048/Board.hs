@@ -40,8 +40,7 @@ class Monad m => MonadScene m where
   -- |Embed a 'Scene' monad.
   liftScene :: Scene (WorldType m) a -> m a
   -- |Wait for a 'Scene' to finish.
-  liftMap :: (forall b . Scene (WorldType m) b -> Scene (WorldType m) b)
-          -> m a -> m a
+  liftMap :: (forall b . Scene (WorldType m) b -> Scene (WorldType m) b) -> m a -> m a
 
 -- |Play an 'Animation' in a 'Scene'.
 playA :: MonadScene m => Animation -> m ()
@@ -76,7 +75,7 @@ instance MonadScene m => MonadScene (ReaderT r m) where
 
 -- |Translate to the selected grid, pure function.
 translateGrid :: Game2048Config -> Double -> Double -> SVG -> SVG
-translateGrid Game2048Config{..} m n t = translate x y t where
+translateGrid Game2048Config{..} m n = translate x y where
   sx = (fromIntegral _boardWidth - 1) / 2
   sy = (fromIntegral _boardHeight - 1) / 2
   x = (m - sx) * (_tileSize + _boardGapSize)
