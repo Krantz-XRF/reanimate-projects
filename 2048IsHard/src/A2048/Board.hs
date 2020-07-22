@@ -19,7 +19,6 @@ import Control.Lens
 
 import Graphics.SvgTree
 import Reanimate
-import Reanimate.Animation
 
 import A2048.Tile
 import A2048.Config
@@ -28,50 +27,10 @@ import A2048.Config
 type Board = [[Int]]
 
 -- |The 2048 game monad, a concrete instance for 'Monad2048' constraint.
-type Game s x = ReaderT Game2048Config (StateT Board (Scene s)) x
+type Game x = ReaderT Game2048Config (State Board) x
 
 -- |All game actions run in a 'Monad2048' monad.
 type Monad2048 m = (MonadState Board m, MonadReader Game2048Config m)
-
--- |'MonadScene' allows emitting animations, sequential or parallel.
-class Monad m => MonadScene m where
-  -- |Universal quantified "thread ID".
-  type WorldType m :: *
-  -- |Embed a 'Scene' monad.
-  liftScene :: Scene (WorldType m) a -> m a
-  -- |Wait for a 'Scene' to finish.
-  liftMap :: (forall b . Scene (WorldType m) b -> Scene (WorldType m) b) -> m a -> m a
-
--- |Play an 'Animation' in a 'Scene'.
-playA :: MonadScene m => Animation -> m ()
-playA = liftScene . play
-
--- |Run the 'Scene' without advancing the time.
-forkA :: MonadScene m => m a -> m a
-forkA = liftMap fork
-
--- |Wait for the 'Scene' until it stops.
-waitOnA :: MonadScene m => m a -> m a
-waitOnA = liftMap waitOn
-
--- |Wait for a time 'Duration'.
-waitA :: MonadScene m => Duration -> m ()
-waitA = liftScene . wait
-
-instance MonadScene (Scene s) where
-  type WorldType (Scene s) = s
-  liftScene = id
-  liftMap f = f
-
-instance MonadScene m => MonadScene (StateT s m) where
-  type WorldType (StateT s m) = WorldType m
-  liftScene = lift . liftScene
-  liftMap f m = StateT (liftMap f . runStateT m)
-
-instance MonadScene m => MonadScene (ReaderT r m) where
-  type WorldType (ReaderT r m) = WorldType m
-  liftScene = lift . liftScene
-  liftMap f m = ReaderT (liftMap f . runReaderT m)
 
 -- |Translate to the selected grid, pure function.
 translateGrid :: Game2048Config -> Double -> Double -> SVG -> SVG
@@ -109,12 +68,12 @@ snapshot :: Monad2048 m => m SVG
 snapshot = mkGroup <$> liftA2 (:) boardSVG (foreachGrid tile)
 
 -- |Emit a static animation for the current game status.
-hold :: (Monad2048 m, MonadScene m) => Double -> m ()
-hold t = playA . staticFrame t =<< snapshot
+hold :: Monad2048 m => Double -> m Animation
+hold t = staticFrame t <$> snapshot
 
 -- |Convert a 'Monad2048' action to an animation.
-gameAnimation :: Game2048Config -> (forall s . Game s ()) -> Animation
+gameAnimation :: Game2048Config -> Game a -> a
 gameAnimation cfg g = 
   let b = replicate (view boardHeight cfg)
         $ replicate (view boardWidth cfg) 0
-  in sceneAnimation $ evalStateT (runReaderT g cfg) b
+  in evalState (runReaderT g cfg) b

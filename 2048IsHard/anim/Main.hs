@@ -20,9 +20,9 @@ main = reanimate $ gameAnimation config $ do
       ,[0,  4, 0, 0]
       ,[5,  2, 6, 7]
       ,[10, 9, 0, 8]]
-  hold 1
-  mapM_ performMove
-    [ Left, Up, Left, Up
-    , Down, Left, Right
-    , Up, Left, Left ]
-  hold 1
+  foldl seqA (pause 0) <$> sequence
+    [ hold 1
+    , foldl seqA (pause 0) <$> mapM performMove
+      [ Left, Up,    Left, Up,   Down
+      , Left, Right, Up,   Left, Left ]
+    , hold 1 ]
