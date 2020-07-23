@@ -32,13 +32,17 @@ type Game x = ReaderT Game2048Config (State Board) x
 -- |All game actions run in a 'Monad2048' monad.
 type Monad2048 m = (MonadState Board m, MonadReader Game2048Config m)
 
--- |Translate to the selected grid, pure function.
-translateGrid :: Game2048Config -> Double -> Double -> SVG -> SVG
-translateGrid Game2048Config{..} m n = translate x y where
+-- |Position of the selected grid, pure function.
+gridPos :: Game2048Config -> (Double, Double) -> (Double, Double)
+gridPos Game2048Config{..} (m, n) = (x, y) where
   sx = (fromIntegral _boardWidth - 1) / 2
   sy = (fromIntegral _boardHeight - 1) / 2
   x = (m - sx) * (_tileSize + _boardGapSize)
   y = (sy - n) * (_tileSize + _boardGapSize)
+
+-- |Translate to the selected grid, pure function.
+translateGrid :: Game2048Config -> Double -> Double -> SVG -> SVG
+translateGrid cfg m n = translate x y where (x, y) = gridPos cfg (m, n)
 
 -- |Translate to the selected grid.
 translateGridM :: MonadReader Game2048Config m => Double -> Double -> m SVG -> m SVG
