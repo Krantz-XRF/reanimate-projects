@@ -12,14 +12,23 @@ module A2048.Text where
 
 import qualified Data.Text as T
 
+import Control.Lens
+
+import Graphics.SvgTree
 import Reanimate
 import Reanimate.LaTeX
 
--- |Plain text labels, with Source Han fonts.
+-- |Plain text labels, with Source Sans Pro, Source Han fonts.
 label :: T.Text -> SVG
-label = center
-  . withStrokeWidth 0 . withFillOpacity 1
-  . withFillColor "black"
+label = colourLabel (mkColor "black")
+
+-- |Coloured text labels, with Source Sans Pro, Source Han fonts.
+colourLabel :: Texture -> T.Text -> SVG
+colourLabel c = center
+  . withStrokeWidth 0
+  . withFillOpacity 1
+  . set fillColor (pure c)
   . ctexWithHeaders
-  [ "\\setCJKmainfont{Source Han Serif SC}"
+  [ "\\setsansfont{Source Sans Pro}"
+  , "\\setCJKmainfont{Source Han Serif SC}"
   , "\\setCJKsansfont{Source Han Sans SC}" ]

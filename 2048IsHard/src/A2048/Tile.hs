@@ -9,7 +9,6 @@ Portability : portable
 -}
 module A2048.Tile where
 
-import Data.Monoid
 import Text.Printf
 import qualified Data.Text as T
 
@@ -20,6 +19,7 @@ import Reanimate
 import Graphics.SvgTree
 
 import A2048.Config
+import A2048.Text
 
 -- |Make a rounded rectangle.
 roundedRect :: Double -> Double -> Double -> SVG
@@ -36,7 +36,7 @@ roundedSquare a = roundedRect a a
 
 -- |Raw tile: coloured rounded rectangle.
 rawTile :: Texture -> Double -> Double -> SVG
-rawTile bg a r = roundedSquare a r & fillColor .~ Last (Just bg)
+rawTile bg a r = roundedSquare a r & fillColor .~ pure bg
 
 -- |Empty tile. Read configuration to determine size and colour.
 emptyTile :: (HasGame2048Config c, MonadReader c m) => m SVG
@@ -53,11 +53,13 @@ tile l = do
   fg <- asks (tileTextColourOf l)
   a <- asks (view tileSize)
   r <- asks (view tileRadius)
+  s <- asks (view tileTextScaleRatio)
   let rect = rawTile bg a r
   usingLog <- asks (view useLogarithm)
-  let label = if usingLog then show l else show (2 ^ l :: Int)
-  let tex = if a >= 0.8 then printf "\\textbf{%s}" label else label
-  let txt = latex (T.pack tex) & fillColor .~ Last (Just fg)
-  let ratio = a * 0.85 / svgWidth txt
+  let lbl = if usingLog then show l else show (2 ^ l :: Int)
+  let sf = printf "\\textsf{%s}" lbl
+  let tex = if a >= 0.8 then printf "\\textbf{%s}" sf else sf
+  let txt = scale s $ colourLabel fg $ T.pack tex
+  let ratio = a * 0.8 / svgWidth txt
   let txt' = if ratio < 1 then scale ratio txt else txt
   pure (mkGroup [rect, center txt'])

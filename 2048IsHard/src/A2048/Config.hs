@@ -20,6 +20,7 @@ import A2048.HexColour
 data Game2048Config = Game2048Config
   { _tileSize :: Double
   , _tileRadius :: Double
+  , _tileTextScaleRatio :: Double
   , _tileFillColour :: [Texture]
   , _tileTextColour :: [Texture]
   , _useLogarithm :: Bool
@@ -41,6 +42,7 @@ defaultGame2048Config :: Game2048Config
 defaultGame2048Config = Game2048Config
   { _tileSize = 1.2
   , _tileRadius = 0.09
+  , _tileTextScaleRatio = 0.8
   , _tileFillColour = tileBgColours
   , _tileTextColour = tileFgColours
   , _useLogarithm = False

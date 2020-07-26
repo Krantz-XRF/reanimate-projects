@@ -10,8 +10,6 @@ Portability : portable
 {-# LANGUAGE TypeFamilies #-}
 module A2048.Board where
 
-import Data.Monoid
-
 import Control.Applicative
 import Control.Monad.Reader
 import Control.Monad.State
@@ -63,7 +61,7 @@ boardSVG = do
   let h = fromIntegral _boardHeight
   let bw = w * _tileSize + (w - 1) * _boardGapSize + _boardBorderSize * 2
   let bh = h * _tileSize + (h - 1) * _boardGapSize + _boardBorderSize * 2
-  let bg = Last (Just _boardFillColour)
+  let bg = pure _boardFillColour
   let boardRect = roundedRect bw bh _tileRadius & fillColor .~ bg
   mkGroup . (boardRect :) <$> foreachGrid (const emptyTile)
 
