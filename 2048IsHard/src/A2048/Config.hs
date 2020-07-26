@@ -56,6 +56,16 @@ defaultGame2048Config = Game2048Config
   , _motionDuration = 0.4
   }
 
+-- |Scale the whole game UI.
+scaleGame :: Double -> Game2048Config -> Game2048Config
+scaleGame r cfg@Game2048Config{..} = cfg
+  { _tileSize           = r * _tileSize
+  , _tileRadius         = r * _tileRadius
+  , _tileTextScaleRatio = r * _tileTextScaleRatio
+  , _boardGapSize       = r * _boardGapSize
+  , _boardBorderSize    = r * _boardBorderSize
+  }
+
 -- |Tile background colours.
 tileBgColours :: [Texture]
 tileBgColours =
