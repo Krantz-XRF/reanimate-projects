@@ -8,6 +8,8 @@ import Control.Monad.Reader.Class
 
 import Reanimate
 
+import Anim.Common
+
 import A2048.Config
 import A2048.Tile
 import A2048.Board
@@ -18,10 +20,13 @@ import A2048.Text
 config :: Game2048Config
 config = defaultGame2048Config
 
+addWhiteBkg :: SVG -> SVG
+addWhiteBkg svg = mkGroup [mkBackground "white", svg]
+
 main :: IO ()
 main = reanimate
   $ gameAnimation config
-  $ mapA (\svg -> mkGroup [mkBackground "white", svg]) <$> do
+  $ mapA addWhiteBkg . fadeToEnd 1 <$> do
   put [[3,  0, 1, 1]
       ,[0,  4, 0, 0]
       ,[5,  2, 6, 7]
@@ -44,6 +49,6 @@ main = reanimate
          bd <- boardSVG
          let trans t = translate (lerp t (-2) x0) (lerp t 0 y0)
          let animTl = animate (`trans` tl)
-         let fadeBoard = applyE fadeOutE (staticFrame 1 bd)
+         let fadeBoard = setDuration 0.5 $ applyE fadeOutE $ staticFrame 1 bd
          let mv = setDuration 2 (animTl `parA` fadePrompt) `parA` fadeBoard
          pure (mv `andThen` pause 2) ]
