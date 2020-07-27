@@ -23,6 +23,7 @@ data Game2048Config = Game2048Config
   , _tileTextScaleRatio :: Double
   , _tileFillColour :: [Texture]
   , _tileTextColour :: [Texture]
+  , _tileShowLabel :: Bool
   , _useLogarithm :: Bool
   , _boardWidth :: Int
   , _boardHeight :: Int
@@ -45,6 +46,7 @@ defaultGame2048Config = Game2048Config
   , _tileTextScaleRatio = 0.8
   , _tileFillColour = tileBgColours
   , _tileTextColour = tileFgColours
+  , _tileShowLabel = True
   , _useLogarithm = False
   , _boardWidth = 4
   , _boardHeight = 4

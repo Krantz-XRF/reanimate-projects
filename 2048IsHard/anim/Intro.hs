@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}  
-module Main where
+module Intro (intro) where
 
 import Prelude hiding (Left, Right)
 
@@ -20,12 +20,9 @@ import A2048.Text
 config :: Game2048Config
 config = defaultGame2048Config
 
-addWhiteBkg :: SVG -> SVG
-addWhiteBkg svg = mkGroup [mkBackground "white", svg]
-
-main :: IO ()
-main = reanimate
-  $ gameAnimation config
+-- |Video intro.
+intro :: Animation
+intro = gameAnimation config
   $ mapA addWhiteBkg . fadeToEnd 1 <$> do
   put [[3,  0, 1, 1]
       ,[0,  4, 0, 0]

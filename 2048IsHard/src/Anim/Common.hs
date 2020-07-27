@@ -11,6 +11,10 @@ module Anim.Common where
 
 import Reanimate
 
+-- |Add a white background for the given animation.
+addWhiteBkg :: SVG -> SVG
+addWhiteBkg svg = mkGroup [mkBackground "white", svg]
+
 -- |Fade out the animation after it stops.
 fadeToEnd :: Time -> Animation -> Animation
 fadeToEnd d a =

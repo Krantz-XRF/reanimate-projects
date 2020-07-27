@@ -25,8 +25,6 @@ label = colourLabel (mkColor "black")
 -- |Coloured text labels, with Source Sans Pro, Source Han fonts.
 colourLabel :: Texture -> T.Text -> SVG
 colourLabel c = center
-  . withStrokeWidth 0
-  . withFillOpacity 1
   . set fillColor (pure c)
   . ctexWithHeaders
   [ "\\setsansfont{Source Sans Pro}"
