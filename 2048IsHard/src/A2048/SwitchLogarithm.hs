@@ -11,7 +11,6 @@ module A2048.SwitchLogarithm (switchLog) where
 
 import Control.Monad.Reader.Class
 
-import Graphics.SvgTree
 import Reanimate
 import Reanimate.Morph.Common
 import Reanimate.Morph.Linear
@@ -24,16 +23,16 @@ localLog :: Monad2048 m => m a -> m a
 localLog = local switch where
   switch cfg = cfg{ _useLogarithm = True }
 
-foreachNonEmptyGrid :: Monad2048 m => (Int -> m SVG) -> m [SVG]
-foreachNonEmptyGrid f = foreachGrid $ \n -> if n /= 0 then f n else pure None
+localHideLabel :: Monad2048 m => m a -> m a
+localHideLabel = local switch where
+  switch cfg = cfg{ _tileShowLabel = False }
 
 -- |Animation for the board from 2-4-8-16 to 1-2-3-4.
 switchLog :: Monad2048 m => m Animation
 switchLog = do
-  bd <- localLog snapshot
-  mkPure <- asks gameAnimation
-  let anim t = mkPure $ foreachNonEmptyGrid $ \n -> do
-        l <- lowerTransformations . pathify <$> tileLabel n
-        l' <- lowerTransformations . pathify <$> localLog (tileLabel n)
-        pure (morph linear l l' t)
+  bd <- localHideLabel snapshot
+  anim <- mkPure $ \t -> foreachNonEmptyGrid $ \n -> do
+    l <- lowerTransformations . pathify <$> tileLabel n
+    l' <- lowerTransformations . pathify <$> localLog (tileLabel n)
+    pure (morph linear l l' t)
   pure (animate $ mkGroup . (bd :) . anim)

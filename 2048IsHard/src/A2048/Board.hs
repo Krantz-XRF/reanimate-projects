@@ -53,6 +53,10 @@ foreachGrid g = get >>= \board -> sequenceA
   | (n :: Int, row) <- zip [0 ..] board
   , (m :: Int, x) <- zip [0 ..] row ]
 
+-- |Traverse all non-empty grids.
+foreachNonEmptyGrid :: Monad2048 m => (Int -> m SVG) -> m [SVG]
+foreachNonEmptyGrid f = foreachGrid $ \n -> if n /= 0 then f n else pure None
+
 -- |Generate an SVG image for the empty board.
 boardSVG :: Monad2048 m => m SVG
 boardSVG = do
@@ -79,3 +83,9 @@ gameAnimation cfg g =
   let b = replicate (view boardHeight cfg)
         $ replicate (view boardWidth cfg) 0
   in evalState (runReaderT g cfg) b
+
+-- |Make a pure 'Animation' from a 'Game' monad.
+mkPure :: Monad2048 m => (Time -> Game a) -> m (Time -> a)
+mkPure f = do
+  cfg <- ask; bd <- get
+  pure (\t -> gameAnimation cfg (put bd >> f t))
