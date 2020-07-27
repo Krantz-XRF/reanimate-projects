@@ -7,7 +7,10 @@ Maintainer  : krantz.xrf@outlook.com
 Stability   : experimental
 Portability : portable
 -}
-module A2048.SwitchLogarithm (switchLog) where
+module A2048.SwitchLogarithm
+  ( switchLog
+  , localLog
+  ) where
 
 import Control.Monad.Reader.Class
 
@@ -19,6 +22,7 @@ import A2048.Config
 import A2048.Tile
 import A2048.Board
 
+-- |Use logarithm locally.
 localLog :: Monad2048 m => m a -> m a
 localLog = local switch where
   switch cfg = cfg{ _useLogarithm = True }
