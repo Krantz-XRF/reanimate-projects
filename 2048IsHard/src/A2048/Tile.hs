@@ -10,6 +10,7 @@ Portability : portable
 module A2048.Tile where
 
 import Text.Printf
+import Data.Functor
 import qualified Data.Text as T
 
 import Control.Lens
@@ -55,7 +56,7 @@ tile l = do
   showLabel <- asks (view tileShowLabel)
   let rect = rawTile bg a r
   if not showLabel then pure rect else
-    tileLabel l >>= \lbl -> pure (mkGroup [rect, lbl])
+    tileLabel l <&> \lbl -> mkGroup [rect, lbl]
 
 -- |Tile number. Read configuration to determine size and colour.
 tileLabel :: (HasGame2048Config c, MonadReader c m) => Int -> m SVG
@@ -63,10 +64,11 @@ tileLabel l = do
   fg <- asks (tileTextColourOf l)
   a <- asks (view tileSize)
   s <- asks (view tileTextScaleRatio)
-  usingLog <- asks (view useLogarithm)
-  let lbl = if usingLog then show l else show (2 ^ l :: Int)
-  let sf = printf "\\textsf{%s}" lbl
-  let tex = if s >= 0.6 then printf "\\textbf{%s}" sf else sf
+  lbl <- asks (view tileLabelMode) <&> \case
+    Logarithm -> printf "\\textsf{%d}" l
+    Normal -> printf "\\textsf{%d}" (2 ^ l :: Int)
+    Exponent -> printf "$\\textsf{2}^\\textsf{%d}$" l
+  let tex = if s >= 0.6 then printf "\\textbf{%s}" lbl else lbl
   let txt = scale s $ colourLabel fg $ T.pack tex
   let ratio = a * 0.8 / svgWidth txt
   let txt' = if ratio < 1 then scale ratio txt else txt

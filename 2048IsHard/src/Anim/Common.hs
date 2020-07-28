@@ -21,3 +21,19 @@ fadeToEnd d a =
   let lastFrame = frameAt (duration a) a
       animFade = applyE fadeOutE (staticFrame 1 lastFrame)
   in a `seqA` setDuration d animFade
+
+-- |Linear interpolation (for position) between 2 key frames.
+lerpSVG :: SVG -> SVG -> Time -> SVG
+lerpSVG a1 a2 t =
+  translate (lerp t cx2 cx1) (lerp t cy2 cy1)
+  $ scale (lerp t 1 (w1 / w2))
+  $ center a2
+  where (x1, y1, w1, h1) = boundingBox a1
+        (x2, y2, w2, h2) = boundingBox a2
+        (cx1, cy1) = (x1 + w1 / 2, y1 + h1 / 2)
+        (cx2, cy2) = (x2 + w2 / 2, y2 + h2 / 2)
+        lerp r x y = r * x + (1 - r) * y
+
+-- |Make a pure translation animation.
+translationAnim :: SVG -> SVG -> Animation
+translationAnim a1 a2 = animate (lerpSVG a1 a2)

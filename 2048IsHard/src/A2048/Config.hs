@@ -16,6 +16,9 @@ import Control.Lens
 import Graphics.SvgTree
 import A2048.HexColour
 
+-- |How do we show the labels on the tile?
+data TileLabelMode = Normal | Logarithm | Exponent deriving (Show, Eq)
+
 -- |Configurations for the 2048 Game.
 data Game2048Config = Game2048Config
   { _tileSize :: Double
@@ -24,7 +27,7 @@ data Game2048Config = Game2048Config
   , _tileFillColour :: [Texture]
   , _tileTextColour :: [Texture]
   , _tileShowLabel :: Bool
-  , _useLogarithm :: Bool
+  , _tileLabelMode :: TileLabelMode
   , _boardWidth :: Int
   , _boardHeight :: Int
   , _boardGapSize :: Double
@@ -47,7 +50,7 @@ defaultGame2048Config = Game2048Config
   , _tileFillColour = tileBgColours
   , _tileTextColour = tileFgColours
   , _tileShowLabel = True
-  , _useLogarithm = False
+  , _tileLabelMode = Normal
   , _boardWidth = 4
   , _boardHeight = 4
   , _boardGapSize = 0.2
