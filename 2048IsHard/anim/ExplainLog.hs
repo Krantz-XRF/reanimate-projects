@@ -3,8 +3,6 @@ module ExplainLog (explainLog) where
 
 import Prelude hiding (Left, Right)
 
-import Control.Lens
-import Control.Monad.Reader.Class
 import Control.Monad.State.Class
 
 import Reanimate
@@ -27,5 +25,9 @@ explainLog = gameAnimation config
       ,[9, 10, 11, 0]]
   foldl seqA (pause 0) <$> sequence
     [ applyE fadeInE <$> hold 1
-    , switchLog
-    , local (tileLabelMode .~ Logarithm) (hold 1) ]
+    , setDuration 0.5 <$> switchNormalExpo
+    , holdWith Exponent 1
+    , expoHighlight
+    , holdWith Exponent 0.5
+    , switchExpoLog
+    , holdWith Logarithm 1 ]

@@ -37,3 +37,18 @@ lerpSVG a1 a2 t =
 -- |Make a pure translation animation.
 translationAnim :: SVG -> SVG -> Animation
 translationAnim a1 a2 = animate (lerpSVG a1 a2)
+
+-- |Wiggle = S-Curve, sin, S-Curve.
+-- Copied from reanimate/examples/tut_glue_latex.hs
+wiggleS :: Signal
+wiggleS t
+  | t < 0.25  = curveS 2 (t * 4)
+  | t < 0.75  = sin ((t - 0.25) * 2 * pi + pi / 2)
+  | otherwise = curveS 2 ((t - 0.75) * 4) - 1
+
+-- |Highlight = Wiggle (Rotate) + Scale.
+-- Copied from reanimate/examples/tut_glue_latex.hs
+highlightE :: Double -> Effect
+highlightE r d t
+  = scale (1 + bellS 2 (t / d) * r)
+  . rotate (wiggleS (t / d) * 20)

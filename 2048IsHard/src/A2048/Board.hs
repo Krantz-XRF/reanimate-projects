@@ -77,6 +77,10 @@ snapshot = mkGroup <$> liftA2 (:) boardSVG (foreachGrid tile)
 hold :: Monad2048 m => Double -> m Animation
 hold t = staticFrame t <$> snapshot
 
+-- |Emit a static animation for the current game status.
+holdWith :: Monad2048 m => TileLabelMode -> Double -> m Animation
+holdWith mode = local (tileLabelMode .~ mode) . hold
+
 -- |Convert a 'Monad2048' action to an animation.
 gameAnimation :: Game2048Config -> Game a -> a
 gameAnimation cfg g = 
