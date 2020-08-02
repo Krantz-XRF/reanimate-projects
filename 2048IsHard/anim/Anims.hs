@@ -5,8 +5,6 @@ import Control.Monad
 import System.Environment
 
 import Reanimate
-import Reanimate.Render
-import Reanimate.Parameters
 
 import Intro
 import ExplainLog
@@ -33,10 +31,8 @@ chooseAnim k = do
   handleArgs args printAnims k
 
 main :: IO ()
-main = chooseAnim $ \nm anim -> do
-  ras <- selectRaster RasterAuto
-  setRaster ras
-  setFPS 30
-  setWidth 1920
-  setHeight 1080
-  render anim (nm ++ ".mp4") ras RenderMp4 1920 1080 30 False
+main = chooseAnim $ \nm anim -> withArgs
+  [ "render"
+  , "--preset", "high"
+  , "-o", nm ++ ".mp4" ]
+  (reanimate anim)
