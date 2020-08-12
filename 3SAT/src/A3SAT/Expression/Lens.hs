@@ -106,4 +106,4 @@ fixExpr :: Applicative f
         -> LensLike' f (LExpression l) b
 fixExpr ls f = go where
   go (In x) = In <$> (merge <$> ls f x <*> bitraverse go pure x)
-  merge = zipExprFWith const (const id)
+  merge = zipExprFWith (const id) const
