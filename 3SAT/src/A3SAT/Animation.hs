@@ -27,7 +27,7 @@ showSvg :: [T.Text] -> LExpression l -> LExpression (l, SVG)
 showSvg xs e = associateGlyphs glyphs (map countGlyphs xs) e
   where countGlyphs = length . svgGlyphs . mkTex
         glyphs = [ f a | (f, _, a) <- svgGlyphs $ mkTex $ showLaTeX xs e ]
-        mkTex = withFillColor "white" . latex . mkMath
+        mkTex = withFillColor "black" . latex . mkMath
         mkMath x = "$" <> x <> "$"
 
 -- |Modify the variables.
