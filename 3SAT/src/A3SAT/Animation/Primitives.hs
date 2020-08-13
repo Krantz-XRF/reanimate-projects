@@ -51,7 +51,7 @@ colourVar idx cols = mapVar idx cols (const True) upd
   where upd c = fillColor .~ pure c
 
 -- |Colour labels by category.
-colourLabel :: Lens' (LExpression l) SVG -> Texture -> LExpression l -> LExpression l
+colourLabel :: ASetter' (LExpression l) SVG -> Texture -> LExpression l -> LExpression l
 colourLabel idx col = over idx (fillColor .~ pure col)
 
 -- |Collect all SVGs in an expression.
