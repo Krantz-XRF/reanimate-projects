@@ -17,9 +17,9 @@ import Reanimate.Morph.Common
 import Reanimate.Morph.Linear
 import Reanimate.Transition
 
+import A2048.Board
 import A2048.Config
 import A2048.Tile
-import A2048.Board
 
 import Anim.Common
 
@@ -35,7 +35,8 @@ switchNormalExpo :: Monad2048 m => m Animation
 switchNormalExpo = animateGrids $ \t n -> do
   l0 <- tileLabel n
   l1 <- local (tileLabelMode .~ Exponent) (tileLabel n)
-  pure (morph linear l0 l1 t)
+  let linearDup = linear{morphObjectCorrespondence = dupObjectCorrespondence}
+  pure (morph linearDup l0 l1 t)
 
 -- |Highlight the exponents in 'Exponent'.
 expoHighlight :: Monad2048 m => m Animation
