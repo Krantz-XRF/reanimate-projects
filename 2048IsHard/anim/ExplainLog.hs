@@ -18,8 +18,8 @@ config = defaultGame2048Config{ _boardHeight = 3 }
 
 -- |Animation for explaining the use of logarithm.
 explainLog :: Animation
-explainLog = gameAnimation config
-  $ mapA addWhiteBkg . fadeToEnd 1 <$> do
+explainLog = mapA addWhiteBkg . fadeToEnd 1
+  $ gameAnimation config $ do
   put [[1,  2,  3, 4]
       ,[5,  6,  7, 8]
       ,[9, 10, 11, 0]]

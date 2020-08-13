@@ -22,8 +22,8 @@ config = defaultGame2048Config
 
 -- |Video intro.
 intro :: Animation
-intro = gameAnimation config
-  $ mapA addWhiteBkg . fadeToEnd 1 <$> do
+intro = mapA addWhiteBkg . fadeToEnd 1
+  $ gameAnimation config $ do
   put [[3,  0, 1, 1]
       ,[0,  4, 0, 0]
       ,[5,  2, 6, 7]
