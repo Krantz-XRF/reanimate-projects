@@ -4,7 +4,7 @@
 [![license-source](https://img.shields.io/badge/Source-AGPL--v3.0-blueviolet)](https://www.gnu.org/licenses/agpl-3.0.html)
 [![license-animations](https://img.shields.io/badge/Animations-CC--BY--ND--4.0-yellow)](https://creativecommons.org/licenses/by-nd/4.0/)
 ![build](https://github.com/Krantz-XRF/reanimate-projects/workflows/build/badge.svg)
-[![docs](https://img.shields.io/badge/Doc-0.1.0.0-brightgreen)](https://krantz-xrf.github.io/reanimate-projects/)
+[![docs](https://img.shields.io/badge/Doc-GitHub%20Pages-brightgreen)](https://krantz-xrf.github.io/reanimate-projects/)
 
 Some animation projects using [Reanimate](https://github.com/Lemmih/reanimate)([Hackage Link](http://hackage.haskell.org/package/reanimate)).
 

@@ -1,5 +1,7 @@
 # 2048 is Hard
 
+[![docs](https://img.shields.io/badge/Doc-0.1.0.0-brightgreen)](https://krantz-xrf.github.io/reanimate-projects/2048IsHard-0.1.0.0/)
+
 This is an animation illustration for [*2048 Without New Tiles Is Still Hard*](https://drops.dagstuhl.de/opus/volltexte/2016/5885/pdf/26.pdf).
 
 ## References
