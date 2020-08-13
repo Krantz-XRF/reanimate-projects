@@ -139,22 +139,27 @@ mapExprM convLabel = go where
 
 -- |Zip 2 expression functors with of same shape with given functions.
 zipExprFWith :: (a -> a' -> a'') -> (l -> l' -> l'')
+             -> (ExpressionF a l -> ExpressionF a' l' -> ExpressionF a'' l'')
              -> ExpressionF a l -> ExpressionF a' l' -> ExpressionF a'' l''
-zipExprFWith _ g (VarF l1 x)       (VarF l2 _)       = VarF (g l1 l2) x
-zipExprFWith f g (NotF l1 a1)      (NotF l2 a2)      = NotF (g l1 l2) (f a1 a2)
-zipExprFWith f g (AndF a1 l1 b1)   (AndF a2 l2 b2)   = AndF (f a1 a2) (g l1 l2) (f b1 b2)
-zipExprFWith f g (OrF a1 l1 b1)    (OrF a2 l2 b2)    = OrF (f a1 a2) (g l1 l2) (f b1 b2)
-zipExprFWith f g (ParenF l1 a1 r1) (ParenF l2 a2 r2) = ParenF (g l1 l2) (f a1 a2) (g r1 r2)
-zipExprFWith _ _ _ _ = error "zipExprFWith: requires input of same shape"
+zipExprFWith _ g _ (VarF l1 x)       (VarF l2 _)       = VarF (g l1 l2) x
+zipExprFWith f g _ (NotF l1 a1)      (NotF l2 a2)      = NotF (g l1 l2) (f a1 a2)
+zipExprFWith f g _ (AndF a1 l1 b1)   (AndF a2 l2 b2)   = AndF (f a1 a2) (g l1 l2) (f b1 b2)
+zipExprFWith f g _ (OrF a1 l1 b1)    (OrF a2 l2 b2)    = OrF (f a1 a2) (g l1 l2) (f b1 b2)
+zipExprFWith f g _ (ParenF l1 a1 r1) (ParenF l2 a2 r2) = ParenF (g l1 l2) (f a1 a2) (g r1 r2)
+zipExprFWith _ _ h x                 y                 = h x y
 
 -- |Zip 2 expression functors of the same shape.
 zipExprF :: ExpressionF a l -> ExpressionF a' l' -> ExpressionF (a, a') (l, l')
-zipExprF = zipExprFWith (,) (,)
+zipExprF = zipExprFWith (,) (,) (error "zipExprF: requires input of same shape")
 
 -- |Zip 2 expressions of the same shape with given function.
-zipExprWith :: (l -> l' -> l'') -> LExpression l -> LExpression l' -> LExpression l''
-zipExprWith f = go where go (In x) (In y) = In (zipExprFWith go f x y)
+zipExprWith :: (l -> l' -> l'')
+            -> (LExpression l -> LExpression l' -> LExpression l'')
+            -> LExpression l -> LExpression l' -> LExpression l''
+zipExprWith f h = go
+  where go (In x) (In y) = In (zipExprFWith go f h' x y)
+        h' x y = out (h (In x) (In y))
 
 -- |Zip 2 expressions of the same shape with given function.
 zipExpr :: LExpression l -> LExpression l' -> LExpression (l, l')
-zipExpr = zipExprWith (,)
+zipExpr = zipExprWith (,) (error "zipExpr: requires input of same shape")
