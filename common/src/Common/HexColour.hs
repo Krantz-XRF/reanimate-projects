@@ -1,5 +1,5 @@
 {-|
-Module      : A2048.HexColour
+Module      : Common.HexColour
 Description : Hexadecimal colour representation.
 Copyright   : (c) Xie Ruifeng, 2020
 License     : AGPL-3
@@ -8,16 +8,16 @@ Stability   : experimental
 Portability : portable
 -}
 {-# LANGUAGE TemplateHaskell #-}
-module A2048.HexColour (rgba) where
+module Common.HexColour (rgba) where
 
 import Data.Char
 import Data.Word
 
-import Language.Haskell.TH.Syntax
 import Language.Haskell.TH.Quote
+import Language.Haskell.TH.Syntax
 
-import Graphics.SvgTree.Types
 import Codec.Picture.Types
+import Graphics.SvgTree.Types
 
 -- |The 'rgba' Quasi-Quoter.
 -- Accepted format: RGB, RGBA, RRGGBB, RRGGBBAA

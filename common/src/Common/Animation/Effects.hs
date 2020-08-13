@@ -1,5 +1,5 @@
 {-|
-Module      : Anim.Common
+Module      : Common.Animation.Effects
 Description : Common Reanimate pattern functions.
 Copyright   : (c) Xie Ruifeng, 2020
 License     : AGPL-3
@@ -7,7 +7,7 @@ Maintainer  : krantz.xrf@outlook.com
 Stability   : experimental
 Portability : portable
 -}
-module Anim.Common where
+module Common.Animation.Effects where
 
 import Reanimate
 

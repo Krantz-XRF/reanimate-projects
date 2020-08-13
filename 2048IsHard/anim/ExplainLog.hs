@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}  
+{-# LANGUAGE OverloadedStrings #-}
 module ExplainLog (explainLog) where
 
 import Prelude hiding (Left, Right)
@@ -7,10 +7,10 @@ import Control.Monad.State.Class
 
 import Reanimate
 
-import Anim.Common
+import Common.Animation.Effects
 
-import A2048.Config
 import A2048.Board
+import A2048.Config
 import A2048.SwitchLogarithm
 
 config :: Game2048Config

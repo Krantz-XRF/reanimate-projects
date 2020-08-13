@@ -7,35 +7,35 @@ Maintainer  : krantz.xrf@outlook.com
 Stability   : experimental
 Portability : portable
 -}
+{-# LANGUAGE QuasiQuotes     #-}
+{-# LANGUAGE Strict          #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE Strict #-}
 module A2048.Config where
 
+import Common.HexColour
 import Control.Lens
 import Graphics.SvgTree
-import A2048.HexColour
 
 -- |How do we show the labels on the tile?
 data TileLabelMode = Normal | Logarithm | Exponent deriving (Show, Eq)
 
 -- |Configurations for the 2048 Game.
 data Game2048Config = Game2048Config
-  { _tileSize :: Double
-  , _tileRadius :: Double
+  { _tileSize           :: Double
+  , _tileRadius         :: Double
   , _tileTextScaleRatio :: Double
-  , _tileFillColour :: [Texture]
-  , _tileTextColour :: [Texture]
-  , _tileShowLabel :: Bool
-  , _tileLabelMode :: TileLabelMode
-  , _boardWidth :: Int
-  , _boardHeight :: Int
-  , _boardGapSize :: Double
-  , _boardBorderSize :: Double
-  , _boardGridColour :: Texture
-  , _boardFillColour :: Texture
-  , _motionFillPadding :: Bool
-  , _motionDuration :: Double
+  , _tileFillColour     :: [Texture]
+  , _tileTextColour     :: [Texture]
+  , _tileShowLabel      :: Bool
+  , _tileLabelMode      :: TileLabelMode
+  , _boardWidth         :: Int
+  , _boardHeight        :: Int
+  , _boardGapSize       :: Double
+  , _boardBorderSize    :: Double
+  , _boardGridColour    :: Texture
+  , _boardFillColour    :: Texture
+  , _motionFillPadding  :: Bool
+  , _motionDuration     :: Double
   } deriving stock (Show)
 
 -- |Classy lens for 'Game2048Config'.
@@ -44,21 +44,21 @@ makeClassy ''Game2048Config
 -- |Default configuration for tiles.
 defaultGame2048Config :: Game2048Config
 defaultGame2048Config = Game2048Config
-  { _tileSize = 1.2
-  , _tileRadius = 0.09
+  { _tileSize           = 1.2
+  , _tileRadius         = 0.09
   , _tileTextScaleRatio = 0.8
-  , _tileFillColour = tileBgColours
-  , _tileTextColour = tileFgColours
-  , _tileShowLabel = True
-  , _tileLabelMode = Normal
-  , _boardWidth = 4
-  , _boardHeight = 4
-  , _boardGapSize = 0.2
-  , _boardBorderSize = 0.3
-  , _boardGridColour = [rgba|cdc0b4|]
-  , _boardFillColour = [rgba|bbada0|]
-  , _motionFillPadding = False
-  , _motionDuration = 0.4
+  , _tileFillColour     = tileBgColours
+  , _tileTextColour     = tileFgColours
+  , _tileShowLabel      = True
+  , _tileLabelMode      = Normal
+  , _boardWidth         = 4
+  , _boardHeight        = 4
+  , _boardGapSize       = 0.2
+  , _boardBorderSize    = 0.3
+  , _boardGridColour    = [rgba|cdc0b4|]
+  , _boardFillColour    = [rgba|bbada0|]
+  , _motionFillPadding  = False
+  , _motionDuration     = 0.4
   }
 
 -- |Scale the whole game UI.

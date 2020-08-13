@@ -21,7 +21,7 @@ import A2048.Board
 import A2048.Config
 import A2048.Tile
 
-import Anim.Common
+import Common.Animation.Effects
 
 -- |Create animation for each non-empty grids with the provided function.
 animateGrids :: Monad2048 m => (Time -> Int -> Game SVG) -> m Animation

@@ -1,21 +1,21 @@
-{-# LANGUAGE OverloadedStrings #-}  
+{-# LANGUAGE OverloadedStrings #-}
 module Intro (intro) where
 
 import Prelude hiding (Left, Right)
 
-import Control.Monad.State.Class
 import Control.Monad.Reader.Class
+import Control.Monad.State.Class
 
 import Reanimate
 
-import Anim.Common
+import Common.Animation.Effects
 
-import A2048.Config
-import A2048.Tile
 import A2048.Board
+import A2048.Config
 import A2048.Logic
 import A2048.Motion
 import A2048.Text
+import A2048.Tile
 
 config :: Game2048Config
 config = defaultGame2048Config
