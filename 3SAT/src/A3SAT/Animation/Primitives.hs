@@ -1,5 +1,5 @@
 {-|
-Module      : A3SAT.Animation
+Module      : A3SAT.Animation.Primitives
 Description : Basic animations for 3-SAT problem.
 Copyright   : (c) Xie Ruifeng, 2020
 License     : AGPL-3
@@ -8,7 +8,7 @@ Stability   : experimental
 Portability : portable
 -}
 {-# LANGUAGE OverloadedStrings #-}
-module A3SAT.Animation where
+module A3SAT.Animation.Primitives where
 
 import qualified Data.Text as T
 
@@ -30,7 +30,7 @@ showSvg :: [T.Text] -> LExpression l -> LExpression (l, SVG)
 showSvg xs e = associateGlyphs glyphs (map countGlyphs xs) e
   where countGlyphs = length . svgGlyphs . mkTex
         glyphs = [ f a | (f, _, a) <- svgGlyphs $ mkTex $ showLaTeX xs e ]
-        mkTex = withFillColor "black" . latex . mkMath
+        mkTex = withFillColor "black" . center . latex . mkMath
         mkMath x = "$" <> x <> "$"
 
 -- |Modify the variables.
