@@ -1,18 +1,20 @@
 module Main where
 
-import Text.Printf
 import Control.Monad
 import System.Environment
+import Text.Printf
 
 import Reanimate
 
-import Intro
+import Explain3SAT
 import ExplainLog
+import Intro
 
 anims :: [(String, Animation)]
 anims =
-  [("Intro",      intro)
-  ,("ExplainLog", explainLog)]
+  [("Intro",       intro)
+  ,("ExplainLog",  explainLog)
+  ,("Explain3SAT", explain3SAT)]
 
 printAnims :: IO ()
 printAnims = forM_ (indexedAnims) $ \(n, (nm, _)) -> printf "%d. %s" n nm
