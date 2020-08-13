@@ -37,12 +37,7 @@ makeRgba [r1, r2, g1, g2, b1, b2, a1, a2] =
       a = makeHex a1 a2
       makeHex x y = fromIntegral (digitToInt x * 16 + digitToInt y) :: Word8
   in [| ColorRef (PixelRGBA8 r g b a) |]
-makeRgba [r1, r2, g1, g2, b1, b2] =
-  let r = makeHex r1 r2
-      g = makeHex g1 g2
-      b = makeHex b1 b2
-      makeHex x y = fromIntegral (digitToInt x * 16 + digitToInt y) :: Word8
-  in [| ColorRef (PixelRGBA8 r g b 1) |]
+makeRgba [r1, r2, g1, g2, b1, b2] = makeRgba [r1, r2, g1, g2, b1, b2, 'F', 'F']
 makeRgba [r, g, b, a] = makeRgba [r, r, g, g, b, b, a, a]
 makeRgba [r, g, b] = makeRgba [r, r, g, g, b, b]
 makeRgba _ = fail "Invalid RGBA colour."
