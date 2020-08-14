@@ -9,7 +9,9 @@ Portability : portable
 -}
 module Common.Animation.Effects where
 
+import Graphics.SvgTree
 import Reanimate
+import Reanimate.ColorComponents
 
 -- |Add a white background for the given animation.
 addWhiteBkg :: SVG -> SVG
@@ -33,6 +35,11 @@ lerpSVG a1 a2 t =
         (cx1, cy1) = (x1 + w1 / 2, y1 + h1 / 2)
         (cx2, cy2) = (x2 + w2 / 2, y2 + h2 / 2)
         lerp r x y = r * x + (1 - r) * y
+
+-- |Linear interpolation between 2 colours.
+lerpColour :: Texture -> Texture -> Time -> Texture
+lerpColour ~(ColorRef x) ~(ColorRef y) t
+  = ColorRef (interpolateRGBA8 labComponents x y t)
 
 -- |Make a pure translation animation.
 translationAnim :: SVG -> SVG -> Animation

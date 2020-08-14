@@ -28,6 +28,10 @@ _BinOpF = disjointUnion _AndF _OrF
 varF :: (Word -> Bool) -> Traversal' (ExpressionF a l) (l, Word)
 varF f = _VarF . filtered (f . view _2)
 
+-- |Label for all variables.
+allVarF :: Traversal' (ExpressionF a l) l
+allVarF = varF (const True) . _1
+
 -- |Label for 'NotF'.
 notF :: Traversal' (ExpressionF a l) l
 notF = _NotF . _1
@@ -62,6 +66,10 @@ parenF = _ParenF . _1_and_3 where
 -- |Label for variables matching the predicate.
 vars :: (Word -> Bool) -> Traversal' (LExpression l) (l, Word)
 vars f = fixExpr (varF f)
+
+-- |Label for all variables.
+allVars :: Traversal' (LExpression l) l
+allVars = vars (const True) . _1
 
 -- |Label for 'NotF'.
 nots :: Traversal' (LExpression l) l

@@ -22,6 +22,7 @@ import A3SAT.LaTeX
 
 import Graphics.SvgTree
 import Reanimate
+import Reanimate.LaTeX
 import Reanimate.Morph.Common
 import Reanimate.Morph.Linear
 
@@ -30,8 +31,13 @@ showSvg :: [T.Text] -> LExpression l -> LExpression (l, SVG)
 showSvg xs e = associateGlyphs glyphs (map countGlyphs xs) e
   where countGlyphs = length . svgGlyphs . mkTex
         glyphs = [ f a | (f, _, a) <- svgGlyphs $ mkTex $ showLaTeX xs e ]
-        mkTex = withFillColor "black" . center . latex . mkMath
+        mkTex = center . latexWithHeaders ["\\usepackage{bm}"] . mkMath
         mkMath x = "$" <> x <> "$"
+
+-- |Render the boolean expression with LaTeX, drop the original labels, then
+-- associate nodes with glyphs.
+showSvg' :: [T.Text] -> LExpression l -> LExpression SVG
+showSvg' xs = fmap snd . showSvg xs
 
 -- |Modify the variables.
 --

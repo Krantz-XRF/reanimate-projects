@@ -115,14 +115,14 @@ type Expression = LExpression ()
 addParenWith :: (l, l) -> LExpression l -> LExpression l
 addParenWith (l, r) = go (0 :: Int) where
   go p e@(priority . out -> p')
-    | p' <= p = In (ParenF l e' r)
+    | p' < p = In (ParenF l e' r)
     | otherwise = e'
     where e' = In $ first (go p') $ out e
-  priority (VarF _ _)     = 4
-  priority (NotF _ _)     = 2
-  priority (AndF _ _ _)   = 1
+  priority (VarF _ _)     = 5
+  priority (NotF _ _)     = 3
+  priority (AndF _ _ _)   = 2
   priority (OrF _ _ _)    = 1
-  priority (ParenF _ _ _) = 3
+  priority (ParenF _ _ _) = 4
 
 -- |Add necessary parentheses for the boolean expression.
 addParen :: Expression -> Expression
