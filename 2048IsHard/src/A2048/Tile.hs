@@ -9,15 +9,15 @@ Portability : portable
 -}
 module A2048.Tile where
 
-import Text.Printf
-import Data.Functor
-import qualified Data.Text as T
+import           Data.Functor
+import qualified Data.Text    as T
+import           Text.Printf
 
 import Control.Lens
 import Control.Monad.Reader.Class
 
-import Reanimate
 import Graphics.SvgTree
+import Reanimate
 
 import A2048.Config
 import A2048.Text
@@ -42,18 +42,18 @@ rawTile bg a r = roundedSquare a r & fillColor .~ pure bg
 -- |Empty tile. Read configuration to determine size and colour.
 emptyTile :: (HasGame2048Config c, MonadReader c m) => m SVG
 emptyTile = rawTile
-  <$> asks (view boardGridColour)
-  <*> asks (view tileSize)
-  <*> asks (view tileRadius)
+  <$> view boardGridColour
+  <*> view tileSize
+  <*> view tileRadius
 
 -- |Tile with number. Read configuration to determine size and colour.
 tile :: (HasGame2048Config c, MonadReader c m) => Int -> m SVG
 tile 0 = pure None
 tile l = do
   bg <- asks (tileFillColourOf l)
-  a <- asks (view tileSize)
-  r <- asks (view tileRadius)
-  showLabel <- asks (view tileShowLabel)
+  a <- view tileSize
+  r <- view tileRadius
+  showLabel <- view tileShowLabel
   let rect = rawTile bg a r
   if not showLabel then pure rect else
     tileLabel l <&> \lbl -> mkGroup [rect, lbl]
@@ -62,9 +62,9 @@ tile l = do
 tileLabel :: (HasGame2048Config c, MonadReader c m) => Int -> m SVG
 tileLabel l = do
   fg <- asks (tileTextColourOf l)
-  a <- asks (view tileSize)
-  s <- asks (view tileTextScaleRatio)
-  lbl <- asks (view tileLabelMode) <&> \case
+  a <- view tileSize
+  s <- view tileTextScaleRatio
+  lbl <- view tileLabelMode <&> \case
     Logarithm -> printf "\\textsf{%d}" l
     Normal -> printf "\\textsf{%d}" (2 ^ l :: Int)
     Exponent -> printf "$\\textsf{2}^\\textsf{%d}$" l
