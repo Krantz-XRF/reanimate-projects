@@ -10,24 +10,39 @@ Portability : portable
 {-# LANGUAGE OverloadedStrings #-}
 module A3SAT.LaTeX where
 
-import A3SAT.Expression
+import qualified Data.Text    as T
+import qualified Data.Text.IO as T
 
-import qualified Data.Text as T
-import Data.List
 import Data.Foldable
+import Data.List
 
 import Control.Monad.State
 
-import Reanimate
 import Graphics.SvgTree
+import Reanimate
+
+import A3SAT.Expression
+
+-- |Get human-readable text for a boolean expression.
+prettyShow :: [T.Text] -> LExpression a -> T.Text
+prettyShow vars = fold . go where
+  go (LVar _ x)     = LVar (vars `genericIndex` x) x
+  go (LNot _ a)     = LNot "!" (go a)
+  go (LAnd a _ b)   = LAnd (go a) " & " (go b)
+  go (LOr a _ b)    = LOr (go a) " | " (go b)
+  go (LParen _ a _) = LParen "(" (go a) ")"
+
+-- |Print human-readable text for a boolean expression to stdout.
+prettyPrint :: [T.Text] -> LExpression a -> IO ()
+prettyPrint vars = T.putStrLn . prettyShow vars
 
 -- |Get LaTeX sequence for a boolean expression.
 showLaTeX :: [T.Text] -> LExpression a -> T.Text
 showLaTeX vars = fold . go where
-  go (LVar _ x) = LVar (vars `genericIndex` x) x
-  go (LNot _ a) = LNot "\\neg " (go a)
-  go (LAnd a _ b) = LAnd (go a) " \\land " (go b)
-  go (LOr a _ b) = LOr (go a) " \\lor " (go b)
+  go (LVar _ x)     = LVar (vars `genericIndex` x) x
+  go (LNot _ a)     = LNot "\\neg " (go a)
+  go (LAnd a _ b)   = LAnd (go a) " \\land " (go b)
+  go (LOr a _ b)    = LOr (go a) " \\lor " (go b)
   go (LParen _ a _) = LParen "(" (go a) ")"
 
 -- |Given number of glyphs for variables, label the position of each element.
