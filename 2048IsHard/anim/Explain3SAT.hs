@@ -2,6 +2,8 @@ module Explain3SAT (explain3SAT) where
 
 import qualified Data.Text as T
 
+import Control.Lens
+
 import Reanimate
 
 import Common.Animation.Effects
@@ -22,6 +24,9 @@ expr = addParen $
 varNames :: [T.Text]
 varNames = map (T.pack . ("\\bm{x_" <>) . (<> "}") . show) [0 :: Int ..]
 
+varVals :: [Bool]
+varVals = [True, False, False, True]
+
 -- |Animation for explaining the 3-SAT problem.
 explain3SAT :: Animation
 explain3SAT = mapA (addWhiteBkg . scale 0.5)
@@ -29,4 +34,11 @@ explain3SAT = mapA (addWhiteBkg . scale 0.5)
   $ sequential <$> sequence
   [ holdExpr varNames expr 1
   , highlightVars varNames expr
-  , holdExprWith VarColour varNames expr 1 ]
+  , foldl andThen (pause 0) <$> sequence
+    [ holdExprWith VarColour varNames expr 1
+    , locally colourStrategy (const VarColour)
+        (prepareExpr varNames expr)
+      >>= applyBoolValue varVals
+    , pure (pause 1)
+    ]
+  ]

@@ -99,6 +99,31 @@ rightParens = fixExpr rightParenF
 parens :: Traversal' (LExpression l) l
 parens = fixExpr parenF
 
+-- * "Global" Optics on Expressions
+
+-- |Travel through a parenthesis.
+transParen :: Traversal' (LExpression l) (LExpression l)
+transParen f (LParen l x r) = LParen <$> pure l <*> transParen f x <*> pure r
+transParen f z              = f z
+
+-- |An 'LExpression' as a product of a list of 'LExpression's.
+asProduct :: Traversal' (LExpression l) (LExpression l)
+asProduct f (LAnd x l y) = LAnd <$> asProduct f x <*> pure l <*> asProduct f y
+asProduct f z            = f z
+
+-- |An 'LExpression' as a sum of a list of 'LExpression's.
+asSum :: Traversal' (LExpression l) (LExpression l)
+asSum f (LOr x l y) = LOr <$> asSum f x <*> pure l <*> asSum f y
+asSum f z           = f z
+
+-- |The "primary" label for an 'LExpression'.
+primaryLabel :: Lens' (LExpression l) l
+primaryLabel f (LVar l x)      = f l <&> \a -> LVar a x
+primaryLabel f (LNot l x)      = f l <&> \a -> LNot a x
+primaryLabel f (LAnd x l y)    = f l <&> \a -> LAnd x a y
+primaryLabel f (LOr x l y)     = f l <&> \a -> LOr x a y
+primaryLabel f (LParen l x l') = f l <&> \a -> LParen a x l'
+
 -- * Utility Functions
 
 -- |Make a disjoint union of 2 'Prism''s.
