@@ -26,6 +26,8 @@ import Reanimate.LaTeX
 import Reanimate.Morph.Common
 import Reanimate.Morph.Linear
 
+import Common.Animation.Effects
+
 -- |Render the boolean expression with LaTeX, then associate nodes with glyphs.
 showSvg :: [T.Text] -> LExpression l -> LExpression (l, SVG)
 showSvg xs e = associateGlyphs glyphs (map countGlyphs xs) e
@@ -66,10 +68,10 @@ exprSvg = mkGroup . toList
 
 -- |Perform linear morphology on already-paired-up images.
 morphAnim :: LExpression (SVG, SVG) -> Animation
-morphAnim = foldl' parA (pause 0) . toList . fmap (animate . uncurry (morph linear))
+morphAnim = parallel . fmap (animate . uncurry (morph linear))
 
 -- |Perform linear morphology on a pair of expressions.
 morphAnimZip :: LExpression SVG -> LExpression SVG -> Animation
-morphAnimZip a b = foldl' parA (pause 0) $ toList $ zipExprWith svgMorph exprMorph a b
+morphAnimZip a b = parallel $ zipExprWith svgMorph exprMorph a b
   where svgMorph x y = animate (morph linear x y)
         exprMorph x y = LVar (animate (morph linear (exprSvg x) (exprSvg y))) undefined

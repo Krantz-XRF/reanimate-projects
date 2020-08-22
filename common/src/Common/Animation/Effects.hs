@@ -9,6 +9,7 @@ Portability : portable
 -}
 module Common.Animation.Effects where
 
+import Data.Foldable
 import Graphics.SvgTree
 import Reanimate
 import Reanimate.ColorComponents
@@ -59,3 +60,11 @@ highlightE :: Double -> Effect
 highlightE r d t
   = scale (1 + bellS 2 (t / d) * r)
   . rotate (wiggleS (t / d) * 20)
+
+-- |Make parallel animation.
+parallel :: Foldable f => f Animation -> Animation
+parallel = foldl' parA (pause 0)
+
+-- |Make parallel animation.
+sequential :: Foldable f => f Animation -> Animation
+sequential = foldl' seqA (pause 0)

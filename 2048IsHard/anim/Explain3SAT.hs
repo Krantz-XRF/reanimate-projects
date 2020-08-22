@@ -26,7 +26,7 @@ varNames = map (T.pack . ("\\bm{x_" <>) . (<> "}") . show) [0 :: Int ..]
 explain3SAT :: Animation
 explain3SAT = mapA (addWhiteBkg . scale 0.5)
   $ exprAnimation config
-  $ foldl seqA (pause 0) <$> sequence
+  $ sequential <$> sequence
   [ holdExpr varNames expr 1
   , highlightVars varNames expr
   , holdExprWith VarColour varNames expr 1 ]

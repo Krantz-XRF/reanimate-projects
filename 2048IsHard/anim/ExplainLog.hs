@@ -23,7 +23,7 @@ explainLog = mapA addWhiteBkg . fadeToEnd 1
   put [[1,  2,  3, 4]
       ,[5,  6,  7, 8]
       ,[9, 10, 11, 0]]
-  foldl seqA (pause 0) <$> sequence
+  sequential <$> sequence
     [ applyE fadeInE <$> hold 1
     , setDuration 0.5 <$> switchNormalExpo
     , holdWith Exponent 1

@@ -35,9 +35,10 @@ intro = mapA addWhiteBkg . fadeToEnd 1
         $ applyE fadeInE
         $ staticFrame 1 prompt
   let lerp r a b = r * a + (1 - r) * b
-  foldl seqA (pause 0.5) <$> sequence
-    [ applyE fadeInE <$> hold 1
-    , foldl seqA (pause 0) <$> mapM performMove
+  sequential <$> sequence
+    [ pure (pause 0.5)
+    , applyE fadeInE <$> hold 1
+    , sequential <$> mapM performMove
       [ Left, Up,    Left, Up,   Down
       , Left, Right, Up,   Left, Left ]
     , hold 0.5
