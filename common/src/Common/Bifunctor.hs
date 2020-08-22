@@ -20,11 +20,7 @@ foldFix f = go where go = f . first go . out
 
 -- |Scan 'Fix'.
 scanFix :: Bifunctor f => (f b a -> b) -> Fix f a -> Fix f b
-scanFix f = snd . go where
-  go (In x) =
-    let p = first go x
-        b = f (first fst p)
-    in (b, In (bimap snd (const b) p))
+scanFix = scanFixIdx id
 
 -- |Scan 'Fix' with 'Control.Lens.Type.Lens'.
 scanFixIdx :: Bifunctor f => Lens s t a b -> (f b a -> b) -> Fix f s -> Fix f t
