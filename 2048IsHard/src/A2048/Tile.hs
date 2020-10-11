@@ -66,7 +66,7 @@ tileLabel l = do
   s <- view tileTextScaleRatio
   lbl <- view tileLabelMode <&> \case
     Logarithm -> printf "\\textsf{%d}" l
-    Normal -> printf "\\textsf{%d}" (2 ^ l :: Int)
+    Plain -> printf "\\textsf{%d}" (2 ^ l :: Int)
     Exponent -> printf "$\\textsf{2}^\\textsf{%d}$" l
   let tex = if s >= 0.6 then printf "\\textbf{%s}" lbl else lbl
   let txt = scale s $ colourLabel fg $ T.pack tex

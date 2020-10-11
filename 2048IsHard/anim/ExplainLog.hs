@@ -25,7 +25,7 @@ explainLog = mapA addWhiteBkg . fadeToEnd 1
       ,[9, 10, 11, 0]]
   sequential <$> sequence
     [ applyE fadeInE <$> hold 1
-    , setDuration 0.5 <$> switchNormalExpo
+    , setDuration 0.5 <$> switchPlainExpo
     , holdWith Exponent 1
     , expoHighlight
     , holdWith Exponent 0.5

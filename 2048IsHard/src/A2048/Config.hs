@@ -17,7 +17,7 @@ import Control.Lens
 import Graphics.SvgTree
 
 -- |How do we show the labels on the tile?
-data TileLabelMode = Normal | Logarithm | Exponent deriving (Show, Eq)
+data TileLabelMode = Plain | Logarithm | Exponent deriving (Show, Eq)
 
 -- |Configurations for the 2048 Game.
 data Game2048Config = Game2048Config
@@ -50,7 +50,7 @@ defaultGame2048Config = Game2048Config
   , _tileFillColour     = tileBgColours
   , _tileTextColour     = tileFgColours
   , _tileShowLabel      = True
-  , _tileLabelMode      = Normal
+  , _tileLabelMode      = Plain
   , _boardWidth         = 4
   , _boardHeight        = 4
   , _boardGapSize       = 0.2

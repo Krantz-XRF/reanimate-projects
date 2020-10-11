@@ -30,9 +30,9 @@ animateGrids f = do
   a <- mkPure (foreachNonEmptyGrid . f)
   pure $ animate (mkGroup . (bd :) . a)
 
--- |Animation for the board from 'Normal' to 'Exponent'.
-switchNormalExpo :: Monad2048 m => m Animation
-switchNormalExpo = animateGrids $ \t n -> do
+-- |Animation for the board from 'Plain' to 'Exponent'.
+switchPlainExpo :: Monad2048 m => m Animation
+switchPlainExpo = animateGrids $ \t n -> do
   l0 <- tileLabel n
   l1 <- local (tileLabelMode .~ Exponent) (tileLabel n)
   let linearDup = linear{morphObjectCorrespondence = dupObjectCorrespondence}
