@@ -24,8 +24,10 @@ findAnim :: String -> Maybe Animation
 findAnim x = lookup x anims
 
 handleArgs :: [String] -> IO () -> (String -> Animation -> IO ()) -> IO ()
-handleArgs [x] nil k = maybe nil (k x) (findAnim x)
-handleArgs _   nil _ = nil
+handleArgs [] nil _ = nil
+handleArgs xs _   k = forM_ xs $ \x -> case findAnim x of
+  Nothing -> printf "Animation not found: %s\n" x
+  Just a  -> printf "Rendering animation %s:\n" x >> k x a
 
 chooseAnim :: (String -> Animation -> IO ()) -> IO ()
 chooseAnim k = do
