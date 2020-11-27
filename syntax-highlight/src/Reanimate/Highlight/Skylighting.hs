@@ -1,5 +1,14 @@
+{-|
+Module      : Reanimate.Highlight.Skylighting
+Description : Syntax highlighting support for Reanimate through Skylighting.
+Copyright   : (c) Xie Ruifeng, 2020
+License     : AGPL-3-or-later
+Maintainer  : krantz.xrf@outlook.com
+Stability   : experimental
+Portability : portable
+-}
 {-# LANGUAGE OverloadedStrings #-}
-module Reanimate.Skylighting where
+module Reanimate.Highlight.Skylighting where
 
 import qualified Data.Text as T
 

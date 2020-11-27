@@ -2,7 +2,7 @@
 Module      : A2048.Board
 Description : Game board for the 2048 game.
 Copyright   : (c) Xie Ruifeng, 2020
-License     : AGPL-3
+License     : AGPL-3-or-later
 Maintainer  : krantz.xrf@outlook.com
 Stability   : experimental
 Portability : portable
@@ -11,15 +11,15 @@ Portability : portable
 module A2048.Board where
 
 import Control.Applicative
+import Control.Lens
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Lens
 
 import Graphics.SvgTree
 import Reanimate
 
-import A2048.Tile
 import A2048.Config
+import A2048.Tile
 
 -- |Game board: board = [row], row = [tile].
 type Board = [[Int]]
@@ -83,7 +83,7 @@ holdWith mode = local (tileLabelMode .~ mode) . hold
 
 -- |Convert a 'Monad2048' action to an animation.
 gameAnimation :: Game2048Config -> Game a -> a
-gameAnimation cfg g = 
+gameAnimation cfg g =
   let b = replicate (view boardHeight cfg)
         $ replicate (view boardWidth cfg) 0
   in evalState (runReaderT g cfg) b

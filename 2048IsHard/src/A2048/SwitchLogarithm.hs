@@ -2,7 +2,7 @@
 Module      : A2048.SwitchLogarithm
 Description : Animation for switching config 'A2048.Config.useLogarithm'.
 Copyright   : (c) Xie Ruifeng, 2020
-License     : AGPL-3
+License     : AGPL-3-or-later
 Maintainer  : krantz.xrf@outlook.com
 Stability   : experimental
 Portability : portable

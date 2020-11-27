@@ -2,7 +2,7 @@
 Module      : A3SAT.Expression
 Description : Expressions for satisfiability problems.
 Copyright   : (c) Xie Ruifeng, 2020
-License     : AGPL-3
+License     : AGPL-3-or-later
 Maintainer  : krantz.xrf@outlook.com
 Stability   : experimental
 Portability : portable
