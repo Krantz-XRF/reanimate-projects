@@ -78,7 +78,7 @@ highlightWith cfg style syn code = do
           _ -> id
   pure (map (map applyColour) gs)
 
--- |Escape LaTeX text. Stolen from @Skylighting.Format.LaTeX@.
+-- |Escape LaTeX text. Stolen from @Skylighting.Format.LaTeX.escapeLaTeX@.
 escapeLaTeX :: T.Text -> T.Text
 escapeLaTeX = T.concatMap $ \case
   '\\' -> "\\textbackslash{}"
