@@ -2,7 +2,7 @@
 Module      : A2048.Logic
 Description : 2048 game logic.
 Copyright   : (c) Xie Ruifeng, 2020
-License     : AGPL-3-or-later
+License     : AGPL-3
 Maintainer  : krantz.xrf@outlook.com
 Stability   : experimental
 Portability : portable
@@ -11,8 +11,8 @@ module A2048.Logic where
 
 import Prelude hiding (Left, Right)
 
-import Data.List
 import Data.Bifunctor
+import Data.List
 
 -- |Game Events, parameterised by value and position.
 data GameEvent a p

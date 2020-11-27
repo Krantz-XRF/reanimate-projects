@@ -2,7 +2,7 @@
 Module      : Reanimate.Highlight
 Description : Syntax highlighting support for Reanimate.
 Copyright   : (c) Xie Ruifeng, 2020
-License     : AGPL-3-or-later
+License     : AGPL-3
 Maintainer  : krantz.xrf@outlook.com
 Stability   : experimental
 Portability : portable

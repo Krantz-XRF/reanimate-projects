@@ -2,7 +2,7 @@
 Module      : A2048.Tile
 Description : Tiles for the 2048 game.
 Copyright   : (c) Xie Ruifeng, 2020
-License     : AGPL-3-or-later
+License     : AGPL-3
 Maintainer  : krantz.xrf@outlook.com
 Stability   : experimental
 Portability : portable

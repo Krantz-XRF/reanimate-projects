@@ -2,7 +2,7 @@
 Module      : A3SAT.Animation.Config
 Description : Rendering configuration for 3-SAT problems.
 Copyright   : (c) Xie Ruifeng, 2020
-License     : AGPL-3-or-later
+License     : AGPL-3
 Maintainer  : krantz.xrf@outlook.com
 Stability   : experimental
 Portability : portable

@@ -2,7 +2,7 @@
 Module      : Common.Bifunctor
 Description : Common utilities for bifunctors.
 Copyright   : (c) Xie Ruifeng, 2020
-License     : AGPL-3-or-later
+License     : AGPL-3
 Maintainer  : krantz.xrf@outlook.com
 Stability   : experimental
 Portability : portable

@@ -2,7 +2,7 @@
 Module      : A2048.Cache
 Description : Cache support for 2048 rendering.
 Copyright   : (c) Xie Ruifeng, 2020
-License     : AGPL-3-or-later
+License     : AGPL-3
 Maintainer  : krantz.xrf@outlook.com
 Stability   : experimental
 Portability : portable

@@ -2,7 +2,7 @@
 Module      : A3SAT.Expression.Lens
 Description : Lens for the 'ExpressionF' functor and 'LExpression's.
 Copyright   : (c) Xie Ruifeng, 2020
-License     : AGPL-3-or-later
+License     : AGPL-3
 Maintainer  : krantz.xrf@outlook.com
 Stability   : experimental
 Portability : portable
