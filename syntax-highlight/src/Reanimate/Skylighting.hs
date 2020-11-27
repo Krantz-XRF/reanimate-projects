@@ -17,6 +17,7 @@ import Codec.Picture              (PixelRGBA8 (..))
 import Reanimate                  (SVG)
 import Reanimate.LaTeX
 import Reanimate.Svg.Constructors (withFillColorPixel)
+import Skylighting.Core           (lookupSyntax)
 import Skylighting.Styles         (tango)
 import Skylighting.Syntax         (defaultSyntaxMap)
 import Skylighting.Tokenizer      (TokenizerConfig (..), tokenize)
@@ -31,20 +32,25 @@ asIf x _ = x
 coerceAsIf :: Coercible a b => (a -> b) -> (a -> b)
 coerceAsIf = asIf coerce
 
+-- |Default tokenizer config: with default syntax map, without trace output.
 defaultTokenizerConfig :: TokenizerConfig
 defaultTokenizerConfig = TokenizerConfig
   { syntaxMap = defaultSyntaxMap
   , traceOutput = False
   }
 
+-- |Highlight with a specified language syntax.
+-- Use 'lookupSyntax' to find a proper 'Syntax'.
 highlight :: Syntax -> T.Text -> [[SVG]]
 highlight syn = highlightWith defaultTokenizerConfig tango syn >>> \case
   Left err  -> error ("syntax highlight error: " <> err)
   Right res -> res
 
+-- |Highlight Haskell code.
 highlightHs :: T.Text -> [[SVG]]
-highlightHs = highlight $ fromJust $ M.lookup "haskell" defaultSyntaxMap
+highlightHs = highlight $ fromJust $ lookupSyntax "haskell" defaultSyntaxMap
 
+-- |Custom highlight with maximum flexibility.
 highlightWith :: TokenizerConfig -> Style -> Syntax -> T.Text -> Either String [[SVG]]
 highlightWith cfg style syn code = do
   ls <- tokenize cfg syn code
@@ -72,7 +78,7 @@ highlightWith cfg style syn code = do
           _ -> id
   pure (map (map applyColour) gs)
 
--- |Stolen from 'Skylighting.Format.LaTeX'.
+-- |Escape LaTeX text. Stolen from @Skylighting.Format.LaTeX@.
 escapeLaTeX :: T.Text -> T.Text
 escapeLaTeX = T.concatMap $ \case
   '\\' -> "\\textbackslash{}"
