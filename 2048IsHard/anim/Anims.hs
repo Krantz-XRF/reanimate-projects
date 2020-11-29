@@ -17,7 +17,7 @@ anims =
   ,("Explain3SAT", explain3SAT)]
 
 printAnims :: IO ()
-printAnims = forM_ (indexedAnims) $ \(n, (nm, _)) -> printf "%d. %s\n" n nm
+printAnims = forM_ indexedAnims $ \(n, (nm, _)) -> printf "%d. %s\n" n nm
   where indexedAnims = zip [1 :: Int ..] anims
 
 findAnim :: String -> Maybe Animation

@@ -1,4 +1,12 @@
 module Main where
 
+import Reanimate          (reanimate)
+import System.Environment (withArgs)
+import TypeCheck          (typeCheckAnim)
+
 main :: IO ()
-main = putStrLn "No animation at present."
+main = withArgs
+  [ "render"
+  , "--preset", "high"
+  , "-o", "TypeCheckKaomoji.mp4" ]
+  (reanimate typeCheckAnim)
