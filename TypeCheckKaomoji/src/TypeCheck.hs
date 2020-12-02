@@ -20,6 +20,7 @@ import Data.Functor         (($>))
 import Data.Functor.Compose (Compose (..))
 import Data.Maybe           (catMaybes, fromMaybe)
 import Data.Monoid          (Last (..))
+import GHC.Exts             (IsString (..))
 import Linear.V2            (V2 (..))
 
 import Common.Animation.Effects (addWhiteBkg)
@@ -67,15 +68,18 @@ showCodeChunks xs = waitOn $ codeChunks xs >>= mapM (fork . \x -> oShowWith x oF
 data Trans a b
   = New b
   | Vanish a
-  | Trans a b
+  | a :=> b
   deriving stock (Show, Functor, Foldable, Traversable)
+
+instance IsString b => IsString (Trans a b) where
+  fromString = New . fromString
 
 transformCodeChunks :: Renderable a => [Trans (Object s a) T.Text] -> Scene s [Object s SVG]
 transformCodeChunks xs
   = waitOn $ codeChunks (Compose xs) >>= fmap catMaybes . mapM (fork . \case
     New b     -> oShowWith b oFadeIn $> Just b
     Vanish a  -> oHideWith a oFadeOut $> Nothing
-    Trans a b -> Just b <$ do
+    a :=> b -> Just b <$ do
       V2 x0 y0 <- oRead a oTranslate
       V2 x  y  <- oRead b oTranslate
       ctx <- oRead a oContext
@@ -103,7 +107,7 @@ typeCheckAnim = mapA addWhiteBkg $ scene $ do
     , (d2, [rgba|3A96DD|])
     , (d3, [rgba|C19C00|]) ]
   ~xs@[_, d3l, _, d3r, _, _, _] <- transformCodeChunks
-    [Trans lp "(", New "(", Trans d3 ".", New ") ", Trans d1 "(.) ", Trans d2 "(.)", Trans rp ")"]
+    [lp :=> "(", "(", d3 :=> ".", ") ", d1 :=> "(.) ", d2 :=> "(.)", rp :=> ")"]
   tweenColours
     [ (d3l, [rgba|C19C00|])
     , (d3r, [rgba|C19C00|]) ]
