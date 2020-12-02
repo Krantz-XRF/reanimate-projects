@@ -35,7 +35,7 @@ pattern Colour8 :: Pixel8 -> Pixel8 -> Pixel8 -> Pixel8 -> Texture
 pattern Colour8 r g b a = ColorRef (PixelRGBA8 r g b a)
 
 withTexture :: Texture -> SVG -> SVG
-withTexture t = mkGroup . map (fillColor .~ Last (Just t)) . removeGroups
+withTexture t = mapTree (fillColor .~ Last (Just t))
 
 centerAsGroup :: (Functor t, Foldable t) => t SVG -> t SVG
 centerAsGroup xs = let g = mkGroup (toList xs) in fmap (centerUsing g) xs
@@ -88,9 +88,6 @@ transformCodeChunks xs
       oShow b
   ) . getCompose
 
-oFadeHide :: Object s a -> Scene s ()
-oFadeHide x = oTween x 1 (set oOpacity . (1 -)) >> oHide x
-
 typeCheckAnim :: Animation
 typeCheckAnim = mapA addWhiteBkg $ scene $ do
   ~[lp, d1, d3, d2, rp] <- showCodeChunks ["(", "(.)", " . ", "(.)", ")"]
@@ -110,5 +107,5 @@ typeCheckAnim = mapA addWhiteBkg $ scene $ do
   tweenColours
     [ (d3l, [rgba|C19C00|])
     , (d3r, [rgba|C19C00|]) ]
-  waitOn $ mapM_ (fork . oFadeHide) xs
+  waitOn $ mapM_ (\x -> fork $ oHideWith x oFadeOut) xs
   wait 1
