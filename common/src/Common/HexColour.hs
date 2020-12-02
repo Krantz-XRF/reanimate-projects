@@ -8,7 +8,7 @@ Stability   : experimental
 Portability : portable
 -}
 {-# LANGUAGE TemplateHaskell #-}
-module Common.HexColour (rgba) where
+module Common.HexColour (rgba, FromRGBA8(..)) where
 
 import Data.Char
 import Data.Word
@@ -18,6 +18,17 @@ import Language.Haskell.TH.Syntax
 
 import Codec.Picture.Types
 import Graphics.SvgTree.Types
+
+-- |All the things that can be converted from a 'PixelRGBA8'.
+class FromRGBA8 a where
+  -- |Convert from 'PixelRGBA8'.
+  fromRGBA8 :: PixelRGBA8 -> a
+
+instance FromRGBA8 PixelRGBA8 where
+  fromRGBA8 = id
+
+instance FromRGBA8 Texture where
+  fromRGBA8 = ColorRef
 
 -- |The 'rgba' Quasi-Quoter.
 -- Accepted format: RGB, RGBA, RRGGBB, RRGGBBAA
@@ -36,7 +47,7 @@ makeRgba [r1, r2, g1, g2, b1, b2, a1, a2] =
       b = makeHex b1 b2
       a = makeHex a1 a2
       makeHex x y = fromIntegral (digitToInt x * 16 + digitToInt y) :: Word8
-  in [| ColorRef (PixelRGBA8 r g b a) |]
+  in [| fromRGBA8 (PixelRGBA8 r g b a) |]
 makeRgba [r1, r2, g1, g2, b1, b2] = makeRgba [r1, r2, g1, g2, b1, b2, 'F', 'F']
 makeRgba [r, g, b, a] = makeRgba [r, r, g, g, b, b, a, a]
 makeRgba [r, g, b] = makeRgba [r, r, g, g, b, b]

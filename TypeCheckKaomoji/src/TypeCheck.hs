@@ -1,6 +1,6 @@
 {-|
 Module      : TypeCheck
-Description : Aniamtions for type-checking.
+Description : Animations for type-checking.
 Copyright   : (c) Xie Ruifeng, 2020
 License     : AGPL-3
 Maintainer  : krantz.xrf@outlook.com
@@ -18,25 +18,20 @@ import Control.Lens
 import Data.Foldable        (Foldable (toList))
 import Data.Functor         (($>))
 import Data.Functor.Compose (Compose (..))
-import Data.Maybe           (catMaybes, fromMaybe)
+import Data.Maybe           (catMaybes)
 import Data.Monoid          (Last (..))
 import GHC.Exts             (IsString (..))
 import Linear.V2            (V2 (..))
 
 import Common.Animation.Effects (addWhiteBkg)
-import Common.HexColour
+import Common.HexColour         (rgba)
+import Common.Linear            (Linear (lerp))
 
 import Codec.Picture.Types
 import Graphics.SvgTree
 import Reanimate
 import Reanimate.LaTeX
 import Reanimate.Scene
-
-pattern Colour8 :: Pixel8 -> Pixel8 -> Pixel8 -> Pixel8 -> Texture
-pattern Colour8 r g b a = ColorRef (PixelRGBA8 r g b a)
-
-withTexture :: Texture -> SVG -> SVG
-withTexture t = mapTree (fillColor .~ Last (Just t))
 
 centerAsGroup :: (Functor t, Foldable t) => t SVG -> t SVG
 centerAsGroup xs = let g = mkGroup (toList xs) in fmap (centerUsing g) xs
@@ -51,7 +46,7 @@ oNewCentered s = do
 codeChunks :: Traversable t => t T.Text -> Scene s (t (Object s SVG))
 codeChunks
   = mapM oNewCentered . centerAsGroup
-  . fmap (withTexture [rgba|000|] . withStrokeWidth 0 . withFillOpacity 1)
+  . fmap (withFillColorPixel [rgba|000|] . withStrokeWidth 0 . withFillOpacity 1)
   . latexCfgChunksTrans texCfg code
   where texCfg = TexConfig
           { texConfigEngine = XeLaTeX
@@ -84,7 +79,6 @@ transformCodeChunks xs
       V2 x  y  <- oRead b oTranslate
       ctx <- oRead a oContext
       oModify b (oContext .~ ctx)
-      let lerp t s v = (1 - t) * s + t * v
       let xt t = lerp t x0 x
       let yt t = lerp t y0 y
       oTween a 1 (\t -> oTranslate .~ V2 (xt t) (yt t))
@@ -92,15 +86,15 @@ transformCodeChunks xs
       oShow b
   ) . getCompose
 
+getFillColour :: SVG -> PixelRGBA8
+getFillColour = maybe [rgba|000|] fromColorRef . getLast . view fillColor
+  where fromColorRef ~(ColorRef p) = p
+
 typeCheckAnim :: Animation
 typeCheckAnim = mapA addWhiteBkg $ scene $ do
   ~[lp, d1, d3, d2, rp] <- showCodeChunks ["(", "(.)", " . ", "(.)", ")"]
-  let lerpColour t ~(Colour8 r g b a) s =
-        let Colour8 r0 g0 b0 a0 = fromMaybe [rgba|000|] (getLast (view fillColor s))
-            c = Colour8 (lerp t r0 r) (lerp t g0 g) (lerp t b0 b) (lerp t a0 a)
-        in withTexture c s
-      lerp t s v = round $ (1 - t) * fromIntegral s + t * fromIntegral v
-  let tweenColour (x, c) = fork $ oTween x 1 (\t -> oContext .~ lerpColour t c)
+  let transColour t c s = mapTree (withFillColorPixel (lerp t (getFillColour s) c)) s
+  let tweenColour (x, c) = fork $ oTween x 1 (\t -> oContext .~ transColour t c)
   let tweenColours = waitOn . mapM_ tweenColour
   tweenColours
     [ (d1, [rgba|E74856|])
