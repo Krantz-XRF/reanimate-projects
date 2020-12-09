@@ -19,6 +19,8 @@ import Language.Haskell.TH.Syntax
 import Codec.Picture.Types
 import Graphics.SvgTree.Types
 
+import Skylighting.Types (Color (RGB))
+
 -- |All the things that can be converted from a 'PixelRGBA8'.
 class FromRGBA8 a where
   -- |Convert from 'PixelRGBA8'.
@@ -29,6 +31,12 @@ instance FromRGBA8 PixelRGBA8 where
 
 instance FromRGBA8 Texture where
   fromRGBA8 = ColorRef
+
+instance FromRGBA8 Color where
+  fromRGBA8 (PixelRGBA8 r g b _) = RGB r g b
+
+instance FromRGBA8 a => FromRGBA8 (Maybe a) where
+  fromRGBA8 = Just . fromRGBA8
 
 -- |The 'rgba' Quasi-Quoter.
 -- Accepted format: RGB, RGBA, RRGGBB, RRGGBBAA

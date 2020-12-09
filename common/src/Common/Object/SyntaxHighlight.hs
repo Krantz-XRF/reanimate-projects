@@ -1,5 +1,5 @@
 {-|
-Module      : Reanimate.Highlight.Skylighting
+Module      : Common.Object.SyntaxHighlight
 Description : Syntax highlighting support for Reanimate through Skylighting.
 Copyright   : (c) Xie Ruifeng, 2020
 License     : AGPL-3
@@ -8,7 +8,7 @@ Stability   : experimental
 Portability : portable
 -}
 {-# LANGUAGE OverloadedStrings #-}
-module Reanimate.Highlight.Skylighting where
+module Common.Object.SyntaxHighlight where
 
 import qualified Data.Text as T
 
@@ -17,17 +17,19 @@ import Data.Function ((&))
 import Data.Maybe    (fromJust)
 
 import Control.Lens.Internal.Getter (AlongsideRight (..))
+import Data.Bifunctor               (Bifunctor (second))
 import Data.Coerce                  (Coercible, coerce)
 import Data.Functor.Compose         (Compose (..))
 
 import qualified Data.Map as M
+
+import Common.Object.SyntaxHighlight.Theme (tomorrow)
 
 import Codec.Picture              (PixelRGBA8 (..))
 import Reanimate                  (SVG)
 import Reanimate.LaTeX
 import Reanimate.Svg.Constructors (withFillColorPixel)
 import Skylighting.Core           (lookupSyntax)
-import Skylighting.Styles         (tango)
 import Skylighting.Syntax         (defaultSyntaxMap)
 import Skylighting.Tokenizer      (TokenizerConfig (..), tokenize)
 import Skylighting.Types
@@ -51,13 +53,17 @@ defaultTokenizerConfig = TokenizerConfig
 -- |Highlight with a specified language syntax.
 -- Use 'lookupSyntax' to find a proper 'Syntax'.
 highlight :: Syntax -> T.Text -> [[SVG]]
-highlight syn = highlightWith defaultTokenizerConfig tango syn >>> \case
+highlight syn = highlightWith defaultTokenizerConfig tomorrow syn >>> \case
   Left err  -> error ("syntax highlight error: " <> err)
   Right res -> res
 
+-- |Highlight code in some language.
+highlightIn :: T.Text -> T.Text -> [[SVG]]
+highlightIn lang = highlight $ fromJust $ lookupSyntax lang defaultSyntaxMap
+
 -- |Highlight Haskell code.
 highlightHs :: T.Text -> [[SVG]]
-highlightHs = highlight $ fromJust $ lookupSyntax "haskell" defaultSyntaxMap
+highlightHs = highlightIn "haskell"
 
 -- |Custom highlight with maximum flexibility.
 highlightWith :: TokenizerConfig -> Style -> Syntax -> T.Text -> Either String [[SVG]]
@@ -72,18 +78,22 @@ highlightWith cfg style syn code = do
                 & styled tokenUnderline "underline")
       styled b t x = if b then "\\" <> t <> "{" <> x <> "}" else x
   let gs = coerceAsIf (map getAlongsideRight . getCompose)
-         $ latexCfgChunksTrans texCfg verb
+         $ latexCfgChunksTrans texCfg setFont
          $ coerceAsIf (Compose . map AlongsideRight)
-         $ map ((<> [(OtherTok, "\\\\\n")]) . map applyOtherStyles) ls
+         $ map ( (<> [(OtherTok, "\\\\\n")])
+               . map (applyOtherStyles . second escapeLaTeX) ) ls
       texCfg = TexConfig XeLaTeX headers []
       headers =
         [ "\\usepackage{fontspec}"
         , "\\setmonofont{JetBrains Mono}[Contextuals=Alternate]" ]
-      verb x = "\\texttt{" <> escapeLaTeX x <> "}"
+      -- fix "there is no new line to end" error.
+      setFont "\\\\\n" = ""
+      setFont t        = "\\tt " <> t
   let applyColour (tp, svg) =
-        svg & case M.lookup tp (tokenStyles style) of
-          Just TokenStyle{tokenColor = Just (RGB r g b)} ->
+        svg & case (M.lookup tp (tokenStyles style), defaultColor style) of
+          (Just TokenStyle{tokenColor = Just (RGB r g b)}, _) ->
             withFillColorPixel (PixelRGBA8 r g b 0xFF)
+          (_, Just (RGB r g b)) -> withFillColorPixel (PixelRGBA8 r g b 0xFF)
           _ -> id
   pure (map (map applyColour) gs)
 

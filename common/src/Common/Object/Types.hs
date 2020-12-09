@@ -15,15 +15,16 @@ module Common.Object.Types where
 
 import qualified Data.Text as T
 
-import Control.Lens        ((.~), (?~))
-import Control.Monad.State (MonadState (..), evalState)
-import Data.Foldable       (Foldable (toList))
-import Data.Function       ((&))
-import Data.Functor        (($>))
-import GHC.Exts            (IsList (..), IsString (..))
+import Control.Lens         ((.~), (?~))
+import Control.Monad.State  (MonadState (..), evalState)
+import Data.Foldable        (Foldable (toList))
+import Data.Function        ((&))
+import Data.Functor.Compose (Compose (Compose))
+import GHC.Exts             (IsList (..), IsString (..))
 
-import Common.HexColour        (rgba)
-import Common.Object.Transform (GroupRender (..))
+import Common.HexColour              (rgba)
+import Common.Object.SyntaxHighlight
+import Common.Object.Transform       (GroupRender (..))
 
 import Graphics.SvgTree hiding (Line)
 import Reanimate
@@ -77,6 +78,17 @@ instance GroupRender CodeChunk where
         }
       code x = "\\texttt{" <> x <> "}"
 
+-- * Code Blocks.
+
+-- |Code blocks in some programming language. Highlighted by Skylighting.
+data CodeBlock = CodeBlock
+  { codeLanguage :: T.Text
+  , codeText     :: T.Text
+  } deriving stock (Show, Eq, Ord)
+
+instance Renderable CodeBlock where
+  toSVG (CodeBlock lang txt) = mkGroup $ concat $ highlightIn lang txt
+
 -- * TeX Codes
 
 -- |TeX codes.
@@ -98,38 +110,42 @@ instance Renderable TeX where
 -- * Paragraphs
 
 -- |Renderable object, treated as a line.
-newtype Line a = Line { unwrapLine :: a }
+data Line a
+  = LeftAligned a
+  | Centered a
+  | RightAligned a
   deriving stock (Show, Eq, Ord)
-  deriving newtype (IsString, IsList)
+  deriving stock (Functor, Traversable, Foldable)
+
+instance IsString a => IsString (Line a) where
+  fromString = LeftAligned . fromString
 
 -- |Lines typeset by XeLaTeX in normal font.
 type TextLine = Line TeX
 
--- |Wrap a 'TeX' into a 'TextLine'.
-pattern TextLine :: TeX -> TextLine
-pattern TextLine x = Line x
-
 -- |Lines wrapping any 'Renderable'.
 type AnyLine = Line AnyRenderable
 
--- |Wrap any 'Renderable' into a 'AnyLine'.
-pattern AnyLine :: () => Renderable a => a -> AnyLine
-pattern AnyLine x = Line (AnyRenderable x)
-
-layoutLines :: Traversable t => t SVG -> t SVG
-layoutLines = flip evalState Nothing . traverse alignLine where
-  alignLine thisLine = get >>= \case
-    Just (_, lY, _, _) -> do
-      let thisBBox@(_, tY, _, tH) = boundingBox thisLine
-      put (Just thisBBox)
-      pure (translate 0 (lY - tH - tY - 0.2) thisLine)
-    Nothing -> put (Just $ boundingBox thisLine) $> thisLine
-
-instance Renderable a => Renderable (Line a) where
-  toSVG = toSVG . unwrapLine
+layoutLines :: Traversable t => t (Line SVG) -> t SVG
+layoutLines xs = go xs where
+  go = flip evalState 0 . traverse stackLine . fmap alignLine
+  w0 = maximum $ svgWidth <$> Compose xs
+  xMax a = let (x, _, w, _) = boundingBox a in x + w
+  xMin a = let (x, _, _, _) = boundingBox a in x
+  xCenter a = let (x, _, w, _) = boundingBox a in x + w / 2
+  alignLine (LeftAligned x)  = translate (- xMin x) 0 x
+  alignLine (RightAligned x) = translate (w0 - xMax x) 0 x
+  alignLine (Centered x)     = translate (w0 / 2 - xCenter x) 0 x
+  stackLine thisLine = get >>= \h0 -> do
+    let (_, y, _, h) = boundingBox thisLine
+    let y' = h0 - h - 0.5
+    put y'
+    pure (translate 0 (y' - y) thisLine)
 
 instance Renderable a => GroupRender (Line a) where
-  renderGroup = centerAsGroup . layoutLines . fmap toSVG
+  renderGroup = centerAsGroup . layoutLines . fmap (fmap toSVG)
+
+-- * Text Bubbles.
 
 -- |Make a rounded rectangle.
 roundedRect :: Double -> Double -> Double -> SVG
@@ -179,3 +195,14 @@ oPopBubble dt o b = spriteScope $ do
   oShowWith bub oFadeIn
   wait dt
   oHideWith bub oFadeOut
+
+-- |'CodeBlock' in a 'Bubble'.
+type CodeBubble = Bubble (Line CodeBlock)
+
+-- |Construct a 'CodeBubble'.
+pattern CodeBubble :: T.Text -> T.Text -> CodeBubble
+pattern CodeBubble lang t = Bubble [LeftAligned (CodeBlock lang t)]
+
+-- |Construct a 'CodeBubble' in Haskell language.
+pattern HaskellBubble :: T.Text -> CodeBubble
+pattern HaskellBubble t = CodeBubble "haskell" t
