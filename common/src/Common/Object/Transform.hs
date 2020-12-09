@@ -49,14 +49,18 @@ import Reanimate.Scene
 
 -- |Description for key frame animations.
 --
--- Notes:
+-- __Note__:
+--
 -- * 'IsString' instance provided here for conveniently creating new objects.
 -- * The following objects are collected as the base for alignment:
---   * Objects that vanished, or
---   * Target objects for transformations
+--
+--     * Objects that vanished, or
+--     * Target objects for transformations
+--
 -- * The following objects are collected as the target for alignment:
---   * Objects newly created, or
---   * Source objects for transformations
+--
+--     * Objects newly created, or
+--     * Source objects for transformations
 data Trans a b
   -- |Object newly created in this frame.
   = New b
@@ -159,13 +163,14 @@ applyAlignment align base xs = mapM_ (($ xs) . ($ base)) align $> xs
 
 -- |Key frame animation.
 --
--- Warning: if alignment base (see 'Trans' for details) is empty, then all the
+-- __Warning__: if alignment base (see 'Trans' for details) is empty, then all the
 -- alignment functions provided in this module would crash your program. In this
 -- case, custom (ad-hoc) alignment functions might be useful. Or, to specify a
 -- custom alignment base @bs@, use @const (alignment bs)@ instead of @alignment@.
 --
--- Note: if the target object utilise @OverloadedStrings@ via 'IsString', the type
+-- __Note__: if the target object utilise @OverloadedStrings@ via 'IsString', the type
 -- becomes ambiguous. Use @TypeApplications@ for this situation:
+--
 -- > transformObject @ObjType alignments transformations
 transformObject :: SceneRender t
                 => [GroupAlignment (Compose [] NonEmpty) (Compose [] (Trans (Object s a))) s a SVG]
