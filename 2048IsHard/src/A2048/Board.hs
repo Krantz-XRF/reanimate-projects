@@ -18,6 +18,8 @@ import Control.Monad.State
 import Graphics.SvgTree
 import Reanimate
 
+import Common.Object.Types (roundedRect)
+
 import A2048.Config
 import A2048.Tile
 

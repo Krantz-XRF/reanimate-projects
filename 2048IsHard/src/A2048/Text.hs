@@ -27,6 +27,7 @@ colourLabel :: Texture -> T.Text -> SVG
 colourLabel c = center
   . set fillColor (pure c)
   . ctexWithHeaders
-  [ "\\setsansfont{Source Sans 3}"
+  [ "\\setsansfont{Source Serif Pro}"
+  , "\\setsansfont{Source Sans 3}"
   , "\\setCJKmainfont{Source Han Serif SC}"
   , "\\setCJKsansfont{Source Han Sans SC}" ]

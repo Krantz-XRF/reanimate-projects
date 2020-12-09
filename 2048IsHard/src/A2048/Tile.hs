@@ -19,21 +19,10 @@ import Control.Monad.Reader.Class
 import Graphics.SvgTree
 import Reanimate
 
+import Common.Object.Types (roundedSquare)
+
 import A2048.Config
 import A2048.Text
-
--- |Make a rounded rectangle.
-roundedRect :: Double -> Double -> Double -> SVG
-roundedRect w h r = RectangleTree
-  $ defaultSvg
-  & rectWidth ?~ Num w
-  & rectHeight ?~ Num h
-  & rectUpperLeftCorner .~ (Num $ -w / 2, Num $ -h / 2)
-  & rectCornerRadius .~ (Just $ Num r, Just $ Num r)
-
--- |Make a rounded square.
-roundedSquare :: Double -> Double -> SVG
-roundedSquare a = roundedRect a a
 
 -- |Raw tile: coloured rounded rectangle.
 rawTile :: Texture -> Double -> Double -> SVG

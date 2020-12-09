@@ -28,7 +28,7 @@ import Reanimate
 import Reanimate.Scene
 
 showCodeChunks :: [CodeChunk] -> Scene s [Object s SVG]
-showCodeChunks xs = waitOn $ renderGroup xs >>= mapM (fork . \x -> oShowWith x oFadeIn $> x)
+showCodeChunks xs = waitOn $ oNewGroup xs >>= mapM (fork . \x -> oShowWith x oFadeIn $> x)
 
 getFillColour :: SVG -> PixelRGBA8
 getFillColour = maybe [rgba|000|] fromColorRef . getLast . view fillColor

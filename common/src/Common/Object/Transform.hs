@@ -12,7 +12,9 @@ module Common.Object.Transform
   (
   -- * Renderable Objects
   -- | 'SceneRender' is used for procedural 'Object' creation in place of 'Renderable'.
-    SceneRender(..)
+    GroupRender(..)
+  , oNewGroup
+  , oNewCentered
   -- * Alignment
   -- | Alignment controls how the objects in the next key frame is aligned according to
   --   those objects from the current frame.
@@ -77,12 +79,24 @@ pattern a :=> b = (a :| []) ::=> b
 instance IsString b => IsString (Trans a b) where
   fromString = New . fromString
 
--- |Procedural rendering for groups of objects.
-class SceneRender a where
-  -- |Render a group of objects in a 'Scene'.
+-- |Allow rendering for groups of objects.
+class GroupRender a where
+  -- |Render a group of objects to a group of SVGs.
   -- The group structure should be taken into consideration while rendering.
   -- e.g. Group of 'T.Text' can be rendered using 'Reanimate.LaTeX.latexChunks'.
-  renderGroup :: Traversable t => t a -> Scene s (t (Object s SVG))
+  renderGroup :: Traversable t => t a -> t SVG
+
+-- |New object, with its translation lifted to 'Object' level.
+oNewCentered :: SVG -> Scene s (Object s SVG)
+oNewCentered s = do
+  let (x, y, w, h) = boundingBox s
+  o <- oNew (center s)
+  oModify o (oTranslate .~ V2 (x + w / 2) (y + h / 2))
+  pure o
+
+-- |Create a group of objects, translation of each lifted to 'Object' level.
+oNewGroup :: (Traversable t, GroupRender a) => t a -> Scene s (t (Object s SVG))
+oNewGroup = mapM oNewCentered . renderGroup
 
 collectOld :: [Trans a b] -> Compose [] NonEmpty a
 collectOld = Compose . mapMaybe \case
@@ -172,12 +186,12 @@ applyAlignment align base xs = mapM_ (($ xs) . ($ base)) align $> xs
 -- becomes ambiguous. Use @TypeApplications@ for this situation:
 --
 -- > transformObject @ObjType alignments transformations
-transformObject :: SceneRender t
+transformObject :: GroupRender t
                 => [GroupAlignment (Compose [] NonEmpty) (Compose [] (Trans (Object s a))) s a SVG]
                 -> [Trans (Object s a) t]
                 -> Scene s [Object s SVG]
 transformObject align xs
-  = waitOn $ renderGroup (Compose xs)
+  = waitOn $ oNewGroup (Compose xs)
   >>= applyAlignment align (collectOld xs)
   >>= fmap catMaybes . mapM (fork . \case
     New b     -> oShowWith b oFadeIn $> Just b
