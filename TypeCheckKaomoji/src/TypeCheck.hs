@@ -47,6 +47,13 @@ typeCheckAnim = mapA addWhiteBkg $ scene $ do
     [ (d1, [rgba|E74856|])
     , (d2, [rgba|3A96DD|])
     , (d3, [rgba|C19C00|]) ]
+  oPopBubble 2 d3
+    [ LeftAligned $ AnyRenderable $ TeX "函数复合，二元中缀运算符。"
+    , LeftAligned $ AnyRenderable $ HaskellBubble
+      "(.) :: (b -> c) -> (a -> b) -> a -> c\n\
+      \(.) f g = \\x -> f (g x)\n\
+      \\n\
+      \infixr 9 ." ]
   ~xs@[_, d3l, _, d3r, _, _, _] <- transformObject @CodeChunk [yCentered, xCentered]
     [lp :=> "(", "(", d3 :=> ".", ") ", d1 :=> "(.) ", d2 :=> "(.)", rp :=> ")"]
   tweenColours
