@@ -11,6 +11,8 @@ Portability : portable
 {-# LANGUAGE QuasiQuotes       #-}
 module TypeCheck (typeCheckAnim) where
 
+import qualified Data.Text as T
+
 import Control.Lens
 
 import Data.Functor (($>))
@@ -37,8 +39,23 @@ getFillColour = maybe [rgba|000|] fromColorRef . getLast . view fillColor
 moveVertical :: Double -> Object s a -> Scene s ()
 moveVertical d x = oTween x 1 (\t -> oTranslateY %~ (t * d +))
 
+showDotSig :: PixelRGBA8 -> String -> [Object s a] -> Scene s [Object s SVG]
+showDotSig col vars pos = do
+  let [a, b, c] = map (CodeChunk . T.singleton) vars
+  ~sig1@(f:_) <- oNewGroupScaled @CodeChunk 0.3
+    [ "(.)", " :: "
+    , "(", b, " -> ", c, ")", " -> "
+    , "(", a, " -> ", b, ")", " -> "
+    , a, " -> ", c ]
+  xCentered pos sig1
+  placedBelow pos sig1
+  oModify f (oContext .~ mapTree (withFillColorPixel col))
+  waitOn $ mapM_ (fork . (`oShowWith` oFadeIn)) sig1
+  pure sig1
+
 typeCheckAnim :: Animation
 typeCheckAnim = mapA addWhiteBkg $ scene $ do
+  -- main composition illustration
   ~[lp, d1, d3, d2, rp] <- showCodeChunks ["(", "(.)", " . ", "(.)", ")"]
   let transColour t c s = mapTree (withFillColorPixel (lerp t (getFillColour s) c)) s
   let tweenColour (x, c) = fork $ oTween x 1 (\t -> oContext .~ transColour t c)
@@ -47,18 +64,29 @@ typeCheckAnim = mapA addWhiteBkg $ scene $ do
     [ (d1, [rgba|E74856|])
     , (d2, [rgba|3A96DD|])
     , (d3, [rgba|C19C00|]) ]
+  -- show description for '(.)'
   oPopBubble 2 d3
-    [ LeftAligned $ AnyRenderable $ TeX "函数复合，二元中缀运算符。"
+    [ LeftAligned $ AnyRenderable $ TeX "\\sf 函数复合，二元中缀运算符："
+    , Centered $ AnyRenderable $ TeX "$(f \\circ g)(x) = f(g(x))$"
+    , LeftAligned $ AnyRenderable $ TeX "\\sf Haskell定义如下："
     , LeftAligned $ AnyRenderable $ HaskellBubble
       "(.) :: (b -> c) -> (a -> b) -> a -> c\n\
       \(.) f g = \\x -> f (g x)\n\
       \\n\
       \infixr 9 ." ]
+  -- infix style -> function style
   ~xs@[_, d3l, _, d3r, _, _, _] <- transformObject @CodeChunk [yCentered, xCentered]
     [lp :=> "(", "(", d3 :=> ".", ") ", d1 :=> "(.) ", d2 :=> "(.)", rp :=> ")"]
   tweenColours
     [ (d3l, [rgba|C19C00|])
     , (d3r, [rgba|C19C00|]) ]
+  -- composition move up
   waitOn $ mapM_ (fork . moveVertical 2) xs
-  waitOn $ mapM_ (fork . (`oHideWith` oFadeOut)) xs
+  -- show signature yellow, red, blue.
+  sig1 <- showDotSig [rgba|C19C00|] "xyz" xs
+  sig2 <- showDotSig [rgba|E74856|] "abc" sig1
+  sig3 <- showDotSig [rgba|3A96DD|] "pqr" sig2
+  -- hide everything
+  waitOn $ mapM_ (fork . (`oHideWith` oFadeOut)) $ concat
+    [sig1, sig2, sig3, xs]
   wait 1

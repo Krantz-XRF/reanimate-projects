@@ -170,7 +170,7 @@ instance GroupRender a => Renderable (Bubble a) where
       addRect s =
         let (x, y, w, h) = boundingBox (mkGroup s)
             (x', y', w', h') = (x + w / 2, y + h / 2, w + 1.2, h + 1.2)
-            r = withFillOpacity 0.1
+            r = withFillOpacity 0.08
               $ withFillColorPixel [rgba|000|]
               $ roundedRect w' h' 0.36
         in translate x' y' r : s

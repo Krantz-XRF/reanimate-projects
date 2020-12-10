@@ -14,6 +14,7 @@ module Common.Object.Transform
   -- | 'SceneRender' is used for procedural 'Object' creation in place of 'Renderable'.
     GroupRender(..)
   , oNewGroup
+  , oNewGroupScaled
   , oNewCentered
   -- * Alignment
   -- | Alignment controls how the objects in the next key frame is aligned according to
@@ -23,6 +24,7 @@ module Common.Object.Transform
   , leftAligned
   , rightAligned
   , xCentered
+  , placedBelow
   -- ** Y Alignment
   , bottomAligned
   , topAligned
@@ -95,8 +97,13 @@ oNewCentered s = do
   pure o
 
 -- |Create a group of objects, translation of each lifted to 'Object' level.
-oNewGroup :: (Traversable t, GroupRender a) => t a -> Scene s (t (Object s SVG))
+oNewGroup :: forall a t s . (Traversable t, GroupRender a) => t a -> Scene s (t (Object s SVG))
 oNewGroup = mapM oNewCentered . renderGroup
+
+-- |Create a group of objects, scaled as a group, translation of each lifted to 'Object' level.
+oNewGroupScaled :: forall a t s . (Traversable t, GroupRender a)
+                => Double -> t a -> Scene s (t (Object s SVG))
+oNewGroupScaled c = mapM (oNewCentered . scale c) . renderGroup
 
 collectOld :: [Trans a b] -> Compose [] NonEmpty a
 collectOld = Compose . mapMaybe \case
@@ -155,6 +162,14 @@ rightAligned = alignedOf oRightX maximum oTranslateY
 -- |Aligned according to the horizontal center line (average of min/max X).
 xCentered :: (Traversable t, Traversable t') => GroupAlignment t t' s a b
 xCentered = centeredOf readCenterX oTranslateX
+
+-- |Placed below the alignment base.
+placedBelow :: (Traversable t, Traversable t') => GroupAlignment t t' s a b
+placedBelow bs xs = do
+  minY <- minimum <$> mapM (`oRead` oBottomY) bs
+  maxY <- maximum <$> mapM (`oRead` oTopY) xs
+  let deltaY = minY - maxY
+  mapM_ (\x -> oModify x $ oTranslateY %~ (+ deltaY)) xs
 
 -- |Aligned according to the bottom boundary (minimum Y).
 bottomAligned :: (Traversable t, Traversable t') => GroupAlignment t t' s a b
