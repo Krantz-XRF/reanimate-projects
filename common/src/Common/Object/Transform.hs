@@ -32,6 +32,8 @@ module Common.Object.Transform
   -- * Key Frame Animations
   , Trans(.., (:=>))
   , transformObject
+  -- * Primitives
+  , readGroupTrans
   ) where
 
 import           Data.List.NonEmpty (NonEmpty (..))
@@ -223,5 +225,6 @@ transformObject align xs
       oShow b
   ) . getCompose
 
+-- |Read the overall translation of an 'Object' group.
 readGroupTrans :: Traversable t => t (Object s a) -> Scene s (V2 Double)
 readGroupTrans = sequence . (V2 <$> readCenterX <*> readCenterY)

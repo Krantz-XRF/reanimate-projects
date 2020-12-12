@@ -11,6 +11,9 @@ Portability : portable
 module Common.Linear where
 
 import Codec.Picture.Types
+import Reanimate.ColorComponents
+
+import qualified Linear as L
 
 -- |Types which allows for linear interpolation.
 class Linear a where
@@ -24,5 +27,7 @@ instance Linear Double where
   lerp t x y = (1 - t) * x + t * y
 
 instance Linear PixelRGBA8 where
-  lerp t (PixelRGBA8 r1 g1 b1 a1) (PixelRGBA8 r2 g2 b2 a2)
-    = PixelRGBA8 (lerp t r1 r2) (lerp t g1 g2) (lerp t b1 b2) (lerp t a1 a2)
+  lerp t x y = interpolateRGBA8 labComponents x y t
+
+instance L.Additive f => Linear (f Double) where
+  lerp = L.lerp . (1 -)
