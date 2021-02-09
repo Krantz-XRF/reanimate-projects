@@ -9,6 +9,8 @@ Portability : portable
 -}
 module Common.Animation.Effects where
 
+import Linear.V2 (V2 (..))
+
 import Data.Foldable
 import Graphics.SvgTree
 import Reanimate
@@ -53,6 +55,11 @@ wiggleS t
   | t < 0.25  = curveS 2 (t * 4)
   | t < 0.75  = sin ((t - 0.25) * 2 * pi + pi / 2)
   | otherwise = curveS 2 ((t - 0.75) * 4) - 1
+
+-- |Make the effect around a new center.
+-- The coordinates of the new center should be provided as relative.
+aroundE :: RPoint -> Effect -> Effect
+aroundE (V2 cx cy) f dt t = translate cx cy . f dt t . translate (-cx) (-cy)
 
 -- |Highlight = Wiggle (Rotate) + Scale.
 -- Copied from reanimate/examples/tut_glue_latex.hs

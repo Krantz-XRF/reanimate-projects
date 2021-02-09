@@ -31,27 +31,36 @@ module Common.Object.Transform
   , yCentered
   -- * Key Frame Animations
   , Trans(.., (:=>))
+  , transOrigin
+  , transformObject'
   , transformObject
+  , dupFromObject
+  -- * Object duplication
+  , dupObject
   -- * Primitives
   , readGroupTrans
   ) where
-
-import           Data.List.NonEmpty (NonEmpty (..))
-import qualified Data.List.NonEmpty as N
-
-import Common.Linear (Linear (lerp))
 
 import Control.Lens
 import Control.Monad
 
 import Data.Functor         (($>))
 import Data.Functor.Compose (Compose (..))
-import Data.Maybe           (catMaybes, mapMaybe)
+import Data.Maybe           (mapMaybe)
 import GHC.Exts             (IsString (..))
 import Linear.V2            (V2 (..))
+import Linear.Vector        ((*^))
 
 import Reanimate
 import Reanimate.Scene
+
+-- |Duplicate the object, make it independent from the original.
+dupObject :: Renderable a => Object s a -> Scene s (Object s a)
+dupObject x = do
+  d <- oRead x id
+  y <- oNew (view oValue d)
+  oModify y (const d)
+  pure y
 
 -- |Description for key frame animations.
 --
@@ -61,27 +70,33 @@ import Reanimate.Scene
 -- * The following objects are collected as the base for alignment:
 --
 --     * Objects that vanished, or
---     * Target objects for transformations
+--     * Source objects for transformations
 --
 -- * The following objects are collected as the target for alignment:
 --
 --     * Objects newly created, or
---     * Source objects for transformations
+--     * Target objects for transformations
 data Trans a b
   -- |Object newly created in this frame.
   = New b
   -- |Previous object vanishing in this frame.
   | Vanish a
   -- |Object transformaton in this frame.
-  | (NonEmpty a) ::=> b
+  | [a] ::=> b
   deriving stock (Show, Functor, Foldable, Traversable)
 
 -- |Short cut for single object transformaton in this frame.
 pattern (:=>) :: a -> b -> Trans a b
-pattern a :=> b = (a :| []) ::=> b
+pattern a :=> b = [a] ::=> b
 
 instance IsString b => IsString (Trans a b) where
   fromString = New . fromString
+
+-- |Traverse the origins of the 'Trans'.
+transOrigin :: Traversal (Trans a b) (Trans a' b) a a'
+transOrigin _ (New b)    = pure (New b)
+transOrigin f (Vanish a) = Vanish <$> f a
+transOrigin f (a ::=> b) = (::=>) <$> traverse f a <*> pure b
 
 -- |Allow rendering for groups of objects.
 class GroupRender a where
@@ -107,10 +122,10 @@ oNewGroupScaled :: forall a t s . (Traversable t, GroupRender a)
                 => Double -> t a -> Scene s (t (Object s SVG))
 oNewGroupScaled c = mapM (oNewCentered . scale c) . renderGroup
 
-collectOld :: [Trans a b] -> Compose [] NonEmpty a
+collectOld :: [Trans a b] -> Compose [] [] a
 collectOld = Compose . mapMaybe \case
   New _    -> Nothing
-  Vanish x -> Just (x :| [])
+  Vanish x -> Just [x]
   x ::=> _ -> Just x
 
 -- |Group alignment, given a base, align the second parameter according to the base.
@@ -192,7 +207,7 @@ applyAlignment :: (Traversable t, Traversable t')
                -> Scene s (t' (Object s b))
 applyAlignment align base xs = mapM_ (($ xs) . ($ base)) align $> xs
 
--- |Key frame animation.
+-- |Key frame animation, with automatic creation for new objects.
 --
 -- __Warning__: if alignment base (see 'Trans' for details) is empty, then all the
 -- alignment functions provided in this module would crash your program. In this
@@ -202,28 +217,44 @@ applyAlignment align base xs = mapM_ (($ xs) . ($ base)) align $> xs
 -- __Note__: if the target object utilise @OverloadedStrings@ via 'IsString', the type
 -- becomes ambiguous. Use @TypeApplications@ for this situation:
 --
--- > transformObject @ObjType alignments transformations
-transformObject :: GroupRender t
-                => [GroupAlignment (Compose [] NonEmpty) (Compose [] (Trans (Object s a))) s a SVG]
-                -> [Trans (Object s a) t]
-                -> Scene s [Object s SVG]
-transformObject align xs
-  = waitOn $ oNewGroup (Compose xs)
+-- > transformObject' @ObjType alignments transformations
+transformObject' :: GroupRender t
+                 => [GroupAlignment (Compose [] []) (Compose [] (Trans (Object s a))) s a SVG]
+                 -> [Trans (Object s a) t]
+                 -> Scene s [Object s SVG]
+transformObject' align xs
+  = oNewGroup (Compose xs)
   >>= applyAlignment align (collectOld xs)
-  >>= fmap catMaybes . mapM (fork . \case
-    New b     -> oShowWith b oFadeIn $> Just b
-    Vanish a  -> oHideWith a oFadeOut $> Nothing
-    a ::=> b -> Just b <$ do
-      V2 x0 y0 <- readGroupTrans a
-      V2 x  y  <- oRead b oTranslate
-      ctx <- oRead (N.head a) oContext
-      oModify b (oContext .~ ctx)
+  >>= transformObjectRaw . getCompose . fmap pure
+
+transformObjectRaw :: [Trans (Object s a) [Object s b]] -> Scene s [Object s b]
+transformObjectRaw = waitOn . fmap concat . mapM (fork . \case
+    New b    -> b <$ mapM_ (`oShowWith` oFadeIn) b
+    Vanish a -> [] <$ oHideWith a oFadeOut
+    a ::=> b -> b <$ do
+      p0 <- readGroupTrans a
+      p  <- readGroupTrans b
+      ctx <- oRead (head a) oContext
+      mapM_ (`oModify` (oContext .~ ctx)) b
       waitOn $ forM_ a $ \i ->
         fork $ oTween i 1 $ \t ->
-          oTranslate .~ V2 (lerp t x0 x) (lerp t y0 y)
+          oTranslate %~ (+ t *^ (p - p0))
       mapM_ oHide a
-      oShow b
-  ) . getCompose
+      mapM_ oShow b
+  )
+
+-- |Key frame animation.
+--
+-- __Warning__: if alignment base (see 'Trans' for details) is empty, then all the
+-- alignment functions provided in this module would crash your program. In this
+-- case, custom (ad-hoc) alignment functions might be useful. Or, to specify a
+-- custom alignment base @bs@, use @const (alignment bs)@ instead of @alignment@.
+transformObject :: [Trans (Object s a) [Object s b]] -> Scene s ()
+transformObject = void . transformObjectRaw
+
+-- |Key frame animation, but without hiding the original.
+dupFromObject :: Renderable a => [Trans (Object s a) [Object s b]] -> Scene s ()
+dupFromObject = mapMOf (traverse . transOrigin) dupObject >=> transformObject
 
 -- |Read the overall translation of an 'Object' group.
 readGroupTrans :: Traversable t => t (Object s a) -> Scene s (V2 Double)

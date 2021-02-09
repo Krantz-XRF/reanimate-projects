@@ -7,6 +7,7 @@ Maintainer  : krantz.xrf@outlook.com
 Stability   : experimental
 Portability : portable
 -}
+{-# LANGUAGE BlockArguments  #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Common.Object.Effect
   (
@@ -95,7 +96,7 @@ oBoxNewOver target c = do
   oModify res (oTranslate .~ p)
   pure res
 
-newtype BB a = BB (a, a, a, a)
+newtype BB a = BB (a, a, a, a) deriving stock Show
 
 instance (Ord a, Num a) => Semigroup (BB a) where
   BB (x1, y1, w1, h1) <> BB (x2, y2, w2, h2) = BB (x, y, w, h) where
@@ -126,10 +127,12 @@ oBoxNewOverMany targets c = do
 
 -- |Grow the 'Box'.
 oBoxGrow :: Duration -> Object s Box -> Scene s ()
-oBoxGrow dt b = oTween b dt $ \t' -> let t = t' / dt in
+oBoxGrow dt b = oShow b *> oTween b dt \t' -> let t = t' / dt in
   oValue %~ (boxStart .~ 0.5 + 0.6 * t) . (boxEnd .~ 0.5 + 1.6 * t)
 
 -- |Erase the 'Box'.
 oBoxErase :: Duration -> Object s Box -> Scene s ()
-oBoxErase dt b = oTween b dt $ \t' -> let t = t' / dt in
-  oValue %~ (boxStart .~ 0.5 + 1.6 * t) . (boxEnd .~ 1.5 + 0.6 * t)
+oBoxErase dt b = do
+  oTween b dt $ \t' -> let t = t' / dt in
+    oValue %~ (boxStart .~ 0.5 + 1.6 * t) . (boxEnd .~ 1.5 + 0.6 * t)
+  oHide b

@@ -76,7 +76,7 @@ instance GroupRender CodeChunk where
           , "\\setmonofont{JetBrains Mono}[Contextuals=Alternate]" ]
         , texConfigPostScript = []
         }
-      code x = "\\texttt{" <> x <> "}"
+      code x = "\\texttt{" <> escapeLaTeX x <> "}"
 
 -- * Code Blocks.
 
