@@ -15,6 +15,7 @@ module TypeCheck (typeCheckAnim) where
 import qualified Data.Text as T
 
 import Control.Lens
+import Control.Monad
 
 import Data.Functor (($>))
 import Data.Monoid  (Last (..))
@@ -22,13 +23,14 @@ import Data.Monoid  (Last (..))
 import Common.Animation.Effects (addWhiteBkg)
 import Common.HexColour         (FromRGBA8, rgba)
 import Common.Linear            (Linear (lerp))
+import Common.Object.Effect
 import Common.Object.Transform
 import Common.Object.Types
 
 import Codec.Picture.Types  hiding (Traversal)
-import Common.Object.Effect
 import Data.Foldable
 import Data.Functor.Compose
+import Data.Functor.Product
 import Graphics.SvgTree
 import Reanimate
 import Reanimate.Scene
@@ -39,8 +41,8 @@ red    = [rgba|E74856|]
 blue   = [rgba|3A96DD|]
 green  = [rgba|00c19c|]
 
-showCodeChunks :: [CodeChunk] -> Scene s [Object s SVG]
-showCodeChunks expr = waitOn $ oNewGroup expr >>= mapM (fork . \x -> oShowWith x oFadeIn $> x)
+showMathChunks :: [MathChunk] -> Scene s [Object s SVG]
+showMathChunks expr = waitOn $ oNewGroup expr >>= mapM (fork . \x -> oShowWith x oFadeIn $> x)
 
 getFillColour :: SVG -> PixelRGBA8
 getFillColour = maybe [rgba|000|] fromColorRef . getLast . view fillColor
@@ -49,19 +51,20 @@ getFillColour = maybe [rgba|000|] fromColorRef . getLast . view fillColor
 moveVertical :: Double -> Object s a -> Scene s ()
 moveVertical d x = oTween x 1 (\t -> oTranslateY %~ (t * d +))
 
-showDotSig :: PixelRGBA8 -> String -> [Object s a] -> Scene s [Object s SVG]
+showDotSig :: PixelRGBA8 -> String
+           -> [[Object s SVG] -> Scene s ()]
+           -> Scene s [Object s SVG]
 showDotSig col vars pos = do
-  let [a, b, c] = map (CodeChunk . T.singleton) vars
-  ~sig1@(f:_) <- oNewGroupScaled @CodeChunk 0.3
-    [ "(.)", " :: "
+  let [a, b, c] = map (MathChunk . T.singleton) vars
+  ~sig@(f:_) <- oNewGroupScaled @MathChunk 0.4
+    [ "(.)", " : "
     , "(", b, " -> ", c, ")", " -> "
     , "(", a, " -> ", b, ")", " -> "
     , a, " -> ", c ]
-  xCentered pos sig1
-  placedBelow pos sig1
+  mapM_ ($ sig) pos
   oModify f (oContext .~ mapTree (withFillColorPixel col))
-  waitOn $ mapM_ (fork . (`oShowWith` oFadeIn)) sig1
-  pure sig1
+  waitOn $ mapM_ (fork . (`oShowWith` oFadeIn)) sig
+  pure sig
 
 data EquationF s a = Equation
   { equationLhs :: [a]
@@ -71,18 +74,15 @@ data EquationF s a = Equation
 
 type Equation s = EquationF s (Object s SVG)
 
-allMargins :: Traversal (a, a, a, a) (b, b, b, b) a b
-allMargins f (x, y, z, w) = (,,,) <$> f x <*> f y <*> f z <*> f w
-
-newEquation :: [CodeChunk] -> [CodeChunk] -> Scene s (Equation s)
+newEquation :: [MathChunk] -> [MathChunk] -> Scene s (Equation s)
 newEquation lhs rhs = do
-  eq <- oNewGroupScaled 0.3 (Equation lhs " ~ " rhs)
-  mapM_ (`oModify` (oMargin . allMargins .~ 0.3)) eq
+  eq <- oNewGroupScaled 0.4 (Equation lhs " = " rhs)
+  withMargin 0.3 [] eq
   pure eq
 
 showEquation :: Renderable a
-             => [CodeChunk] -> [Object s a]
-             -> [CodeChunk] -> [Object s a]
+             => [MathChunk] -> [Object s a]
+             -> [MathChunk] -> [Object s a]
              -> [Equation s -> Scene s ()]
              -> Scene s (Equation s)
 showEquation lhs lhsOrig rhs rhsOrig f = do
@@ -116,8 +116,17 @@ oBoxNewOverArrow arr arrIdx c = do
 oBoxGrowAll :: Traversable t => Duration -> t (Object s Box) -> Scene s ()
 oBoxGrowAll dt = waitOn . mapM_ (fork . oBoxGrow dt)
 
+oFadeShowAll :: Traversable t => t (Object s a) -> Scene s ()
+oFadeShowAll = waitOn . mapM_ (fork . (`oShowWith` oFadeIn))
+
 oFadeHideAll :: Traversable t => t (Object s a) -> Scene s ()
 oFadeHideAll = waitOn . mapM_ (fork . (`oHideWith` oFadeOut))
+
+oFadePopUp :: Traversable t => Duration -> t (Object s a) -> Scene s ()
+oFadePopUp dt xs = do
+  oFadeShowAll xs
+  wait dt
+  oFadeHideAll xs
 
 transColour :: Double -> PixelRGBA8 -> SVG -> Tree
 transColour t c s = mapTree (withFillColorPixel (lerp t (getFillColour s) c)) s
@@ -125,14 +134,13 @@ transColour t c s = mapTree (withFillColorPixel (lerp t (getFillColour s) c)) s
 tweenColour :: Duration -> Signal -> (Object s a, PixelRGBA8) -> Scene s ()
 tweenColour dt f (x, c) = oTween x dt (\t -> oContext .~ transColour (f t) c)
 
-blink :: Object s SVG -> PixelRGBA8 -> Scene s ()
-blink x c = do
-  tweenColour 0.3 id (x, c)
-  tweenColour 0.2 (1 -) (x, c)
-  tweenColour 0.3 id (x, c)
-
-revertBlink :: Object s SVG -> PixelRGBA8 -> Scene s ()
-revertBlink x c = tweenColour 0.2 (1 -) (x, c)
+blink :: Bool -> Int -> Object s SVG -> PixelRGBA8 -> Scene s ()
+blink b n x c = do
+  unless b $ tweenColour 0.2 (1 -) (x, c)
+  replicateM_ n $ do
+    tweenColour 0.3 id (x, c)
+    tweenColour 0.2 (1 -) (x, c)
+  when b $ tweenColour 0.3 id (x, c)
 
 tweenColours :: [(Object s a, PixelRGBA8)] -> Scene s ()
 tweenColours = tweenColoursWith id
@@ -143,33 +151,29 @@ tweenColoursWith f = waitOn . mapM_ (fork . tweenColour 1 f)
 typeCheckAnim :: Animation
 typeCheckAnim = mapA addWhiteBkg $ scene $ do
   -- main composition illustration
-  ~[lp, d1, d3, d2, rp] <- showCodeChunks ["(", "(.)", " . ", "(.)", ")"]
+  ~tgt@[lp, d1, d3, d2, rp] <- showMathChunks ["(", "(.)", " . ", "(.)", ")"]
   tweenColours
     [ (d1, red)
     , (d2, blue)
     , (d3, yellow) ]
   -- show description for '(.)'
-  oPopBubble 2 d3
-    [ LeftAligned $ AnyRenderable $ TeX "\\sf 函数复合，二元中缀运算符："
-    , Centered $ AnyRenderable $ TeX "$(f \\circ g)(x) = f(g(x))$"
-    , LeftAligned $ AnyRenderable $ TeX "\\sf Haskell定义如下："
-    , LeftAligned $ AnyRenderable $ HaskellBubble
-      "(.) :: (b -> c) -> (a -> b) -> a -> c\n\
-      \(.) f g = \\x -> f (g x)\n\
-      \\n\
-      \infixr 9 ." ]
+  ~[def] <- oNewGroupScaled @MathChunk 0.6 ["(f . g)(x) = f(g(x))"]
+  placedBelow tgt [def]
+  ~[arrowUp] <- oNewGroupScaled @MathChunk 0.6 ["\\uparrow"]
+  oModify arrowUp (oTranslateY .~ -1)
+  oFadePopUp 2 [arrowUp, def]
   -- infix style -> function style
-  ~expr@[_, d3l, _, d3r, _, _, _] <- transformObject' @CodeChunk [yCentered, xCentered]
-    [lp :=> "(", "(", d3 :=> ".", ") ", d1 :=> "(.) ", d2 :=> "(.)", rp :=> ")"]
+  ~expr@[_, d3l, _, d3r, _, _, _] <- transformObject' @MathChunk [yCentered, xCentered]
+    [lp :=> "(", "(", d3 :=> ".", ")~", d1 :=> "(.)~", d2 :=> "(.)", rp :=> ")"]
   tweenColours
     [ (d3l, yellow)
     , (d3r, yellow) ]
   -- composition move up
   waitOn $ mapM_ (fork . moveVertical 2) expr
   -- show signature yellow, red, blue.
-  sig1 <- showDotSig yellow "xyz" expr
-  sig2 <- showDotSig red    "abc" sig1
-  sig3 <- showDotSig blue   "pqr" sig2
+  sig1 <- showDotSig yellow "xyz" [placedBelow expr, xCentered expr]
+  sig2 <- showDotSig red    "abc" [placedBelow sig1, leftAligned sig1]
+  sig3 <- showDotSig blue   "pqr" [placedBelow sig2, leftAligned sig2]
   -- all move left, make room for type equations
   waitOn $ forM_ (Compose [sig1, sig2, sig3]) $ \x ->
     fork $ oTween x 1 (\t -> oTranslateX %~ subtract (2.5 * t))
@@ -178,48 +182,117 @@ typeCheckAnim = mapA addWhiteBkg $ scene $ do
   bsig2 <- oBoxNewOverArrow (sig2 & drop 2) 5 red
   oBoxGrowAll 1 [byz, bsig2]
   waitOn $ do
-    fork $ (sig1 !! 4) `blink` red
-    fork $ (sig2 !! 7) `blink` red
+    fork $ blink True 1 (sig1 !! 4) red
+    fork $ blink True 1 (sig2 !! 7) red
   wait 1
-  -- new equation 'y ~ b -> c'
+  -- new equation 'y = b -> c'
   eq1 <- showEquation
     ["y"] (sig1 & drop 3 & take 1)
-    ["b -> c"] (sig2 & drop 3 & take 3)
+    ["b", " -> ", "c"] (sig2 & drop 3 & take 3)
     [yCentered sig1, mapM_ (`oModify` (oTranslateX %~ (+ 3)))]
-  -- new equation 'z ~ (a -> b) -> a -> c'
+  -- new equation 'z = (a -> b) -> a -> c'
   eq2 <- showEquation
     ["z"] (sig1 & drop 5 & take 1)
-    ["(a -> b) -> a -> c"] (sig2 & drop 8)
+    ["(a -> ", "b", ") -> a -> ", "c"] (sig2 & drop 8)
     [alignEquation eq1, placedBelow eq1]
   -- revert red color on arrows
   waitOn $ do
-    fork $ (sig1 !! 4) `revertBlink` red
-    fork $ (sig2 !! 7) `revertBlink` red
+    fork $ blink False 0 (sig1 !! 4) red
+    fork $ blink False 0 (sig2 !! 7) red
   -- box '(x -> y)' and '(q -> r) -> (p -> q) -> p -> r' with blue
   bxy <- oBoxNewOverArrow (sig1 & drop 8 & take 5) 2 blue
   bsig3 <- oBoxNewOverArrow (sig3 & drop 2) 5 blue
   oBoxGrowAll 1 [bxy, bsig3]
   waitOn $ do
-    fork $ (sig1 !! 10) `blink` blue
-    fork $ (sig3 !! 7) `blink` blue
+    fork $ blink True 1 (sig1 !! 10) blue
+    fork $ blink True 1 (sig3 !! 7) blue
   wait 1
-  -- new equation 'x ~ q -> r'
+  -- new equation 'x = q -> r'
   eq3 <- showEquation
     ["x"] (sig1 & drop 9 & take 1)
     ["q -> r"] (sig3 & drop 3 & take 3)
     [alignEquation eq2, placedBelow eq2]
-  -- new equation 'y ~ (p -> q) -> p -> r'
+  -- new equation 'y = (p -> q) -> p -> r'
   eq4 <- showEquation
     ["y"] (sig1 & drop 11 & take 1)
-    ["(p -> q) -> p -> r"] (sig3 & drop 8)
+    ["(", "p -> q", ")", " -> ", "p -> r"] (sig3 & drop 8)
     [alignEquation eq3, placedBelow eq3]
   -- revert blue color on arrows
   waitOn $ do
-    fork $ (sig1 !! 10) `revertBlink` blue
-    fork $ (sig3 !! 7) `revertBlink` blue
+    fork $ blink False 0 (sig1 !! 10) blue
+    fork $ blink False 0 (sig3 !! 7) blue
+  -- box 'x -> z' with yellow, show ': x -> z' for title
+  bxz <- oBoxNewOverArrow (sig1 & drop 14) 1 yellow
+  ~title@[exprNewPos, xz] <- oNewGroup @MathChunk ["((.)~(.)~(.))", ": x -> z"]
+  applyAlignment [yCentered] expr title
+  oBoxGrow 1 bxz
+  transformObject [expr ::=> [exprNewPos]]
+  mapM_ oShow expr; oHide exprNewPos
+  oModify xz (oEasing .~ id)
+  oShowWith xz oDraw
+  -- hide all boxes
+  oFadeHideAll [bxy, byz, bsig2, bsig3, bxz]
+  -- move left and hide dot-signatures
+  waitOn $ do
+    fork $ oFadeHideAll (Compose [sig1, sig2, sig3])
+    forM_ (Compose [sig1, sig2, sig3] `Pair` Compose [eq1, eq2, eq3, eq4])
+      \x -> fork $ oTween x 1 (\t -> oTranslateX %~ subtract (t * 6))
+  -- wiggle 'y' in eq1 & eq4
+  waitOn $ do
+    fork $ oWiggle (equationLhs eq1)
+    fork $ oWiggle (equationLhs eq4)
+  -- box rhs of eq1 & eq4
+  beq1 <- oBoxNewOverMany (equationRhs eq1) red
+  beq4 <- oBoxNewOverMany (equationRhs eq4) red
+  oBoxGrowAll 1 [beq1, beq4]
+  waitOn $ do
+    fork $ blink True 1 (equationRhs eq1 !! 1) red
+    fork $ blink True 1 (equationRhs eq4 !! 3) red
+  -- new equation 'b = p -> q'
+  eq5 <- showEquation
+    ["b"] [head (equationRhs eq1)]
+    ["p -> q"] [equationRhs eq4 !! 1]
+    [yCentered eq1, mapM_ (`oModify` (oTranslateX %~ (+ 3)))]
+  -- new equation 'c = p -> r'
+  eq6 <- showEquation
+    ["c"] [equationRhs eq1 !! 2]
+    ["p -> r"] [equationRhs eq4 !! 4]
+    [alignEquation eq5, placedBelow eq5]
+  -- revert color on arrows & hide box
+  waitOn $ do
+    fork $ oFadeHideAll [beq1, beq4]
+    fork $ blink False 0 (equationRhs eq1 !! 1) red
+    fork $ blink False 0 (equationRhs eq4 !! 3) red
+  -- hide eq1 & eq4 (no longer needed)
+  oFadeHideAll (eq1 `Pair` eq4)
+  waitOn $ forM_ (eq2 `Pair` eq3) \x ->
+    fork $ oTween x 1 (\t -> oTranslateY %~ (+ t))
+  wait 1
+  -- highlight rhs of eq5 & eq6, highlight b & c
+  let eq2Rhs = equationRhs eq2
+  waitOn $ do
+    fork $ tweenColours $ map (, red) (eq2Rhs !! 1 : equationRhs eq5)
+    fork $ tweenColours $ map (, blue) (eq2Rhs !! 3 : equationRhs eq6)
+  wait 1
+  eq2Rhs' <- waitOn $ do
+    fork $ oFadeHideAll $
+      equalSign eq5 : equalSign eq6 : equationLhs eq5 ++ equationLhs eq6
+    fork $ transformObject' @MathChunk
+      [withMargin 0.3, scaled 0.4, leftAligned, const (yCentered eq2)]
+      [ head eq2Rhs :=> "(a -> "
+      , equationRhs eq5 ::=> "p -> q"
+      , eq2Rhs !! 2 :=> ") -> a -> "
+      , equationRhs eq6 ::=> "p -> r"
+      , Vanish (eq2Rhs !! 1), Vanish (eq2Rhs !! 3) ]
+  let eq2' = eq2{ equationRhs = eq2Rhs' }
+  oFadeHideAll (eq5 `Pair` eq6)
+  -- revert color on 'p -> q' & 'p -> r' back to black
+  waitOn $ do
+    fork $ blink False 0 (eq2Rhs' !! 1) red
+    fork $ blink False 0 (eq2Rhs' !! 3) blue
+  wait 1
   -- hide everything
   waitOn $ do
-    fork $ oFadeHideAll $ Compose [sig1, sig2, sig3, expr]
-    fork $ oFadeHideAll $ Compose [eq1, eq2, eq3, eq4]
-    fork $ oFadeHideAll [bxy, byz, bsig2, bsig3]
+    fork $ oFadeHideAll (xz : expr)
+    fork $ oFadeHideAll (Compose [eq2', eq3])
   wait 1

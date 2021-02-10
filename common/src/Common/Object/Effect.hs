@@ -18,6 +18,7 @@ module Common.Object.Effect
   , boxHeight
   , boxStart
   , boxEnd
+  , boxStroke
   , boxColour
   -- ** Scene API
   , oBoxNewOver
@@ -26,15 +27,17 @@ module Common.Object.Effect
   , oBoxErase
   -- * Primitives
   , partialBox
-  ) where
+  ,oWiggle) where
 
 import Common.Linear (Linear (lerp))
 import Data.Maybe    (fromJust)
 import Linear        (V2 (V2))
 
-import Common.Object.Transform (readGroupTrans)
+import Common.Animation.Effects
+import Common.Object.Transform  (readGroupTrans)
 
 import Control.Lens
+import Control.Monad
 
 import Codec.Picture.Types
 import Graphics.SvgTree.Types
@@ -78,13 +81,23 @@ data Box = Box
   , _boxHeight :: Coord
   , _boxStart  :: Double
   , _boxEnd    :: Double
+  , _boxStroke :: Coord
   , _boxColour :: PixelRGBA8
   } deriving stock (Show, Eq)
 
 makeLenses 'Box
 
 instance Renderable Box where
-  toSVG (Box w h s t c) = withStrokeColorPixel c (partialBox w h s t)
+  toSVG (Box w h s t width c)
+    = withStrokeColorPixel c
+    $ withStrokeWidth width
+    $ partialBox w h s t
+
+boxMargin :: Coord
+boxMargin = 0.2
+
+boxStrokeWidth :: Coord
+boxStrokeWidth = 0.03
 
 -- |Create a new box around the target.
 oBoxNewOver :: Object s a -> PixelRGBA8 -> Scene s (Object s Box)
@@ -92,7 +105,7 @@ oBoxNewOver target c = do
   w <- oRead target oBBWidth
   h <- oRead target oBBHeight
   p <- oRead target oTranslate
-  res <- oNew (Box (w + 0.3) (h + 0.3) 0 0 c)
+  res <- oNew (Box (w + boxMargin) (h + boxMargin) 0 0 boxStrokeWidth c)
   oModify res (oTranslate .~ p)
   pure res
 
@@ -121,7 +134,7 @@ oBoxNewOverMany :: Traversable t => t (Object s a) -> PixelRGBA8 -> Scene s (Obj
 oBoxNewOverMany targets c = do
   (w, h) <- readWidthHeight targets
   p <- readGroupTrans targets
-  res <- oNew (Box (w + 0.3) (h + 0.3) 0 0 c)
+  res <- oNew (Box (w + boxMargin) (h + boxMargin) 0 0 boxStrokeWidth c)
   oModify res (oTranslate .~ p)
   pure res
 
@@ -136,3 +149,11 @@ oBoxErase dt b = do
   oTween b dt $ \t' -> let t = t' / dt in
     oValue %~ (boxStart .~ 0.5 + 1.6 * t) . (boxEnd .~ 1.5 + 0.6 * t)
   oHide b
+
+-- |Wiggle the 'Object'.
+oWiggle :: Traversable t => t (Object s a) -> Scene s ()
+oWiggle xs = do
+  c <- readGroupTrans xs
+  forM_ xs \x -> do
+    p <- oRead x oTranslate
+    oShowWith x (applyE (aroundE (c - p) (highlightE 0.2)) . staticFrame 1)

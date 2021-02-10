@@ -20,6 +20,11 @@ module Common.Object.Transform
   -- | Alignment controls how the objects in the next key frame is aligned according to
   --   those objects from the current frame.
   , GroupAlignment
+  , applyAlignment
+  -- ** Group Modifier
+  , scaled
+  , allMargins
+  , withMargin
   -- ** X Alignment
   , leftAligned
   , rightAligned
@@ -44,13 +49,13 @@ module Common.Object.Transform
 import Control.Lens
 import Control.Monad
 
-import Data.Functor         (($>))
 import Data.Functor.Compose (Compose (..))
 import Data.Maybe           (mapMaybe)
 import GHC.Exts             (IsString (..))
 import Linear.V2            (V2 (..))
 import Linear.Vector        ((*^))
 
+import Graphics.SvgTree.Types (Coord)
 import Reanimate
 import Reanimate.Scene
 
@@ -200,12 +205,27 @@ topAligned = alignedOf oTopY maximum oTranslateY
 yCentered :: (Traversable t, Traversable t') => GroupAlignment t t' s a b
 yCentered = centeredOf readCenterY oTranslateY
 
+-- |'Traversal' of all four margins.
+allMargins :: Traversal (a, a, a, a) (b, b, b, b) a b
+allMargins f (x, y, z, w) = (,,,) <$> f x <*> f y <*> f z <*> f w
+
+-- |Set margin.
+withMargin :: (Traversable t, Traversable t') => Coord -> GroupAlignment t t' s a SVG
+withMargin d _ = mapM_ (`oModify` (oMargin . allMargins .~ d))
+
+-- |Scaled by a factor.
+scaled :: (Traversable t, Traversable t') => Double -> GroupAlignment t t' s a SVG
+scaled d _ xs = forM_ xs \x -> do
+  oModify x (oTranslate %~ (d *^))
+  oModify x (oValue %~ scale d)
+
+-- |Apply some 'GroupAlignment's.
 applyAlignment :: (Traversable t, Traversable t')
                => [GroupAlignment t t' s a b]
                -> t (Object s a)
                -> t' (Object s b)
-               -> Scene s (t' (Object s b))
-applyAlignment align base xs = mapM_ (($ xs) . ($ base)) align $> xs
+               -> Scene s ()
+applyAlignment align base xs = mapM_ (($ xs) . ($ base)) align
 
 -- |Key frame animation, with automatic creation for new objects.
 --
@@ -224,8 +244,9 @@ transformObject' :: GroupRender t
                  -> Scene s [Object s SVG]
 transformObject' align xs
   = oNewGroup (Compose xs)
-  >>= applyAlignment align (collectOld xs)
+  >>= applyAlignment' (collectOld xs)
   >>= transformObjectRaw . getCompose . fmap pure
+  where applyAlignment' base ys = ys <$ applyAlignment align base ys
 
 transformObjectRaw :: [Trans (Object s a) [Object s b]] -> Scene s [Object s b]
 transformObjectRaw = waitOn . fmap concat . mapM (fork . \case

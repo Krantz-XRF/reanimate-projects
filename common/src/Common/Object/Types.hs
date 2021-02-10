@@ -78,6 +78,36 @@ instance GroupRender CodeChunk where
         }
       code x = "\\texttt{" <> escapeLaTeX x <> "}"
 
+-- * Math formulae.
+
+-- |LaTeX inline math formulae.
+newtype MathChunk = MathChunk { unwrapMathChunk :: T.Text }
+  deriving stock (Show, Eq, Ord)
+  deriving newtype (IsString)
+
+instance GroupRender MathChunk where
+  renderGroup = centerAsGroup
+    . fmap (withFillColorPixel [rgba|000|] . withStrokeWidth 0 . withFillOpacity 1)
+    . mathChunks . fmap (replaceAll replacements . pad . unwrapMathChunk)
+    where
+      pad x = " " <> x <> " "
+      paren x = "(" <> x <> ")"
+      replaceAll = foldl (.) id . map replace
+      replace (s, t)
+        = T.replace (pad s) (pad t)
+        . T.replace (paren s) (paren t)
+      replacements =
+        [ ("->", "\\rightarrow")
+        , ("<-", "\\leftarrow")
+        , ("=>", "\\Rightarrow")
+        , ("<==", "\\Leftarrow")
+        , ("<=>", "\\Leftrightarrow")
+        , ("<=", "\\le")
+        , (">=", "\\ge")
+        , ("/=", "\\ne")
+        , (".", "\\circ")
+        ]
+
 -- * Code Blocks.
 
 -- |Code blocks in some programming language. Highlighted by Skylighting.
