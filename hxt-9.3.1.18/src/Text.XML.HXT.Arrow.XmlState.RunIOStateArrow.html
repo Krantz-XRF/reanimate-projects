@@ -1,0 +1,684 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+   Module     : Text.XML.HXT.Arrow.XmlState.RunIOStateArrow
+   Copyright  : Copyright (C) 2010 Uwe Schmidt
+   License    : MIT
+
+   Maintainer : Uwe Schmidt (uwe@fh-wedel.de)
+   Stability  : stable
+   Portability: portable
+
+   run an io state arrow
+-}</span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.XML.HXT.Arrow.XmlState.RunIOStateArrow</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Arrow</span></span><span>                            </span><span class="hs-comment">-- arrow classes</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html"><span class="hs-identifier">Control.Arrow.ArrowList</span></a></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html"><span class="hs-identifier">Control.Arrow.IOStateListArrow</span></a></span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span>                                 </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-identifier">empty</span></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.Interface.html"><span class="hs-identifier">Text.XML.HXT.DOM.Interface</span></a></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlArrow.html"><span class="hs-identifier">Text.XML.HXT.Arrow.XmlArrow</span></a></span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.ErrorHandling.html"><span class="hs-identifier">Text.XML.HXT.Arrow.XmlState.ErrorHandling</span></a></span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TraceHandling.html"><span class="hs-identifier">Text.XML.HXT.Arrow.XmlState.TraceHandling</span></a></span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html"><span class="hs-identifier">Text.XML.HXT.Arrow.XmlState.TypeDefs</span></a></span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-35"></span><span class="hs-comment">-- apply an 'IOSArrow' to an empty root node with 'initialState' () as initial state</span><span>
+</span><span id="line-36"></span><span class="hs-comment">--</span><span>
+</span><span id="line-37"></span><span class="hs-comment">-- the main entry point for running a state arrow with IO</span><span>
+</span><span id="line-38"></span><span class="hs-comment">--</span><span>
+</span><span id="line-39"></span><span class="hs-comment">-- when running @ runX f@ an empty XML root node is applied to @f@.</span><span>
+</span><span id="line-40"></span><span class="hs-comment">-- usually @f@ will start with a constant arrow (ignoring the input), e.g. a 'Text.XML.HXT.Arrow.ReadDocument.readDocument' arrow.</span><span>
+</span><span id="line-41"></span><span class="hs-comment">--</span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- for usage see examples with 'Text.XML.HXT.Arrow.WriteDocument.writeDocument'</span><span>
+</span><span id="line-43"></span><span class="hs-comment">--</span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- if input has to be feed into the arrow use 'Control.Arrow.IOStateListArrow.runIOSLA' like in @ runIOSLA f emptyX inputDoc @</span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span id="local-6989586621679185482"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#runX"><span class="hs-identifier hs-type">runX</span></a></span><span>            </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOSArrow"><span class="hs-identifier hs-type">IOSArrow</span></a></span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#XmlTree"><span class="hs-identifier hs-type">XmlTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185482"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679185482"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">]</span></span><span>
+</span><span id="line-47"></span><span id="runX"><span class="annot"><span class="annottext">runX :: IOSArrow XmlTree c -&gt; IO [c]
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#runX"><span class="hs-identifier hs-var hs-var">runX</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOState () -&gt; IOSArrow XmlTree c -&gt; IO [c]
+forall s c. XIOState s -&gt; IOStateArrow s XmlTree c -&gt; IO [c]
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#runXIOState"><span class="hs-identifier hs-var">runXIOState</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">() -&gt; XIOState ()
+forall us. us -&gt; XIOState us
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialState"><span class="hs-identifier hs-var">initialState</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-48"></span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span id="local-6989586621679185562"><span id="local-6989586621679185563"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#runXIOState"><span class="hs-identifier hs-type">runXIOState</span></a></span><span>     </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOState"><span class="hs-identifier hs-type">XIOState</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185563"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOStateArrow"><span class="hs-identifier hs-type">IOStateArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185563"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#XmlTree"><span class="hs-identifier hs-type">XmlTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185562"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679185562"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">]</span></span></span><span>
+</span><span id="line-51"></span><span id="runXIOState"><span class="annot"><span class="annottext">runXIOState :: XIOState s -&gt; IOStateArrow s XmlTree c -&gt; IO [c]
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#runXIOState"><span class="hs-identifier hs-var hs-var">runXIOState</span></a></span></span><span> </span><span id="local-6989586621679185478"><span class="annot"><span class="annottext">XIOState s
+</span><a href="#local-6989586621679185478"><span class="hs-identifier hs-var">s0</span></a></span></span><span> </span><span id="local-6989586621679185477"><span class="annot"><span class="annottext">IOStateArrow s XmlTree c
+</span><a href="#local-6989586621679185477"><span class="hs-identifier hs-var">f</span></a></span></span><span>
+</span><span id="line-52"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-53"></span><span>      </span><span class="hs-special">(</span><span id="local-6989586621679185476"><span class="annot"><span class="annottext">XIOState s
+</span><a href="#local-6989586621679185476"><span class="hs-identifier hs-var">_finalState</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679185475"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679185475"><span class="hs-identifier hs-var">res</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IOSLA (XIOState s) Any c
+-&gt; XIOState s -&gt; Any -&gt; IO (XIOState s, [c])
+forall s a b. IOSLA s a b -&gt; s -&gt; a -&gt; IO (s, [b])
+</span><a href="Control.Arrow.IOStateListArrow.html#runIOSLA"><span class="hs-identifier hs-var hs-var">runIOSLA</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">IOSLA (XIOState s) Any XmlTree
+forall n. IOSLA (XIOState s) n XmlTree
+</span><a href="#local-6989586621679185473"><span class="hs-identifier hs-var">emptyRoot</span></a></span><span> </span><span class="annot"><span class="annottext">IOSLA (XIOState s) Any XmlTree
+-&gt; IOStateArrow s XmlTree c -&gt; IOSLA (XIOState s) Any c
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">IOStateArrow s XmlTree c
+</span><a href="#local-6989586621679185477"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">XIOState s
+</span><a href="#local-6989586621679185478"><span class="hs-identifier hs-var">s0</span></a></span><span> </span><span class="annot"><span class="annottext">Any
+forall a. HasCallStack =&gt; a
+</span><span class="hs-identifier hs-var">undefined</span></span><span>
+</span><span id="line-54"></span><span>      </span><span class="annot"><span class="annottext">[c] -&gt; IO [c]
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679185475"><span class="hs-identifier hs-var">res</span></a></span><span>
+</span><span id="line-55"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-56"></span><span>    </span><span id="local-6989586621679185473"><span class="annot"><span class="annottext">emptyRoot :: IOSLA (XIOState s) n XmlTree
+</span><a href="#local-6989586621679185473"><span class="hs-identifier hs-var hs-var">emptyRoot</span></a></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[IOSLA (XIOState s) n XmlTree]
+-&gt; [IOSLA (XIOState s) n XmlTree] -&gt; IOSLA (XIOState s) n XmlTree
+forall (a :: * -&gt; * -&gt; *) n.
+ArrowXml a =&gt;
+[a n XmlTree] -&gt; [a n XmlTree] -&gt; a n XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#root"><span class="hs-identifier hs-var">root</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span class="hs-comment">-- | the default global state, used as initial state when running an 'IOSArrow' with 'runIOSLA' or</span><span>
+</span><span id="line-60"></span><span class="hs-comment">-- 'runX'</span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span id="local-6989586621679185560"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialState"><span class="hs-identifier hs-type">initialState</span></a></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679185560"><span class="hs-identifier hs-type">us</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOState"><span class="hs-identifier hs-type">XIOState</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185560"><span class="hs-identifier hs-type">us</span></a></span></span><span>
+</span><span id="line-63"></span><span id="initialState"><span class="annot"><span class="annottext">initialState :: us -&gt; XIOState us
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialState"><span class="hs-identifier hs-var hs-var">initialState</span></a></span></span><span> </span><span id="local-6989586621679185469"><span class="annot"><span class="annottext">us
+</span><a href="#local-6989586621679185469"><span class="hs-identifier hs-var">s</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOState :: forall us. XIOSysState -&gt; us -&gt; XIOState us
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOState"><span class="hs-identifier hs-type">XIOState</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">xioSysState :: XIOSysState
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioSysState"><span class="hs-identifier hs-var">xioSysState</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOSysState
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialSysState"><span class="hs-identifier hs-var">initialSysState</span></a></span><span>
+</span><span id="line-64"></span><span>                           </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioUserState :: us
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioUserState"><span class="hs-identifier hs-var">xioUserState</span></a></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">us
+</span><a href="#local-6989586621679185469"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-65"></span><span>                           </span><span class="hs-special">}</span><span>
+</span><span id="line-66"></span><span>
+</span><span id="line-67"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialSysState"><span class="hs-identifier hs-type">initialSysState</span></a></span><span>                 </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOSysState"><span class="hs-identifier hs-type">XIOSysState</span></a></span><span>
+</span><span id="line-70"></span><span id="initialSysState"><span class="annot"><span class="annottext">initialSysState :: XIOSysState
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialSysState"><span class="hs-identifier hs-var hs-var">initialSysState</span></a></span></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOSys :: XIOSysWriter -&gt; XIOSysEnv -&gt; XIOSysState
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOSys"><span class="hs-identifier hs-type">XIOSys</span></a></span><span>
+</span><span id="line-71"></span><span>                                  </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">xioSysWriter :: XIOSysWriter
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioSysWriter"><span class="hs-identifier hs-var">xioSysWriter</span></a></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOSysWriter
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialSysWriter"><span class="hs-identifier hs-var">initialSysWriter</span></a></span><span>
+</span><span id="line-72"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioSysEnv :: XIOSysEnv
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioSysEnv"><span class="hs-identifier hs-var">xioSysEnv</span></a></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOSysEnv
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialSysEnv"><span class="hs-identifier hs-var">initialSysEnv</span></a></span><span>
+</span><span id="line-73"></span><span>                                  </span><span class="hs-special">}</span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialSysWriter"><span class="hs-identifier hs-type">initialSysWriter</span></a></span><span>                </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOSysWriter"><span class="hs-identifier hs-type">XIOSysWriter</span></a></span><span>
+</span><span id="line-76"></span><span id="initialSysWriter"><span class="annot"><span class="annottext">initialSysWriter :: XIOSysWriter
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialSysWriter"><span class="hs-identifier hs-var hs-var">initialSysWriter</span></a></span></span><span>                </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOwrt :: Int
+-&gt; XmlTrees
+-&gt; IOSArrow XmlTree XmlTree
+-&gt; Int
+-&gt; Int
+-&gt; AssocList String XmlTrees
+-&gt; XIOSysWriter
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOwrt"><span class="hs-identifier hs-type">XIOwrt</span></a></span><span>
+</span><span id="line-77"></span><span>                                  </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">xioErrorStatus :: Int
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioErrorStatus"><span class="hs-identifier hs-var">xioErrorStatus</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="Text.XML.HXT.DOM.TypeDefs.html#c_ok"><span class="hs-identifier hs-var">c_ok</span></a></span><span>
+</span><span id="line-78"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioErrorMsgList :: XmlTrees
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioErrorMsgList"><span class="hs-identifier hs-var">xioErrorMsgList</span></a></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-79"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioExpatErrors :: IOSArrow XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioExpatErrors"><span class="hs-identifier hs-var">xioExpatErrors</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IOSArrow XmlTree XmlTree
+forall (a :: * -&gt; * -&gt; *) b c. ArrowList a =&gt; a b c
+</span><a href="Control.Arrow.ArrowList.html#none"><span class="hs-identifier hs-var">none</span></a></span><span>
+</span><span id="line-80"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioRelaxNoOfErrors :: Int
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioRelaxNoOfErrors"><span class="hs-identifier hs-var">xioRelaxNoOfErrors</span></a></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-81"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioRelaxDefineId :: Int
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioRelaxDefineId"><span class="hs-identifier hs-var">xioRelaxDefineId</span></a></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-82"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioRelaxAttrList :: AssocList String XmlTrees
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioRelaxAttrList"><span class="hs-identifier hs-var">xioRelaxAttrList</span></a></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-83"></span><span>                                  </span><span class="hs-special">}</span><span>
+</span><span id="line-84"></span><span>
+</span><span id="line-85"></span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialSysEnv"><span class="hs-identifier hs-type">initialSysEnv</span></a></span><span>                   </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOSysEnv"><span class="hs-identifier hs-type">XIOSysEnv</span></a></span><span>
+</span><span id="line-86"></span><span id="initialSysEnv"><span class="annot"><span class="annottext">initialSysEnv :: XIOSysEnv
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialSysEnv"><span class="hs-identifier hs-var hs-var">initialSysEnv</span></a></span></span><span>                   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOEnv :: Int
+-&gt; (Int -&gt; String -&gt; IO ())
+-&gt; (String -&gt; IO ())
+-&gt; Bool
+-&gt; String
+-&gt; String
+-&gt; Attributes
+-&gt; XIOInputConfig
+-&gt; XIOParseConfig
+-&gt; XIOOutputConfig
+-&gt; XIORelaxConfig
+-&gt; XIOXmlSchemaConfig
+-&gt; XIOCacheConfig
+-&gt; XIOSysEnv
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOEnv"><span class="hs-identifier hs-type">XIOEnv</span></a></span><span>
+</span><span id="line-87"></span><span>                                  </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">xioTraceLevel :: Int
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioTraceLevel"><span class="hs-identifier hs-var">xioTraceLevel</span></a></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-88"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioTraceCmd :: Int -&gt; String -&gt; IO ()
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioTraceCmd"><span class="hs-identifier hs-var">xioTraceCmd</span></a></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; String -&gt; IO ()
+</span><a href="Text.XML.HXT.Arrow.XmlState.TraceHandling.html#traceOutputToStderr"><span class="hs-identifier hs-var">traceOutputToStderr</span></a></span><span>
+</span><span id="line-89"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioErrorMsgHandler :: String -&gt; IO ()
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioErrorMsgHandler"><span class="hs-identifier hs-var">xioErrorMsgHandler</span></a></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO ()
+</span><a href="Text.XML.HXT.Arrow.XmlState.ErrorHandling.html#errorOutputToStderr"><span class="hs-identifier hs-var">errorOutputToStderr</span></a></span><span>
+</span><span id="line-90"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioErrorMsgCollect :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioErrorMsgCollect"><span class="hs-identifier hs-var">xioErrorMsgCollect</span></a></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-91"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioBaseURI :: String
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioBaseURI"><span class="hs-identifier hs-var">xioBaseURI</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-92"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioDefaultBaseURI :: String
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioDefaultBaseURI"><span class="hs-identifier hs-var">xioDefaultBaseURI</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-93"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioAttrList :: Attributes
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioAttrList"><span class="hs-identifier hs-var">xioAttrList</span></a></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-94"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioInputConfig :: XIOInputConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioInputConfig"><span class="hs-identifier hs-var">xioInputConfig</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOInputConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialInputConfig"><span class="hs-identifier hs-var">initialInputConfig</span></a></span><span>
+</span><span id="line-95"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioParseConfig :: XIOParseConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioParseConfig"><span class="hs-identifier hs-var">xioParseConfig</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOParseConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialParseConfig"><span class="hs-identifier hs-var">initialParseConfig</span></a></span><span>
+</span><span id="line-96"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioOutputConfig :: XIOOutputConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioOutputConfig"><span class="hs-identifier hs-var">xioOutputConfig</span></a></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOOutputConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialOutputConfig"><span class="hs-identifier hs-var">initialOutputConfig</span></a></span><span>
+</span><span id="line-97"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioRelaxConfig :: XIORelaxConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioRelaxConfig"><span class="hs-identifier hs-var">xioRelaxConfig</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIORelaxConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialRelaxConfig"><span class="hs-identifier hs-var">initialRelaxConfig</span></a></span><span>
+</span><span id="line-98"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioXmlSchemaConfig :: XIOXmlSchemaConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioXmlSchemaConfig"><span class="hs-identifier hs-var">xioXmlSchemaConfig</span></a></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOXmlSchemaConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialXmlSchemaConfig"><span class="hs-identifier hs-var">initialXmlSchemaConfig</span></a></span><span>
+</span><span id="line-99"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioCacheConfig :: XIOCacheConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioCacheConfig"><span class="hs-identifier hs-var">xioCacheConfig</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOCacheConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialCacheConfig"><span class="hs-identifier hs-var">initialCacheConfig</span></a></span><span>
+</span><span id="line-100"></span><span>                                  </span><span class="hs-special">}</span><span>
+</span><span id="line-101"></span><span>
+</span><span id="line-102"></span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialInputConfig"><span class="hs-identifier hs-type">initialInputConfig</span></a></span><span>              </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOInputConfig"><span class="hs-identifier hs-type">XIOInputConfig</span></a></span><span>
+</span><span id="line-103"></span><span id="initialInputConfig"><span class="annot"><span class="annottext">initialInputConfig :: XIOInputConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialInputConfig"><span class="hs-identifier hs-var hs-var">initialInputConfig</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOIcgf :: Bool
+-&gt; Bool
+-&gt; String
+-&gt; IOSArrow XmlTree XmlTree
+-&gt; Attributes
+-&gt; Bool
+-&gt; String
+-&gt; XIOInputConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOIcgf"><span class="hs-identifier hs-type">XIOIcgf</span></a></span><span>
+</span><span id="line-104"></span><span>                                  </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">xioStrictInput :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioStrictInput"><span class="hs-identifier hs-var">xioStrictInput</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-105"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioEncodingErrors :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioEncodingErrors"><span class="hs-identifier hs-var">xioEncodingErrors</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-106"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioInputEncoding :: String
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioInputEncoding"><span class="hs-identifier hs-var">xioInputEncoding</span></a></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-107"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioHttpHandler :: IOSArrow XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioHttpHandler"><span class="hs-identifier hs-var">xioHttpHandler</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IOSArrow XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyHTTPHandler"><span class="hs-identifier hs-var">dummyHTTPHandler</span></a></span><span>
+</span><span id="line-108"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioInputOptions :: Attributes
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioInputOptions"><span class="hs-identifier hs-var">xioInputOptions</span></a></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-109"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioRedirect :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioRedirect"><span class="hs-identifier hs-var">xioRedirect</span></a></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-110"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioProxy :: String
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioProxy"><span class="hs-identifier hs-var">xioProxy</span></a></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-111"></span><span>                                  </span><span class="hs-special">}</span><span>
+</span><span id="line-112"></span><span>
+</span><span id="line-113"></span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialParseConfig"><span class="hs-identifier hs-type">initialParseConfig</span></a></span><span>              </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOParseConfig"><span class="hs-identifier hs-type">XIOParseConfig</span></a></span><span>
+</span><span id="line-114"></span><span id="initialParseConfig"><span class="annot"><span class="annottext">initialParseConfig :: XIOParseConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialParseConfig"><span class="hs-identifier hs-var hs-var">initialParseConfig</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOPcfg :: MimeTypeTable
+-&gt; MimeTypeHandlers
+-&gt; String
+-&gt; [String]
+-&gt; String
+-&gt; Bool
+-&gt; Bool
+-&gt; Bool
+-&gt; Bool
+-&gt; Bool
+-&gt; Bool
+-&gt; Bool
+-&gt; Bool
+-&gt; Bool
+-&gt; Bool
+-&gt; Bool
+-&gt; Bool
+-&gt; Bool
+-&gt; IOSArrow XmlTree XmlTree
+-&gt; Bool
+-&gt; IOSArrow XmlTree XmlTree
+-&gt; XIOParseConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOPcfg"><span class="hs-identifier hs-type">XIOPcfg</span></a></span><span>
+</span><span id="line-115"></span><span>                                  </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">xioMimeTypes :: MimeTypeTable
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioMimeTypes"><span class="hs-identifier hs-var">xioMimeTypes</span></a></span><span>                </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">MimeTypeTable
+</span><a href="Text.XML.HXT.DOM.MimeTypes.html#defaultMimeTypeTable"><span class="hs-identifier hs-var">defaultMimeTypeTable</span></a></span><span>
+</span><span id="line-116"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioMimeTypeHandlers :: MimeTypeHandlers
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioMimeTypeHandlers"><span class="hs-identifier hs-var">xioMimeTypeHandlers</span></a></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">MimeTypeHandlers
+forall k a. Map k a
+</span><span class="hs-identifier hs-var">empty</span></span><span>
+</span><span id="line-117"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioMimeTypeFile :: String
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioMimeTypeFile"><span class="hs-identifier hs-var">xioMimeTypeFile</span></a></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-118"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioAcceptedMimeTypes :: [String]
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioAcceptedMimeTypes"><span class="hs-identifier hs-var">xioAcceptedMimeTypes</span></a></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-119"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioFileMimeType :: String
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioFileMimeType"><span class="hs-identifier hs-var">xioFileMimeType</span></a></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-120"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioWarnings :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioWarnings"><span class="hs-identifier hs-var">xioWarnings</span></a></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-121"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioRemoveWS :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioRemoveWS"><span class="hs-identifier hs-var">xioRemoveWS</span></a></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-122"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioParseByMimeType :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioParseByMimeType"><span class="hs-identifier hs-var">xioParseByMimeType</span></a></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-123"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioParseHTML :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioParseHTML"><span class="hs-identifier hs-var">xioParseHTML</span></a></span><span>                </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-124"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioLowerCaseNames :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioLowerCaseNames"><span class="hs-identifier hs-var">xioLowerCaseNames</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-125"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioTagSoup :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioTagSoup"><span class="hs-identifier hs-var">xioTagSoup</span></a></span><span>                  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-126"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioPreserveComment :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioPreserveComment"><span class="hs-identifier hs-var">xioPreserveComment</span></a></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-127"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioValidate :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioValidate"><span class="hs-identifier hs-var">xioValidate</span></a></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-128"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioSubstDTDEntities :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioSubstDTDEntities"><span class="hs-identifier hs-var">xioSubstDTDEntities</span></a></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-129"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioSubstHTMLEntities :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioSubstHTMLEntities"><span class="hs-identifier hs-var">xioSubstHTMLEntities</span></a></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-130"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioCheckNamespaces :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioCheckNamespaces"><span class="hs-identifier hs-var">xioCheckNamespaces</span></a></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-131"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioCanonicalize :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioCanonicalize"><span class="hs-identifier hs-var">xioCanonicalize</span></a></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-132"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioIgnoreNoneXmlContents :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioIgnoreNoneXmlContents"><span class="hs-identifier hs-var">xioIgnoreNoneXmlContents</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-133"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioTagSoupParser :: IOSArrow XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioTagSoupParser"><span class="hs-identifier hs-var">xioTagSoupParser</span></a></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IOSArrow XmlTree XmlTree
+forall b. IOSArrow b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyTagSoupParser"><span class="hs-identifier hs-var">dummyTagSoupParser</span></a></span><span>
+</span><span id="line-134"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioExpat :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioExpat"><span class="hs-identifier hs-var">xioExpat</span></a></span><span>                    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-135"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioExpatParser :: IOSArrow XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioExpatParser"><span class="hs-identifier hs-var">xioExpatParser</span></a></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IOSArrow XmlTree XmlTree
+forall b. IOSArrow b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyExpatParser"><span class="hs-identifier hs-var">dummyExpatParser</span></a></span><span>
+</span><span id="line-136"></span><span>                                  </span><span class="hs-special">}</span><span>
+</span><span id="line-137"></span><span>
+</span><span id="line-138"></span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialOutputConfig"><span class="hs-identifier hs-type">initialOutputConfig</span></a></span><span>             </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOOutputConfig"><span class="hs-identifier hs-type">XIOOutputConfig</span></a></span><span>
+</span><span id="line-139"></span><span id="initialOutputConfig"><span class="annot"><span class="annottext">initialOutputConfig :: XIOOutputConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialOutputConfig"><span class="hs-identifier hs-var hs-var">initialOutputConfig</span></a></span></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOOcfg :: Bool
+-&gt; String
+-&gt; XIOXoutConfig
+-&gt; Bool
+-&gt; [String]
+-&gt; Bool
+-&gt; Bool
+-&gt; Bool
+-&gt; Bool
+-&gt; XIOOutputConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOOcfg"><span class="hs-identifier hs-type">XIOOcfg</span></a></span><span>
+</span><span id="line-140"></span><span>                                  </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">xioIndent :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioIndent"><span class="hs-identifier hs-var">xioIndent</span></a></span><span>                   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-141"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioOutputEncoding :: String
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioOutputEncoding"><span class="hs-identifier hs-var">xioOutputEncoding</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-142"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioOutputFmt :: XIOXoutConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioOutputFmt"><span class="hs-identifier hs-var">xioOutputFmt</span></a></span><span>                </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOXoutConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XMLoutput"><span class="hs-identifier hs-var">XMLoutput</span></a></span><span>
+</span><span id="line-143"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioXmlPi :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioXmlPi"><span class="hs-identifier hs-var">xioXmlPi</span></a></span><span>                    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-144"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioNoEmptyElemFor :: [String]
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioNoEmptyElemFor"><span class="hs-identifier hs-var">xioNoEmptyElemFor</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-145"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioAddDefaultDTD :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioAddDefaultDTD"><span class="hs-identifier hs-var">xioAddDefaultDTD</span></a></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-146"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioTextMode :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioTextMode"><span class="hs-identifier hs-var">xioTextMode</span></a></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-147"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioShowTree :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioShowTree"><span class="hs-identifier hs-var">xioShowTree</span></a></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-148"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioShowHaskell :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioShowHaskell"><span class="hs-identifier hs-var">xioShowHaskell</span></a></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-149"></span><span>                                  </span><span class="hs-special">}</span><span>
+</span><span id="line-150"></span><span>
+</span><span id="line-151"></span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialRelaxConfig"><span class="hs-identifier hs-type">initialRelaxConfig</span></a></span><span>              </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIORelaxConfig"><span class="hs-identifier hs-type">XIORelaxConfig</span></a></span><span>
+</span><span id="line-152"></span><span id="initialRelaxConfig"><span class="annot"><span class="annottext">initialRelaxConfig :: XIORelaxConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialRelaxConfig"><span class="hs-identifier hs-var hs-var">initialRelaxConfig</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIORxc :: Bool
+-&gt; String
+-&gt; Bool
+-&gt; Bool
+-&gt; Bool
+-&gt; Bool
+-&gt; IOSArrow XmlTree XmlTree
+-&gt; XIORelaxConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIORxc"><span class="hs-identifier hs-type">XIORxc</span></a></span><span>
+</span><span id="line-153"></span><span>                                  </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">xioRelaxValidate :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioRelaxValidate"><span class="hs-identifier hs-var">xioRelaxValidate</span></a></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-154"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioRelaxSchema :: String
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioRelaxSchema"><span class="hs-identifier hs-var">xioRelaxSchema</span></a></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-155"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioRelaxCheckRestr :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioRelaxCheckRestr"><span class="hs-identifier hs-var">xioRelaxCheckRestr</span></a></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-156"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioRelaxValidateExtRef :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioRelaxValidateExtRef"><span class="hs-identifier hs-var">xioRelaxValidateExtRef</span></a></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-157"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioRelaxValidateInclude :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioRelaxValidateInclude"><span class="hs-identifier hs-var">xioRelaxValidateInclude</span></a></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-158"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioRelaxCollectErrors :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioRelaxCollectErrors"><span class="hs-identifier hs-var">xioRelaxCollectErrors</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-159"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioRelaxValidator :: IOSArrow XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioRelaxValidator"><span class="hs-identifier hs-var">xioRelaxValidator</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IOSArrow XmlTree XmlTree
+forall b. IOSArrow b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyRelaxValidator"><span class="hs-identifier hs-var">dummyRelaxValidator</span></a></span><span>
+</span><span id="line-160"></span><span>                                  </span><span class="hs-special">}</span><span>
+</span><span id="line-161"></span><span>
+</span><span id="line-162"></span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialXmlSchemaConfig"><span class="hs-identifier hs-type">initialXmlSchemaConfig</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOXmlSchemaConfig"><span class="hs-identifier hs-type">XIOXmlSchemaConfig</span></a></span><span>
+</span><span id="line-163"></span><span id="initialXmlSchemaConfig"><span class="annot"><span class="annottext">initialXmlSchemaConfig :: XIOXmlSchemaConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialXmlSchemaConfig"><span class="hs-identifier hs-var hs-var">initialXmlSchemaConfig</span></a></span></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOScc :: Bool -&gt; String -&gt; IOSArrow XmlTree XmlTree -&gt; XIOXmlSchemaConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOScc"><span class="hs-identifier hs-type">XIOScc</span></a></span><span>
+</span><span id="line-164"></span><span>                                  </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">xioXmlSchemaValidate :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioXmlSchemaValidate"><span class="hs-identifier hs-var">xioXmlSchemaValidate</span></a></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-165"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioXmlSchemaSchema :: String
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioXmlSchemaSchema"><span class="hs-identifier hs-var">xioXmlSchemaSchema</span></a></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-166"></span><span>                                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioXmlSchemaValidator :: IOSArrow XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioXmlSchemaValidator"><span class="hs-identifier hs-var">xioXmlSchemaValidator</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IOSArrow XmlTree XmlTree
+forall b. IOSArrow b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyXmlSchemaValidator"><span class="hs-identifier hs-var">dummyXmlSchemaValidator</span></a></span><span>
+</span><span id="line-167"></span><span>                                  </span><span class="hs-special">}</span><span>
+</span><span id="line-168"></span><span>
+</span><span id="line-169"></span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialCacheConfig"><span class="hs-identifier hs-type">initialCacheConfig</span></a></span><span>              </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOCacheConfig"><span class="hs-identifier hs-type">XIOCacheConfig</span></a></span><span>
+</span><span id="line-170"></span><span id="initialCacheConfig"><span class="annot"><span class="annottext">initialCacheConfig :: XIOCacheConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialCacheConfig"><span class="hs-identifier hs-var hs-var">initialCacheConfig</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XIOCch :: CompressionFct
+-&gt; CompressionFct
+-&gt; Bool
+-&gt; String
+-&gt; Int
+-&gt; Bool
+-&gt; (String -&gt; IOSArrow XmlTree XmlTree)
+-&gt; Bool
+-&gt; XIOCacheConfig
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOCch"><span class="hs-identifier hs-type">XIOCch</span></a></span><span>
+</span><span id="line-171"></span><span>                                   </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">xioBinaryCompression :: CompressionFct
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioBinaryCompression"><span class="hs-identifier hs-var">xioBinaryCompression</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CompressionFct
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-172"></span><span>                                   </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioBinaryDeCompression :: CompressionFct
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioBinaryDeCompression"><span class="hs-identifier hs-var">xioBinaryDeCompression</span></a></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CompressionFct
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-173"></span><span>                                   </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioWithCache :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioWithCache"><span class="hs-identifier hs-var">xioWithCache</span></a></span><span>               </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-174"></span><span>                                   </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioCacheDir :: String
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioCacheDir"><span class="hs-identifier hs-var">xioCacheDir</span></a></span><span>                </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-175"></span><span>                                   </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioDocumentAge :: Int
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioDocumentAge"><span class="hs-identifier hs-var">xioDocumentAge</span></a></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-176"></span><span>                                   </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioCache404Err :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioCache404Err"><span class="hs-identifier hs-var">xioCache404Err</span></a></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-177"></span><span>                                   </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioCacheRead :: String -&gt; IOSArrow XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioCacheRead"><span class="hs-identifier hs-var">xioCacheRead</span></a></span><span>               </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; IOSArrow XmlTree XmlTree
+forall b. String -&gt; IOSArrow b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyCacheRead"><span class="hs-identifier hs-var">dummyCacheRead</span></a></span><span>
+</span><span id="line-178"></span><span>                                   </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">xioStrictDeserialize :: Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#xioStrictDeserialize"><span class="hs-identifier hs-var">xioStrictDeserialize</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-179"></span><span>                                   </span><span class="hs-special">}</span><span>
+</span><span id="line-180"></span><span>
+</span><span id="line-181"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-182"></span><span>
+</span><span id="line-183"></span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyHTTPHandler"><span class="hs-identifier hs-type">dummyHTTPHandler</span></a></span><span>        </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOSArrow"><span class="hs-identifier hs-type">IOSArrow</span></a></span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#XmlTree"><span class="hs-identifier hs-type">XmlTree</span></a></span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#XmlTree"><span class="hs-identifier hs-type">XmlTree</span></a></span><span>
+</span><span id="line-184"></span><span id="dummyHTTPHandler"><span class="annot"><span class="annottext">dummyHTTPHandler :: IOSArrow XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyHTTPHandler"><span class="hs-identifier hs-var hs-var">dummyHTTPHandler</span></a></span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">String -&gt; IOSArrow XmlTree XmlTree
+forall s b. String -&gt; IOStateArrow s b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.ErrorHandling.html#issueFatal"><span class="hs-identifier hs-var">issueFatal</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; IOSArrow XmlTree XmlTree)
+-&gt; String -&gt; IOSArrow XmlTree XmlTree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-185"></span><span>                            </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><span class="hs-identifier hs-var">unlines</span></span><span> </span><span class="annot"><span class="annottext">([String] -&gt; String) -&gt; [String] -&gt; String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-186"></span><span>                            </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;HTTP handler not configured,&quot;</span></span><span>
+</span><span id="line-187"></span><span>                            </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;please install package hxt-curl and use 'withCurl' config option&quot;</span></span><span>
+</span><span id="line-188"></span><span>                            </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;or install package hxt-http and use 'withHTTP' config option&quot;</span></span><span>
+</span><span id="line-189"></span><span>                            </span><span class="hs-special">]</span><span>
+</span><span id="line-190"></span><span>                          </span><span class="hs-special">)</span><span>
+</span><span id="line-191"></span><span>                          </span><span class="annot"><span class="annottext">IOSArrow XmlTree XmlTree
+-&gt; IOSArrow XmlTree XmlTree -&gt; IOSArrow XmlTree XmlTree
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span>
+</span><span id="line-192"></span><span>                          </span><span class="annot"><span class="annottext">String -&gt; String -&gt; IOSArrow XmlTree XmlTree
+forall (a :: * -&gt; * -&gt; *).
+ArrowXml a =&gt;
+String -&gt; String -&gt; a XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#addAttr"><span class="hs-identifier hs-var">addAttr</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="Text.XML.HXT.DOM.XmlKeywords.html#transferMessage"><span class="hs-identifier hs-var">transferMessage</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;HTTP handler not configured&quot;</span></span><span>
+</span><span id="line-193"></span><span>                          </span><span class="annot"><span class="annottext">IOSArrow XmlTree XmlTree
+-&gt; IOSArrow XmlTree XmlTree -&gt; IOSArrow XmlTree XmlTree
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span>
+</span><span id="line-194"></span><span>                          </span><span class="annot"><span class="annottext">String -&gt; String -&gt; IOSArrow XmlTree XmlTree
+forall (a :: * -&gt; * -&gt; *).
+ArrowXml a =&gt;
+String -&gt; String -&gt; a XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#addAttr"><span class="hs-identifier hs-var">addAttr</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="Text.XML.HXT.DOM.XmlKeywords.html#transferStatus"><span class="hs-identifier hs-var">transferStatus</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;999&quot;</span></span><span>
+</span><span id="line-195"></span><span>
+</span><span id="line-196"></span><span>
+</span><span id="line-197"></span><span id="local-6989586621679185513"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyTagSoupParser"><span class="hs-identifier hs-type">dummyTagSoupParser</span></a></span><span>      </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOSArrow"><span class="hs-identifier hs-type">IOSArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185513"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185513"><span class="hs-identifier hs-type">b</span></a></span></span><span>
+</span><span id="line-198"></span><span id="dummyTagSoupParser"><span class="annot"><span class="annottext">dummyTagSoupParser :: IOSArrow b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyTagSoupParser"><span class="hs-identifier hs-var hs-var">dummyTagSoupParser</span></a></span></span><span>      </span><span class="hs-glyph">=</span><span>  </span><span class="annot"><span class="annottext">String -&gt; IOSArrow b b
+forall s b. String -&gt; IOStateArrow s b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.ErrorHandling.html#issueFatal"><span class="hs-identifier hs-var">issueFatal</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; IOSArrow b b) -&gt; String -&gt; IOSArrow b b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-199"></span><span>                           </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><span class="hs-identifier hs-var">unlines</span></span><span> </span><span class="annot"><span class="annottext">([String] -&gt; String) -&gt; [String] -&gt; String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-200"></span><span>                           </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;TagSoup parser not configured,&quot;</span></span><span>
+</span><span id="line-201"></span><span>                           </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;please install package hxt-tagsoup&quot;</span></span><span>
+</span><span id="line-202"></span><span>                           </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; and use 'withTagSoup' parser config option from this package&quot;</span></span><span>
+</span><span id="line-203"></span><span>                           </span><span class="hs-special">]</span><span>
+</span><span id="line-204"></span><span>
+</span><span id="line-205"></span><span id="local-6989586621679185353"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyExpatParser"><span class="hs-identifier hs-type">dummyExpatParser</span></a></span><span>        </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOSArrow"><span class="hs-identifier hs-type">IOSArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185353"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185353"><span class="hs-identifier hs-type">b</span></a></span></span><span>
+</span><span id="line-206"></span><span id="dummyExpatParser"><span class="annot"><span class="annottext">dummyExpatParser :: IOSArrow b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyExpatParser"><span class="hs-identifier hs-var hs-var">dummyExpatParser</span></a></span></span><span>        </span><span class="hs-glyph">=</span><span>  </span><span class="annot"><span class="annottext">String -&gt; IOSArrow b b
+forall s b. String -&gt; IOStateArrow s b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.ErrorHandling.html#issueFatal"><span class="hs-identifier hs-var">issueFatal</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; IOSArrow b b) -&gt; String -&gt; IOSArrow b b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-207"></span><span>                           </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><span class="hs-identifier hs-var">unlines</span></span><span> </span><span class="annot"><span class="annottext">([String] -&gt; String) -&gt; [String] -&gt; String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-208"></span><span>                           </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Expat parser not configured,&quot;</span></span><span>
+</span><span id="line-209"></span><span>                           </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;please install package hxt-expat&quot;</span></span><span>
+</span><span id="line-210"></span><span>                           </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; and use 'withExpat' parser config option from this package&quot;</span></span><span>
+</span><span id="line-211"></span><span>                           </span><span class="hs-special">]</span><span>
+</span><span id="line-212"></span><span>
+</span><span id="line-213"></span><span id="local-6989586621679185352"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyRelaxValidator"><span class="hs-identifier hs-type">dummyRelaxValidator</span></a></span><span>     </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOSArrow"><span class="hs-identifier hs-type">IOSArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185352"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185352"><span class="hs-identifier hs-type">b</span></a></span></span><span>
+</span><span id="line-214"></span><span id="dummyRelaxValidator"><span class="annot"><span class="annottext">dummyRelaxValidator :: IOSArrow b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyRelaxValidator"><span class="hs-identifier hs-var hs-var">dummyRelaxValidator</span></a></span></span><span>     </span><span class="hs-glyph">=</span><span>  </span><span class="annot"><span class="annottext">String -&gt; IOSArrow b b
+forall s b. String -&gt; IOStateArrow s b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.ErrorHandling.html#issueFatal"><span class="hs-identifier hs-var">issueFatal</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; IOSArrow b b) -&gt; String -&gt; IOSArrow b b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-215"></span><span>                           </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><span class="hs-identifier hs-var">unlines</span></span><span> </span><span class="annot"><span class="annottext">([String] -&gt; String) -&gt; [String] -&gt; String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-216"></span><span>                           </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;RelaxNG validator not configured,&quot;</span></span><span>
+</span><span id="line-217"></span><span>                           </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;please install package hxt-relaxng&quot;</span></span><span>
+</span><span id="line-218"></span><span>                           </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; and use 'withRelaxNG' config option from this package&quot;</span></span><span>
+</span><span id="line-219"></span><span>                           </span><span class="hs-special">]</span><span>
+</span><span id="line-220"></span><span>
+</span><span id="line-221"></span><span id="local-6989586621679185351"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyXmlSchemaValidator"><span class="hs-identifier hs-type">dummyXmlSchemaValidator</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOSArrow"><span class="hs-identifier hs-type">IOSArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185351"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185351"><span class="hs-identifier hs-type">b</span></a></span></span><span>
+</span><span id="line-222"></span><span id="dummyXmlSchemaValidator"><span class="annot"><span class="annottext">dummyXmlSchemaValidator :: IOSArrow b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyXmlSchemaValidator"><span class="hs-identifier hs-var hs-var">dummyXmlSchemaValidator</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>  </span><span class="annot"><span class="annottext">String -&gt; IOSArrow b b
+forall s b. String -&gt; IOStateArrow s b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.ErrorHandling.html#issueFatal"><span class="hs-identifier hs-var">issueFatal</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; IOSArrow b b) -&gt; String -&gt; IOSArrow b b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-223"></span><span>                           </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><span class="hs-identifier hs-var">unlines</span></span><span> </span><span class="annot"><span class="annottext">([String] -&gt; String) -&gt; [String] -&gt; String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-224"></span><span>                           </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;XML Schema validator not configured,&quot;</span></span><span>
+</span><span id="line-225"></span><span>                           </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;please install package hxt-xmlschema&quot;</span></span><span>
+</span><span id="line-226"></span><span>                           </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; and use 'withXmlSchema' config option from this package&quot;</span></span><span>
+</span><span id="line-227"></span><span>                           </span><span class="hs-special">]</span><span>
+</span><span id="line-228"></span><span>
+</span><span id="line-229"></span><span id="local-6989586621679185509"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyCacheRead"><span class="hs-identifier hs-type">dummyCacheRead</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOSArrow"><span class="hs-identifier hs-type">IOSArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185509"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185509"><span class="hs-identifier hs-type">b</span></a></span></span><span>
+</span><span id="line-230"></span><span id="dummyCacheRead"><span class="annot"><span class="annottext">dummyCacheRead :: String -&gt; IOSArrow b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#dummyCacheRead"><span class="hs-identifier hs-var hs-var">dummyCacheRead</span></a></span></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IOSArrow b b -&gt; String -&gt; IOSArrow b b
+forall a b. a -&gt; b -&gt; a
+</span><span class="hs-identifier hs-var">const</span></span><span> </span><span class="annot"><span class="annottext">(IOSArrow b b -&gt; String -&gt; IOSArrow b b)
+-&gt; IOSArrow b b -&gt; String -&gt; IOSArrow b b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-231"></span><span>                          </span><span class="annot"><span class="annottext">String -&gt; IOSArrow b b
+forall s b. String -&gt; IOStateArrow s b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.ErrorHandling.html#issueFatal"><span class="hs-identifier hs-var">issueFatal</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; IOSArrow b b) -&gt; String -&gt; IOSArrow b b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-232"></span><span>                          </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><span class="hs-identifier hs-var">unlines</span></span><span> </span><span class="annot"><span class="annottext">([String] -&gt; String) -&gt; [String] -&gt; String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-233"></span><span>                          </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Document cache not configured,&quot;</span></span><span>
+</span><span id="line-234"></span><span>                          </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;please install package hxt-cache and use 'withCache' config option&quot;</span></span><span>
+</span><span id="line-235"></span><span>                          </span><span class="hs-special">]</span><span>
+</span><span id="line-236"></span><span>
+</span><span id="line-237"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-238"></span><span>
+</span><span id="line-239"></span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#getConfigAttr"><span class="hs-identifier hs-type">getConfigAttr</span></a></span><span>           </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#SysConfigList"><span class="hs-identifier hs-type">SysConfigList</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-240"></span><span id="getConfigAttr"><span class="annot"><span class="annottext">getConfigAttr :: String -&gt; SysConfigList -&gt; String
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#getConfigAttr"><span class="hs-identifier hs-var hs-var">getConfigAttr</span></a></span></span><span> </span><span id="local-6989586621679185348"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185348"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679185347"><span class="annot"><span class="annottext">SysConfigList
+</span><a href="#local-6989586621679185347"><span class="hs-identifier hs-var">c</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Attributes -&gt; String
+forall k e. Eq k =&gt; k -&gt; AssocList k [e] -&gt; [e]
+</span><a href="Data.AssocList.html#lookup1"><span class="hs-identifier hs-var">lookup1</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185348"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">(Attributes -&gt; String) -&gt; Attributes -&gt; String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Attributes
+</span><a href="#local-6989586621679185345"><span class="hs-identifier hs-var">tl</span></a></span><span>
+</span><span id="line-241"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-242"></span><span>    </span><span id="local-6989586621679185344"><span class="annot"><span class="annottext">s :: XIOSysState
+</span><a href="#local-6989586621679185344"><span class="hs-identifier hs-var hs-var">s</span></a></span></span><span>                   </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">((XIOSysState -&gt; XIOSysState)
+ -&gt; (XIOSysState -&gt; XIOSysState) -&gt; XIOSysState -&gt; XIOSysState)
+-&gt; (XIOSysState -&gt; XIOSysState)
+-&gt; SysConfigList
+-&gt; XIOSysState
+-&gt; XIOSysState
+forall (t :: * -&gt; *) a b.
+Foldable t =&gt;
+(a -&gt; b -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldr</span></span><span> </span><span class="annot"><span class="annottext">(XIOSysState -&gt; XIOSysState)
+-&gt; (XIOSysState -&gt; XIOSysState) -&gt; XIOSysState -&gt; XIOSysState
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">(&gt;&gt;&gt;)</span></span><span> </span><span class="annot"><span class="annottext">XIOSysState -&gt; XIOSysState
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="annot"><span class="annottext">SysConfigList
+</span><a href="#local-6989586621679185347"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">XIOSysState
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialSysState"><span class="hs-identifier hs-var">initialSysState</span></a></span><span>
+</span><span id="line-243"></span><span>    </span><span id="local-6989586621679185345"><span class="annot"><span class="annottext">tl :: Attributes
+</span><a href="#local-6989586621679185345"><span class="hs-identifier hs-var hs-var">tl</span></a></span></span><span>                  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState Attributes -&gt; XIOSysState -&gt; Attributes
+forall s a. Selector s a -&gt; s -&gt; a
+</span><a href="Data.Function.Selector.html#getS"><span class="hs-identifier hs-var hs-var">getS</span></a></span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState Attributes
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#theAttrList"><span class="hs-identifier hs-var">theAttrList</span></a></span><span> </span><span class="annot"><span class="annottext">XIOSysState
+</span><a href="#local-6989586621679185344"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-244"></span><span>
+</span><span id="line-245"></span><span class="hs-comment">-- ----------------------------------------</span><span>
+</span><span id="line-246"></span><span>
+</span><span id="line-247"></span><span id="local-6989586621679185340"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#theSysConfigComp"><span class="hs-identifier hs-type">theSysConfigComp</span></a></span><span>        </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Function.Selector.html#Selector"><span class="hs-identifier hs-type">Selector</span></a></span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#XIOSysState"><span class="hs-identifier hs-type">XIOSysState</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185340"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Function.Selector.html#Selector"><span class="hs-identifier hs-type">Selector</span></a></span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#SysConfig"><span class="hs-identifier hs-type">SysConfig</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185340"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-248"></span><span id="theSysConfigComp"><span class="annot"><span class="annottext">theSysConfigComp :: Selector XIOSysState a -&gt; Selector (XIOSysState -&gt; XIOSysState) a
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#theSysConfigComp"><span class="hs-identifier hs-var hs-var">theSysConfigComp</span></a></span></span><span> </span><span id="local-6989586621679185337"><span class="annot"><span class="annottext">Selector XIOSysState a
+</span><a href="#local-6989586621679185337"><span class="hs-identifier hs-var">sel</span></a></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">S :: forall s a. (s -&gt; a) -&gt; (a -&gt; s -&gt; s) -&gt; Selector s a
+</span><a href="Data.Function.Selector.html#S"><span class="hs-identifier hs-type">S</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">getS :: (XIOSysState -&gt; XIOSysState) -&gt; a
+</span><a href="Data.Function.Selector.html#getS"><span class="hs-identifier hs-var">getS</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span>     </span><span id="local-6989586621679185335"><span class="annot"><span class="annottext">XIOSysState -&gt; XIOSysState
+</span><a href="#local-6989586621679185335"><span class="hs-identifier hs-var">cf</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState a -&gt; XIOSysState -&gt; a
+forall s a. Selector s a -&gt; s -&gt; a
+</span><a href="Data.Function.Selector.html#getS"><span class="hs-identifier hs-var hs-var">getS</span></a></span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState a
+</span><a href="#local-6989586621679185337"><span class="hs-identifier hs-var">sel</span></a></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">XIOSysState -&gt; XIOSysState
+</span><a href="#local-6989586621679185335"><span class="hs-identifier hs-var">cf</span></a></span><span> </span><span class="annot"><span class="annottext">XIOSysState
+</span><a href="Text.XML.HXT.Arrow.XmlState.RunIOStateArrow.html#initialSysState"><span class="hs-identifier hs-var">initialSysState</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-249"></span><span>                            </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">setS :: a -&gt; (XIOSysState -&gt; XIOSysState) -&gt; XIOSysState -&gt; XIOSysState
+</span><a href="Data.Function.Selector.html#setS"><span class="hs-identifier hs-var">setS</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679185333"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679185333"><span class="hs-identifier hs-var">val</span></a></span></span><span> </span><span id="local-6989586621679185332"><span class="annot"><span class="annottext">XIOSysState -&gt; XIOSysState
+</span><a href="#local-6989586621679185332"><span class="hs-identifier hs-var">cf</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState a -&gt; a -&gt; XIOSysState -&gt; XIOSysState
+forall s a. Selector s a -&gt; a -&gt; s -&gt; s
+</span><a href="Data.Function.Selector.html#setS"><span class="hs-identifier hs-var hs-var">setS</span></a></span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState a
+</span><a href="#local-6989586621679185337"><span class="hs-identifier hs-var">sel</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679185333"><span class="hs-identifier hs-var">val</span></a></span><span> </span><span class="annot"><span class="annottext">(XIOSysState -&gt; XIOSysState)
+-&gt; (XIOSysState -&gt; XIOSysState) -&gt; XIOSysState -&gt; XIOSysState
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">XIOSysState -&gt; XIOSysState
+</span><a href="#local-6989586621679185332"><span class="hs-identifier hs-var">cf</span></a></span><span>
+</span><span id="line-250"></span><span>                            </span><span class="hs-special">}</span><span>
+</span><span id="line-251"></span><span>
+</span><span id="line-252"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-253"></span></pre></body></html>

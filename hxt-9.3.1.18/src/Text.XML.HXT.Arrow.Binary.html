@@ -1,0 +1,204 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+   Module     : Text.XML.HXT.Arrow.Binary
+   Copyright  : Copyright (C) 2008 Uwe Schmidt
+   License    : MIT
+
+   Maintainer : Uwe Schmidt (uwe@fh-wedel.de)
+   Stability  : experimental
+   Portability: portable
+
+   De-/Serialisation arrows for XmlTrees and other arbitrary values with a Binary instance
+-}</span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.XML.HXT.Arrow.Binary</span><span>
+</span><span id="line-18"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Binary.html#readBinaryValue"><span class="hs-identifier">readBinaryValue</span></a></span><span>
+</span><span id="line-19"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Binary.html#writeBinaryValue"><span class="hs-identifier">writeBinaryValue</span></a></span><span>
+</span><span id="line-20"></span><span>    </span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Arrow</span></span><span>                             </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Control.Arrow.ArrowExc.html"><span class="hs-identifier">Control.Arrow.ArrowExc</span></a></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Control.Arrow.ArrowIO.html"><span class="hs-identifier">Control.Arrow.ArrowIO</span></a></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Control.Arrow.ArrowList.html"><span class="hs-identifier">Control.Arrow.ArrowList</span></a></span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Binary</span></span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString.Lazy</span></span><span>                      </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">B</span></span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO</span></span><span>                                 </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">IOMode</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">hClose</span></span><span class="hs-special">,</span><span>
+</span><span id="line-32"></span><span>                                                            </span><span class="annot"><span class="hs-identifier">openBinaryFile</span></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.ErrorHandling.html"><span class="hs-identifier">Text.XML.HXT.Arrow.XmlState.ErrorHandling</span></a></span><span>
+</span><span id="line-35"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html"><span class="hs-identifier">Text.XML.HXT.Arrow.XmlState.TypeDefs</span></a></span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span id="local-6989586621679179781"><span id="local-6989586621679179782"><span id="local-6989586621679179783"><span class="annot"><a href="Text.XML.HXT.Arrow.Binary.html#readBinaryValue"><span class="hs-identifier hs-type">readBinaryValue</span></a></span><span>         </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Binary</span></span><span> </span><span class="annot"><a href="#local-6989586621679179783"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOStateArrow"><span class="hs-identifier hs-type">IOStateArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679179782"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679179781"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679179783"><span class="hs-identifier hs-type">a</span></a></span></span></span></span><span>
+</span><span id="line-40"></span><span id="readBinaryValue"><span class="annot"><span class="annottext">readBinaryValue :: String -&gt; IOStateArrow s b a
+</span><a href="Text.XML.HXT.Arrow.Binary.html#readBinaryValue"><span class="hs-identifier hs-var hs-var">readBinaryValue</span></a></span></span><span> </span><span id="local-6989586621679179780"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679179780"><span class="hs-identifier hs-var">file</span></a></span></span><span>
+</span><span id="line-41"></span><span>                        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Bool -&gt; DeCompressionFct -&gt; IOStateArrow s b a)
+-&gt; (Bool, DeCompressionFct) -&gt; IOStateArrow s b a
+forall a b c. (a -&gt; b -&gt; c) -&gt; (a, b) -&gt; c
+</span><span class="hs-identifier hs-var">uncurry</span></span><span> </span><span class="annot"><span class="annottext">((Bool -&gt; DeCompressionFct -&gt; IOStateArrow s b a)
+ -&gt; (Bool, DeCompressionFct) -&gt; IOStateArrow s b a)
+-&gt; (Bool -&gt; DeCompressionFct -&gt; IOStateArrow s b a)
+-&gt; (Bool, DeCompressionFct)
+-&gt; IOStateArrow s b a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Bool -&gt; DeCompressionFct -&gt; IOStateArrow s b a
+forall a s b.
+Binary a =&gt;
+String -&gt; Bool -&gt; DeCompressionFct -&gt; IOStateArrow s b a
+</span><a href="Text.XML.HXT.Arrow.Binary.html#decodeBinaryValue"><span class="hs-identifier hs-var">decodeBinaryValue</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679179780"><span class="hs-identifier hs-var">file</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-42"></span><span>                          </span><span class="annot"><span class="annottext">((Bool, DeCompressionFct) -&gt; IOStateArrow s b a)
+-&gt; IOSLA (XIOState s) b (Bool, DeCompressionFct)
+-&gt; IOStateArrow s b a
+forall (a :: * -&gt; * -&gt; *) c b d.
+ArrowList a =&gt;
+(c -&gt; a b d) -&gt; a b c -&gt; a b d
+</span><a href="Control.Arrow.ArrowList.html#%24%3C"><span class="hs-operator hs-var">$&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState (Bool, DeCompressionFct)
+-&gt; IOSLA (XIOState s) b (Bool, DeCompressionFct)
+forall c s b. Selector XIOSysState c -&gt; IOStateArrow s b c
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#getSysVar"><span class="hs-identifier hs-var">getSysVar</span></a></span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState Bool
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#theStrictDeserialize"><span class="hs-identifier hs-var">theStrictDeserialize</span></a></span><span>
+</span><span id="line-43"></span><span>                                         </span><span class="annot"><span class="annottext">Selector XIOSysState Bool
+-&gt; Selector XIOSysState DeCompressionFct
+-&gt; Selector XIOSysState (Bool, DeCompressionFct)
+forall s a b. Selector s a -&gt; Selector s b -&gt; Selector s (a, b)
+</span><a href="Data.Function.Selector.html#.%26%26%26."><span class="hs-operator hs-var">.&amp;&amp;&amp;.</span></a></span><span>
+</span><span id="line-44"></span><span>                                         </span><span class="annot"><span class="annottext">Selector XIOSysState DeCompressionFct
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#theBinaryDeCompression"><span class="hs-identifier hs-var">theBinaryDeCompression</span></a></span><span>
+</span><span id="line-45"></span><span>                                       </span><span class="hs-special">)</span><span>
+</span><span id="line-46"></span><span>
+</span><span id="line-47"></span><span class="hs-comment">-- | Read a serialied value from a file, optionally decompress it and decode the value</span><span>
+</span><span id="line-48"></span><span class="hs-comment">-- In case of an error, the error message is issued and the arrow fails</span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span id="local-6989586621679179843"><span id="local-6989586621679179844"><span id="local-6989586621679179846"><span class="annot"><a href="Text.XML.HXT.Arrow.Binary.html#decodeBinaryValue"><span class="hs-identifier hs-type">decodeBinaryValue</span></a></span><span>         </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Binary</span></span><span> </span><span class="annot"><a href="#local-6989586621679179846"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#DeCompressionFct"><span class="hs-identifier hs-type">DeCompressionFct</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOStateArrow"><span class="hs-identifier hs-type">IOStateArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679179844"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679179843"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679179846"><span class="hs-identifier hs-type">a</span></a></span></span></span></span><span>
+</span><span id="line-51"></span><span id="decodeBinaryValue"><span class="annot"><span class="annottext">decodeBinaryValue :: String -&gt; Bool -&gt; DeCompressionFct -&gt; IOStateArrow s b a
+</span><a href="Text.XML.HXT.Arrow.Binary.html#decodeBinaryValue"><span class="hs-identifier hs-var hs-var">decodeBinaryValue</span></a></span></span><span> </span><span id="local-6989586621679179772"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679179772"><span class="hs-identifier hs-var">file</span></a></span></span><span> </span><span id="local-6989586621679179771"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679179771"><span class="hs-identifier hs-var">strict</span></a></span></span><span> </span><span id="local-6989586621679179770"><span class="annot"><span class="annottext">DeCompressionFct
+</span><a href="#local-6989586621679179770"><span class="hs-identifier hs-var">decompress</span></a></span></span><span>
+</span><span id="line-52"></span><span>                          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO a -&gt; IOStateArrow s b a
+forall (a :: * -&gt; * -&gt; *) c b. ArrowIO a =&gt; IO c -&gt; a b c
+</span><a href="Control.Arrow.ArrowIO.html#arrIO0"><span class="hs-identifier hs-var">arrIO0</span></a></span><span> </span><span class="annot"><span class="annottext">IO a
+</span><a href="#local-6989586621679179768"><span class="hs-identifier hs-var">dec</span></a></span><span>
+</span><span id="line-53"></span><span>                            </span><span class="annot"><span class="annottext">IOStateArrow s b a
+-&gt; IOSLA (XIOState s) SomeException a -&gt; IOStateArrow s b a
+forall (a :: * -&gt; * -&gt; *) b c.
+ArrowExc a =&gt;
+a b c -&gt; a SomeException c -&gt; a b c
+</span><a href="Control.Arrow.ArrowExc.html#catchA"><span class="hs-operator hs-var">`catchA`</span></a></span><span>
+</span><span id="line-54"></span><span>                            </span><span class="annot"><span class="annottext">String -&gt; IOSLA (XIOState s) SomeException a
+forall s b. String -&gt; IOStateArrow s SomeException b
+</span><a href="Text.XML.HXT.Arrow.XmlState.ErrorHandling.html#issueExc"><span class="hs-identifier hs-var">issueExc</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;readBinaryValue&quot;</span></span><span>
+</span><span id="line-55"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-56"></span><span>    </span><span id="local-6989586621679179768"><span class="annot"><span class="annottext">dec :: IO a
+</span><a href="#local-6989586621679179768"><span class="hs-identifier hs-var hs-var">dec</span></a></span></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679179771"><span class="hs-identifier hs-var">strict</span></a></span><span>
+</span><span id="line-57"></span><span>                            </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">IO ByteString
+</span><a href="#local-6989586621679179765"><span class="hs-identifier hs-var">readItAll</span></a></span><span>
+</span><span id="line-58"></span><span>                            </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO ByteString
+</span><span class="hs-identifier hs-var">B.readFile</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679179772"><span class="hs-identifier hs-var">file</span></a></span><span>
+</span><span id="line-59"></span><span>                          </span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">IO ByteString -&gt; (ByteString -&gt; IO a) -&gt; IO a
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; IO a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(a -&gt; IO a) -&gt; (ByteString -&gt; a) -&gt; ByteString -&gt; IO a
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; a
+forall a. Binary a =&gt; ByteString -&gt; a
+</span><span class="hs-identifier hs-var">decode</span></span><span> </span><span class="annot"><span class="annottext">(ByteString -&gt; a) -&gt; DeCompressionFct -&gt; ByteString -&gt; a
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">DeCompressionFct
+</span><a href="#local-6989586621679179770"><span class="hs-identifier hs-var">decompress</span></a></span><span>
+</span><span id="line-60"></span><span>    </span><span id="local-6989586621679179765"><span class="annot"><span class="annottext">readItAll :: IO ByteString
+</span><a href="#local-6989586621679179765"><span class="hs-identifier hs-var hs-var">readItAll</span></a></span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-61"></span><span>                          </span><span id="local-6989586621679179761"><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679179761"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; IOMode -&gt; IO Handle
+</span><span class="hs-identifier hs-var">openBinaryFile</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679179772"><span class="hs-identifier hs-var">file</span></a></span><span> </span><span class="annot"><span class="annottext">IOMode
+</span><span class="hs-identifier hs-var">ReadMode</span></span><span>
+</span><span id="line-62"></span><span>                          </span><span id="local-6989586621679179759"><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679179759"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Handle -&gt; IO ByteString
+</span><span class="hs-identifier hs-var">B.hGetContents</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679179761"><span class="hs-identifier hs-var">h</span></a></span><span>
+</span><span id="line-63"></span><span>                          </span><span class="annot"><span class="annottext">ByteString -&gt; Int64
+</span><span class="hs-identifier hs-var">B.length</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679179759"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Int64 -&gt; IO ByteString -&gt; IO ByteString
+</span><span class="hs-operator hs-var">`seq`</span></span><span>
+</span><span id="line-64"></span><span>                           </span><span class="hs-keyword">do</span><span>
+</span><span id="line-65"></span><span>                           </span><span class="annot"><span class="annottext">Handle -&gt; IO ()
+</span><span class="hs-identifier hs-var">hClose</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679179761"><span class="hs-identifier hs-var">h</span></a></span><span>
+</span><span id="line-66"></span><span>                           </span><span class="annot"><span class="annottext">ByteString -&gt; IO ByteString
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679179759"><span class="hs-identifier hs-var">c</span></a></span><span>     </span><span class="hs-comment">-- hack: force reading whole file and close it immediately</span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span class="hs-comment">-- | Serialize a value, optionally compress it, and write it to a file.</span><span>
+</span><span id="line-69"></span><span class="hs-comment">-- In case of an error, the error message is issued and the arrow fails</span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span id="local-6989586621679179755"><span id="local-6989586621679179756"><span class="annot"><a href="Text.XML.HXT.Arrow.Binary.html#writeBinaryValue"><span class="hs-identifier hs-type">writeBinaryValue</span></a></span><span>        </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Binary</span></span><span> </span><span class="annot"><a href="#local-6989586621679179756"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOStateArrow"><span class="hs-identifier hs-type">IOStateArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679179755"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679179756"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-72"></span><span id="writeBinaryValue"><span class="annot"><span class="annottext">writeBinaryValue :: String -&gt; IOStateArrow s a ()
+</span><a href="Text.XML.HXT.Arrow.Binary.html#writeBinaryValue"><span class="hs-identifier hs-var hs-var">writeBinaryValue</span></a></span></span><span> </span><span id="local-6989586621679179754"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679179754"><span class="hs-identifier hs-var">file</span></a></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(DeCompressionFct -&gt; String -&gt; IOStateArrow s a ())
+-&gt; String -&gt; DeCompressionFct -&gt; IOStateArrow s a ()
+forall a b c. (a -&gt; b -&gt; c) -&gt; b -&gt; a -&gt; c
+</span><span class="hs-identifier hs-var">flip</span></span><span> </span><span class="annot"><span class="annottext">DeCompressionFct -&gt; String -&gt; IOStateArrow s a ()
+forall a s.
+Binary a =&gt;
+DeCompressionFct -&gt; String -&gt; IOStateArrow s a ()
+</span><a href="Text.XML.HXT.Arrow.Binary.html#encodeBinaryValue"><span class="hs-identifier hs-var">encodeBinaryValue</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679179754"><span class="hs-identifier hs-var">file</span></a></span><span> </span><span class="annot"><span class="annottext">(DeCompressionFct -&gt; IOStateArrow s a ())
+-&gt; IOSLA (XIOState s) a DeCompressionFct -&gt; IOStateArrow s a ()
+forall (a :: * -&gt; * -&gt; *) c b d.
+ArrowList a =&gt;
+(c -&gt; a b d) -&gt; a b c -&gt; a b d
+</span><a href="Control.Arrow.ArrowList.html#%24%3C"><span class="hs-operator hs-var">$&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState DeCompressionFct
+-&gt; IOSLA (XIOState s) a DeCompressionFct
+forall c s b. Selector XIOSysState c -&gt; IOStateArrow s b c
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#getSysVar"><span class="hs-identifier hs-var">getSysVar</span></a></span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState DeCompressionFct
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#theBinaryCompression"><span class="hs-identifier hs-var">theBinaryCompression</span></a></span><span>
+</span><span id="line-73"></span><span>
+</span><span id="line-74"></span><span id="local-6989586621679179793"><span id="local-6989586621679179794"><span class="annot"><a href="Text.XML.HXT.Arrow.Binary.html#encodeBinaryValue"><span class="hs-identifier hs-type">encodeBinaryValue</span></a></span><span>        </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Binary</span></span><span> </span><span class="annot"><a href="#local-6989586621679179794"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#CompressionFct"><span class="hs-identifier hs-type">CompressionFct</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOStateArrow"><span class="hs-identifier hs-type">IOStateArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679179793"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679179794"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-75"></span><span id="encodeBinaryValue"><span class="annot"><span class="annottext">encodeBinaryValue :: DeCompressionFct -&gt; String -&gt; IOStateArrow s a ()
+</span><a href="Text.XML.HXT.Arrow.Binary.html#encodeBinaryValue"><span class="hs-identifier hs-var hs-var">encodeBinaryValue</span></a></span></span><span> </span><span id="local-6989586621679179749"><span class="annot"><span class="annottext">DeCompressionFct
+</span><a href="#local-6989586621679179749"><span class="hs-identifier hs-var">compress</span></a></span></span><span> </span><span id="local-6989586621679179748"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679179748"><span class="hs-identifier hs-var">file</span></a></span></span><span>
+</span><span id="line-76"></span><span>                         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(a -&gt; IO ()) -&gt; IOStateArrow s a ()
+forall (a :: * -&gt; * -&gt; *) b c. ArrowIO a =&gt; (b -&gt; IO c) -&gt; a b c
+</span><a href="Control.Arrow.ArrowIO.html#arrIO"><span class="hs-identifier hs-var">arrIO</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; IO ()
+</span><a href="#local-6989586621679179746"><span class="hs-identifier hs-var">enc</span></a></span><span>
+</span><span id="line-77"></span><span>                           </span><span class="annot"><span class="annottext">IOStateArrow s a ()
+-&gt; IOSLA (XIOState s) SomeException () -&gt; IOStateArrow s a ()
+forall (a :: * -&gt; * -&gt; *) b c.
+ArrowExc a =&gt;
+a b c -&gt; a SomeException c -&gt; a b c
+</span><a href="Control.Arrow.ArrowExc.html#catchA"><span class="hs-operator hs-var">`catchA`</span></a></span><span>
+</span><span id="line-78"></span><span>                           </span><span class="annot"><span class="annottext">String -&gt; IOSLA (XIOState s) SomeException ()
+forall s b. String -&gt; IOStateArrow s SomeException b
+</span><a href="Text.XML.HXT.Arrow.XmlState.ErrorHandling.html#issueExc"><span class="hs-identifier hs-var">issueExc</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;writeBinaryXmlTree&quot;</span></span><span>
+</span><span id="line-79"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-80"></span><span>    </span><span id="local-6989586621679179746"><span class="annot"><span class="annottext">enc :: a -&gt; IO ()
+</span><a href="#local-6989586621679179746"><span class="hs-identifier hs-var hs-var">enc</span></a></span></span><span>                  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; ByteString -&gt; IO ()
+</span><span class="hs-identifier hs-var">B.writeFile</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679179748"><span class="hs-identifier hs-var">file</span></a></span><span> </span><span class="annot"><span class="annottext">(ByteString -&gt; IO ()) -&gt; (a -&gt; ByteString) -&gt; a -&gt; IO ()
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">DeCompressionFct
+</span><a href="#local-6989586621679179749"><span class="hs-identifier hs-var">compress</span></a></span><span> </span><span class="annot"><span class="annottext">DeCompressionFct -&gt; (a -&gt; ByteString) -&gt; a -&gt; ByteString
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; ByteString
+forall a. Binary a =&gt; a -&gt; ByteString
+</span><span class="hs-identifier hs-var">encode</span></span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-83"></span></pre></body></html>

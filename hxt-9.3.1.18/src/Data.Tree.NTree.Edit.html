@@ -1,0 +1,283 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+   Module     : 
+   Copyright  : Copyright (C) 2011 Uwe Schmidt
+   License    : MIT
+
+   Maintainer : Uwe Schmidt (uwe\@fh-wedel.de)
+   Stability  : experimental
+   Portability: portable
+
+   Space and time efficient editing of rose trees
+-}</span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Data.Tree.NTree.Edit</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>
+</span><span id="line-21"></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html"><span class="hs-identifier">Data.Tree.NTree.TypeDefs</span></a></span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-comment">-- import           Debug.Trace</span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- | editNTreeBottomUp is a space optimized tree edit function</span><span>
+</span><span id="line-28"></span><span class="hs-comment">--</span><span>
+</span><span id="line-29"></span><span class="hs-comment">-- The nodes in a tree are visited bottom up. An edit function is applied to</span><span>
+</span><span id="line-30"></span><span class="hs-comment">-- all nodes. A Nothing result of the editing function indicates no changes.</span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- This is used to share the input tree within the resulting tree.</span><span>
+</span><span id="line-32"></span><span class="hs-comment">--</span><span>
+</span><span id="line-33"></span><span class="hs-comment">-- The following law holds:</span><span>
+</span><span id="line-34"></span><span class="hs-comment">--</span><span>
+</span><span id="line-35"></span><span class="hs-comment">-- &gt; editNTreeBottomUp (const Nothing) t == [t]</span><span>
+</span><span id="line-36"></span><span class="hs-comment">--</span><span>
+</span><span id="line-37"></span><span class="hs-comment">-- In this case the resulting tree does not only represent the same value</span><span>
+</span><span id="line-38"></span><span class="hs-comment">-- but it is the same machine value (relative to some evaluations of closures</span><span>
+</span><span id="line-39"></span><span class="hs-comment">-- during the tree walk</span><span>
+</span><span id="line-40"></span><span class="hs-comment">--</span><span>
+</span><span id="line-41"></span><span class="hs-comment">-- With a simple fold like editing function the whole tree would be reconstructed</span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- in memory</span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span id="local-6989586621679170075"><span class="annot"><a href="Data.Tree.NTree.Edit.html#editNTreeBottomUp"><span class="hs-identifier hs-type">editNTreeBottomUp</span></a></span><span>               </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170075"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170075"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170075"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170075"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span></span><span>
+</span><span id="line-45"></span><span id="editNTreeBottomUp"><span class="annot"><span class="annottext">editNTreeBottomUp :: (NTree a -&gt; Maybe [NTree a]) -&gt; NTree a -&gt; [NTree a]
+</span><a href="Data.Tree.NTree.Edit.html#editNTreeBottomUp"><span class="hs-identifier hs-var hs-var">editNTreeBottomUp</span></a></span></span><span> </span><span id="local-6989586621679170073"><span class="annot"><span class="annottext">NTree a -&gt; Maybe [NTree a]
+</span><a href="#local-6989586621679170073"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679170072"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170072"><span class="hs-identifier hs-var">t0</span></a></span></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[NTree a]
+-&gt; ([NTree a] -&gt; [NTree a]) -&gt; Maybe [NTree a] -&gt; [NTree a]
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170072"><span class="hs-identifier hs-var">t0</span></a></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[NTree a] -&gt; [NTree a]
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="annot"><span class="annottext">(Maybe [NTree a] -&gt; [NTree a])
+-&gt; (NTree a -&gt; Maybe [NTree a]) -&gt; NTree a -&gt; [NTree a]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; Maybe [NTree a]
+</span><a href="#local-6989586621679170068"><span class="hs-identifier hs-var">editNTreeBU</span></a></span><span> </span><span class="annot"><span class="annottext">(NTree a -&gt; [NTree a]) -&gt; NTree a -&gt; [NTree a]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170072"><span class="hs-identifier hs-var">t0</span></a></span><span>
+</span><span id="line-46"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span> </span><span class="hs-comment">-- editNTreeBU                 :: NTree a -&gt; Maybe [NTree a]</span><span>
+</span><span id="line-49"></span><span>    </span><span id="local-6989586621679170068"><span class="annot"><span class="annottext">editNTreeBU :: NTree a -&gt; Maybe [NTree a]
+</span><a href="#local-6989586621679170068"><span class="hs-identifier hs-var hs-var">editNTreeBU</span></a></span></span><span> </span><span id="local-6989586621679170067"><span class="annot"><span class="annottext">t :: NTree a
+</span><a href="#local-6989586621679170067"><span class="hs-identifier hs-var">t</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span id="local-6989586621679170065"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170065"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679170064"><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170064"><span class="hs-identifier hs-var">cs</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-50"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Maybe [NTree a] -&gt; Bool
+forall a. Maybe a -&gt; Bool
+</span><span class="hs-identifier hs-var">isNothing</span></span><span> </span><span class="annot"><span class="annottext">Maybe [NTree a]
+</span><a href="#local-6989586621679170062"><span class="hs-identifier hs-var">r'</span></a></span><span>
+</span><span id="line-51"></span><span>          </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span>
+</span><span id="line-52"></span><span>          </span><span class="annot"><span class="annottext">Maybe [NTree a] -&gt; Bool
+forall a. Maybe a -&gt; Bool
+</span><span class="hs-identifier hs-var">isJust</span></span><span> </span><span class="annot"><span class="annottext">Maybe [NTree a]
+</span><a href="#local-6989586621679170059"><span class="hs-identifier hs-var">cl'</span></a></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[NTree a] -&gt; Maybe [NTree a]
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170058"><span class="hs-identifier hs-var">t'</span></a></span><span class="hs-special">]</span><span>                     </span><span class="hs-comment">-- children have been change but not the node itself</span><span>
+</span><span id="line-53"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe [NTree a]
+</span><a href="#local-6989586621679170062"><span class="hs-identifier hs-var">r'</span></a></span><span>                            </span><span class="hs-comment">-- nothing has been changes or node has been changed </span><span>
+</span><span id="line-54"></span><span>        </span><span class="hs-keyword">where</span><span>
+</span><span id="line-55"></span><span>        </span><span id="local-6989586621679170059"><span class="annot"><span class="annottext">cl' :: Maybe [NTree a]
+</span><a href="#local-6989586621679170059"><span class="hs-identifier hs-var hs-var">cl'</span></a></span></span><span>                     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[NTree a] -&gt; Maybe [NTree a]
+</span><a href="#local-6989586621679170057"><span class="hs-identifier hs-var">editNTreesBU</span></a></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170064"><span class="hs-identifier hs-var">cs</span></a></span><span>               </span><span class="hs-comment">-- the edited children</span><span>
+</span><span id="line-56"></span><span>        </span><span id="local-6989586621679170058"><span class="annot"><span class="annottext">t' :: NTree a
+</span><a href="#local-6989586621679170058"><span class="hs-identifier hs-var hs-var">t'</span></a></span></span><span>                      </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe [NTree a]
+</span><a href="#local-6989586621679170059"><span class="hs-identifier hs-var">cl'</span></a></span><span> </span><span class="hs-keyword">of</span><span>                   </span><span class="hs-comment">-- the node to be processed with f</span><span>
+</span><span id="line-57"></span><span>                                  </span><span class="annot"><span class="annottext">Maybe [NTree a]
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>       </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170067"><span class="hs-identifier hs-var">t</span></a></span><span>            </span><span class="hs-comment">-- possibly with the new children (bottom up)</span><span>
+</span><span id="line-58"></span><span>                                  </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679170056"><span class="annot"><a href="#local-6989586621679170056"><span class="hs-identifier hs-var">cs'</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">a -&gt; [NTree a] -&gt; NTree a
+forall a. a -&gt; NTrees a -&gt; NTree a
+</span><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-var">NTree</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170065"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170056"><span class="hs-identifier hs-var">cs'</span></a></span><span>
+</span><span id="line-59"></span><span>        </span><span id="local-6989586621679170062"><span class="annot"><span class="annottext">r' :: Maybe [NTree a]
+</span><a href="#local-6989586621679170062"><span class="hs-identifier hs-var hs-var">r'</span></a></span></span><span>                      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; Maybe [NTree a]
+</span><a href="#local-6989586621679170073"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170058"><span class="hs-identifier hs-var">t'</span></a></span><span>                          </span><span class="hs-comment">-- the edited result</span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span> </span><span class="hs-comment">-- editNTreesBU                :: [NTree a] -&gt; Maybe [NTree a]</span><span>
+</span><span id="line-62"></span><span>    </span><span id="local-6989586621679170057"><span class="annot"><span class="annottext">editNTreesBU :: [NTree a] -&gt; Maybe [NTree a]
+</span><a href="#local-6989586621679170057"><span class="hs-identifier hs-var hs-var">editNTreesBU</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe [NTree a]
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-63"></span><span>    </span><span class="annot"><a href="#local-6989586621679170057"><span class="hs-identifier hs-var">editNTreesBU</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679170055"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170055"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679170054"><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170054"><span class="hs-identifier hs-var">ts</span></a></span></span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe [NTree a] -&gt; Maybe [NTree a] -&gt; Maybe [NTree a]
+</span><a href="#local-6989586621679170053"><span class="hs-identifier hs-var">mergeRes</span></a></span><span>
+</span><span id="line-64"></span><span>                                  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTree a -&gt; Maybe [NTree a]
+</span><a href="#local-6989586621679170068"><span class="hs-identifier hs-var">editNTreeBU</span></a></span><span>  </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170055"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-65"></span><span>                                  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[NTree a] -&gt; Maybe [NTree a]
+</span><a href="#local-6989586621679170057"><span class="hs-identifier hs-var">editNTreesBU</span></a></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170054"><span class="hs-identifier hs-var">ts</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-66"></span><span>        </span><span class="hs-keyword">where</span><span>
+</span><span id="line-67"></span><span>        </span><span id="local-6989586621679170053"><span class="annot"><span class="annottext">mergeRes :: Maybe [NTree a] -&gt; Maybe [NTree a] -&gt; Maybe [NTree a]
+</span><a href="#local-6989586621679170053"><span class="hs-identifier hs-var hs-var">mergeRes</span></a></span></span><span> </span><span id="local-6989586621679170052"><span class="annot"><span class="annottext">Maybe [NTree a]
+</span><a href="#local-6989586621679170052"><span class="hs-identifier hs-var">r'</span></a></span></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe [NTree a]
+</span><a href="#local-6989586621679170052"><span class="hs-identifier hs-var">r'</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-68"></span><span>                                  </span><span class="annot"><span class="annottext">Maybe [NTree a]
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>       </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe [NTree a]
+-&gt; ([NTree a] -&gt; Maybe [NTree a])
+-&gt; Maybe [NTree a]
+-&gt; Maybe [NTree a]
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="annot"><span class="annottext">Maybe [NTree a]
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[NTree a] -&gt; Maybe [NTree a]
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">([NTree a] -&gt; Maybe [NTree a])
+-&gt; ([NTree a] -&gt; [NTree a]) -&gt; [NTree a] -&gt; Maybe [NTree a]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170055"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; [NTree a] -&gt; [NTree a]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-69"></span><span>                                  </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679170051"><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170051"><span class="hs-identifier hs-var">ts'</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[NTree a] -&gt; Maybe [NTree a]
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">([NTree a] -&gt; Maybe [NTree a])
+-&gt; (Maybe [NTree a] -&gt; [NTree a])
+-&gt; Maybe [NTree a]
+-&gt; Maybe [NTree a]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170051"><span class="hs-identifier hs-var">ts'</span></a></span><span> </span><span class="annot"><span class="annottext">[NTree a] -&gt; [NTree a] -&gt; [NTree a]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([NTree a] -&gt; [NTree a])
+-&gt; (Maybe [NTree a] -&gt; [NTree a]) -&gt; Maybe [NTree a] -&gt; [NTree a]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[NTree a] -&gt; Maybe [NTree a] -&gt; [NTree a]
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170054"><span class="hs-identifier hs-var">ts</span></a></span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span>
+</span><span id="line-72"></span><span class="hs-comment">-- | A space optimized map for NTrees</span><span>
+</span><span id="line-73"></span><span class="hs-comment">--</span><span>
+</span><span id="line-74"></span><span class="hs-comment">-- Subtrees, that are not changed are reused in the resulting tree</span><span>
+</span><span id="line-75"></span><span class="hs-comment">-- See also: editNTreeBottomUp</span><span>
+</span><span id="line-76"></span><span>
+</span><span id="line-77"></span><span id="local-6989586621679170049"><span class="annot"><a href="Data.Tree.NTree.Edit.html#mapNTree%27"><span class="hs-identifier hs-type">mapNTree'</span></a></span><span>                       </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679170049"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679170049"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170049"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170049"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-78"></span><span id="mapNTree%27"><span class="annot"><span class="annottext">mapNTree' :: (a -&gt; Maybe a) -&gt; NTree a -&gt; NTree a
+</span><a href="Data.Tree.NTree.Edit.html#mapNTree%27"><span class="hs-identifier hs-var hs-var">mapNTree'</span></a></span></span><span> </span><span id="local-6989586621679170047"><span class="annot"><span class="annottext">a -&gt; Maybe a
+</span><a href="#local-6989586621679170047"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679170046"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170046"><span class="hs-identifier hs-var">t0</span></a></span></span><span>                  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; (NTree a -&gt; NTree a) -&gt; Maybe (NTree a) -&gt; NTree a
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170046"><span class="hs-identifier hs-var">t0</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTree a
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="annot"><span class="annottext">(Maybe (NTree a) -&gt; NTree a)
+-&gt; (NTree a -&gt; Maybe (NTree a)) -&gt; NTree a -&gt; NTree a
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; Maybe (NTree a)
+</span><a href="#local-6989586621679170045"><span class="hs-identifier hs-var">map'</span></a></span><span> </span><span class="annot"><span class="annottext">(NTree a -&gt; NTree a) -&gt; NTree a -&gt; NTree a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170046"><span class="hs-identifier hs-var">t0</span></a></span><span>
+</span><span id="line-79"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span>    </span><span class="hs-comment">-- map'                     :: NTree a -&gt; Maybe (NTree a)</span><span>
+</span><span id="line-82"></span><span>    </span><span id="local-6989586621679170045"><span class="annot"><span class="annottext">map' :: NTree a -&gt; Maybe (NTree a)
+</span><a href="#local-6989586621679170045"><span class="hs-identifier hs-var hs-var">map'</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span id="local-6989586621679170044"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170044"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679170043"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170043"><span class="hs-identifier hs-var">cs</span></a></span></span><span class="hs-special">)</span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe a -&gt; Maybe (NTrees a) -&gt; Maybe (NTree a)
+</span><a href="#local-6989586621679170042"><span class="hs-identifier hs-var">mergeRes</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Maybe a
+</span><a href="#local-6989586621679170047"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170044"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTrees a -&gt; Maybe (NTrees a)
+</span><a href="#local-6989586621679170041"><span class="hs-identifier hs-var">maps'</span></a></span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170043"><span class="hs-identifier hs-var">cs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-83"></span><span>        </span><span class="hs-keyword">where</span><span>
+</span><span id="line-84"></span><span>        </span><span id="local-6989586621679170042"><span class="annot"><span class="annottext">mergeRes :: Maybe a -&gt; Maybe (NTrees a) -&gt; Maybe (NTree a)
+</span><a href="#local-6989586621679170042"><span class="hs-identifier hs-var hs-var">mergeRes</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="annot"><span class="annottext">Maybe (NTrees a)
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (NTree a)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-85"></span><span>        </span><span class="annot"><a href="#local-6989586621679170042"><span class="hs-identifier hs-var">mergeRes</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679170040"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170040"><span class="hs-identifier hs-var">cs'</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; Maybe (NTree a)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; NTrees a -&gt; NTree a
+forall a. a -&gt; NTrees a -&gt; NTree a
+</span><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-var">NTree</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170044"><span class="hs-identifier hs-var">n</span></a></span><span>             </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170040"><span class="hs-identifier hs-var">cs'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-86"></span><span>        </span><span class="annot"><a href="#local-6989586621679170042"><span class="hs-identifier hs-var">mergeRes</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679170039"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170039"><span class="hs-identifier hs-var">n'</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679170038"><span class="annot"><span class="annottext">Maybe (NTrees a)
+</span><a href="#local-6989586621679170038"><span class="hs-identifier hs-var">cl</span></a></span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; Maybe (NTree a)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; NTrees a -&gt; NTree a
+forall a. a -&gt; NTrees a -&gt; NTree a
+</span><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-var">NTree</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170039"><span class="hs-identifier hs-var">n'</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTrees a -&gt; Maybe (NTrees a) -&gt; NTrees a
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170043"><span class="hs-identifier hs-var">cs</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe (NTrees a)
+</span><a href="#local-6989586621679170038"><span class="hs-identifier hs-var">cl</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-87"></span><span>
+</span><span id="line-88"></span><span>    </span><span class="hs-comment">-- maps'                    :: [NTree a] -&gt; Maybe [NTree a]</span><span>
+</span><span id="line-89"></span><span>    </span><span id="local-6989586621679170041"><span class="annot"><span class="annottext">maps' :: NTrees a -&gt; Maybe (NTrees a)
+</span><a href="#local-6989586621679170041"><span class="hs-identifier hs-var hs-var">maps'</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>                    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (NTrees a)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-90"></span><span>    </span><span class="annot"><a href="#local-6989586621679170041"><span class="hs-identifier hs-var">maps'</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679170037"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170037"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679170036"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170036"><span class="hs-identifier hs-var">ts</span></a></span></span><span class="hs-special">)</span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (NTree a) -&gt; Maybe (NTrees a) -&gt; Maybe (NTrees a)
+</span><a href="#local-6989586621679170035"><span class="hs-identifier hs-var">mergeRes</span></a></span><span>
+</span><span id="line-91"></span><span>                                  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTree a -&gt; Maybe (NTree a)
+</span><a href="#local-6989586621679170045"><span class="hs-identifier hs-var">map'</span></a></span><span>  </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170037"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-92"></span><span>                                  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTrees a -&gt; Maybe (NTrees a)
+</span><a href="#local-6989586621679170041"><span class="hs-identifier hs-var">maps'</span></a></span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170036"><span class="hs-identifier hs-var">ts</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-93"></span><span>        </span><span class="hs-keyword">where</span><span>
+</span><span id="line-94"></span><span>        </span><span id="local-6989586621679170035"><span class="annot"><span class="annottext">mergeRes :: Maybe (NTree a) -&gt; Maybe (NTrees a) -&gt; Maybe (NTrees a)
+</span><a href="#local-6989586621679170035"><span class="hs-identifier hs-var hs-var">mergeRes</span></a></span></span><span> </span><span id="local-6989586621679170034"><span class="annot"><span class="annottext">Maybe (NTree a)
+</span><a href="#local-6989586621679170034"><span class="hs-identifier hs-var">r'</span></a></span></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe (NTree a)
+</span><a href="#local-6989586621679170034"><span class="hs-identifier hs-var">r'</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-95"></span><span>                                  </span><span class="annot"><span class="annottext">Maybe (NTree a)
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>       </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe (NTrees a)
+-&gt; (NTrees a -&gt; Maybe (NTrees a))
+-&gt; Maybe (NTrees a)
+-&gt; Maybe (NTrees a)
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="annot"><span class="annottext">Maybe (NTrees a)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTrees a -&gt; Maybe (NTrees a)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(NTrees a -&gt; Maybe (NTrees a))
+-&gt; (NTrees a -&gt; NTrees a) -&gt; NTrees a -&gt; Maybe (NTrees a)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170037"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTrees a -&gt; NTrees a
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-96"></span><span>                                  </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679170033"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170033"><span class="hs-identifier hs-var">t'</span></a></span></span><span>       </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">NTrees a -&gt; Maybe (NTrees a)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(NTrees a -&gt; Maybe (NTrees a))
+-&gt; (Maybe (NTrees a) -&gt; NTrees a)
+-&gt; Maybe (NTrees a)
+-&gt; Maybe (NTrees a)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170033"><span class="hs-identifier hs-var">t'</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTrees a -&gt; NTrees a
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(NTrees a -&gt; NTrees a)
+-&gt; (Maybe (NTrees a) -&gt; NTrees a) -&gt; Maybe (NTrees a) -&gt; NTrees a
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">NTrees a -&gt; Maybe (NTrees a) -&gt; NTrees a
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170036"><span class="hs-identifier hs-var">ts</span></a></span><span>
+</span><span id="line-97"></span><span>
+</span><span id="line-98"></span><span class="hs-comment">-- eof ------------------------------------------------------------</span></pre></body></html>

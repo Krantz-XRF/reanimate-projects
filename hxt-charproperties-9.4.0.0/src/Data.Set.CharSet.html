@@ -1,0 +1,516 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+   Module     : Data.Set.CharSet
+   Copyright  : Copyright (C) 2010 - Uwe Schmidt
+   License    : MIT
+
+   Maintainer : Uwe Schmidt (uwe@fh-wedel.de)
+   Stability  : stable
+   Portability: portable
+
+   Char sets implemeted as non-overlapping ordered lists of intervalls
+
+-}</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Data.Set.CharSet</span><span>
+</span><span id="line-19"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier">CharSet</span></a></span><span>
+</span><span id="line-20"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#emptyCS"><span class="hs-identifier">emptyCS</span></a></span><span>
+</span><span id="line-21"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#allCS"><span class="hs-identifier">allCS</span></a></span><span>
+</span><span id="line-22"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#singleCS"><span class="hs-identifier">singleCS</span></a></span><span>
+</span><span id="line-23"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#stringCS"><span class="hs-identifier">stringCS</span></a></span><span>
+</span><span id="line-24"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#rangeCS"><span class="hs-identifier">rangeCS</span></a></span><span>
+</span><span id="line-25"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#nullCS"><span class="hs-identifier">nullCS</span></a></span><span>
+</span><span id="line-26"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#fullCS"><span class="hs-identifier">fullCS</span></a></span><span>
+</span><span id="line-27"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#unionCS"><span class="hs-identifier">unionCS</span></a></span><span>
+</span><span id="line-28"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#diffCS"><span class="hs-identifier">diffCS</span></a></span><span>
+</span><span id="line-29"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#intersectCS"><span class="hs-identifier">intersectCS</span></a></span><span>
+</span><span id="line-30"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#exorCS"><span class="hs-identifier">exorCS</span></a></span><span>
+</span><span id="line-31"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#compCS"><span class="hs-identifier">compCS</span></a></span><span>
+</span><span id="line-32"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#elemCS"><span class="hs-identifier">elemCS</span></a></span><span>
+</span><span id="line-33"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#toListCS"><span class="hs-identifier">toListCS</span></a></span><span>
+</span><span id="line-34"></span><span>    </span><span class="hs-special">)</span><span>
+</span><span id="line-35"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="hs-keyword">type</span><span> </span><span id="CharSet"><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-var">CharSet</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span class="annot"><a href="Data.Set.CharSet.html#emptyCS"><span class="hs-identifier hs-type">emptyCS</span></a></span><span>                 </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span>
+</span><span id="line-42"></span><span id="emptyCS"><span class="annot"><span class="annottext">emptyCS :: CharSet
+</span><a href="Data.Set.CharSet.html#emptyCS"><span class="hs-identifier hs-var hs-var">emptyCS</span></a></span></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-43"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#emptyCS"><span class="hs-pragma hs-type">emptyCS</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-44"></span><span>
+</span><span id="line-45"></span><span class="annot"><a href="Data.Set.CharSet.html#allCS"><span class="hs-identifier hs-type">allCS</span></a></span><span>                   </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span>
+</span><span id="line-46"></span><span id="allCS"><span class="annot"><span class="annottext">allCS :: CharSet
+</span><a href="Data.Set.CharSet.html#allCS"><span class="hs-identifier hs-var hs-var">allCS</span></a></span></span><span>                   </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+forall a. Bounded a =&gt; a
+</span><span class="hs-identifier hs-var">minBound</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Char
+forall a. Bounded a =&gt; a
+</span><span class="hs-identifier hs-var">maxBound</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-47"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#allCS"><span class="hs-pragma hs-type">allCS</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-48"></span><span>
+</span><span id="line-49"></span><span class="annot"><a href="Data.Set.CharSet.html#singleCS"><span class="hs-identifier hs-type">singleCS</span></a></span><span>                </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span>
+</span><span id="line-50"></span><span id="singleCS"><span class="annot"><span class="annottext">singleCS :: Char -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#singleCS"><span class="hs-identifier hs-var hs-var">singleCS</span></a></span></span><span> </span><span id="local-6989586621679033490"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033490"><span class="hs-identifier hs-var">c</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033490"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033490"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-51"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#singleCS"><span class="hs-pragma hs-type">singleCS</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="annot"><a href="Data.Set.CharSet.html#stringCS"><span class="hs-identifier hs-type">stringCS</span></a></span><span>                </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span>
+</span><span id="line-54"></span><span id="stringCS"><span class="annot"><span class="annottext">stringCS :: String -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#stringCS"><span class="hs-identifier hs-var hs-var">stringCS</span></a></span></span><span>                </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; CharSet -&gt; CharSet) -&gt; CharSet -&gt; String -&gt; CharSet
+forall (t :: * -&gt; *) a b.
+Foldable t =&gt;
+(a -&gt; b -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldr</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#unionCS"><span class="hs-identifier hs-var">unionCS</span></a></span><span> </span><span class="annot"><span class="annottext">(CharSet -&gt; CharSet -&gt; CharSet)
+-&gt; (Char -&gt; CharSet) -&gt; Char -&gt; CharSet -&gt; CharSet
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#singleCS"><span class="hs-identifier hs-var">singleCS</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="Data.Set.CharSet.html#emptyCS"><span class="hs-identifier hs-var">emptyCS</span></a></span><span>
+</span><span id="line-55"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#stringCS"><span class="hs-pragma hs-type">stringCS</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span class="annot"><a href="Data.Set.CharSet.html#rangeCS"><span class="hs-identifier hs-type">rangeCS</span></a></span><span>                 </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span>
+</span><span id="line-58"></span><span id="rangeCS"><span class="annot"><span class="annottext">rangeCS :: Char -&gt; Char -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#rangeCS"><span class="hs-identifier hs-var hs-var">rangeCS</span></a></span></span><span> </span><span id="local-6989586621679033487"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033487"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679033486"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033486"><span class="hs-identifier hs-var">u</span></a></span></span><span>
+</span><span id="line-59"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033487"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033486"><span class="hs-identifier hs-var">u</span></a></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033487"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033486"><span class="hs-identifier hs-var">u</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-60"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="Data.Set.CharSet.html#emptyCS"><span class="hs-identifier hs-var">emptyCS</span></a></span><span>
+</span><span id="line-61"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#rangeCS"><span class="hs-pragma hs-type">rangeCS</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="annot"><a href="Data.Set.CharSet.html#nullCS"><span class="hs-identifier hs-type">nullCS</span></a></span><span>                  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-64"></span><span id="nullCS"><span class="annot"><span class="annottext">nullCS :: CharSet -&gt; Bool
+</span><a href="Data.Set.CharSet.html#nullCS"><span class="hs-identifier hs-var hs-var">nullCS</span></a></span></span><span>                  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span>
+</span><span id="line-65"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#nullCS"><span class="hs-pragma hs-type">nullCS</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-66"></span><span>
+</span><span id="line-67"></span><span class="annot"><a href="Data.Set.CharSet.html#fullCS"><span class="hs-identifier hs-type">fullCS</span></a></span><span>                  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-68"></span><span id="fullCS"><span class="annot"><span class="annottext">fullCS :: CharSet -&gt; Bool
+</span><a href="Data.Set.CharSet.html#fullCS"><span class="hs-identifier hs-var hs-var">fullCS</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span id="local-6989586621679033483"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033483"><span class="hs-identifier hs-var">lb</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033482"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033482"><span class="hs-identifier hs-var">ub</span></a></span></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-69"></span><span>                        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033483"><span class="hs-identifier hs-var">lb</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Char
+forall a. Bounded a =&gt; a
+</span><span class="hs-identifier hs-var">minBound</span></span><span>
+</span><span id="line-70"></span><span>                          </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span>
+</span><span id="line-71"></span><span>                          </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033482"><span class="hs-identifier hs-var">ub</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Char
+forall a. Bounded a =&gt; a
+</span><span class="hs-identifier hs-var">maxBound</span></span><span>
+</span><span id="line-72"></span><span class="annot"><a href="Data.Set.CharSet.html#fullCS"><span class="hs-identifier hs-var">fullCS</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><span class="hs-identifier">_</span></span><span>                </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-73"></span><span>
+</span><span id="line-74"></span><span class="annot"><a href="Data.Set.CharSet.html#elemCS"><span class="hs-identifier hs-type">elemCS</span></a></span><span>                  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-75"></span><span id="elemCS"><span class="annot"><span class="annottext">elemCS :: Char -&gt; CharSet -&gt; Bool
+</span><a href="Data.Set.CharSet.html#elemCS"><span class="hs-identifier hs-var hs-var">elemCS</span></a></span></span><span> </span><span id="local-6989586621679033480"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033480"><span class="hs-identifier hs-var">i</span></a></span></span><span>                </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((Char, Char) -&gt; Bool -&gt; Bool) -&gt; Bool -&gt; CharSet -&gt; Bool
+forall (t :: * -&gt; *) a b.
+Foldable t =&gt;
+(a -&gt; b -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldr</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679033479"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033479"><span class="hs-identifier hs-var">lb</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033478"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033478"><span class="hs-identifier hs-var">ub</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679033477"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679033477"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033480"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033479"><span class="hs-identifier hs-var">lb</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033480"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033478"><span class="hs-identifier hs-var">ub</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679033477"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-76"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#elemCS"><span class="hs-pragma hs-type">elemCS</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span class="annot"><a href="Data.Set.CharSet.html#toListCS"><span class="hs-identifier hs-type">toListCS</span></a></span><span>                </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">]</span><span>
+</span><span id="line-79"></span><span id="toListCS"><span class="annot"><span class="annottext">toListCS :: CharSet -&gt; String
+</span><a href="Data.Set.CharSet.html#toListCS"><span class="hs-identifier hs-var hs-var">toListCS</span></a></span></span><span>                </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((Char, Char) -&gt; String) -&gt; CharSet -&gt; String
+forall (t :: * -&gt; *) a b. Foldable t =&gt; (a -&gt; [b]) -&gt; t a -&gt; [b]
+</span><span class="hs-identifier hs-var">concatMap</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679033474"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033474"><span class="hs-identifier hs-var">lb</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033473"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033473"><span class="hs-identifier hs-var">ub</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033474"><span class="hs-identifier hs-var">lb</span></a></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033473"><span class="hs-identifier hs-var">ub</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span class="annot"><a href="Data.Set.CharSet.html#unionCS"><span class="hs-identifier hs-type">unionCS</span></a></span><span>                 </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span>
+</span><span id="line-82"></span><span>
+</span><span id="line-83"></span><span id="unionCS"><span class="annot"><span class="annottext">unionCS :: CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#unionCS"><span class="hs-identifier hs-var hs-var">unionCS</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span id="local-6989586621679033472"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033472"><span class="hs-identifier hs-var">s2</span></a></span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033472"><span class="hs-identifier hs-var">s2</span></a></span><span>
+</span><span id="line-84"></span><span class="annot"><a href="Data.Set.CharSet.html#unionCS"><span class="hs-identifier hs-var">unionCS</span></a></span><span> </span><span id="local-6989586621679033471"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033471"><span class="hs-identifier hs-var">s1</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033471"><span class="hs-identifier hs-var">s1</span></a></span><span>
+</span><span id="line-85"></span><span>
+</span><span id="line-86"></span><span class="annot"><a href="Data.Set.CharSet.html#unionCS"><span class="hs-identifier hs-var">unionCS</span></a></span><span> </span><span id="local-6989586621679033470"><span class="annot"><span class="annottext">s1 :: CharSet
+</span><a href="#local-6989586621679033470"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679033469"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033469"><span class="hs-identifier hs-var">l1</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679033468"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033468"><span class="hs-identifier hs-var">u1</span></a></span></span><span class="hs-special">)</span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033467"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033467"><span class="hs-identifier hs-var">s1'</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679033466"><span class="annot"><span class="annottext">s2 :: CharSet
+</span><a href="#local-6989586621679033466"><span class="hs-identifier hs-var">s2</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679033465"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033465"><span class="hs-identifier hs-var">l2</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679033464"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033464"><span class="hs-identifier hs-var">u2</span></a></span></span><span class="hs-special">)</span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033463"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033463"><span class="hs-identifier hs-var">s2'</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-87"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033469"><span class="hs-identifier hs-var">l1</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033465"><span class="hs-identifier hs-var">l2</span></a></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; CharSet -&gt; CharSet
+forall t. (Ord t, Enum t) =&gt; t -&gt; t -&gt; [(t, t)] -&gt; [(t, t)]
+</span><a href="#local-6989586621679033461"><span class="hs-identifier hs-var">union</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033469"><span class="hs-identifier hs-var">l1</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033468"><span class="hs-identifier hs-var">u1</span></a></span><span>            </span><span class="annot"><span class="annottext">(CharSet -&gt; CharSet) -&gt; CharSet -&gt; CharSet
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#unionCS"><span class="hs-identifier hs-var">unionCS</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033467"><span class="hs-identifier hs-var">s1'</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033466"><span class="hs-identifier hs-var">s2</span></a></span><span>
+</span><span id="line-88"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033469"><span class="hs-identifier hs-var">l1</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033465"><span class="hs-identifier hs-var">l2</span></a></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; CharSet -&gt; CharSet
+forall t. (Ord t, Enum t) =&gt; t -&gt; t -&gt; [(t, t)] -&gt; [(t, t)]
+</span><a href="#local-6989586621679033461"><span class="hs-identifier hs-var">union</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033469"><span class="hs-identifier hs-var">l1</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033468"><span class="hs-identifier hs-var">u1</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Char
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">`max`</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033464"><span class="hs-identifier hs-var">u2</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(CharSet -&gt; CharSet) -&gt; CharSet -&gt; CharSet
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#unionCS"><span class="hs-identifier hs-var">unionCS</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033467"><span class="hs-identifier hs-var">s1'</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033463"><span class="hs-identifier hs-var">s2'</span></a></span><span>
+</span><span id="line-89"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; CharSet -&gt; CharSet
+forall t. (Ord t, Enum t) =&gt; t -&gt; t -&gt; [(t, t)] -&gt; [(t, t)]
+</span><a href="#local-6989586621679033461"><span class="hs-identifier hs-var">union</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033465"><span class="hs-identifier hs-var">l2</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033464"><span class="hs-identifier hs-var">u2</span></a></span><span>            </span><span class="annot"><span class="annottext">(CharSet -&gt; CharSet) -&gt; CharSet -&gt; CharSet
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#unionCS"><span class="hs-identifier hs-var">unionCS</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033470"><span class="hs-identifier hs-var">s1</span></a></span><span>  </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033463"><span class="hs-identifier hs-var">s2'</span></a></span><span>
+</span><span id="line-90"></span><span>    </span><span class="hs-comment">-- l1 &gt;  l2</span><span>
+</span><span id="line-91"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-92"></span><span>    </span><span id="local-6989586621679033461"><span class="annot"><span class="annottext">union :: t -&gt; t -&gt; [(t, t)] -&gt; [(t, t)]
+</span><a href="#local-6989586621679033461"><span class="hs-identifier hs-var hs-var">union</span></a></span></span><span> </span><span id="local-6989586621679033459"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679033459"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679033458"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679033458"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679033459"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679033458"><span class="hs-identifier hs-var">u</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-93"></span><span>    </span><span class="annot"><a href="#local-6989586621679033461"><span class="hs-identifier hs-var">union</span></a></span><span> </span><span id="local-6989586621679033457"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679033457"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679033456"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679033456"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span id="local-6989586621679033455"><span class="annot"><span class="annottext">s :: [(t, t)]
+</span><a href="#local-6989586621679033455"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679033454"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679033454"><span class="hs-identifier hs-var">l'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033453"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679033453"><span class="hs-identifier hs-var">u'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679033452"><span class="annot"><span class="annottext">[(t, t)]
+</span><a href="#local-6989586621679033452"><span class="hs-identifier hs-var">s'</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-94"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679033456"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">t -&gt; t
+forall a. Enum a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">pred</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679033454"><span class="hs-identifier hs-var">l'</span></a></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679033457"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679033456"><span class="hs-identifier hs-var">u</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(t, t) -&gt; [(t, t)] -&gt; [(t, t)]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[(t, t)]
+</span><a href="#local-6989586621679033455"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-95"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; [(t, t)] -&gt; [(t, t)]
+</span><a href="#local-6989586621679033461"><span class="hs-identifier hs-var">union</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679033457"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679033456"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; t
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">`max`</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679033453"><span class="hs-identifier hs-var">u'</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[(t, t)]
+</span><a href="#local-6989586621679033452"><span class="hs-identifier hs-var">s'</span></a></span><span>
+</span><span id="line-96"></span><span>
+</span><span id="line-97"></span><span class="annot"><a href="Data.Set.CharSet.html#diffCS"><span class="hs-identifier hs-type">diffCS</span></a></span><span>                  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span>
+</span><span id="line-98"></span><span>
+</span><span id="line-99"></span><span id="diffCS"><span class="annot"><span class="annottext">diffCS :: CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#diffCS"><span class="hs-identifier hs-var hs-var">diffCS</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><span class="hs-identifier">_</span></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-100"></span><span class="annot"><a href="Data.Set.CharSet.html#diffCS"><span class="hs-identifier hs-var">diffCS</span></a></span><span> </span><span id="local-6989586621679033450"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033450"><span class="hs-identifier hs-var">s</span></a></span></span><span>  </span><span class="hs-special">[</span><span class="hs-special">]</span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033450"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-101"></span><span>
+</span><span id="line-102"></span><span class="annot"><a href="Data.Set.CharSet.html#diffCS"><span class="hs-identifier hs-var">diffCS</span></a></span><span> </span><span id="local-6989586621679033449"><span class="annot"><span class="annottext">s1 :: CharSet
+</span><a href="#local-6989586621679033449"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679033448"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033448"><span class="hs-identifier hs-var">l1</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679033447"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033447"><span class="hs-identifier hs-var">u1</span></a></span></span><span class="hs-special">)</span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033446"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033446"><span class="hs-identifier hs-var">s1'</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679033445"><span class="annot"><span class="annottext">s2 :: CharSet
+</span><a href="#local-6989586621679033445"><span class="hs-identifier hs-var">s2</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679033444"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033444"><span class="hs-identifier hs-var">l2</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679033443"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033443"><span class="hs-identifier hs-var">u2</span></a></span></span><span class="hs-special">)</span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033442"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033442"><span class="hs-identifier hs-var">s2'</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-103"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033447"><span class="hs-identifier hs-var">u1</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033444"><span class="hs-identifier hs-var">l2</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033448"><span class="hs-identifier hs-var">l1</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033447"><span class="hs-identifier hs-var">u1</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Char, Char) -&gt; CharSet -&gt; CharSet
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#diffCS"><span class="hs-identifier hs-var">diffCS</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033446"><span class="hs-identifier hs-var">s1'</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033445"><span class="hs-identifier hs-var">s2</span></a></span><span>       </span><span class="hs-comment">-- whole intervall remains in set</span><span>
+</span><span id="line-104"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033443"><span class="hs-identifier hs-var">u2</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033448"><span class="hs-identifier hs-var">l1</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#diffCS"><span class="hs-identifier hs-var">diffCS</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033449"><span class="hs-identifier hs-var">s1</span></a></span><span>  </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033442"><span class="hs-identifier hs-var">s2'</span></a></span><span>                </span><span class="hs-comment">-- no elements to remove</span><span>
+</span><span id="line-105"></span><span>                                                        </span><span class="hs-comment">-- intervalls overlap</span><span>
+</span><span id="line-106"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033441"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#diffCS"><span class="hs-identifier hs-var">diffCS</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033440"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033446"><span class="hs-identifier hs-var">s1'</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033445"><span class="hs-identifier hs-var">s2</span></a></span><span>
+</span><span id="line-107"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-108"></span><span>    </span><span id="local-6989586621679033441"><span class="annot"><span class="annottext">p :: CharSet
+</span><a href="#local-6989586621679033441"><span class="hs-identifier hs-var hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033448"><span class="hs-identifier hs-var">l1</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033444"><span class="hs-identifier hs-var">l2</span></a></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033448"><span class="hs-identifier hs-var">l1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char
+forall a. Enum a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">pred</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033444"><span class="hs-identifier hs-var">l2</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>               </span><span class="hs-comment">-- = rangeCS l1 (pred l2), but prevent underflow</span><span>
+</span><span id="line-109"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-110"></span><span>    </span><span id="local-6989586621679033440"><span class="annot"><span class="annottext">s :: CharSet
+</span><a href="#local-6989586621679033440"><span class="hs-identifier hs-var hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033443"><span class="hs-identifier hs-var">u2</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033447"><span class="hs-identifier hs-var">u1</span></a></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Char
+forall a. Enum a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">succ</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033443"><span class="hs-identifier hs-var">u2</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033447"><span class="hs-identifier hs-var">u1</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>               </span><span class="hs-comment">-- = rangeCS (succ u2) u1, but prevent overflow</span><span>
+</span><span id="line-111"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-112"></span><span>
+</span><span id="line-113"></span><span class="annot"><a href="Data.Set.CharSet.html#compCS"><span class="hs-identifier hs-type">compCS</span></a></span><span>                  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span>
+</span><span id="line-114"></span><span id="compCS"><span class="annot"><span class="annottext">compCS :: CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#compCS"><span class="hs-identifier hs-var hs-var">compCS</span></a></span></span><span>                  </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CharSet
+</span><a href="Data.Set.CharSet.html#allCS"><span class="hs-identifier hs-var">allCS</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#diffCS"><span class="hs-operator hs-var">`diffCS`</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-115"></span><span>
+</span><span id="line-116"></span><span class="annot"><a href="Data.Set.CharSet.html#intersectCS"><span class="hs-identifier hs-type">intersectCS</span></a></span><span>             </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span>
+</span><span id="line-117"></span><span>
+</span><span id="line-118"></span><span id="intersectCS"><span class="annot"><span class="annottext">intersectCS :: CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#intersectCS"><span class="hs-identifier hs-var hs-var">intersectCS</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>  </span><span id="local-6989586621679033438"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033438"><span class="hs-identifier hs-var">_s2</span></a></span></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-119"></span><span class="annot"><a href="Data.Set.CharSet.html#intersectCS"><span class="hs-identifier hs-var">intersectCS</span></a></span><span> </span><span id="local-6989586621679033437"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033437"><span class="hs-identifier hs-var">_s1</span></a></span></span><span>  </span><span class="hs-special">[</span><span class="hs-special">]</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-120"></span><span>
+</span><span id="line-121"></span><span class="annot"><a href="Data.Set.CharSet.html#intersectCS"><span class="hs-identifier hs-var">intersectCS</span></a></span><span> </span><span id="local-6989586621679033436"><span class="annot"><span class="annottext">s1 :: CharSet
+</span><a href="#local-6989586621679033436"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679033435"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033435"><span class="hs-identifier hs-var">l1</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679033434"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033434"><span class="hs-identifier hs-var">u1</span></a></span></span><span class="hs-special">)</span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033433"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033433"><span class="hs-identifier hs-var">s1'</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679033432"><span class="annot"><span class="annottext">s2 :: CharSet
+</span><a href="#local-6989586621679033432"><span class="hs-identifier hs-var">s2</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679033431"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033431"><span class="hs-identifier hs-var">l2</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679033430"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033430"><span class="hs-identifier hs-var">u2</span></a></span></span><span class="hs-special">)</span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033429"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033429"><span class="hs-identifier hs-var">s2'</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-122"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033434"><span class="hs-identifier hs-var">u1</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033431"><span class="hs-identifier hs-var">l2</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#intersectCS"><span class="hs-identifier hs-var">intersectCS</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033433"><span class="hs-identifier hs-var">s1'</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033432"><span class="hs-identifier hs-var">s2</span></a></span><span>
+</span><span id="line-123"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033430"><span class="hs-identifier hs-var">u2</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033435"><span class="hs-identifier hs-var">l1</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#intersectCS"><span class="hs-identifier hs-var">intersectCS</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033436"><span class="hs-identifier hs-var">s1</span></a></span><span>  </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033429"><span class="hs-identifier hs-var">s2'</span></a></span><span>
+</span><span id="line-124"></span><span>                                                        </span><span class="hs-comment">-- intervalls overlap</span><span>
+</span><span id="line-125"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Char, Char)
+</span><a href="#local-6989586621679033428"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">(Char, Char) -&gt; CharSet -&gt; CharSet
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033427"><span class="hs-identifier hs-var">isect</span></a></span><span>
+</span><span id="line-126"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-127"></span><span>    </span><span id="local-6989586621679033428"><span class="annot"><span class="annottext">i :: (Char, Char)
+</span><a href="#local-6989586621679033428"><span class="hs-identifier hs-var hs-var">i</span></a></span></span><span>                   </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033435"><span class="hs-identifier hs-var">l1</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Char
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">`max`</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033431"><span class="hs-identifier hs-var">l2</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033434"><span class="hs-identifier hs-var">u1</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Char
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">`min`</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033430"><span class="hs-identifier hs-var">u2</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-128"></span><span>    </span><span id="local-6989586621679033427"><span class="annot"><span class="annottext">isect :: CharSet
+</span><a href="#local-6989586621679033427"><span class="hs-identifier hs-var hs-var">isect</span></a></span></span><span>
+</span><span id="line-129"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033434"><span class="hs-identifier hs-var">u1</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033430"><span class="hs-identifier hs-var">u2</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#intersectCS"><span class="hs-identifier hs-var">intersectCS</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033433"><span class="hs-identifier hs-var">s1'</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033432"><span class="hs-identifier hs-var">s2</span></a></span><span>
+</span><span id="line-130"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#intersectCS"><span class="hs-identifier hs-var">intersectCS</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033436"><span class="hs-identifier hs-var">s1</span></a></span><span>  </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033429"><span class="hs-identifier hs-var">s2'</span></a></span><span>
+</span><span id="line-131"></span><span>
+</span><span id="line-132"></span><span class="annot"><a href="Data.Set.CharSet.html#exorCS"><span class="hs-identifier hs-type">exorCS</span></a></span><span>                  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Set.CharSet.html#CharSet"><span class="hs-identifier hs-type">CharSet</span></a></span><span>
+</span><span id="line-133"></span><span>
+</span><span id="line-134"></span><span id="exorCS"><span class="annot"><span class="annottext">exorCS :: CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#exorCS"><span class="hs-identifier hs-var hs-var">exorCS</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span id="local-6989586621679033425"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033425"><span class="hs-identifier hs-var">s2</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033425"><span class="hs-identifier hs-var">s2</span></a></span><span>
+</span><span id="line-135"></span><span class="annot"><a href="Data.Set.CharSet.html#exorCS"><span class="hs-identifier hs-var">exorCS</span></a></span><span> </span><span id="local-6989586621679033424"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033424"><span class="hs-identifier hs-var">s1</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033424"><span class="hs-identifier hs-var">s1</span></a></span><span>
+</span><span id="line-136"></span><span>
+</span><span id="line-137"></span><span class="annot"><a href="Data.Set.CharSet.html#exorCS"><span class="hs-identifier hs-var">exorCS</span></a></span><span> </span><span id="local-6989586621679033423"><span class="annot"><span class="annottext">s1 :: CharSet
+</span><a href="#local-6989586621679033423"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span id="local-6989586621679033422"><span class="annot"><span class="annottext">i1 :: (Char, Char)
+</span><a href="#local-6989586621679033422"><span class="hs-identifier hs-var">i1</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span id="local-6989586621679033421"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033421"><span class="hs-identifier hs-var">l1</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679033420"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033420"><span class="hs-identifier hs-var">u1</span></a></span></span><span class="hs-special">)</span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033419"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033419"><span class="hs-identifier hs-var">s1'</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679033418"><span class="annot"><span class="annottext">s2 :: CharSet
+</span><a href="#local-6989586621679033418"><span class="hs-identifier hs-var">s2</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span id="local-6989586621679033417"><span class="annot"><span class="annottext">i2 :: (Char, Char)
+</span><a href="#local-6989586621679033417"><span class="hs-identifier hs-var">i2</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span id="local-6989586621679033416"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033416"><span class="hs-identifier hs-var">l2</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679033415"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033415"><span class="hs-identifier hs-var">u2</span></a></span></span><span class="hs-special">)</span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033414"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033414"><span class="hs-identifier hs-var">s2'</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-138"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033420"><span class="hs-identifier hs-var">u1</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033416"><span class="hs-identifier hs-var">l2</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Char, Char)
+</span><a href="#local-6989586621679033422"><span class="hs-identifier hs-var">i1</span></a></span><span> </span><span class="annot"><span class="annottext">(Char, Char) -&gt; CharSet -&gt; CharSet
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#exorCS"><span class="hs-identifier hs-var">exorCS</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033419"><span class="hs-identifier hs-var">s1'</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033418"><span class="hs-identifier hs-var">s2</span></a></span><span>
+</span><span id="line-139"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033415"><span class="hs-identifier hs-var">u2</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033421"><span class="hs-identifier hs-var">l1</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Char, Char)
+</span><a href="#local-6989586621679033417"><span class="hs-identifier hs-var">i2</span></a></span><span> </span><span class="annot"><span class="annottext">(Char, Char) -&gt; CharSet -&gt; CharSet
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#exorCS"><span class="hs-identifier hs-var">exorCS</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033423"><span class="hs-identifier hs-var">s1</span></a></span><span>  </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033414"><span class="hs-identifier hs-var">s2'</span></a></span><span>
+</span><span id="line-140"></span><span>                                                        </span><span class="hs-comment">-- intervalls overlap</span><span>
+</span><span id="line-141"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033413"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033412"><span class="hs-identifier hs-var">exor'</span></a></span><span>
+</span><span id="line-142"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-143"></span><span>    </span><span id="local-6989586621679033413"><span class="annot"><span class="annottext">i :: CharSet
+</span><a href="#local-6989586621679033413"><span class="hs-identifier hs-var hs-var">i</span></a></span></span><span>   </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033421"><span class="hs-identifier hs-var">l1</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033416"><span class="hs-identifier hs-var">l2</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033421"><span class="hs-identifier hs-var">l1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char
+forall a. Enum a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">pred</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033416"><span class="hs-identifier hs-var">l2</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-144"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033416"><span class="hs-identifier hs-var">l2</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033421"><span class="hs-identifier hs-var">l1</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033416"><span class="hs-identifier hs-var">l2</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char
+forall a. Enum a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">pred</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033421"><span class="hs-identifier hs-var">l1</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-145"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-146"></span><span>    </span><span id="local-6989586621679033412"><span class="annot"><span class="annottext">exor' :: CharSet
+</span><a href="#local-6989586621679033412"><span class="hs-identifier hs-var hs-var">exor'</span></a></span></span><span>
+</span><span id="line-147"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033420"><span class="hs-identifier hs-var">u1</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033415"><span class="hs-identifier hs-var">u2</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#exorCS"><span class="hs-identifier hs-var">exorCS</span></a></span><span>                  </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033419"><span class="hs-identifier hs-var">s1'</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Char
+forall a. Enum a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">succ</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033420"><span class="hs-identifier hs-var">u1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033415"><span class="hs-identifier hs-var">u2</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Char, Char) -&gt; CharSet -&gt; CharSet
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033414"><span class="hs-identifier hs-var">s2'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-148"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033415"><span class="hs-identifier hs-var">u2</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033420"><span class="hs-identifier hs-var">u1</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#exorCS"><span class="hs-identifier hs-var">exorCS</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Char
+forall a. Enum a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">succ</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033415"><span class="hs-identifier hs-var">u2</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033420"><span class="hs-identifier hs-var">u1</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Char, Char) -&gt; CharSet -&gt; CharSet
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033419"><span class="hs-identifier hs-var">s1'</span></a></span><span class="hs-special">)</span><span>                 </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033414"><span class="hs-identifier hs-var">s2'</span></a></span><span>
+</span><span id="line-149"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; CharSet
+</span><a href="Data.Set.CharSet.html#exorCS"><span class="hs-identifier hs-var">exorCS</span></a></span><span>                  </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033419"><span class="hs-identifier hs-var">s1'</span></a></span><span>                  </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679033414"><span class="hs-identifier hs-var">s2'</span></a></span><span>
+</span><span id="line-150"></span><span>
+</span><span id="line-151"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-152"></span></pre></body></html>

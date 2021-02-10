@@ -1,0 +1,300 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+   Module     : Data.Tree.NavigatableTree.XPathAxis
+   Copyright  : Copyright (C) 2010 Uwe Schmidt
+   License    : MIT
+
+   Maintainer : Uwe Schmidt (uwe\@fh-wedel.de)
+   Stability  : experimental
+   Portability: portable
+
+   Navigatable trees need to have operations to move up, down, left and right.
+   With these elementary operations, the XPath axises can be defined.
+-}</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Data.Tree.NavigatableTree.XPathAxis</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>               </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-identifier">maybeToList</span></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html"><span class="hs-identifier">Data.Tree.NavigatableTree.Class</span></a></span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Arrow</span></span><span>            </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-operator">(&gt;&gt;&gt;)</span></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>            </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-operator">(&gt;=&gt;)</span></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-28"></span><span class="hs-comment">--</span><span>
+</span><span id="line-29"></span><span class="hs-comment">-- mothers little helpers</span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- | collect all trees by moving into one direction, starting tree is included</span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span id="local-6989586621679170252"><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#maybeStar"><span class="hs-identifier hs-type">maybeStar</span></a></span><span>               </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679170252"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679170252"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679170252"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679170252"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span></span><span>
+</span><span id="line-34"></span><span id="maybeStar"><span class="annot"><span class="annottext">maybeStar :: (a -&gt; Maybe a) -&gt; a -&gt; [a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#maybeStar"><span class="hs-identifier hs-var hs-var">maybeStar</span></a></span></span><span> </span><span id="local-6989586621679170187"><span class="annot"><span class="annottext">a -&gt; Maybe a
+</span><a href="#local-6989586621679170187"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679170186"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170186"><span class="hs-identifier hs-var">x</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170186"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; [a] -&gt; [a]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[a] -&gt; (a -&gt; [a]) -&gt; Maybe a -&gt; [a]
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a -&gt; Maybe a) -&gt; a -&gt; [a]
+forall a. (a -&gt; Maybe a) -&gt; a -&gt; [a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#maybeStar"><span class="hs-identifier hs-var">maybeStar</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; Maybe a
+</span><a href="#local-6989586621679170187"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Maybe a
+</span><a href="#local-6989586621679170187"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170186"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- | collect all trees by moving into one direction, starting tree is not included</span><span>
+</span><span id="line-37"></span><span>
+</span><span id="line-38"></span><span id="local-6989586621679170184"><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#maybePlus"><span class="hs-identifier hs-type">maybePlus</span></a></span><span>               </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679170184"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679170184"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679170184"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679170184"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span></span><span>
+</span><span id="line-39"></span><span id="maybePlus"><span class="annot"><span class="annottext">maybePlus :: (a -&gt; Maybe a) -&gt; a -&gt; [a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#maybePlus"><span class="hs-identifier hs-var hs-var">maybePlus</span></a></span></span><span> </span><span id="local-6989586621679170182"><span class="annot"><span class="annottext">a -&gt; Maybe a
+</span><a href="#local-6989586621679170182"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679170181"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170181"><span class="hs-identifier hs-var">x</span></a></span></span><span>           </span><span class="hs-glyph">=</span><span>      </span><span class="annot"><span class="annottext">[a] -&gt; (a -&gt; [a]) -&gt; Maybe a -&gt; [a]
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a -&gt; Maybe a) -&gt; a -&gt; [a]
+forall a. (a -&gt; Maybe a) -&gt; a -&gt; [a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#maybeStar"><span class="hs-identifier hs-var">maybeStar</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; Maybe a
+</span><a href="#local-6989586621679170182"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Maybe a
+</span><a href="#local-6989586621679170182"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170181"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#maybePlus"><span class="hs-pragma hs-type">maybePlus</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- XPath axis</span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span class="hs-comment">-- | XPath axis: parent</span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span id="local-6989586621679170179"><span id="local-6989586621679170180"><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#parentAxis"><span class="hs-identifier hs-type">parentAxis</span></a></span><span>              </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTree"><span class="hs-identifier hs-type">NavigatableTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170180"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170180"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170179"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679170180"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170179"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span></span></span><span>
+</span><span id="line-49"></span><span id="parentAxis"><span class="annot"><span class="annottext">parentAxis :: t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#parentAxis"><span class="hs-identifier hs-var hs-var">parentAxis</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (t a) -&gt; [t a]
+forall a. Maybe a -&gt; [a]
+</span><span class="hs-identifier hs-var">maybeToList</span></span><span> </span><span class="annot"><span class="annottext">(Maybe (t a) -&gt; [t a]) -&gt; (t a -&gt; Maybe (t a)) -&gt; t a -&gt; [t a]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">t a -&gt; Maybe (t a)
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; Maybe (t a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#mvUp"><span class="hs-identifier hs-var">mvUp</span></a></span><span>
+</span><span id="line-50"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#parentAxis"><span class="hs-pragma hs-type">parentAxis</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span class="hs-comment">-- | XPath axis: ancestor</span><span>
+</span><span id="line-53"></span><span>
+</span><span id="line-54"></span><span id="local-6989586621679170174"><span id="local-6989586621679170175"><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#ancestorAxis"><span class="hs-identifier hs-type">ancestorAxis</span></a></span><span>            </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTree"><span class="hs-identifier hs-type">NavigatableTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170175"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170175"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170174"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679170175"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170174"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span></span></span><span>
+</span><span id="line-55"></span><span id="ancestorAxis"><span class="annot"><span class="annottext">ancestorAxis :: t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#ancestorAxis"><span class="hs-identifier hs-var hs-var">ancestorAxis</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(t a -&gt; Maybe (t a)) -&gt; t a -&gt; [t a]
+forall a. (a -&gt; Maybe a) -&gt; a -&gt; [a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#maybePlus"><span class="hs-identifier hs-var">maybePlus</span></a></span><span> </span><span class="annot"><span class="annottext">t a -&gt; Maybe (t a)
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; Maybe (t a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#mvUp"><span class="hs-identifier hs-var">mvUp</span></a></span><span>
+</span><span id="line-56"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#ancestorAxis"><span class="hs-pragma hs-type">ancestorAxis</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span class="hs-comment">-- | XPath axis: ancestor or self</span><span>
+</span><span id="line-59"></span><span>
+</span><span id="line-60"></span><span id="local-6989586621679170171"><span id="local-6989586621679170172"><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#ancestorOrSelfAxis"><span class="hs-identifier hs-type">ancestorOrSelfAxis</span></a></span><span>      </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTree"><span class="hs-identifier hs-type">NavigatableTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170172"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170172"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170171"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679170172"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170171"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span></span></span><span>
+</span><span id="line-61"></span><span id="ancestorOrSelfAxis"><span class="annot"><span class="annottext">ancestorOrSelfAxis :: t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#ancestorOrSelfAxis"><span class="hs-identifier hs-var hs-var">ancestorOrSelfAxis</span></a></span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(t a -&gt; Maybe (t a)) -&gt; t a -&gt; [t a]
+forall a. (a -&gt; Maybe a) -&gt; a -&gt; [a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#maybeStar"><span class="hs-identifier hs-var">maybeStar</span></a></span><span> </span><span class="annot"><span class="annottext">t a -&gt; Maybe (t a)
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; Maybe (t a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#mvUp"><span class="hs-identifier hs-var">mvUp</span></a></span><span>
+</span><span id="line-62"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#ancestorOrSelfAxis"><span class="hs-pragma hs-type">ancestorOrSelfAxis</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-63"></span><span>
+</span><span id="line-64"></span><span class="hs-comment">-- | XPath axis: child</span><span>
+</span><span id="line-65"></span><span>
+</span><span id="line-66"></span><span id="local-6989586621679170168"><span id="local-6989586621679170169"><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#childAxis"><span class="hs-identifier hs-type">childAxis</span></a></span><span>               </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTree"><span class="hs-identifier hs-type">NavigatableTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170169"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170169"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170168"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679170169"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170168"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span></span></span><span>
+</span><span id="line-67"></span><span id="childAxis"><span class="annot"><span class="annottext">childAxis :: t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#childAxis"><span class="hs-identifier hs-var hs-var">childAxis</span></a></span></span><span>               </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">t a -&gt; Maybe (t a)
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; Maybe (t a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#mvDown"><span class="hs-identifier hs-var">mvDown</span></a></span><span> </span><span class="annot"><span class="annottext">(t a -&gt; Maybe (t a)) -&gt; (Maybe (t a) -&gt; [t a]) -&gt; t a -&gt; [t a]
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Maybe (t a) -&gt; [t a]
+forall a. Maybe a -&gt; [a]
+</span><span class="hs-identifier hs-var">maybeToList</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(t a -&gt; [t a]) -&gt; (t a -&gt; [t a]) -&gt; t a -&gt; [t a]
+forall (m :: * -&gt; *) a b c.
+Monad m =&gt;
+(a -&gt; m b) -&gt; (b -&gt; m c) -&gt; a -&gt; m c
+</span><span class="hs-operator hs-var">&gt;=&gt;</span></span><span> </span><span class="annot"><span class="annottext">(t a -&gt; Maybe (t a)) -&gt; t a -&gt; [t a]
+forall a. (a -&gt; Maybe a) -&gt; a -&gt; [a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#maybeStar"><span class="hs-identifier hs-var">maybeStar</span></a></span><span> </span><span class="annot"><span class="annottext">t a -&gt; Maybe (t a)
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; Maybe (t a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#mvRight"><span class="hs-identifier hs-var">mvRight</span></a></span><span>
+</span><span id="line-68"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#childAxis"><span class="hs-pragma hs-type">childAxis</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-69"></span><span>
+</span><span id="line-70"></span><span class="hs-comment">-- | XPath axis: descendant</span><span>
+</span><span id="line-71"></span><span>
+</span><span id="line-72"></span><span id="local-6989586621679170163"><span id="local-6989586621679170164"><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#descendantAxis"><span class="hs-identifier hs-type">descendantAxis</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTree"><span class="hs-identifier hs-type">NavigatableTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170164"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170164"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170163"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679170164"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170163"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span></span></span><span>
+</span><span id="line-73"></span><span id="descendantAxis"><span class="annot"><span class="annottext">descendantAxis :: t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#descendantAxis"><span class="hs-identifier hs-var hs-var">descendantAxis</span></a></span></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t a -&gt; [t a]
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#descendantOrSelfAxis"><span class="hs-identifier hs-var">descendantOrSelfAxis</span></a></span><span> </span><span class="annot"><span class="annottext">(t a -&gt; [t a]) -&gt; ([t a] -&gt; [t a]) -&gt; t a -&gt; [t a]
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">[t a] -&gt; [t a]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">tail</span></span><span>
+</span><span id="line-74"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#descendantAxis"><span class="hs-pragma hs-type">descendantAxis</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span class="hs-comment">-- | XPath axis: descendant or self</span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span id="local-6989586621679170222"><span id="local-6989586621679170223"><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#descendantOrSelfAxis"><span class="hs-identifier hs-type">descendantOrSelfAxis</span></a></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTree"><span class="hs-identifier hs-type">NavigatableTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170223"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170223"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170222"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679170223"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170222"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span></span></span><span>
+</span><span id="line-79"></span><span id="descendantOrSelfAxis"><span class="annot"><span class="annottext">descendantOrSelfAxis :: t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#descendantOrSelfAxis"><span class="hs-identifier hs-var hs-var">descendantOrSelfAxis</span></a></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[t a] -&gt; t a -&gt; [t a]
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; [t a] -&gt; t a -&gt; [t a]
+</span><a href="#local-6989586621679170159"><span class="hs-identifier hs-var">visit</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-80"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-81"></span><span>    </span><span id="local-6989586621679170159"><span class="annot"><span class="annottext">visit :: [t a] -&gt; t a -&gt; [t a]
+</span><a href="#local-6989586621679170159"><span class="hs-identifier hs-var hs-var">visit</span></a></span></span><span>  </span><span id="local-6989586621679170158"><span class="annot"><span class="annottext">[t a]
+</span><a href="#local-6989586621679170158"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span id="local-6989586621679170157"><span class="annot"><span class="annottext">t a
+</span><a href="#local-6989586621679170157"><span class="hs-identifier hs-var">t</span></a></span></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t a
+</span><a href="#local-6989586621679170157"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">t a -&gt; [t a] -&gt; [t a]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[t a] -&gt; (t a -&gt; [t a]) -&gt; Maybe (t a) -&gt; [t a]
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="annot"><span class="annottext">[t a]
+</span><a href="#local-6989586621679170158"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[t a] -&gt; t a -&gt; [t a]
+</span><a href="#local-6989586621679170156"><span class="hs-identifier hs-var">visit'</span></a></span><span> </span><span class="annot"><span class="annottext">[t a]
+</span><a href="#local-6989586621679170158"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">t a -&gt; Maybe (t a)
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; Maybe (t a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#mvDown"><span class="hs-identifier hs-var">mvDown</span></a></span><span> </span><span class="annot"><span class="annottext">t a
+</span><a href="#local-6989586621679170157"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-82"></span><span>    </span><span id="local-6989586621679170156"><span class="annot"><span class="annottext">visit' :: [t a] -&gt; t a -&gt; [t a]
+</span><a href="#local-6989586621679170156"><span class="hs-identifier hs-var hs-var">visit'</span></a></span></span><span> </span><span id="local-6989586621679170155"><span class="annot"><span class="annottext">[t a]
+</span><a href="#local-6989586621679170155"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span id="local-6989586621679170154"><span class="annot"><span class="annottext">t a
+</span><a href="#local-6989586621679170154"><span class="hs-identifier hs-var">t</span></a></span></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[t a] -&gt; t a -&gt; [t a]
+</span><a href="#local-6989586621679170159"><span class="hs-identifier hs-var">visit</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[t a] -&gt; (t a -&gt; [t a]) -&gt; Maybe (t a) -&gt; [t a]
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="annot"><span class="annottext">[t a]
+</span><a href="#local-6989586621679170155"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[t a] -&gt; t a -&gt; [t a]
+</span><a href="#local-6989586621679170156"><span class="hs-identifier hs-var">visit'</span></a></span><span> </span><span class="annot"><span class="annottext">[t a]
+</span><a href="#local-6989586621679170155"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">t a -&gt; Maybe (t a)
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; Maybe (t a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#mvRight"><span class="hs-identifier hs-var">mvRight</span></a></span><span> </span><span class="annot"><span class="annottext">t a
+</span><a href="#local-6989586621679170154"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">t a
+</span><a href="#local-6989586621679170154"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-83"></span><span>
+</span><span id="line-84"></span><span class="hs-comment">-- | not an official XPath axis but useful: reverse descendant or self, used in preceding axis</span><span>
+</span><span id="line-85"></span><span>
+</span><span id="line-86"></span><span id="local-6989586621679170152"><span id="local-6989586621679170153"><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#revDescendantOrSelfAxis"><span class="hs-identifier hs-type">revDescendantOrSelfAxis</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTree"><span class="hs-identifier hs-type">NavigatableTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170153"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170153"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170152"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679170153"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170152"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span></span></span><span>
+</span><span id="line-87"></span><span id="revDescendantOrSelfAxis"><span class="annot"><span class="annottext">revDescendantOrSelfAxis :: t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#revDescendantOrSelfAxis"><span class="hs-identifier hs-var hs-var">revDescendantOrSelfAxis</span></a></span></span><span> </span><span id="local-6989586621679170150"><span class="annot"><span class="annottext">t a
+</span><a href="#local-6989586621679170150"><span class="hs-identifier hs-var">t</span></a></span></span><span>
+</span><span id="line-88"></span><span>                        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t a
+</span><a href="#local-6989586621679170150"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">t a -&gt; [t a] -&gt; [t a]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">(t a -&gt; [t a]) -&gt; [t a] -&gt; [t a]
+forall (t :: * -&gt; *) a b. Foldable t =&gt; (a -&gt; [b]) -&gt; t a -&gt; [b]
+</span><span class="hs-identifier hs-var">concatMap</span></span><span> </span><span class="annot"><span class="annottext">t a -&gt; [t a]
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#revDescendantOrSelfAxis"><span class="hs-identifier hs-var">revDescendantOrSelfAxis</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[t a] -&gt; [t a]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="annot"><span class="annottext">([t a] -&gt; [t a]) -&gt; [t a] -&gt; [t a]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">t a -&gt; [t a]
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#childAxis"><span class="hs-identifier hs-var">childAxis</span></a></span><span> </span><span class="annot"><span class="annottext">t a
+</span><a href="#local-6989586621679170150"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span class="hs-comment">-- | XPath axis: following sibling</span><span>
+</span><span id="line-91"></span><span>
+</span><span id="line-92"></span><span id="local-6989586621679170146"><span id="local-6989586621679170147"><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#followingSiblingAxis"><span class="hs-identifier hs-type">followingSiblingAxis</span></a></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTree"><span class="hs-identifier hs-type">NavigatableTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170147"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170147"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170146"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679170147"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170146"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span></span></span><span>
+</span><span id="line-93"></span><span id="followingSiblingAxis"><span class="annot"><span class="annottext">followingSiblingAxis :: t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#followingSiblingAxis"><span class="hs-identifier hs-var hs-var">followingSiblingAxis</span></a></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(t a -&gt; Maybe (t a)) -&gt; t a -&gt; [t a]
+forall a. (a -&gt; Maybe a) -&gt; a -&gt; [a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#maybePlus"><span class="hs-identifier hs-var">maybePlus</span></a></span><span> </span><span class="annot"><span class="annottext">t a -&gt; Maybe (t a)
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; Maybe (t a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#mvRight"><span class="hs-identifier hs-var">mvRight</span></a></span><span>
+</span><span id="line-94"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#followingSiblingAxis"><span class="hs-pragma hs-type">followingSiblingAxis</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-95"></span><span>
+</span><span id="line-96"></span><span class="hs-comment">-- | XPath axis: preceeding sibling</span><span>
+</span><span id="line-97"></span><span>
+</span><span id="line-98"></span><span id="local-6989586621679170143"><span id="local-6989586621679170144"><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#precedingSiblingAxis"><span class="hs-identifier hs-type">precedingSiblingAxis</span></a></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTree"><span class="hs-identifier hs-type">NavigatableTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170144"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170144"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170143"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679170144"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170143"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span></span></span><span>
+</span><span id="line-99"></span><span id="precedingSiblingAxis"><span class="annot"><span class="annottext">precedingSiblingAxis :: t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#precedingSiblingAxis"><span class="hs-identifier hs-var hs-var">precedingSiblingAxis</span></a></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(t a -&gt; Maybe (t a)) -&gt; t a -&gt; [t a]
+forall a. (a -&gt; Maybe a) -&gt; a -&gt; [a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#maybePlus"><span class="hs-identifier hs-var">maybePlus</span></a></span><span> </span><span class="annot"><span class="annottext">t a -&gt; Maybe (t a)
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; Maybe (t a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#mvLeft"><span class="hs-identifier hs-var">mvLeft</span></a></span><span>
+</span><span id="line-100"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#precedingSiblingAxis"><span class="hs-pragma hs-type">precedingSiblingAxis</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-101"></span><span>
+</span><span id="line-102"></span><span class="hs-comment">-- | XPath axis: self</span><span>
+</span><span id="line-103"></span><span>
+</span><span id="line-104"></span><span id="local-6989586621679170139"><span id="local-6989586621679170140"><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#selfAxis"><span class="hs-identifier hs-type">selfAxis</span></a></span><span>                </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTree"><span class="hs-identifier hs-type">NavigatableTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170140"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170140"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170139"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679170140"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170139"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span></span></span><span>
+</span><span id="line-105"></span><span id="selfAxis"><span class="annot"><span class="annottext">selfAxis :: t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#selfAxis"><span class="hs-identifier hs-var hs-var">selfAxis</span></a></span></span><span>                </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">t a -&gt; [t a] -&gt; [t a]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-106"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#selfAxis"><span class="hs-pragma hs-type">selfAxis</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-107"></span><span>
+</span><span id="line-108"></span><span class="hs-comment">-- | XPath axis: following</span><span>
+</span><span id="line-109"></span><span>
+</span><span id="line-110"></span><span id="local-6989586621679170136"><span id="local-6989586621679170137"><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#followingAxis"><span class="hs-identifier hs-type">followingAxis</span></a></span><span>           </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTree"><span class="hs-identifier hs-type">NavigatableTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170137"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170137"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170136"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679170137"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170136"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span></span></span><span>
+</span><span id="line-111"></span><span id="followingAxis"><span class="annot"><span class="annottext">followingAxis :: t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#followingAxis"><span class="hs-identifier hs-var hs-var">followingAxis</span></a></span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t a -&gt; [t a]
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#ancestorOrSelfAxis"><span class="hs-identifier hs-var">ancestorOrSelfAxis</span></a></span><span> </span><span class="annot"><span class="annottext">(t a -&gt; [t a]) -&gt; (t a -&gt; [t a]) -&gt; t a -&gt; [t a]
+forall (m :: * -&gt; *) a b c.
+Monad m =&gt;
+(a -&gt; m b) -&gt; (b -&gt; m c) -&gt; a -&gt; m c
+</span><span class="hs-operator hs-var">&gt;=&gt;</span></span><span> </span><span class="annot"><span class="annottext">t a -&gt; [t a]
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#followingSiblingAxis"><span class="hs-identifier hs-var">followingSiblingAxis</span></a></span><span> </span><span class="annot"><span class="annottext">(t a -&gt; [t a]) -&gt; (t a -&gt; [t a]) -&gt; t a -&gt; [t a]
+forall (m :: * -&gt; *) a b c.
+Monad m =&gt;
+(a -&gt; m b) -&gt; (b -&gt; m c) -&gt; a -&gt; m c
+</span><span class="hs-operator hs-var">&gt;=&gt;</span></span><span> </span><span class="annot"><span class="annottext">t a -&gt; [t a]
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#descendantOrSelfAxis"><span class="hs-identifier hs-var">descendantOrSelfAxis</span></a></span><span>
+</span><span id="line-112"></span><span>
+</span><span id="line-113"></span><span class="hs-comment">-- | XPath axis: preceding</span><span>
+</span><span id="line-114"></span><span>
+</span><span id="line-115"></span><span id="local-6989586621679170133"><span id="local-6989586621679170134"><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#precedingAxis"><span class="hs-identifier hs-type">precedingAxis</span></a></span><span>           </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTree"><span class="hs-identifier hs-type">NavigatableTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170134"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170134"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170133"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679170134"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170133"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span></span></span><span>
+</span><span id="line-116"></span><span id="precedingAxis"><span class="annot"><span class="annottext">precedingAxis :: t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#precedingAxis"><span class="hs-identifier hs-var hs-var">precedingAxis</span></a></span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t a -&gt; [t a]
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#ancestorOrSelfAxis"><span class="hs-identifier hs-var">ancestorOrSelfAxis</span></a></span><span> </span><span class="annot"><span class="annottext">(t a -&gt; [t a]) -&gt; (t a -&gt; [t a]) -&gt; t a -&gt; [t a]
+forall (m :: * -&gt; *) a b c.
+Monad m =&gt;
+(a -&gt; m b) -&gt; (b -&gt; m c) -&gt; a -&gt; m c
+</span><span class="hs-operator hs-var">&gt;=&gt;</span></span><span> </span><span class="annot"><span class="annottext">t a -&gt; [t a]
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#precedingSiblingAxis"><span class="hs-identifier hs-var">precedingSiblingAxis</span></a></span><span> </span><span class="annot"><span class="annottext">(t a -&gt; [t a]) -&gt; (t a -&gt; [t a]) -&gt; t a -&gt; [t a]
+forall (m :: * -&gt; *) a b c.
+Monad m =&gt;
+(a -&gt; m b) -&gt; (b -&gt; m c) -&gt; a -&gt; m c
+</span><span class="hs-operator hs-var">&gt;=&gt;</span></span><span> </span><span class="annot"><span class="annottext">t a -&gt; [t a]
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#revDescendantOrSelfAxis"><span class="hs-identifier hs-var">revDescendantOrSelfAxis</span></a></span><span>
+</span><span id="line-117"></span><span>
+</span><span id="line-118"></span><span class="hs-comment">-- | move to the root</span><span>
+</span><span id="line-119"></span><span>
+</span><span id="line-120"></span><span id="local-6989586621679170130"><span id="local-6989586621679170131"><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#mvToRoot"><span class="hs-identifier hs-type">mvToRoot</span></a></span><span>                </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTree"><span class="hs-identifier hs-type">NavigatableTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170131"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170131"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170130"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170131"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170130"><span class="hs-identifier hs-type">a</span></a></span></span></span><span>
+</span><span id="line-121"></span><span id="mvToRoot"><span class="annot"><span class="annottext">mvToRoot :: t a -&gt; t a
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#mvToRoot"><span class="hs-identifier hs-var hs-var">mvToRoot</span></a></span></span><span>                </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t a -&gt; [t a]
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#ancestorOrSelfAxis"><span class="hs-identifier hs-var">ancestorOrSelfAxis</span></a></span><span> </span><span class="annot"><span class="annottext">(t a -&gt; [t a]) -&gt; ([t a] -&gt; t a) -&gt; t a -&gt; t a
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">[t a] -&gt; t a
+forall a. [a] -&gt; a
+</span><span class="hs-identifier hs-var">last</span></span><span>
+</span><span id="line-122"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#mvToRoot"><span class="hs-pragma hs-type">mvToRoot</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-123"></span><span>
+</span><span id="line-124"></span><span id="local-6989586621679170126"><span id="local-6989586621679170127"><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#isAtRoot"><span class="hs-identifier hs-type">isAtRoot</span></a></span><span>                </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTree"><span class="hs-identifier hs-type">NavigatableTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170127"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170127"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170126"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span></span></span><span>
+</span><span id="line-125"></span><span id="isAtRoot"><span class="annot"><span class="annottext">isAtRoot :: t a -&gt; Bool
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#isAtRoot"><span class="hs-identifier hs-var hs-var">isAtRoot</span></a></span></span><span>                </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[t a] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">([t a] -&gt; Bool) -&gt; (t a -&gt; [t a]) -&gt; t a -&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">t a -&gt; [t a]
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#ancestorAxis"><span class="hs-identifier hs-var">ancestorAxis</span></a></span><span>
+</span><span id="line-126"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#isAtRoot"><span class="hs-pragma hs-type">isAtRoot</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-127"></span><span>
+</span><span id="line-128"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-129"></span></pre></body></html>

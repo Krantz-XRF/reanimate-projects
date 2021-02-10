@@ -1,0 +1,271 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+   Module     : Text.XML.HXT.DTDValidation.Validation
+   Copyright  : Copyright (C) 2008 Uwe Schmidt
+   License    : MIT
+
+   Maintainer : Uwe Schmidt (uwe@fh-wedel.de)
+   Stability  : experimental
+   Portability: portable
+
+   This module provides functions for validating XML documents represented as
+   XmlTree.
+
+   Unlike other popular XML validation tools the validation functions return
+   a list of errors instead of aborting after the first error was found.
+
+   Note: The validation process has been split into validation and transformation!
+   If @validate@ did not report any errors, @transform@
+   should be called, to change the document the way a validating parser
+   is expected to do.
+
+-}</span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.XML.HXT.DTDValidation.Validation</span><span>
+</span><span id="line-28"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.Validation.html#getDTDSubset"><span class="hs-identifier">getDTDSubset</span></a></span><span>
+</span><span id="line-29"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.Validation.html#generalEntitiesDefined"><span class="hs-identifier">generalEntitiesDefined</span></a></span><span>
+</span><span id="line-30"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.Validation.html#validate"><span class="hs-identifier">validate</span></a></span><span>
+</span><span id="line-31"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.Validation.html#validateDTD"><span class="hs-identifier">validateDTD</span></a></span><span>
+</span><span id="line-32"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.Validation.html#validateDoc"><span class="hs-identifier">validateDoc</span></a></span><span>
+</span><span id="line-33"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.Validation.html#removeDoublicateDefs"><span class="hs-identifier">removeDoublicateDefs</span></a></span><span>
+</span><span id="line-34"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.Validation.html#transform"><span class="hs-identifier">transform</span></a></span><span>
+</span><span id="line-35"></span><span>    </span><span class="hs-special">)</span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html"><span class="hs-identifier">Text.XML.HXT.DTDValidation.TypeDefs</span></a></span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html"><span class="hs-identifier">Text.XML.HXT.DTDValidation.DocTransformation</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">DocTransformation</span></span><span>
+</span><span id="line-42"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocValidation.html"><span class="hs-identifier">Text.XML.HXT.DTDValidation.DocValidation</span></a></span><span>     </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">DocValidation</span></span><span>
+</span><span id="line-43"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DTDValidation.html"><span class="hs-identifier">Text.XML.HXT.DTDValidation.DTDValidation</span></a></span><span>     </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">DTDValidation</span></span><span>
+</span><span id="line-44"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.IdValidation.html"><span class="hs-identifier">Text.XML.HXT.DTDValidation.IdValidation</span></a></span><span>      </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">IdValidation</span></span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-47"></span><span class="hs-comment">-- Main validation filter. Check if the DTD and the document are valid.</span><span>
+</span><span id="line-48"></span><span class="hs-comment">--</span><span>
+</span><span id="line-49"></span><span class="hs-comment">--</span><span>
+</span><span id="line-50"></span><span class="hs-comment">--    - returns : a function which expects a complete document as XmlTree input</span><span>
+</span><span id="line-51"></span><span class="hs-comment">--                     and returns a list of all errors found.</span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="annot"><a href="Text.XML.HXT.DTDValidation.Validation.html#validate"><span class="hs-identifier hs-type">validate</span></a></span><span>        </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-54"></span><span id="validate"><span class="annot"><span class="annottext">validate :: XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.Validation.html#validate"><span class="hs-identifier hs-var hs-var">validate</span></a></span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.Validation.html#validateDTD"><span class="hs-identifier hs-var">validateDTD</span></a></span><span> </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) b c.
+ArrowPlus a =&gt;
+a b c -&gt; a b c -&gt; a b c
+</span><span class="hs-operator hs-var">&lt;+&gt;</span></span><span> </span><span class="annot"><span class="annottext">XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.Validation.html#validateDoc"><span class="hs-identifier hs-var">validateDoc</span></a></span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-57"></span><span class="hs-comment">-- Check if the DTD is valid.</span><span>
+</span><span id="line-58"></span><span class="hs-comment">--</span><span>
+</span><span id="line-59"></span><span class="hs-comment">--</span><span>
+</span><span id="line-60"></span><span class="hs-comment">--    - returns : a function which expects an XmlTree from the parser as input</span><span>
+</span><span id="line-61"></span><span class="hs-comment">--                     and returns a list of all errors found in the DTD.</span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="annot"><a href="Text.XML.HXT.DTDValidation.Validation.html#validateDTD"><span class="hs-identifier hs-type">validateDTD</span></a></span><span>     </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-64"></span><span id="validateDTD"><span class="annot"><span class="annottext">validateDTD :: XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.Validation.html#validateDTD"><span class="hs-identifier hs-var hs-var">validateDTD</span></a></span></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[IfThen XmlArrow XmlArrow] -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) b c d.
+ArrowIf a =&gt;
+[IfThen (a b c) (a b d)] -&gt; a b d
+</span><a href="Control.Arrow.ArrowIf.html#choiceA"><span class="hs-identifier hs-var">choiceA</span></a></span><span>
+</span><span id="line-65"></span><span>                  </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.Validation.html#getDTDSubset"><span class="hs-identifier hs-var">getDTDSubset</span></a></span><span>        </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow -&gt; IfThen XmlArrow XmlArrow
+forall a b. a -&gt; b -&gt; IfThen a b
+</span><a href="Control.Arrow.ArrowIf.html#%3A-%3E"><span class="hs-operator hs-var">:-&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.DTDValidation.html#validateDTD"><span class="hs-identifier hs-var">DTDValidation.validateDTD</span></a></span><span>
+</span><span id="line-66"></span><span>                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *) b. ArrowList a =&gt; a b b
+</span><a href="Control.Arrow.ArrowList.html#this"><span class="hs-identifier hs-var">this</span></a></span><span>                </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow -&gt; IfThen XmlArrow XmlArrow
+forall a b. a -&gt; b -&gt; IfThen a b
+</span><a href="Control.Arrow.ArrowIf.html#%3A-%3E"><span class="hs-operator hs-var">:-&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) n. ArrowXml a =&gt; String -&gt; a n XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#err"><span class="hs-identifier hs-var">err</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Can't validate DTD: There is no DOCTYPE declaration in the document.&quot;</span></span><span>
+</span><span id="line-67"></span><span>                  </span><span class="hs-special">]</span><span>
+</span><span id="line-68"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-69"></span><span class="hs-comment">-- Check if the document corresponds to the given DTD.</span><span>
+</span><span id="line-70"></span><span class="hs-comment">--</span><span>
+</span><span id="line-71"></span><span class="hs-comment">--</span><span>
+</span><span id="line-72"></span><span class="hs-comment">--    - returns : a function which expects a complete document as XmlTree input</span><span>
+</span><span id="line-73"></span><span class="hs-comment">--                     and returns a list of all errors found in the content part.</span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span class="annot"><a href="Text.XML.HXT.DTDValidation.Validation.html#validateDoc"><span class="hs-identifier hs-type">validateDoc</span></a></span><span>     </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-76"></span><span id="validateDoc"><span class="annot"><span class="annottext">validateDoc :: XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.Validation.html#validateDoc"><span class="hs-identifier hs-var hs-var">validateDoc</span></a></span></span><span>
+</span><span id="line-77"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[XmlTree] -&gt; XmlArrow
+</span><a href="#local-6989586621679184875"><span class="hs-identifier hs-var">validateDoc'</span></a></span><span> </span><span class="annot"><span class="annottext">([XmlTree] -&gt; XmlArrow) -&gt; LA XmlTree [XmlTree] -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) c b d.
+ArrowList a =&gt;
+(c -&gt; a b d) -&gt; a b c -&gt; a b d
+</span><a href="Control.Arrow.ArrowList.html#%24%3C"><span class="hs-operator hs-var">$&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">LA XmlTree [XmlTree]
+</span><a href="Text.XML.HXT.DTDValidation.Validation.html#getDTD"><span class="hs-identifier hs-var">getDTD</span></a></span><span>
+</span><span id="line-78"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-79"></span><span>    </span><span id="local-6989586621679184875"><span class="annot"><span class="annottext">validateDoc' :: [XmlTree] -&gt; XmlArrow
+</span><a href="#local-6989586621679184875"><span class="hs-identifier hs-var hs-var">validateDoc'</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) n. ArrowXml a =&gt; String -&gt; a n XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#err"><span class="hs-identifier hs-var">err</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Can't validate document: There is no DOCTYPE declaration in the document.&quot;</span></span><span>
+</span><span id="line-80"></span><span>    </span><span class="annot"><a href="#local-6989586621679184875"><span class="hs-identifier hs-var">validateDoc'</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679184872"><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679184872"><span class="hs-identifier hs-var">dtdPart</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">[XmlTree]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlTree -&gt; XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.DocValidation.html#validateDoc"><span class="hs-identifier hs-var">DocValidation.validateDoc</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679184872"><span class="hs-identifier hs-var">dtdPart</span></a></span><span>
+</span><span id="line-81"></span><span>                                  </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) b c.
+ArrowPlus a =&gt;
+a b c -&gt; a b c -&gt; a b c
+</span><span class="hs-operator hs-var">&lt;+&gt;</span></span><span>
+</span><span id="line-82"></span><span>                                  </span><span class="annot"><span class="annottext">XmlTree -&gt; XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.IdValidation.html#validateIds"><span class="hs-identifier hs-var">IdValidation.validateIds</span></a></span><span>  </span><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679184872"><span class="hs-identifier hs-var">dtdPart</span></a></span><span>
+</span><span id="line-83"></span><span>
+</span><span id="line-84"></span><span class="annot"><a href="Text.XML.HXT.DTDValidation.Validation.html#getDTD"><span class="hs-identifier hs-type">getDTD</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrowS"><span class="hs-identifier hs-type">XmlArrowS</span></a></span><span>
+</span><span id="line-85"></span><span id="getDTD"><span class="annot"><span class="annottext">getDTD :: LA XmlTree [XmlTree]
+</span><a href="Text.XML.HXT.DTDValidation.Validation.html#getDTD"><span class="hs-identifier hs-var hs-var">getDTD</span></a></span></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlArrow -&gt; LA XmlTree [XmlTree]
+forall (a :: * -&gt; * -&gt; *) b c. ArrowList a =&gt; a b c -&gt; a b [c]
+</span><a href="Control.Arrow.ArrowList.html#listA"><span class="hs-identifier hs-var">listA</span></a></span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.Validation.html#getDTDSubset"><span class="hs-identifier hs-var">getDTDSubset</span></a></span><span>
+</span><span id="line-86"></span><span>                          </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow -&gt; XmlArrow
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span>
+</span><span id="line-87"></span><span>                          </span><span class="annot"><span class="annottext">XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.Validation.html#removeDoublicateDefs"><span class="hs-identifier hs-var">removeDoublicateDefs</span></a></span><span>
+</span><span id="line-88"></span><span>                        </span><span class="hs-special">)</span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-91"></span><span class="hs-comment">-- filter for transforming a document with respect to the given DTD.</span><span>
+</span><span id="line-92"></span><span class="hs-comment">--</span><span>
+</span><span id="line-93"></span><span class="hs-comment">-- Validating parsers</span><span>
+</span><span id="line-94"></span><span class="hs-comment">-- are expected to  normalize attribute values and add default values.</span><span>
+</span><span id="line-95"></span><span class="hs-comment">-- This function should be called after a successful validation.</span><span>
+</span><span id="line-96"></span><span class="hs-comment">--</span><span>
+</span><span id="line-97"></span><span class="hs-comment">--</span><span>
+</span><span id="line-98"></span><span class="hs-comment">--    - returns : a function which expects a complete XML document tree</span><span>
+</span><span id="line-99"></span><span class="hs-comment">--                and returns the transformed XmlTree</span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span class="annot"><a href="Text.XML.HXT.DTDValidation.Validation.html#transform"><span class="hs-identifier hs-type">transform</span></a></span><span>       </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-102"></span><span id="transform"><span class="annot"><span class="annottext">transform :: XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.Validation.html#transform"><span class="hs-identifier hs-var hs-var">transform</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[IfThen XmlArrow XmlArrow] -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) b c d.
+ArrowIf a =&gt;
+[IfThen (a b c) (a b d)] -&gt; a b d
+</span><a href="Control.Arrow.ArrowIf.html#choiceA"><span class="hs-identifier hs-var">choiceA</span></a></span><span>
+</span><span id="line-103"></span><span>                  </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *). ArrowXml a =&gt; a XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#isRoot"><span class="hs-identifier hs-var">isRoot</span></a></span><span>      </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow -&gt; IfThen XmlArrow XmlArrow
+forall a b. a -&gt; b -&gt; IfThen a b
+</span><a href="Control.Arrow.ArrowIf.html#%3A-%3E"><span class="hs-operator hs-var">:-&gt;</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[XmlTree] -&gt; XmlArrow
+</span><a href="#local-6989586621679184865"><span class="hs-identifier hs-var">transformDoc</span></a></span><span> </span><span class="annot"><span class="annottext">([XmlTree] -&gt; XmlArrow) -&gt; LA XmlTree [XmlTree] -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) c b d.
+ArrowList a =&gt;
+(c -&gt; a b d) -&gt; a b c -&gt; a b d
+</span><a href="Control.Arrow.ArrowList.html#%24%3C"><span class="hs-operator hs-var">$&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">LA XmlTree [XmlTree]
+</span><a href="Text.XML.HXT.DTDValidation.Validation.html#getDTD"><span class="hs-identifier hs-var">getDTD</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-104"></span><span>                  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *) b. ArrowList a =&gt; a b b
+</span><a href="Control.Arrow.ArrowList.html#this"><span class="hs-identifier hs-var">this</span></a></span><span>        </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow -&gt; IfThen XmlArrow XmlArrow
+forall a b. a -&gt; b -&gt; IfThen a b
+</span><a href="Control.Arrow.ArrowIf.html#%3A-%3E"><span class="hs-operator hs-var">:-&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) n. ArrowXml a =&gt; String -&gt; a n XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#fatal"><span class="hs-identifier hs-var">fatal</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Can't transform document: No document root given&quot;</span></span><span>
+</span><span id="line-105"></span><span>                  </span><span class="hs-special">]</span><span>
+</span><span id="line-106"></span><span>                  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-107"></span><span>                  </span><span id="local-6989586621679184865"><span class="annot"><span class="annottext">transformDoc :: [XmlTree] -&gt; XmlArrow
+</span><a href="#local-6989586621679184865"><span class="hs-identifier hs-var hs-var">transformDoc</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *) b. ArrowList a =&gt; a b b
+</span><a href="Control.Arrow.ArrowList.html#this"><span class="hs-identifier hs-var">this</span></a></span><span>
+</span><span id="line-108"></span><span>                  </span><span class="annot"><a href="#local-6989586621679184865"><span class="hs-identifier hs-var">transformDoc</span></a></span><span> </span><span id="local-6989586621679184863"><span class="annot"><span class="annottext">[XmlTree]
+</span><a href="#local-6989586621679184863"><span class="hs-identifier hs-var">dtd</span></a></span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlTree -&gt; XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#transform"><span class="hs-identifier hs-var">DocTransformation.transform</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[XmlTree] -&gt; XmlTree
+forall a. [a] -&gt; a
+</span><span class="hs-identifier hs-var">head</span></span><span> </span><span class="annot"><span class="annottext">[XmlTree]
+</span><a href="#local-6989586621679184863"><span class="hs-identifier hs-var">dtd</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-109"></span><span>
+</span><span id="line-110"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-111"></span><span class="hs-comment">-- Removes doublicate declarations from the DTD which first declaration is</span><span>
+</span><span id="line-112"></span><span class="hs-comment">-- binding. This is the case for ATTLIST and ENTITY declarations.</span><span>
+</span><span id="line-113"></span><span class="hs-comment">--</span><span>
+</span><span id="line-114"></span><span class="hs-comment">--</span><span>
+</span><span id="line-115"></span><span class="hs-comment">--    - returns : A function that replaces the children of DOCTYPE nodes by a list</span><span>
+</span><span id="line-116"></span><span class="hs-comment">--               where all multiple declarations are removed.</span><span>
+</span><span id="line-117"></span><span>
+</span><span id="line-118"></span><span class="annot"><a href="Text.XML.HXT.DTDValidation.Validation.html#removeDoublicateDefs"><span class="hs-identifier hs-type">removeDoublicateDefs</span></a></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-119"></span><span id="removeDoublicateDefs"><span class="annot"><span class="annottext">removeDoublicateDefs :: XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.Validation.html#removeDoublicateDefs"><span class="hs-identifier hs-var hs-var">removeDoublicateDefs</span></a></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.DTDValidation.html#removeDoublicateDefs"><span class="hs-identifier hs-var">DTDValidation.removeDoublicateDefs</span></a></span><span>
+</span><span id="line-120"></span><span>
+</span><span id="line-121"></span><span class="hs-comment">--</span><span>
+</span><span id="line-122"></span><span class="hs-comment">-- selects the DTD part of a document</span><span>
+</span><span id="line-123"></span><span class="hs-comment">-- but only, if there is more than the internal part for the 4 predefined XML entities</span><span>
+</span><span id="line-124"></span><span>
+</span><span id="line-125"></span><span class="annot"><a href="Text.XML.HXT.DTDValidation.Validation.html#getDTDSubset"><span class="hs-identifier hs-type">getDTDSubset</span></a></span><span>            </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-126"></span><span id="getDTDSubset"><span class="annot"><span class="annottext">getDTDSubset :: XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.Validation.html#getDTDSubset"><span class="hs-identifier hs-var hs-var">getDTDSubset</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *) (t :: * -&gt; *) b.
+(ArrowTree a, Tree t) =&gt;
+a (t b) (t b)
+</span><a href="Control.Arrow.ArrowTree.html#getChildren"><span class="hs-identifier hs-var">getChildren</span></a></span><span>
+</span><span id="line-127"></span><span>                          </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow -&gt; XmlArrow
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span>
+</span><span id="line-128"></span><span>                          </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">LA XmlTree (AssocList String String) -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) b c. ArrowIf a =&gt; a b c -&gt; a b b
+</span><a href="Control.Arrow.ArrowIf.html#filterA"><span class="hs-identifier hs-var">filterA</span></a></span><span> </span><span class="annot"><span class="annottext">(LA XmlTree (AssocList String String) -&gt; XmlArrow)
+-&gt; LA XmlTree (AssocList String String) -&gt; XmlArrow
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *). ArrowDTD a =&gt; a XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#isDTDDoctype"><span class="hs-identifier hs-var">isDTDDoctype</span></a></span><span> </span><span class="annot"><span class="annottext">XmlArrow
+-&gt; LA XmlTree (AssocList String String)
+-&gt; LA XmlTree (AssocList String String)
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">LA XmlTree (AssocList String String)
+forall (a :: * -&gt; * -&gt; *).
+ArrowXml a =&gt;
+a XmlTree (AssocList String String)
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#getDTDAttrl"><span class="hs-identifier hs-var">getDTDAttrl</span></a></span><span> </span><span class="annot"><span class="annottext">LA XmlTree (AssocList String String)
+-&gt; LA (AssocList String String) (AssocList String String)
+-&gt; LA XmlTree (AssocList String String)
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">(AssocList String String -&gt; Bool)
+-&gt; LA (AssocList String String) (AssocList String String)
+forall (a :: * -&gt; * -&gt; *) b. ArrowList a =&gt; (b -&gt; Bool) -&gt; a b b
+</span><a href="Control.Arrow.ArrowList.html#isA"><span class="hs-identifier hs-var">isA</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; AssocList String String -&gt; Bool
+forall k v. Eq k =&gt; k -&gt; AssocList k v -&gt; Bool
+</span><a href="Data.AssocList.html#hasEntry"><span class="hs-identifier hs-var">hasEntry</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="Text.XML.HXT.DOM.XmlKeywords.html#a_name"><span class="hs-identifier hs-var">a_name</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-129"></span><span>
+</span><span id="line-130"></span><span class="annot"><a href="Text.XML.HXT.DTDValidation.Validation.html#generalEntitiesDefined"><span class="hs-identifier hs-type">generalEntitiesDefined</span></a></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-131"></span><span id="generalEntitiesDefined"><span class="annot"><span class="annottext">generalEntitiesDefined :: XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.Validation.html#generalEntitiesDefined"><span class="hs-identifier hs-var hs-var">generalEntitiesDefined</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.Validation.html#getDTDSubset"><span class="hs-identifier hs-var">getDTDSubset</span></a></span><span>
+</span><span id="line-132"></span><span>                          </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow -&gt; XmlArrow
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span>
+</span><span id="line-133"></span><span>                          </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) (t :: * -&gt; *) b c.
+(ArrowTree a, Tree t) =&gt;
+a (t b) c -&gt; a (t b) c
+</span><a href="Control.Arrow.ArrowTree.html#deep"><span class="hs-identifier hs-var">deep</span></a></span><span> </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *). ArrowDTD a =&gt; a XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#isDTDEntity"><span class="hs-identifier hs-var">isDTDEntity</span></a></span><span>
+</span><span id="line-134"></span><span>
+</span><span id="line-135"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-136"></span></pre></body></html>

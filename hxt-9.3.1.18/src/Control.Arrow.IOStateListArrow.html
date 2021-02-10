@@ -1,0 +1,862 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-4"></span><span>
+</span><span id="line-5"></span><span class="hs-comment">{- |
+   Module     : Control.Arrow.IOStateListArrow
+   Copyright  : Copyright (C) 2005-8 Uwe Schmidt
+   License    : MIT
+
+   Maintainer : Uwe Schmidt (uwe\@fh-wedel.de)
+   Stability  : experimental
+   Portability: portable
+
+   Implementation of arrows with IO and a state
+
+-}</span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Control.Arrow.IOStateListArrow</span><span>
+</span><span id="line-21"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier">IOSLA</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#liftSt"><span class="hs-identifier">liftSt</span></a></span><span>
+</span><span id="line-23"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#runSt"><span class="hs-identifier">runSt</span></a></span><span>
+</span><span id="line-24"></span><span>    </span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Prelude</span></span><span> </span><span class="hs-keyword">hiding</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">id</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(.)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Category</span></span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Arrow</span></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowExc.html"><span class="hs-identifier">Control.Arrow.ArrowExc</span></a></span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowIf.html"><span class="hs-identifier">Control.Arrow.ArrowIf</span></a></span><span>
+</span><span id="line-34"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowIO.html"><span class="hs-identifier">Control.Arrow.ArrowIO</span></a></span><span>
+</span><span id="line-35"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html"><span class="hs-identifier">Control.Arrow.ArrowList</span></a></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowNF.html"><span class="hs-identifier">Control.Arrow.ArrowNF</span></a></span><span>
+</span><span id="line-37"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowTree.html"><span class="hs-identifier">Control.Arrow.ArrowTree</span></a></span><span>
+</span><span id="line-38"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowNavigatableTree.html"><span class="hs-identifier">Control.Arrow.ArrowNavigatableTree</span></a></span><span>
+</span><span id="line-39"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowState.html"><span class="hs-identifier">Control.Arrow.ArrowState</span></a></span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.DeepSeq</span></span><span>
+</span><span id="line-42"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Exception</span></span><span>                </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-identifier">SomeException</span></span><span>
+</span><span id="line-43"></span><span>                                        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">try</span></span><span>
+</span><span id="line-44"></span><span>                                        </span><span class="hs-special">)</span><span>
+</span><span id="line-45"></span><span class="hs-comment">{-
+import qualified Debug.Trace as T
+-}</span><span>
+</span><span id="line-48"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span class="hs-comment">-- | list arrow combined with a state and the IO monad</span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span class="hs-keyword">newtype</span><span> </span><span id="IOSLA"><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span></span><span> </span><span id="local-6989586621679173644"><span class="annot"><a href="#local-6989586621679173644"><span class="hs-identifier hs-type">s</span></a></span></span><span> </span><span id="local-6989586621679173643"><span class="annot"><a href="#local-6989586621679173643"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span id="local-6989586621679173642"><span class="annot"><a href="#local-6989586621679173642"><span class="hs-identifier hs-type">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="IOSLA"><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="runIOSLA"><span class="annot"><span class="annottext">IOSLA s a b -&gt; s -&gt; a -&gt; IO (s, [b])
+</span><a href="Control.Arrow.IOStateListArrow.html#runIOSLA"><span class="hs-identifier hs-var hs-var">runIOSLA</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679173644"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679173643"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679173644"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679173642"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-53"></span><span>
+</span><span id="line-54"></span><span id="local-6989586621679173105"><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Category</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679173105"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-55"></span><span>    </span><span id="local-6989586621679173101"><span class="annot"><span class="annottext">id :: IOSLA s a a
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">id</span></span></span><span>                  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; a -&gt; IO (s, [a])) -&gt; IOSLA s a a
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; a -&gt; IO (s, [a])) -&gt; IOSLA s a a)
+-&gt; (s -&gt; a -&gt; IO (s, [a])) -&gt; IOSLA s a a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679173099"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173099"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679173098"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679173098"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(s, [a]) -&gt; IO (s, [a])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173099"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679173098"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>      </span><span class="hs-comment">-- don't defined id = arr id, this gives loops during optimization</span><span>
+</span><span id="line-56"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><span class="hs-pragma hs-type">id</span></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span>    </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679173097"><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173097"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span id="local-6989586621679173096"><span class="annot"><span class="annottext">. :: IOSLA s b c -&gt; IOSLA s a b -&gt; IOSLA s a c
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">.</span></span></span><span> </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679173094"><span class="annot"><span class="annottext">s -&gt; a -&gt; IO (s, [b])
+</span><a href="#local-6989586621679173094"><span class="hs-identifier hs-var">f</span></a></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; a -&gt; IO (s, [c])) -&gt; IOSLA s a c
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; a -&gt; IO (s, [c])) -&gt; IOSLA s a c)
+-&gt; (s -&gt; a -&gt; IO (s, [c])) -&gt; IOSLA s a c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679173093"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173093"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679173092"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679173092"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-59"></span><span>                                           </span><span class="hs-special">(</span><span id="local-6989586621679173091"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173091"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679173090"><span class="annot"><span class="annottext">[b]
+</span><a href="#local-6989586621679173090"><span class="hs-identifier hs-var">ys</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; a -&gt; IO (s, [b])
+</span><a href="#local-6989586621679173094"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173093"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679173092"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-60"></span><span>                                           </span><span class="annot"><span class="annottext">s -&gt; [b] -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173089"><span class="hs-identifier hs-var">sequence'</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173091"><span class="hs-identifier hs-var">s1</span></a></span><span> </span><span class="annot"><span class="annottext">[b]
+</span><a href="#local-6989586621679173090"><span class="hs-identifier hs-var">ys</span></a></span><span>
+</span><span id="line-61"></span><span>                                           </span><span class="hs-keyword">where</span><span>
+</span><span id="line-62"></span><span>                                           </span><span id="local-6989586621679173089"><span class="annot"><span class="annottext">sequence' :: s -&gt; [b] -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173089"><span class="hs-identifier hs-var hs-var">sequence'</span></a></span></span><span> </span><span id="local-6989586621679173088"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173088"><span class="hs-identifier hs-var">s'</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s, [c]) -&gt; IO (s, [c])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173088"><span class="hs-identifier hs-var">s'</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-63"></span><span>                                           </span><span class="annot"><a href="#local-6989586621679173089"><span class="hs-identifier hs-var">sequence'</span></a></span><span> </span><span id="local-6989586621679173087"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173087"><span class="hs-identifier hs-var">s'</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679173086"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679173086"><span class="hs-identifier hs-var">x'</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679173085"><span class="annot"><span class="annottext">[b]
+</span><a href="#local-6989586621679173085"><span class="hs-identifier hs-var">xs'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-64"></span><span>                                                                   </span><span class="hs-special">(</span><span id="local-6989586621679173084"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173084"><span class="hs-identifier hs-var">s1'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679173083"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679173083"><span class="hs-identifier hs-var">ys'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173097"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173087"><span class="hs-identifier hs-var">s'</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679173086"><span class="hs-identifier hs-var">x'</span></a></span><span>
+</span><span id="line-65"></span><span>                                                                   </span><span class="hs-special">(</span><span id="local-6989586621679173082"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173082"><span class="hs-identifier hs-var">s2'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679173081"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679173081"><span class="hs-identifier hs-var">zs'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; [b] -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173089"><span class="hs-identifier hs-var">sequence'</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173084"><span class="hs-identifier hs-var">s1'</span></a></span><span> </span><span class="annot"><span class="annottext">[b]
+</span><a href="#local-6989586621679173085"><span class="hs-identifier hs-var">xs'</span></a></span><span>
+</span><span id="line-66"></span><span>                                                                   </span><span class="annot"><span class="annottext">(s, [c]) -&gt; IO (s, [c])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173082"><span class="hs-identifier hs-var">s2'</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679173083"><span class="hs-identifier hs-var">ys'</span></a></span><span> </span><span class="annot"><span class="annottext">[c] -&gt; [c] -&gt; [c]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679173081"><span class="hs-identifier hs-var">zs'</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span id="local-6989586621679173080"><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Arrow</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679173080"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-69"></span><span>    </span><span id="local-6989586621679173072"><span class="annot"><span class="annottext">arr :: (b -&gt; c) -&gt; IOSLA s b c
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">arr</span></span></span><span> </span><span id="local-6989586621679173071"><span class="annot"><span class="annottext">b -&gt; c
+</span><a href="#local-6989586621679173071"><span class="hs-identifier hs-var">f</span></a></span></span><span>               </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c)
+-&gt; (s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679173070"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173070"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679173069"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679173069"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(s, [c]) -&gt; IO (s, [c])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173070"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">b -&gt; c
+</span><a href="#local-6989586621679173071"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679173069"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-70"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><span class="hs-pragma hs-type">arr</span></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-71"></span><span>
+</span><span id="line-72"></span><span>    </span><span id="local-6989586621679173068"><span class="annot"><span class="annottext">first :: IOSLA s b c -&gt; IOSLA s (b, d) (c, d)
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">first</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679173067"><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173067"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; (b, d) -&gt; IO (s, [(c, d)])) -&gt; IOSLA s (b, d) (c, d)
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; (b, d) -&gt; IO (s, [(c, d)])) -&gt; IOSLA s (b, d) (c, d))
+-&gt; (s -&gt; (b, d) -&gt; IO (s, [(c, d)])) -&gt; IOSLA s (b, d) (c, d)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679173066"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173066"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679173065"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679173065"><span class="hs-identifier hs-var">x1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679173064"><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679173064"><span class="hs-identifier hs-var">x2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-73"></span><span>                                                   </span><span class="hs-special">(</span><span id="local-6989586621679173063"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173063"><span class="hs-identifier hs-var">s'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679173062"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679173062"><span class="hs-identifier hs-var">ys1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173067"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173066"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679173065"><span class="hs-identifier hs-var">x1</span></a></span><span>
+</span><span id="line-74"></span><span>                                                   </span><span class="annot"><span class="annottext">(s, [(c, d)]) -&gt; IO (s, [(c, d)])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173063"><span class="hs-identifier hs-var">s'</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679173061"><span class="hs-identifier hs-var">y1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679173064"><span class="hs-identifier hs-var">x2</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679173061"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679173061"><span class="hs-identifier hs-var">y1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679173062"><span class="hs-identifier hs-var">ys1</span></a></span><span> </span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span>    </span><span class="hs-comment">-- just for efficiency</span><span>
+</span><span id="line-77"></span><span>    </span><span id="local-6989586621679173060"><span class="annot"><span class="annottext">second :: IOSLA s b c -&gt; IOSLA s (d, b) (d, c)
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">second</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679173058"><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173058"><span class="hs-identifier hs-var">g</span></a></span></span><span class="hs-special">)</span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; (d, b) -&gt; IO (s, [(d, c)])) -&gt; IOSLA s (d, b) (d, c)
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; (d, b) -&gt; IO (s, [(d, c)])) -&gt; IOSLA s (d, b) (d, c))
+-&gt; (s -&gt; (d, b) -&gt; IO (s, [(d, c)])) -&gt; IOSLA s (d, b) (d, c)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679173057"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173057"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679173056"><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679173056"><span class="hs-identifier hs-var">x1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679173055"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679173055"><span class="hs-identifier hs-var">x2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-78"></span><span>                                                  </span><span class="hs-special">(</span><span id="local-6989586621679173054"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173054"><span class="hs-identifier hs-var">s'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679173053"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679173053"><span class="hs-identifier hs-var">ys2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173058"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173057"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679173055"><span class="hs-identifier hs-var">x2</span></a></span><span>
+</span><span id="line-79"></span><span>                                                  </span><span class="annot"><span class="annottext">(s, [(d, c)]) -&gt; IO (s, [(d, c)])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173054"><span class="hs-identifier hs-var">s'</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679173056"><span class="hs-identifier hs-var">x1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679173052"><span class="hs-identifier hs-var">y2</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679173052"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679173052"><span class="hs-identifier hs-var">y2</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679173053"><span class="hs-identifier hs-var">ys2</span></a></span><span> </span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span>    </span><span class="hs-comment">-- just for efficiency</span><span>
+</span><span id="line-82"></span><span>    </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679173051"><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173051"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679173050"><span class="annot"><span class="annottext">*** :: IOSLA s b c -&gt; IOSLA s b' c' -&gt; IOSLA s (b, b') (c, c')
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">***</span></span></span><span> </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679173048"><span class="annot"><span class="annottext">s -&gt; b' -&gt; IO (s, [c'])
+</span><a href="#local-6989586621679173048"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; (b, b') -&gt; IO (s, [(c, c')])) -&gt; IOSLA s (b, b') (c, c')
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; (b, b') -&gt; IO (s, [(c, c')])) -&gt; IOSLA s (b, b') (c, c'))
+-&gt; (s -&gt; (b, b') -&gt; IO (s, [(c, c')])) -&gt; IOSLA s (b, b') (c, c')
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679173047"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173047"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679173046"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679173046"><span class="hs-identifier hs-var">x1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679173045"><span class="annot"><span class="annottext">b'
+</span><a href="#local-6989586621679173045"><span class="hs-identifier hs-var">x2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-83"></span><span>                                                   </span><span class="hs-special">(</span><span id="local-6989586621679173044"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173044"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679173043"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679173043"><span class="hs-identifier hs-var">ys1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173051"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173047"><span class="hs-identifier hs-var">s</span></a></span><span>  </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679173046"><span class="hs-identifier hs-var">x1</span></a></span><span>
+</span><span id="line-84"></span><span>                                                   </span><span class="hs-special">(</span><span id="local-6989586621679173042"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173042"><span class="hs-identifier hs-var">s2</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679173041"><span class="annot"><span class="annottext">[c']
+</span><a href="#local-6989586621679173041"><span class="hs-identifier hs-var">ys2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; b' -&gt; IO (s, [c'])
+</span><a href="#local-6989586621679173048"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173044"><span class="hs-identifier hs-var">s1</span></a></span><span> </span><span class="annot"><span class="annottext">b'
+</span><a href="#local-6989586621679173045"><span class="hs-identifier hs-var">x2</span></a></span><span>
+</span><span id="line-85"></span><span>                                                   </span><span class="annot"><span class="annottext">(s, [(c, c')]) -&gt; IO (s, [(c, c')])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173042"><span class="hs-identifier hs-var">s2</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679173040"><span class="hs-identifier hs-var">y1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">c'
+</span><a href="#local-6989586621679173039"><span class="hs-identifier hs-var">y2</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679173040"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679173040"><span class="hs-identifier hs-var">y1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679173043"><span class="hs-identifier hs-var">ys1</span></a></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679173039"><span class="annot"><span class="annottext">c'
+</span><a href="#local-6989586621679173039"><span class="hs-identifier hs-var">y2</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[c']
+</span><a href="#local-6989586621679173041"><span class="hs-identifier hs-var">ys2</span></a></span><span> </span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-86"></span><span>
+</span><span id="line-87"></span><span>    </span><span class="hs-comment">-- just for efficiency</span><span>
+</span><span id="line-88"></span><span>    </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679173038"><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173038"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679173037"><span class="annot"><span class="annottext">&amp;&amp;&amp; :: IOSLA s b c -&gt; IOSLA s b c' -&gt; IOSLA s b (c, c')
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">&amp;&amp;&amp;</span></span></span><span> </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679173035"><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c'])
+</span><a href="#local-6989586621679173035"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [(c, c')])) -&gt; IOSLA s b (c, c')
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [(c, c')])) -&gt; IOSLA s b (c, c'))
+-&gt; (s -&gt; b -&gt; IO (s, [(c, c')])) -&gt; IOSLA s b (c, c')
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679173034"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173034"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679173033"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679173033"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-89"></span><span>                                           </span><span class="hs-special">(</span><span id="local-6989586621679173032"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173032"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679173031"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679173031"><span class="hs-identifier hs-var">ys1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173038"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173034"><span class="hs-identifier hs-var">s</span></a></span><span>  </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679173033"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-90"></span><span>                                           </span><span class="hs-special">(</span><span id="local-6989586621679173030"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173030"><span class="hs-identifier hs-var">s2</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679173029"><span class="annot"><span class="annottext">[c']
+</span><a href="#local-6989586621679173029"><span class="hs-identifier hs-var">ys2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c'])
+</span><a href="#local-6989586621679173035"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173032"><span class="hs-identifier hs-var">s1</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679173033"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-91"></span><span>                                           </span><span class="annot"><span class="annottext">(s, [(c, c')]) -&gt; IO (s, [(c, c')])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173030"><span class="hs-identifier hs-var">s2</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679173028"><span class="hs-identifier hs-var">y1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">c'
+</span><a href="#local-6989586621679173027"><span class="hs-identifier hs-var">y2</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679173028"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679173028"><span class="hs-identifier hs-var">y1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679173031"><span class="hs-identifier hs-var">ys1</span></a></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679173027"><span class="annot"><span class="annottext">c'
+</span><a href="#local-6989586621679173027"><span class="hs-identifier hs-var">y2</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[c']
+</span><a href="#local-6989586621679173029"><span class="hs-identifier hs-var">ys2</span></a></span><span> </span><span class="hs-special">]</span><span class="hs-special">)</span></span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span>
+</span><span id="line-94"></span><span>
+</span><span id="line-95"></span><span id="local-6989586621679173026"><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ArrowZero</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679173026"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-96"></span><span>    </span><span id="local-6989586621679173022"><span class="annot"><span class="annottext">zeroArrow :: IOSLA s b c
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">zeroArrow</span></span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c)
+-&gt; (s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679173020"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173020"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">IO (s, [c]) -&gt; b -&gt; IO (s, [c])
+forall a b. a -&gt; b -&gt; a
+</span><span class="hs-identifier hs-var">const</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(s, [c]) -&gt; IO (s, [c])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173020"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-97"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><span class="hs-pragma hs-type">zeroArrow</span></span><span> </span><span class="hs-pragma">#-}</span></span><span>
+</span><span id="line-98"></span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span id="local-6989586621679173018"><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ArrowPlus</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679173018"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-101"></span><span>    </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679173014"><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173014"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679173013"><span class="annot"><span class="annottext">&lt;+&gt; :: IOSLA s b c -&gt; IOSLA s b c -&gt; IOSLA s b c
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">&lt;+&gt;</span></span></span><span> </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679173011"><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173011"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c)
+-&gt; (s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679173010"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173010"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679173009"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679173009"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-102"></span><span>                                           </span><span class="hs-special">(</span><span id="local-6989586621679173008"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173008"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679173007"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679173007"><span class="hs-identifier hs-var">rs1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173014"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173010"><span class="hs-identifier hs-var">s</span></a></span><span>  </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679173009"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-103"></span><span>                                           </span><span class="hs-special">(</span><span id="local-6989586621679173006"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173006"><span class="hs-identifier hs-var">s2</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679173005"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679173005"><span class="hs-identifier hs-var">rs2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679173011"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173008"><span class="hs-identifier hs-var">s1</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679173009"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-104"></span><span>                                           </span><span class="annot"><span class="annottext">(s, [c]) -&gt; IO (s, [c])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679173006"><span class="hs-identifier hs-var">s2</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679173007"><span class="hs-identifier hs-var">rs1</span></a></span><span> </span><span class="annot"><span class="annottext">[c] -&gt; [c] -&gt; [c]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679173005"><span class="hs-identifier hs-var">rs2</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-105"></span><span>
+</span><span id="line-106"></span><span id="local-6989586621679173004"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679172997"><span id="local-6989586621679172999"><span class="annot"><span class="hs-identifier hs-type">ArrowChoice</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679173004"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-107"></span><span>    </span><span id="local-6989586621679172995"><span class="annot"><span class="annottext">left :: IOSLA s b c -&gt; IOSLA s (Either b d) (Either c d)
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">left</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679172993"><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679172993"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">)</span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; Either b d -&gt; IO (s, [Either c d]))
+-&gt; IOSLA s (Either b d) (Either c d)
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; Either b d -&gt; IO (s, [Either c d]))
+ -&gt; IOSLA s (Either b d) (Either c d))
+-&gt; (s -&gt; Either b d -&gt; IO (s, [Either c d]))
+-&gt; IOSLA s (Either b d) (Either c d)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172992"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172992"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(b -&gt; IO (s, [Either c d]))
+-&gt; (d -&gt; IO (s, [Either c d]))
+-&gt; Either b d
+-&gt; IO (s, [Either c d])
+forall a c b. (a -&gt; c) -&gt; (b -&gt; c) -&gt; Either a b -&gt; c
+</span><span class="hs-identifier hs-var">either</span></span><span>
+</span><span id="line-108"></span><span>                                         </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172990"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172990"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-109"></span><span>                                                 </span><span class="hs-special">(</span><span id="local-6989586621679172989"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172989"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679172988"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172988"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679172993"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172992"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172990"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-110"></span><span>                                                 </span><span class="annot"><span class="annottext">(s, [Either c d]) -&gt; IO (s, [Either c d])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172989"><span class="hs-identifier hs-var">s1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(c -&gt; Either c d) -&gt; [c] -&gt; [Either c d]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">c -&gt; Either c d
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172988"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-111"></span><span>                                         </span><span class="hs-special">)</span><span>
+</span><span id="line-112"></span><span>                                         </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172987"><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679172987"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(s, [Either c d]) -&gt; IO (s, [Either c d])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172992"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">d -&gt; Either c d
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679172987"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-113"></span><span>
+</span><span id="line-114"></span><span>    </span><span id="local-6989586621679172986"><span class="annot"><span class="annottext">right :: IOSLA s b c -&gt; IOSLA s (Either d b) (Either d c)
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">right</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679172984"><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679172984"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; Either d b -&gt; IO (s, [Either d c]))
+-&gt; IOSLA s (Either d b) (Either d c)
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; Either d b -&gt; IO (s, [Either d c]))
+ -&gt; IOSLA s (Either d b) (Either d c))
+-&gt; (s -&gt; Either d b -&gt; IO (s, [Either d c]))
+-&gt; IOSLA s (Either d b) (Either d c)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172983"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172983"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(d -&gt; IO (s, [Either d c]))
+-&gt; (b -&gt; IO (s, [Either d c]))
+-&gt; Either d b
+-&gt; IO (s, [Either d c])
+forall a c b. (a -&gt; c) -&gt; (b -&gt; c) -&gt; Either a b -&gt; c
+</span><span class="hs-identifier hs-var">either</span></span><span>
+</span><span id="line-115"></span><span>                                         </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172982"><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679172982"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(s, [Either d c]) -&gt; IO (s, [Either d c])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172983"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">d -&gt; Either d c
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679172982"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-116"></span><span>                                         </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172981"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172981"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-117"></span><span>                                                 </span><span class="hs-special">(</span><span id="local-6989586621679172980"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172980"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679172979"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172979"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679172984"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172983"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172981"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-118"></span><span>                                                 </span><span class="annot"><span class="annottext">(s, [Either d c]) -&gt; IO (s, [Either d c])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172980"><span class="hs-identifier hs-var">s1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(c -&gt; Either d c) -&gt; [c] -&gt; [Either d c]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">c -&gt; Either d c
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172979"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-119"></span><span>                                         </span><span class="hs-special">)</span></span><span>
+</span><span id="line-120"></span><span>
+</span><span id="line-121"></span><span id="local-6989586621679172978"><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ArrowApply</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172978"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-122"></span><span>    </span><span id="local-6989586621679172974"><span class="annot"><span class="annottext">app :: IOSLA s (IOSLA s b c, b) c
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">app</span></span></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; (IOSLA s b c, b) -&gt; IO (s, [c]))
+-&gt; IOSLA s (IOSLA s b c, b) c
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; (IOSLA s b c, b) -&gt; IO (s, [c]))
+ -&gt; IOSLA s (IOSLA s b c, b) c)
+-&gt; (s -&gt; (IOSLA s b c, b) -&gt; IO (s, [c]))
+-&gt; IOSLA s (IOSLA s b c, b) c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172973"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172973"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679172972"><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679172972"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679172971"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172971"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679172972"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172973"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172971"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-123"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><span class="hs-pragma hs-type">app</span></span><span> </span><span class="hs-pragma">#-}</span></span><span>
+</span><span id="line-124"></span><span>
+</span><span id="line-125"></span><span id="local-6989586621679172970"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679172918"><span id="local-6989586621679172920"><span id="local-6989586621679172923"><span id="local-6989586621679172925"><span id="local-6989586621679172927"><span id="local-6989586621679172929"><span id="local-6989586621679172931"><span id="local-6989586621679172933"><span id="local-6989586621679172935"><span id="local-6989586621679172937"><span id="local-6989586621679172939"><span id="local-6989586621679172941"><span id="local-6989586621679172943"><span id="local-6989586621679172945"><span id="local-6989586621679172947"><span id="local-6989586621679172949"><span id="local-6989586621679172953"><span id="local-6989586621679172956"><span id="local-6989586621679172960"><span id="local-6989586621679172962"><span id="local-6989586621679172964"><span class="annot"><a href="Control.Arrow.ArrowList.html#ArrowList"><span class="hs-identifier hs-type">ArrowList</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172970"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-126"></span><span>    </span><span id="local-6989586621679172916"><span class="annot"><span class="annottext">arrL :: (b -&gt; [c]) -&gt; IOSLA s b c
+</span><a href="Control.Arrow.ArrowList.html#arrL"><span class="hs-identifier hs-var hs-var hs-var hs-var">arrL</span></a></span></span><span> </span><span id="local-6989586621679172914"><span class="annot"><span class="annottext">b -&gt; [c]
+</span><a href="#local-6989586621679172914"><span class="hs-identifier hs-var">f</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c)
+-&gt; (s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172913"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172913"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679172912"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172912"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(s, [c]) -&gt; IO (s, [c])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172913"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b -&gt; [c]
+</span><a href="#local-6989586621679172914"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172912"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-127"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#arrL"><span class="hs-pragma hs-type">arrL</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-128"></span><span>    </span><span id="local-6989586621679172911"><span class="annot"><span class="annottext">arr2A :: (b -&gt; IOSLA s c d) -&gt; IOSLA s (b, c) d
+</span><a href="Control.Arrow.ArrowList.html#arr2A"><span class="hs-identifier hs-var hs-var hs-var hs-var">arr2A</span></a></span></span><span> </span><span id="local-6989586621679172909"><span class="annot"><span class="annottext">b -&gt; IOSLA s c d
+</span><a href="#local-6989586621679172909"><span class="hs-identifier hs-var">f</span></a></span></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; (b, c) -&gt; IO (s, [d])) -&gt; IOSLA s (b, c) d
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; (b, c) -&gt; IO (s, [d])) -&gt; IOSLA s (b, c) d)
+-&gt; (s -&gt; (b, c) -&gt; IO (s, [d])) -&gt; IOSLA s (b, c) d
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172908"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172908"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679172907"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172907"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679172906"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679172906"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">IOSLA s c d -&gt; s -&gt; c -&gt; IO (s, [d])
+forall s a b. IOSLA s a b -&gt; s -&gt; a -&gt; IO (s, [b])
+</span><a href="Control.Arrow.IOStateListArrow.html#runIOSLA"><span class="hs-identifier hs-var hs-var">runIOSLA</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b -&gt; IOSLA s c d
+</span><a href="#local-6989586621679172909"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172907"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172908"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679172906"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-129"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#arr2A"><span class="hs-pragma hs-type">arr2A</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-130"></span><span>    </span><span id="local-6989586621679172905"><span class="annot"><span class="annottext">constA :: c -&gt; IOSLA s b c
+</span><a href="Control.Arrow.ArrowList.html#constA"><span class="hs-identifier hs-var hs-var hs-var hs-var">constA</span></a></span></span><span> </span><span id="local-6989586621679172903"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679172903"><span class="hs-identifier hs-var">c</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c)
+-&gt; (s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172902"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172902"><span class="hs-identifier hs-var">s</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">IO (s, [c]) -&gt; b -&gt; IO (s, [c])
+forall a b. a -&gt; b -&gt; a
+</span><span class="hs-identifier hs-var">const</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(s, [c]) -&gt; IO (s, [c])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172902"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679172903"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-131"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#constA"><span class="hs-pragma hs-type">constA</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-132"></span><span>    </span><span id="local-6989586621679172901"><span class="annot"><span class="annottext">isA :: (b -&gt; Bool) -&gt; IOSLA s b b
+</span><a href="Control.Arrow.ArrowList.html#isA"><span class="hs-identifier hs-var hs-var hs-var hs-var">isA</span></a></span></span><span> </span><span id="local-6989586621679172899"><span class="annot"><span class="annottext">b -&gt; Bool
+</span><a href="#local-6989586621679172899"><span class="hs-identifier hs-var">p</span></a></span></span><span>               </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [b])) -&gt; IOSLA s b b
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [b])) -&gt; IOSLA s b b)
+-&gt; (s -&gt; b -&gt; IO (s, [b])) -&gt; IOSLA s b b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172898"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172898"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679172897"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172897"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(s, [b]) -&gt; IO (s, [b])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172898"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">b -&gt; Bool
+</span><a href="#local-6989586621679172899"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172897"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172897"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-133"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#isA"><span class="hs-pragma hs-type">isA</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-134"></span><span>    </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679172896"><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679172896"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679172895"><span class="annot"><span class="annottext">&gt;&gt;. :: IOSLA s b c -&gt; ([c] -&gt; [d]) -&gt; IOSLA s b d
+</span><a href="Control.Arrow.ArrowList.html#%3E%3E."><span class="hs-operator hs-var hs-var hs-var hs-var">&gt;&gt;.</span></a></span></span><span> </span><span id="local-6989586621679172893"><span class="annot"><span class="annottext">[c] -&gt; [d]
+</span><a href="#local-6989586621679172893"><span class="hs-identifier hs-var">g</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [d])) -&gt; IOSLA s b d
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [d])) -&gt; IOSLA s b d)
+-&gt; (s -&gt; b -&gt; IO (s, [d])) -&gt; IOSLA s b d
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172892"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172892"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679172891"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172891"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-135"></span><span>                                           </span><span class="hs-special">(</span><span id="local-6989586621679172890"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172890"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679172889"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172889"><span class="hs-identifier hs-var">ys</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679172896"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172892"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172891"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-136"></span><span>                                           </span><span class="annot"><span class="annottext">(s, [d]) -&gt; IO (s, [d])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172890"><span class="hs-identifier hs-var">s1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[c] -&gt; [d]
+</span><a href="#local-6989586621679172893"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172889"><span class="hs-identifier hs-var">ys</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-137"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="hs-pragma">(</span><span class="hs-pragma">&gt;&gt;.</span><span class="hs-pragma">)</span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-138"></span><span>
+</span><span id="line-139"></span><span>    </span><span class="hs-comment">-- just for efficency</span><span>
+</span><span id="line-140"></span><span>    </span><span id="local-6989586621679172888"><span class="annot"><span class="annottext">perform :: IOSLA s b c -&gt; IOSLA s b b
+</span><a href="Control.Arrow.ArrowList.html#perform"><span class="hs-identifier hs-var hs-var hs-var hs-var">perform</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679172886"><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679172886"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">)</span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [b])) -&gt; IOSLA s b b
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [b])) -&gt; IOSLA s b b)
+-&gt; (s -&gt; b -&gt; IO (s, [b])) -&gt; IOSLA s b b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172885"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172885"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679172884"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172884"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-141"></span><span>                                           </span><span class="hs-special">(</span><span id="local-6989586621679172883"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172883"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679172882"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172882"><span class="hs-identifier hs-var">_ys</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679172886"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172885"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172884"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-142"></span><span>                                           </span><span class="annot"><span class="annottext">(s, [b]) -&gt; IO (s, [b])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172883"><span class="hs-identifier hs-var">s1</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172884"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-143"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#perform"><span class="hs-pragma hs-type">perform</span></a></span><span> </span><span class="hs-pragma">#-}</span></span><span>
+</span><span id="line-144"></span><span>
+</span><span id="line-145"></span><span id="local-6989586621679172881"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679172848"><span id="local-6989586621679172850"><span id="local-6989586621679172852"><span id="local-6989586621679172854"><span id="local-6989586621679172857"><span id="local-6989586621679172859"><span id="local-6989586621679172861"><span id="local-6989586621679172863"><span id="local-6989586621679172865"><span id="local-6989586621679172867"><span id="local-6989586621679172869"><span id="local-6989586621679172871"><span id="local-6989586621679172873"><span id="local-6989586621679172875"><span id="local-6989586621679172877"><span class="annot"><a href="Control.Arrow.ArrowIf.html#ArrowIf"><span class="hs-identifier hs-type">ArrowIf</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172881"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-146"></span><span>    </span><span id="local-6989586621679172846"><span class="annot"><span class="annottext">ifA :: IOSLA s b c -&gt; IOSLA s b d -&gt; IOSLA s b d -&gt; IOSLA s b d
+</span><a href="Control.Arrow.ArrowIf.html#ifA"><span class="hs-identifier hs-var hs-var hs-var hs-var">ifA</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679172844"><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679172844"><span class="hs-identifier hs-var">p</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679172843"><span class="annot"><span class="annottext">IOSLA s b d
+</span><a href="#local-6989586621679172843"><span class="hs-identifier hs-var">ta</span></a></span></span><span> </span><span id="local-6989586621679172842"><span class="annot"><span class="annottext">IOSLA s b d
+</span><a href="#local-6989586621679172842"><span class="hs-identifier hs-var">ea</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [d])) -&gt; IOSLA s b d
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [d])) -&gt; IOSLA s b d)
+-&gt; (s -&gt; b -&gt; IO (s, [d])) -&gt; IOSLA s b d
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172841"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172841"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679172840"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172840"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-147"></span><span>                                           </span><span class="hs-special">(</span><span id="local-6989586621679172839"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172839"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679172838"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172838"><span class="hs-identifier hs-var">res</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679172844"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172841"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172840"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-148"></span><span>                                           </span><span class="annot"><span class="annottext">IOSLA s b d -&gt; s -&gt; b -&gt; IO (s, [d])
+forall s a b. IOSLA s a b -&gt; s -&gt; a -&gt; IO (s, [b])
+</span><a href="Control.Arrow.IOStateListArrow.html#runIOSLA"><span class="hs-identifier hs-var hs-var">runIOSLA</span></a></span><span> </span><span class="hs-special">(</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">[c] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172838"><span class="hs-identifier hs-var">res</span></a></span><span>
+</span><span id="line-149"></span><span>                                                      </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">IOSLA s b d
+</span><a href="#local-6989586621679172842"><span class="hs-identifier hs-var">ea</span></a></span><span>
+</span><span id="line-150"></span><span>                                                      </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">IOSLA s b d
+</span><a href="#local-6989586621679172843"><span class="hs-identifier hs-var">ta</span></a></span><span>
+</span><span id="line-151"></span><span>                                                    </span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172839"><span class="hs-identifier hs-var">s1</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172840"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-152"></span><span>
+</span><span id="line-153"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679172836"><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679172836"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679172835"><span class="annot"><span class="annottext">orElse :: IOSLA s b c -&gt; IOSLA s b c -&gt; IOSLA s b c
+</span><a href="Control.Arrow.ArrowIf.html#orElse"><span class="hs-operator hs-var hs-var hs-var hs-var">`orElse`</span></a></span></span><span> </span><span id="local-6989586621679172833"><span class="annot"><span class="annottext">IOSLA s b c
+</span><a href="#local-6989586621679172833"><span class="hs-identifier hs-var">g</span></a></span></span><span>
+</span><span id="line-154"></span><span>                        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c)
+-&gt; (s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172832"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172832"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679172831"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172831"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-155"></span><span>                                           </span><span id="local-6989586621679172830"><span class="annot"><span class="annottext">r :: (s, [c])
+</span><a href="#local-6989586621679172830"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span id="local-6989586621679172829"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172829"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679172828"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172828"><span class="hs-identifier hs-var">res</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679172836"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172832"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172831"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-156"></span><span>                                           </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">[c] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172828"><span class="hs-identifier hs-var">res</span></a></span><span>
+</span><span id="line-157"></span><span>                                              </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">IOSLA s b c -&gt; s -&gt; b -&gt; IO (s, [c])
+forall s a b. IOSLA s a b -&gt; s -&gt; a -&gt; IO (s, [b])
+</span><a href="Control.Arrow.IOStateListArrow.html#runIOSLA"><span class="hs-identifier hs-var hs-var">runIOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">IOSLA s b c
+</span><a href="#local-6989586621679172833"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172829"><span class="hs-identifier hs-var">s1</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172831"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-158"></span><span>                                              </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">(s, [c]) -&gt; IO (s, [c])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(s, [c])
+</span><a href="#local-6989586621679172830"><span class="hs-identifier hs-var">r</span></a></span></span><span>
+</span><span id="line-159"></span><span>
+</span><span id="line-160"></span><span>
+</span><span id="line-161"></span><span id="local-6989586621679172827"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679172817"><span id="local-6989586621679172819"><span id="local-6989586621679172821"><span id="local-6989586621679172823"><span class="annot"><a href="Control.Arrow.ArrowIO.html#ArrowIO"><span class="hs-identifier hs-type">ArrowIO</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172827"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-162"></span><span>    </span><span id="local-6989586621679172815"><span class="annot"><span class="annottext">arrIO :: (b -&gt; IO c) -&gt; IOSLA s b c
+</span><a href="Control.Arrow.ArrowIO.html#arrIO"><span class="hs-identifier hs-var hs-var hs-var hs-var">arrIO</span></a></span></span><span> </span><span id="local-6989586621679172813"><span class="annot"><span class="annottext">b -&gt; IO c
+</span><a href="#local-6989586621679172813"><span class="hs-identifier hs-var">cmd</span></a></span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c)
+-&gt; (s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172812"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172812"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679172811"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172811"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-163"></span><span>                                           </span><span id="local-6989586621679172810"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679172810"><span class="hs-identifier hs-var">res</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">b -&gt; IO c
+</span><a href="#local-6989586621679172813"><span class="hs-identifier hs-var">cmd</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172811"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-164"></span><span>                                           </span><span class="annot"><span class="annottext">(s, [c]) -&gt; IO (s, [c])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172812"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679172810"><span class="hs-identifier hs-var">res</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-165"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowIO.html#arrIO"><span class="hs-pragma hs-type">arrIO</span></a></span><span> </span><span class="hs-pragma">#-}</span></span><span>
+</span><span id="line-166"></span><span>
+</span><span id="line-167"></span><span id="local-6989586621679172809"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679172802"><span class="annot"><a href="Control.Arrow.ArrowExc.html#ArrowExc"><span class="hs-identifier hs-type">ArrowExc</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172809"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-168"></span><span>    </span><span id="local-6989586621679172800"><span class="annot"><span class="annottext">tryA :: IOSLA s b c -&gt; IOSLA s b (Either SomeException c)
+</span><a href="Control.Arrow.ArrowExc.html#tryA"><span class="hs-identifier hs-var hs-var hs-var hs-var">tryA</span></a></span></span><span> </span><span id="local-6989586621679172798"><span class="annot"><span class="annottext">IOSLA s b c
+</span><a href="#local-6989586621679172798"><span class="hs-identifier hs-var">f</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [Either SomeException c]))
+-&gt; IOSLA s b (Either SomeException c)
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [Either SomeException c]))
+ -&gt; IOSLA s b (Either SomeException c))
+-&gt; (s -&gt; b -&gt; IO (s, [Either SomeException c]))
+-&gt; IOSLA s b (Either SomeException c)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172797"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172797"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679172796"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172796"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-169"></span><span>                                           </span><span id="local-6989586621679172795"><span class="annot"><span class="annottext">Either SomeException (s, [c])
+</span><a href="#local-6989586621679172795"><span class="hs-identifier hs-var">res</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO (s, [c]) -&gt; IO (Either SomeException (s, [c]))
+forall a. IO a -&gt; IO (Either SomeException a)
+</span><a href="#local-6989586621679172794"><span class="hs-identifier hs-var">try'</span></a></span><span> </span><span class="annot"><span class="annottext">(IO (s, [c]) -&gt; IO (Either SomeException (s, [c])))
+-&gt; IO (s, [c]) -&gt; IO (Either SomeException (s, [c]))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">IOSLA s b c -&gt; s -&gt; b -&gt; IO (s, [c])
+forall s a b. IOSLA s a b -&gt; s -&gt; a -&gt; IO (s, [b])
+</span><a href="Control.Arrow.IOStateListArrow.html#runIOSLA"><span class="hs-identifier hs-var hs-var">runIOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">IOSLA s b c
+</span><a href="#local-6989586621679172798"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172797"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172796"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-170"></span><span>                                           </span><span class="annot"><span class="annottext">(s, [Either SomeException c]) -&gt; IO (s, [Either SomeException c])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">((s, [Either SomeException c]) -&gt; IO (s, [Either SomeException c]))
+-&gt; (s, [Either SomeException c])
+-&gt; IO (s, [Either SomeException c])
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Either SomeException (s, [c])
+</span><a href="#local-6989586621679172795"><span class="hs-identifier hs-var">res</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-171"></span><span>                                              </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span>   </span><span id="local-6989586621679172793"><span class="annot"><span class="annottext">SomeException
+</span><a href="#local-6989586621679172793"><span class="hs-identifier hs-var">er</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172797"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span>  </span><span class="hs-special">[</span><span class="annot"><span class="annottext">SomeException -&gt; Either SomeException c
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">SomeException
+</span><a href="#local-6989586621679172793"><span class="hs-identifier hs-var">er</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-172"></span><span>                                              </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679172792"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172792"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679172791"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172791"><span class="hs-identifier hs-var">ys</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172792"><span class="hs-identifier hs-var">s1</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">c -&gt; Either SomeException c
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679172790"><span class="hs-identifier hs-var">x'</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679172790"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679172790"><span class="hs-identifier hs-var">x'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172791"><span class="hs-identifier hs-var">ys</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-173"></span><span>        </span><span class="hs-keyword">where</span><span>
+</span><span id="line-174"></span><span>        </span><span id="local-6989586621679173280"><span class="annot"><a href="#local-6989586621679172794"><span class="hs-identifier hs-type">try'</span></a></span><span>            </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><a href="#local-6989586621679173280"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">SomeException</span></span><span> </span><span class="annot"><a href="#local-6989586621679173280"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-175"></span><span>        </span><span id="local-6989586621679172794"><span class="annot"><span class="annottext">try' :: IO a -&gt; IO (Either SomeException a)
+</span><a href="#local-6989586621679172794"><span class="hs-identifier hs-var hs-var">try'</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO a -&gt; IO (Either SomeException a)
+forall e a. Exception e =&gt; IO a -&gt; IO (Either e a)
+</span><span class="hs-identifier hs-var">try</span></span></span><span>
+</span><span id="line-176"></span><span>
+</span><span id="line-177"></span><span id="local-6989586621679172789"><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowIO.html#ArrowIOIf"><span class="hs-identifier hs-type">ArrowIOIf</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172789"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-178"></span><span>    </span><span id="local-6989586621679172784"><span class="annot"><span class="annottext">isIOA :: (b -&gt; IO Bool) -&gt; IOSLA s b b
+</span><a href="Control.Arrow.ArrowIO.html#isIOA"><span class="hs-identifier hs-var hs-var hs-var hs-var">isIOA</span></a></span></span><span> </span><span id="local-6989586621679172782"><span class="annot"><span class="annottext">b -&gt; IO Bool
+</span><a href="#local-6989586621679172782"><span class="hs-identifier hs-var">p</span></a></span></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [b])) -&gt; IOSLA s b b
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [b])) -&gt; IOSLA s b b)
+-&gt; (s -&gt; b -&gt; IO (s, [b])) -&gt; IOSLA s b b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172781"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172781"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679172780"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172780"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-179"></span><span>                                           </span><span id="local-6989586621679172779"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679172779"><span class="hs-identifier hs-var">res</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">b -&gt; IO Bool
+</span><a href="#local-6989586621679172782"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172780"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-180"></span><span>                                           </span><span class="annot"><span class="annottext">(s, [b]) -&gt; IO (s, [b])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172781"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679172779"><span class="hs-identifier hs-var">res</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172780"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-181"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowIO.html#isIOA"><span class="hs-pragma hs-type">isIOA</span></a></span><span> </span><span class="hs-pragma">#-}</span></span><span>
+</span><span id="line-182"></span><span>
+</span><span id="line-183"></span><span id="local-6989586621679172778"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679172769"><span id="local-6989586621679172771"><span id="local-6989586621679172773"><span class="annot"><a href="Control.Arrow.ArrowState.html#ArrowState"><span class="hs-identifier hs-type">ArrowState</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172778"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172778"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-184"></span><span>    </span><span id="local-6989586621679172767"><span class="annot"><span class="annottext">changeState :: (s -&gt; b -&gt; s) -&gt; IOSLA s b b
+</span><a href="Control.Arrow.ArrowState.html#changeState"><span class="hs-identifier hs-var hs-var hs-var hs-var">changeState</span></a></span></span><span> </span><span id="local-6989586621679172765"><span class="annot"><span class="annottext">s -&gt; b -&gt; s
+</span><a href="#local-6989586621679172765"><span class="hs-identifier hs-var">cf</span></a></span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [b])) -&gt; IOSLA s b b
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [b])) -&gt; IOSLA s b b)
+-&gt; (s -&gt; b -&gt; IO (s, [b])) -&gt; IOSLA s b b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172764"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172764"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679172763"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172763"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679172762"><span class="annot"><span class="annottext">s' :: s
+</span><a href="#local-6989586621679172762"><span class="hs-identifier hs-var hs-var">s'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; s
+</span><a href="#local-6989586621679172765"><span class="hs-identifier hs-var">cf</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172764"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172763"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(s, [b]) -&gt; IO (s, [b])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s -&gt; s -&gt; s
+</span><span class="hs-identifier hs-var">seq</span></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172762"><span class="hs-identifier hs-var">s'</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172762"><span class="hs-identifier hs-var">s'</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172763"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-185"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowState.html#changeState"><span class="hs-pragma hs-type">changeState</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-186"></span><span>    </span><span id="local-6989586621679172761"><span class="annot"><span class="annottext">accessState :: (s -&gt; b -&gt; c) -&gt; IOSLA s b c
+</span><a href="Control.Arrow.ArrowState.html#accessState"><span class="hs-identifier hs-var hs-var hs-var hs-var">accessState</span></a></span></span><span> </span><span id="local-6989586621679172759"><span class="annot"><span class="annottext">s -&gt; b -&gt; c
+</span><a href="#local-6989586621679172759"><span class="hs-identifier hs-var">af</span></a></span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c)
+-&gt; (s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172758"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172758"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679172757"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172757"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(s, [c]) -&gt; IO (s, [c])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172758"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">s -&gt; b -&gt; c
+</span><a href="#local-6989586621679172759"><span class="hs-identifier hs-var">af</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172758"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172757"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-187"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowState.html#accessState"><span class="hs-pragma hs-type">accessState</span></a></span><span> </span><span class="hs-pragma">#-}</span></span><span>
+</span><span id="line-188"></span><span>
+</span><span id="line-189"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-190"></span><span>
+</span><span id="line-191"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-192"></span><span class="hs-comment">-- lift the state of an IOSLA arrow to a state with an additional component.</span><span>
+</span><span id="line-193"></span><span class="hs-comment">--</span><span>
+</span><span id="line-194"></span><span class="hs-comment">-- This is uesful, when running predefined IO arrows, e.g. for document input,</span><span>
+</span><span id="line-195"></span><span class="hs-comment">-- in a context with a more complex state component.</span><span>
+</span><span id="line-196"></span><span>
+</span><span id="line-197"></span><span id="local-6989586621679172753"><span id="local-6989586621679172754"><span id="local-6989586621679172755"><span id="local-6989586621679172756"><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#liftSt"><span class="hs-identifier hs-type">liftSt</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172756"><span class="hs-identifier hs-type">s1</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172755"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172754"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679172756"><span class="hs-identifier hs-type">s1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679172753"><span class="hs-identifier hs-type">s2</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679172755"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172754"><span class="hs-identifier hs-type">c</span></a></span></span></span></span></span><span>
+</span><span id="line-198"></span><span id="liftSt"><span class="annot"><span class="annottext">liftSt :: IOSLA s1 b c -&gt; IOSLA (s1, s2) b c
+</span><a href="Control.Arrow.IOStateListArrow.html#liftSt"><span class="hs-identifier hs-var hs-var">liftSt</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679172752"><span class="annot"><span class="annottext">s1 -&gt; b -&gt; IO (s1, [c])
+</span><a href="#local-6989586621679172752"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-199"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((s1, s2) -&gt; b -&gt; IO ((s1, s2), [c])) -&gt; IOSLA (s1, s2) b c
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">(((s1, s2) -&gt; b -&gt; IO ((s1, s2), [c])) -&gt; IOSLA (s1, s2) b c)
+-&gt; ((s1, s2) -&gt; b -&gt; IO ((s1, s2), [c])) -&gt; IOSLA (s1, s2) b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679172751"><span class="annot"><span class="annottext">s1
+</span><a href="#local-6989586621679172751"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679172750"><span class="annot"><span class="annottext">s2
+</span><a href="#local-6989586621679172750"><span class="hs-identifier hs-var">s2</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679172749"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172749"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-200"></span><span>                              </span><span class="hs-special">(</span><span id="local-6989586621679172748"><span class="annot"><span class="annottext">s1
+</span><a href="#local-6989586621679172748"><span class="hs-identifier hs-var">s1'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679172747"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172747"><span class="hs-identifier hs-var">ys</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s1 -&gt; b -&gt; IO (s1, [c])
+</span><a href="#local-6989586621679172752"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s1
+</span><a href="#local-6989586621679172751"><span class="hs-identifier hs-var">s1</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172749"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-201"></span><span>                              </span><span class="annot"><span class="annottext">((s1, s2), [c]) -&gt; IO ((s1, s2), [c])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">s1
+</span><a href="#local-6989586621679172748"><span class="hs-identifier hs-var">s1'</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">s2
+</span><a href="#local-6989586621679172750"><span class="hs-identifier hs-var">s2</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172747"><span class="hs-identifier hs-var">ys</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-202"></span><span>
+</span><span id="line-203"></span><span>
+</span><span id="line-204"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-205"></span><span class="hs-comment">-- run an arrow with augmented state in the context of a simple state arrow.</span><span>
+</span><span id="line-206"></span><span class="hs-comment">-- An initial value for the new state component is needed.</span><span>
+</span><span id="line-207"></span><span class="hs-comment">--</span><span>
+</span><span id="line-208"></span><span class="hs-comment">-- This is useful, when running an arrow with an extra environment component, e.g.</span><span>
+</span><span id="line-209"></span><span class="hs-comment">-- for namespace handling in XML.</span><span>
+</span><span id="line-210"></span><span>
+</span><span id="line-211"></span><span id="local-6989586621679172743"><span id="local-6989586621679172744"><span id="local-6989586621679172745"><span id="local-6989586621679172746"><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#runSt"><span class="hs-identifier hs-type">runSt</span></a></span><span>           </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679172746"><span class="hs-identifier hs-type">s2</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679172745"><span class="hs-identifier hs-type">s1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679172746"><span class="hs-identifier hs-type">s2</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679172744"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172743"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172745"><span class="hs-identifier hs-type">s1</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172744"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172743"><span class="hs-identifier hs-type">c</span></a></span></span></span></span></span><span>
+</span><span id="line-212"></span><span id="runSt"><span class="annot"><span class="annottext">runSt :: s2 -&gt; IOSLA (s1, s2) b c -&gt; IOSLA s1 b c
+</span><a href="Control.Arrow.IOStateListArrow.html#runSt"><span class="hs-identifier hs-var hs-var">runSt</span></a></span></span><span> </span><span id="local-6989586621679172742"><span class="annot"><span class="annottext">s2
+</span><a href="#local-6989586621679172742"><span class="hs-identifier hs-var">s2</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679172741"><span class="annot"><span class="annottext">(s1, s2) -&gt; b -&gt; IO ((s1, s2), [c])
+</span><a href="#local-6989586621679172741"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-213"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s1 -&gt; b -&gt; IO (s1, [c])) -&gt; IOSLA s1 b c
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s1 -&gt; b -&gt; IO (s1, [c])) -&gt; IOSLA s1 b c)
+-&gt; (s1 -&gt; b -&gt; IO (s1, [c])) -&gt; IOSLA s1 b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172740"><span class="annot"><span class="annottext">s1
+</span><a href="#local-6989586621679172740"><span class="hs-identifier hs-var">s1</span></a></span></span><span> </span><span id="local-6989586621679172739"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172739"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-214"></span><span>                        </span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679172738"><span class="annot"><span class="annottext">s1
+</span><a href="#local-6989586621679172738"><span class="hs-identifier hs-var">s1'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679172737"><span class="annot"><span class="annottext">s2
+</span><a href="#local-6989586621679172737"><span class="hs-identifier hs-var">_s2'</span></a></span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span id="local-6989586621679172736"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172736"><span class="hs-identifier hs-var">ys</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(s1, s2) -&gt; b -&gt; IO ((s1, s2), [c])
+</span><a href="#local-6989586621679172741"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s1
+</span><a href="#local-6989586621679172740"><span class="hs-identifier hs-var">s1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">s2
+</span><a href="#local-6989586621679172742"><span class="hs-identifier hs-var">s2</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172739"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-215"></span><span>                        </span><span class="annot"><span class="annottext">(s1, [c]) -&gt; IO (s1, [c])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s1
+</span><a href="#local-6989586621679172738"><span class="hs-identifier hs-var">s1'</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679172736"><span class="hs-identifier hs-var">ys</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-216"></span><span>
+</span><span id="line-217"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-218"></span><span>
+</span><span id="line-219"></span><span id="local-6989586621679172735"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679172685"><span id="local-6989586621679172687"><span id="local-6989586621679172689"><span id="local-6989586621679172691"><span id="local-6989586621679172693"><span id="local-6989586621679172695"><span id="local-6989586621679172697"><span id="local-6989586621679172699"><span id="local-6989586621679172701"><span id="local-6989586621679172703"><span id="local-6989586621679172705"><span id="local-6989586621679172707"><span id="local-6989586621679172709"><span id="local-6989586621679172711"><span id="local-6989586621679172713"><span id="local-6989586621679172715"><span id="local-6989586621679172717"><span id="local-6989586621679172719"><span id="local-6989586621679172721"><span id="local-6989586621679172723"><span id="local-6989586621679172725"><span id="local-6989586621679172727"><span id="local-6989586621679172729"><span id="local-6989586621679172731"><span class="annot"><a href="Control.Arrow.ArrowTree.html#ArrowTree"><span class="hs-identifier hs-type">ArrowTree</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172735"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span>
+</span><span id="line-220"></span><span>
+</span><span id="line-221"></span><span id="local-6989586621679172683"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679172674"><span id="local-6989586621679172676"><span id="local-6989586621679172678"><span id="local-6989586621679172680"><span class="annot"><a href="Control.Arrow.ArrowNavigatableTree.html#ArrowNavigatableTree"><span class="hs-identifier hs-type">ArrowNavigatableTree</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172683"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span></span></span></span><span>
+</span><span id="line-222"></span><span>
+</span><span id="line-223"></span><span id="local-6989586621679172672"><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowNF.html#ArrowNF"><span class="hs-identifier hs-type">ArrowNF</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172672"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-224"></span><span>    </span><span id="local-6989586621679172668"><span class="annot"><span class="annottext">rnfA :: IOSLA s b c -&gt; IOSLA s b c
+</span><a href="Control.Arrow.ArrowNF.html#rnfA"><span class="hs-identifier hs-var hs-var hs-var hs-var">rnfA</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span id="local-6989586621679172666"><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679172666"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">)</span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall s a b. (s -&gt; a -&gt; IO (s, [b])) -&gt; IOSLA s a b
+</span><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-var">IOSLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c)
+-&gt; (s -&gt; b -&gt; IO (s, [c])) -&gt; IOSLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679172665"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172665"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679172664"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172664"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-225"></span><span>                                           </span><span id="local-6989586621679172663"><span class="annot"><span class="annottext">(s, [c])
+</span><a href="#local-6989586621679172663"><span class="hs-identifier hs-var">res</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; IO (s, [c])
+</span><a href="#local-6989586621679172666"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679172665"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679172664"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-226"></span><span>                                           </span><span class="hs-special">(</span><span> </span><span class="hs-comment">-- T.trace &quot;start rnfA for IOSLA&quot; $</span><span>
+</span><span id="line-227"></span><span>                                             </span><span class="annot"><span class="annottext">(s, [c]) -&gt; [c]
+forall a b. (a, b) -&gt; b
+</span><span class="hs-identifier hs-var">snd</span></span><span> </span><span class="annot"><span class="annottext">(s, [c])
+</span><a href="#local-6989586621679172663"><span class="hs-identifier hs-var">res</span></a></span><span>
+</span><span id="line-228"></span><span>                                             </span><span class="hs-special">)</span><span>
+</span><span id="line-229"></span><span>                                             </span><span class="annot"><span class="annottext">[c] -&gt; IO (s, [c]) -&gt; IO (s, [c])
+forall a b. NFData a =&gt; a -&gt; b -&gt; b
+</span><span class="hs-operator hs-var">`deepseq`</span></span><span>
+</span><span id="line-230"></span><span>                                              </span><span class="annot"><span class="annottext">(s, [c]) -&gt; IO (s, [c])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span> </span><span class="hs-comment">-- T.trace &quot;end rnfA for IOSLA&quot; $</span><span>
+</span><span id="line-231"></span><span>                                                       </span><span class="annot"><span class="annottext">(s, [c])
+</span><a href="#local-6989586621679172663"><span class="hs-identifier hs-var">res</span></a></span><span>
+</span><span id="line-232"></span><span>                                                     </span><span class="hs-special">)</span></span><span>
+</span><span id="line-233"></span><span>
+</span><span id="line-234"></span><span id="local-6989586621679172661"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679172655"><span id="local-6989586621679172657"><span class="annot"><a href="Control.Arrow.ArrowNF.html#ArrowWNF"><span class="hs-identifier hs-type">ArrowWNF</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.IOStateListArrow.html#IOSLA"><span class="hs-identifier hs-type">IOSLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679172661"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span></span><span>
+</span><span id="line-235"></span><span>
+</span><span id="line-236"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-237"></span></pre></body></html>

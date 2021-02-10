@@ -1,0 +1,472 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+   Module     : Text.XML.HXT.DTDValidation.DocTransformation
+   Copyright  : Copyright (C) 2008 Uwe Schmidt
+   License    : MIT
+
+   Maintainer : Uwe Schmidt (uwe@fh-wedel.de)
+   Stability  : experimental
+   Portability: portable
+
+   This module provides functions for transforming XML documents represented as
+   XmlTree with respect to its DTD.
+
+   Transforming an XML document with respect to its DTD means:
+
+    - add all attributes with default values
+
+    - normalize all attribute values
+
+    - sort all attributes in lexical order
+
+   Note: Transformation should be started after validation.
+
+   Before the document is validated, a lookup-table is build on the basis of
+   the DTD which maps element names to their transformation functions.
+   After this initialization phase the whole document is traversed in preorder
+   and every element is transformed by the XmlFilter from the lookup-table.
+
+-}</span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.XML.HXT.DTDValidation.DocTransformation</span><span>
+</span><span id="line-35"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#transform"><span class="hs-identifier">transform</span></a></span><span>
+</span><span id="line-36"></span><span>    </span><span class="hs-special">)</span><span>
+</span><span id="line-37"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html"><span class="hs-identifier">Text.XML.HXT.DTDValidation.TypeDefs</span></a></span><span>
+</span><span id="line-40"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.AttributeValueValidation.html"><span class="hs-identifier">Text.XML.HXT.DTDValidation.AttributeValueValidation</span></a></span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>
+</span><span id="line-43"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span>
+</span><span id="line-44"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Ord</span></span><span>
+</span><span id="line-45"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">M</span></span><span>
+</span><span id="line-46"></span><span>
+</span><span id="line-47"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-48"></span><span>
+</span><span id="line-49"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-50"></span><span class="hs-comment">-- Lookup-table which maps element names to their transformation functions. The</span><span>
+</span><span id="line-51"></span><span class="hs-comment">-- transformation functions are XmlArrows.</span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="hs-keyword">type</span><span> </span><span id="TransEnvTable"><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#TransEnvTable"><span class="hs-identifier hs-var">TransEnvTable</span></a></span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">M.Map</span></span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#ElemName"><span class="hs-identifier hs-type">ElemName</span></a></span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#TransFct"><span class="hs-identifier hs-type">TransFct</span></a></span><span>
+</span><span id="line-54"></span><span class="hs-keyword">type</span><span> </span><span id="ElemName"><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#ElemName"><span class="hs-identifier hs-var">ElemName</span></a></span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-55"></span><span class="hs-keyword">type</span><span> </span><span id="TransFct"><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#TransFct"><span class="hs-identifier hs-var">TransFct</span></a></span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-59"></span><span>
+</span><span id="line-60"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-61"></span><span class="hs-comment">-- filter for transforming the document.</span><span>
+</span><span id="line-62"></span><span class="hs-comment">--</span><span>
+</span><span id="line-63"></span><span class="hs-comment">--    * 1.parameter dtdPart :  the DTD subset (Node @DOCTYPE@) of the XmlTree</span><span>
+</span><span id="line-64"></span><span class="hs-comment">--</span><span>
+</span><span id="line-65"></span><span class="hs-comment">--    - 2.parameter doc :  the document subset of the XmlTree</span><span>
+</span><span id="line-66"></span><span class="hs-comment">--</span><span>
+</span><span id="line-67"></span><span class="hs-comment">--    - returns : a list of errors</span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#transform"><span class="hs-identifier hs-type">transform</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#XmlTree"><span class="hs-identifier hs-type">XmlTree</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-70"></span><span id="transform"><span class="annot"><span class="annottext">transform :: XmlTree -&gt; XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#transform"><span class="hs-identifier hs-var hs-var">transform</span></a></span></span><span> </span><span id="local-6989586621679182693"><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679182693"><span class="hs-identifier hs-var">dtdPart</span></a></span></span><span>
+</span><span id="line-71"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TransEnvTable -&gt; XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#traverseTree"><span class="hs-identifier hs-var">traverseTree</span></a></span><span> </span><span class="annot"><span class="annottext">TransEnvTable
+</span><a href="#local-6989586621679182691"><span class="hs-identifier hs-var">transTable</span></a></span><span>
+</span><span id="line-72"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-73"></span><span>    </span><span id="local-6989586621679182691"><span class="annot"><span class="annottext">transTable :: TransEnvTable
+</span><a href="#local-6989586621679182691"><span class="hs-identifier hs-var hs-var">transTable</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlTrees -&gt; TransEnvTable
+</span><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#buildAllTransformationFunctions"><span class="hs-identifier hs-var">buildAllTransformationFunctions</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlTree -&gt; XmlTrees
+forall a b. LA a b -&gt; a -&gt; [b]
+</span><a href="Control.Arrow.ListArrow.html#runLA"><span class="hs-identifier hs-var hs-var">runLA</span></a></span><span> </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *) (t :: * -&gt; *) b.
+(ArrowTree a, Tree t) =&gt;
+a (t b) (t b)
+</span><a href="Control.Arrow.ArrowTree.html#getChildren"><span class="hs-identifier hs-var">getChildren</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679182693"><span class="hs-identifier hs-var">dtdPart</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-76"></span><span class="hs-comment">-- Traverse the XmlTree in preorder.</span><span>
+</span><span id="line-77"></span><span class="hs-comment">--</span><span>
+</span><span id="line-78"></span><span class="hs-comment">--    * 1.parameter transEnv :  lookup-table which maps element names to their transformation functions</span><span>
+</span><span id="line-79"></span><span class="hs-comment">--</span><span>
+</span><span id="line-80"></span><span class="hs-comment">--    - returns : the whole transformed document</span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#traverseTree"><span class="hs-identifier hs-type">traverseTree</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#TransEnvTable"><span class="hs-identifier hs-type">TransEnvTable</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-83"></span><span id="traverseTree"><span class="annot"><span class="annottext">traverseTree :: TransEnvTable -&gt; XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#traverseTree"><span class="hs-identifier hs-var hs-var">traverseTree</span></a></span></span><span> </span><span id="local-6989586621679182687"><span class="annot"><span class="annottext">TransEnvTable
+</span><a href="#local-6989586621679182687"><span class="hs-identifier hs-var">transEnv</span></a></span></span><span>
+</span><span id="line-84"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) (t :: * -&gt; *) b.
+(ArrowTree a, Tree t) =&gt;
+a (t b) (t b) -&gt; a (t b) (t b)
+</span><a href="Control.Arrow.ArrowTree.html#processTopDown"><span class="hs-identifier hs-var">processTopDown</span></a></span><span> </span><span class="hs-special">(</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; XmlArrow
+</span><a href="#local-6989586621679182685"><span class="hs-identifier hs-var">transFct</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; XmlArrow) -&gt; LA XmlTree String -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) c b d.
+ArrowList a =&gt;
+(c -&gt; a b d) -&gt; a b c -&gt; a b d
+</span><a href="Control.Arrow.ArrowList.html#%24%3C"><span class="hs-operator hs-var">$&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">LA XmlTree String
+forall (a :: * -&gt; * -&gt; *). ArrowXml a =&gt; a XmlTree String
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#getName"><span class="hs-identifier hs-var">getName</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-85"></span><span>                       </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) b c. ArrowIf a =&gt; a b b -&gt; a b c -&gt; a b b
+</span><a href="Control.Arrow.ArrowIf.html#when"><span class="hs-operator hs-var">`when`</span></a></span><span>
+</span><span id="line-86"></span><span>                       </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *). ArrowXml a =&gt; a XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#isElem"><span class="hs-identifier hs-var">isElem</span></a></span><span>
+</span><span id="line-87"></span><span>                     </span><span class="hs-special">)</span><span>
+</span><span id="line-88"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-89"></span><span>    </span><span class="annot"><a href="#local-6989586621679182685"><span class="hs-identifier hs-type">transFct</span></a></span><span>            </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-90"></span><span>    </span><span id="local-6989586621679182685"><span class="annot"><span class="annottext">transFct :: String -&gt; XmlArrow
+</span><a href="#local-6989586621679182685"><span class="hs-identifier hs-var hs-var">transFct</span></a></span></span><span> </span><span id="local-6989586621679182680"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679182680"><span class="hs-identifier hs-var">name</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlArrow -&gt; Maybe XmlArrow -&gt; XmlArrow
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *) b. ArrowList a =&gt; a b b
+</span><a href="Control.Arrow.ArrowList.html#this"><span class="hs-identifier hs-var">this</span></a></span><span> </span><span class="annot"><span class="annottext">(Maybe XmlArrow -&gt; XmlArrow)
+-&gt; (TransEnvTable -&gt; Maybe XmlArrow) -&gt; TransEnvTable -&gt; XmlArrow
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; TransEnvTable -&gt; Maybe XmlArrow
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">M.lookup</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679182680"><span class="hs-identifier hs-var">name</span></a></span><span> </span><span class="annot"><span class="annottext">(TransEnvTable -&gt; XmlArrow) -&gt; TransEnvTable -&gt; XmlArrow
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">TransEnvTable
+</span><a href="#local-6989586621679182687"><span class="hs-identifier hs-var">transEnv</span></a></span><span>
+</span><span id="line-91"></span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-94"></span><span class="hs-comment">-- Build all transformation functions.</span><span>
+</span><span id="line-95"></span><span class="hs-comment">--</span><span>
+</span><span id="line-96"></span><span class="hs-comment">--    * 1.parameter dtdPart :  the DTD subset, root node should be of type @DOCTYPE@</span><span>
+</span><span id="line-97"></span><span class="hs-comment">--</span><span>
+</span><span id="line-98"></span><span class="hs-comment">--    - returns : lookup-table which maps element names to their transformation functions</span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#buildAllTransformationFunctions"><span class="hs-identifier hs-type">buildAllTransformationFunctions</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#XmlTrees"><span class="hs-identifier hs-type">XmlTrees</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#TransEnvTable"><span class="hs-identifier hs-type">TransEnvTable</span></a></span><span>
+</span><span id="line-101"></span><span id="buildAllTransformationFunctions"><span class="annot"><span class="annottext">buildAllTransformationFunctions :: XmlTrees -&gt; TransEnvTable
+</span><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#buildAllTransformationFunctions"><span class="hs-identifier hs-var hs-var">buildAllTransformationFunctions</span></a></span></span><span> </span><span id="local-6989586621679182675"><span class="annot"><span class="annottext">XmlTrees
+</span><a href="#local-6989586621679182675"><span class="hs-identifier hs-var">dtdNodes</span></a></span></span><span>
+</span><span id="line-102"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[(String, XmlArrow)] -&gt; TransEnvTable
+forall k a. Ord k =&gt; [(k, a)] -&gt; Map k a
+</span><span class="hs-identifier hs-var">M.fromList</span></span><span> </span><span class="annot"><span class="annottext">([(String, XmlArrow)] -&gt; TransEnvTable)
+-&gt; [(String, XmlArrow)] -&gt; TransEnvTable
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-103"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><a href="Text.XML.HXT.DOM.XmlKeywords.html#t_root"><span class="hs-identifier hs-var">t_root</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *) b. ArrowList a =&gt; a b b
+</span><a href="Control.Arrow.ArrowList.html#this"><span class="hs-identifier hs-var">this</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-104"></span><span>      </span><span class="annot"><span class="annottext">(String, XmlArrow) -&gt; [(String, XmlArrow)] -&gt; [(String, XmlArrow)]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span>
+</span><span id="line-105"></span><span>      </span><span class="annot"><span class="annottext">(XmlTree -&gt; [(String, XmlArrow)])
+-&gt; XmlTrees -&gt; [(String, XmlArrow)]
+forall (t :: * -&gt; *) a b. Foldable t =&gt; (a -&gt; [b]) -&gt; t a -&gt; [b]
+</span><span class="hs-identifier hs-var">concatMap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">XmlTrees -&gt; XmlTree -&gt; [(String, XmlArrow)]
+</span><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#buildTransformationFunctions"><span class="hs-identifier hs-var">buildTransformationFunctions</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTrees
+</span><a href="#local-6989586621679182675"><span class="hs-identifier hs-var">dtdNodes</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">XmlTrees
+</span><a href="#local-6989586621679182675"><span class="hs-identifier hs-var">dtdNodes</span></a></span><span>
+</span><span id="line-106"></span><span>
+</span><span id="line-107"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-108"></span><span class="hs-comment">-- Build transformation functions for an element.</span><span>
+</span><span id="line-109"></span><span class="hs-comment">--</span><span>
+</span><span id="line-110"></span><span class="hs-comment">--    * 1.parameter dtdPart :  the children of the @DOCTYPE@ node</span><span>
+</span><span id="line-111"></span><span class="hs-comment">--</span><span>
+</span><span id="line-112"></span><span class="hs-comment">--    * 1.parameter nd :  element declaration for which the transformation functions are</span><span>
+</span><span id="line-113"></span><span class="hs-comment">--                    created</span><span>
+</span><span id="line-114"></span><span class="hs-comment">--</span><span>
+</span><span id="line-115"></span><span class="hs-comment">--    - returns : entry for the lookup-table</span><span>
+</span><span id="line-116"></span><span>
+</span><span id="line-117"></span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#buildTransformationFunctions"><span class="hs-identifier hs-type">buildTransformationFunctions</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#XmlTrees"><span class="hs-identifier hs-type">XmlTrees</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#XmlTree"><span class="hs-identifier hs-type">XmlTree</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#ElemName"><span class="hs-identifier hs-type">ElemName</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#TransFct"><span class="hs-identifier hs-type">TransFct</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-118"></span><span>
+</span><span id="line-119"></span><span id="buildTransformationFunctions"><span class="annot"><span class="annottext">buildTransformationFunctions :: XmlTrees -&gt; XmlTree -&gt; [(String, XmlArrow)]
+</span><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#buildTransformationFunctions"><span class="hs-identifier hs-var hs-var">buildTransformationFunctions</span></a></span></span><span> </span><span id="local-6989586621679182670"><span class="annot"><span class="annottext">XmlTrees
+</span><a href="#local-6989586621679182670"><span class="hs-identifier hs-var">dtdPart</span></a></span></span><span> </span><span id="local-6989586621679182669"><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679182669"><span class="hs-identifier hs-var">dn</span></a></span></span><span>
+</span><span id="line-120"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">XmlTree -&gt; Bool
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#isDTDElementNode"><span class="hs-identifier hs-var">isDTDElementNode</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679182669"><span class="hs-identifier hs-var">dn</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679182667"><span class="hs-identifier hs-var">name</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">XmlArrow
+</span><a href="#local-6989586621679182666"><span class="hs-identifier hs-var">transFct</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-121"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-122"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-123"></span><span>    </span><span id="local-6989586621679182665"><span class="annot"><span class="annottext">al :: Attributes
+</span><a href="#local-6989586621679182665"><span class="hs-identifier hs-var hs-var">al</span></a></span></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlTree -&gt; Attributes
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#getDTDAttributes"><span class="hs-identifier hs-var">getDTDAttributes</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679182669"><span class="hs-identifier hs-var">dn</span></a></span><span>
+</span><span id="line-124"></span><span>    </span><span id="local-6989586621679182667"><span class="annot"><span class="annottext">name :: String
+</span><a href="#local-6989586621679182667"><span class="hs-identifier hs-var hs-var">name</span></a></span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Attributes -&gt; String
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#dtd_name"><span class="hs-identifier hs-var">dtd_name</span></a></span><span> </span><span class="annot"><span class="annottext">Attributes
+</span><a href="#local-6989586621679182665"><span class="hs-identifier hs-var">al</span></a></span><span>
+</span><span id="line-125"></span><span>    </span><span id="local-6989586621679182666"><span class="annot"><span class="annottext">transFct :: XmlArrow
+</span><a href="#local-6989586621679182666"><span class="hs-identifier hs-var hs-var">transFct</span></a></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlTrees -&gt; XmlTree -&gt; XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#setDefaultAttributeValues"><span class="hs-identifier hs-var">setDefaultAttributeValues</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTrees
+</span><a href="#local-6989586621679182670"><span class="hs-identifier hs-var">dtdPart</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679182669"><span class="hs-identifier hs-var">dn</span></a></span><span>
+</span><span id="line-126"></span><span>                  </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow -&gt; XmlArrow
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span>
+</span><span id="line-127"></span><span>                  </span><span class="annot"><span class="annottext">XmlTrees -&gt; XmlTree -&gt; XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#normalizeAttributeValues"><span class="hs-identifier hs-var">normalizeAttributeValues</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTrees
+</span><a href="#local-6989586621679182670"><span class="hs-identifier hs-var">dtdPart</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679182669"><span class="hs-identifier hs-var">dn</span></a></span><span>
+</span><span id="line-128"></span><span>                  </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow -&gt; XmlArrow
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span>
+</span><span id="line-129"></span><span>                  </span><span class="annot"><span class="annottext">XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#lexicographicAttributeOrder"><span class="hs-identifier hs-var">lexicographicAttributeOrder</span></a></span><span>
+</span><span id="line-130"></span><span>
+</span><span id="line-131"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-132"></span><span>
+</span><span id="line-133"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-134"></span><span class="hs-comment">-- Sort the attributes of an element in lexicographic order.</span><span>
+</span><span id="line-135"></span><span class="hs-comment">--</span><span>
+</span><span id="line-136"></span><span class="hs-comment">--    * returns : a function which takes an element (XTag), sorts its</span><span>
+</span><span id="line-137"></span><span class="hs-comment">--                  attributes in lexicographic order and returns the changed element</span><span>
+</span><span id="line-138"></span><span>
+</span><span id="line-139"></span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#lexicographicAttributeOrder"><span class="hs-identifier hs-type">lexicographicAttributeOrder</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-140"></span><span id="lexicographicAttributeOrder"><span class="annot"><span class="annottext">lexicographicAttributeOrder :: XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#lexicographicAttributeOrder"><span class="hs-identifier hs-var hs-var">lexicographicAttributeOrder</span></a></span></span><span>
+</span><span id="line-141"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *).
+ArrowXml a =&gt;
+a XmlTree XmlTree -&gt; a XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#setAttrl"><span class="hs-identifier hs-var">setAttrl</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *). ArrowXml a =&gt; a XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#getAttrl"><span class="hs-identifier hs-var">getAttrl</span></a></span><span> </span><span class="annot"><span class="annottext">XmlArrow -&gt; (XmlTrees -&gt; XmlTrees) -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) b c d.
+ArrowList a =&gt;
+a b c -&gt; ([c] -&gt; [d]) -&gt; a b d
+</span><a href="Control.Arrow.ArrowList.html#%3E%3E."><span class="hs-operator hs-var">&gt;&gt;.</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTrees -&gt; XmlTrees
+</span><a href="#local-6989586621679182655"><span class="hs-identifier hs-var">sortAttrl</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-142"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-143"></span><span>      </span><span class="annot"><a href="#local-6989586621679182655"><span class="hs-identifier hs-type">sortAttrl</span></a></span><span>         </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#XmlTrees"><span class="hs-identifier hs-type">XmlTrees</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#XmlTrees"><span class="hs-identifier hs-type">XmlTrees</span></a></span><span>
+</span><span id="line-144"></span><span>      </span><span id="local-6989586621679182655"><span class="annot"><span class="annottext">sortAttrl :: XmlTrees -&gt; XmlTrees
+</span><a href="#local-6989586621679182655"><span class="hs-identifier hs-var hs-var">sortAttrl</span></a></span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(XmlTree -&gt; XmlTree -&gt; Ordering) -&gt; XmlTrees -&gt; XmlTrees
+forall a. (a -&gt; a -&gt; Ordering) -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">sortBy</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(XmlTree -&gt; String) -&gt; XmlTree -&gt; XmlTree -&gt; Ordering
+forall a b. Ord a =&gt; (b -&gt; a) -&gt; b -&gt; b -&gt; Ordering
+</span><span class="hs-identifier hs-var">comparing</span></span><span> </span><span class="annot"><span class="annottext">XmlTree -&gt; String
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#nameOfAttr"><span class="hs-identifier hs-var">nameOfAttr</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-145"></span><span>
+</span><span id="line-146"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-147"></span><span class="hs-comment">-- Normalize attribute values.</span><span>
+</span><span id="line-148"></span><span class="hs-comment">--</span><span>
+</span><span id="line-149"></span><span class="hs-comment">--    * returns : a function which takes an element (XTag), normalizes its</span><span>
+</span><span id="line-150"></span><span class="hs-comment">--                  attribute values and returns the changed element</span><span>
+</span><span id="line-151"></span><span>
+</span><span id="line-152"></span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#normalizeAttributeValues"><span class="hs-identifier hs-type">normalizeAttributeValues</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#XmlTrees"><span class="hs-identifier hs-type">XmlTrees</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#XmlTree"><span class="hs-identifier hs-type">XmlTree</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-153"></span><span id="normalizeAttributeValues"><span class="annot"><span class="annottext">normalizeAttributeValues :: XmlTrees -&gt; XmlTree -&gt; XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#normalizeAttributeValues"><span class="hs-identifier hs-var hs-var">normalizeAttributeValues</span></a></span></span><span> </span><span id="local-6989586621679182651"><span class="annot"><span class="annottext">XmlTrees
+</span><a href="#local-6989586621679182651"><span class="hs-identifier hs-var">dtdPart</span></a></span></span><span> </span><span id="local-6989586621679182650"><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679182650"><span class="hs-identifier hs-var">dn</span></a></span></span><span>
+</span><span id="line-154"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">XmlTree -&gt; Bool
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#isDTDElementNode"><span class="hs-identifier hs-var">isDTDElementNode</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679182650"><span class="hs-identifier hs-var">dn</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *).
+ArrowXml a =&gt;
+a XmlTree XmlTree -&gt; a XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#processAttrl"><span class="hs-identifier hs-var">processAttrl</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; XmlArrow
+</span><a href="#local-6989586621679182648"><span class="hs-identifier hs-var">normalizeAttr</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; XmlArrow) -&gt; LA XmlTree String -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) c b d.
+ArrowList a =&gt;
+(c -&gt; a b d) -&gt; a b c -&gt; a b d
+</span><a href="Control.Arrow.ArrowList.html#%24%3C"><span class="hs-operator hs-var">$&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">LA XmlTree String
+forall (a :: * -&gt; * -&gt; *). ArrowXml a =&gt; a XmlTree String
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#getName"><span class="hs-identifier hs-var">getName</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-155"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *) b. ArrowList a =&gt; a b b
+</span><a href="Control.Arrow.ArrowList.html#this"><span class="hs-identifier hs-var">this</span></a></span><span>
+</span><span id="line-156"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-157"></span><span>    </span><span id="local-6989586621679182647"><span class="annot"><span class="annottext">al :: Attributes
+</span><a href="#local-6989586621679182647"><span class="hs-identifier hs-var hs-var">al</span></a></span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlTree -&gt; Attributes
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#getDTDAttributes"><span class="hs-identifier hs-var">getDTDAttributes</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679182650"><span class="hs-identifier hs-var">dn</span></a></span><span>
+</span><span id="line-158"></span><span>    </span><span id="local-6989586621679182646"><span class="annot"><span class="annottext">elemName :: String
+</span><a href="#local-6989586621679182646"><span class="hs-identifier hs-var hs-var">elemName</span></a></span></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Attributes -&gt; String
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#dtd_name"><span class="hs-identifier hs-var">dtd_name</span></a></span><span> </span><span class="annot"><span class="annottext">Attributes
+</span><a href="#local-6989586621679182647"><span class="hs-identifier hs-var">al</span></a></span><span>
+</span><span id="line-159"></span><span>    </span><span id="local-6989586621679182645"><span class="annot"><span class="annottext">declaredAtts :: XmlTrees
+</span><a href="#local-6989586621679182645"><span class="hs-identifier hs-var hs-var">declaredAtts</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *).
+ArrowDTD a =&gt;
+String -&gt; a XmlTree XmlTree
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#isAttlistOfElement"><span class="hs-identifier hs-var">isAttlistOfElement</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679182646"><span class="hs-identifier hs-var">elemName</span></a></span><span> </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlTrees -&gt; XmlTrees
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#%24%24"><span class="hs-operator hs-var">$$</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTrees
+</span><a href="#local-6989586621679182651"><span class="hs-identifier hs-var">dtdPart</span></a></span><span>
+</span><span id="line-160"></span><span>
+</span><span id="line-161"></span><span>    </span><span class="annot"><a href="#local-6989586621679182648"><span class="hs-identifier hs-type">normalizeAttr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-162"></span><span>    </span><span id="local-6989586621679182648"><span class="annot"><span class="annottext">normalizeAttr :: String -&gt; XmlArrow
+</span><a href="#local-6989586621679182648"><span class="hs-identifier hs-var hs-var">normalizeAttr</span></a></span></span><span> </span><span id="local-6989586621679182642"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679182642"><span class="hs-identifier hs-var">nameOfAtt</span></a></span></span><span>
+</span><span id="line-163"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe XmlTree -&gt; XmlArrow
+</span><a href="#local-6989586621679182641"><span class="hs-identifier hs-var">normalizeAttrValue</span></a></span><span> </span><span class="hs-special">(</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">XmlTrees -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">XmlTrees
+</span><a href="#local-6989586621679182639"><span class="hs-identifier hs-var">attDescr</span></a></span><span>
+</span><span id="line-164"></span><span>                               </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Maybe XmlTree
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-165"></span><span>                               </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">XmlTree -&gt; Maybe XmlTree
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">XmlTrees -&gt; XmlTree
+forall a. [a] -&gt; a
+</span><span class="hs-identifier hs-var">head</span></span><span> </span><span class="annot"><span class="annottext">XmlTrees
+</span><a href="#local-6989586621679182639"><span class="hs-identifier hs-var">attDescr</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-166"></span><span>                             </span><span class="hs-special">)</span><span>
+</span><span id="line-167"></span><span>          </span><span class="hs-keyword">where</span><span>
+</span><span id="line-168"></span><span>          </span><span id="local-6989586621679182639"><span class="annot"><span class="annottext">attDescr :: XmlTrees
+</span><a href="#local-6989586621679182639"><span class="hs-identifier hs-var hs-var">attDescr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(XmlTree -&gt; Bool) -&gt; XmlTrees -&gt; XmlTrees
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">filter</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; String -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679182642"><span class="hs-identifier hs-var">nameOfAtt</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(String -&gt; Bool) -&gt; (XmlTree -&gt; String) -&gt; XmlTree -&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; XmlTree -&gt; String
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#valueOfDTD"><span class="hs-identifier hs-var">valueOfDTD</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="Text.XML.HXT.DOM.XmlKeywords.html#a_value"><span class="hs-identifier hs-var">a_value</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">XmlTrees
+</span><a href="#local-6989586621679182645"><span class="hs-identifier hs-var">declaredAtts</span></a></span><span>
+</span><span id="line-169"></span><span>
+</span><span id="line-170"></span><span>    </span><span class="annot"><a href="#local-6989586621679182641"><span class="hs-identifier hs-type">normalizeAttrValue</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#XmlTree"><span class="hs-identifier hs-type">XmlTree</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-171"></span><span>    </span><span id="local-6989586621679182641"><span class="annot"><span class="annottext">normalizeAttrValue :: Maybe XmlTree -&gt; XmlArrow
+</span><a href="#local-6989586621679182641"><span class="hs-identifier hs-var hs-var">normalizeAttrValue</span></a></span></span><span> </span><span id="local-6989586621679182635"><span class="annot"><span class="annottext">Maybe XmlTree
+</span><a href="#local-6989586621679182635"><span class="hs-identifier hs-var">descr</span></a></span></span><span>
+</span><span id="line-172"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) (t :: * -&gt; *) b.
+(ArrowTree a, Tree t) =&gt;
+a (t b) (t b) -&gt; a (t b) (t b)
+</span><a href="Control.Arrow.ArrowTree.html#replaceChildren"><span class="hs-identifier hs-var">replaceChildren</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">XmlArrow -&gt; LA XmlTree String
+forall (a :: * -&gt; * -&gt; *) n.
+ArrowXml a =&gt;
+a n XmlTree -&gt; a n String
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#xshow"><span class="hs-identifier hs-var">xshow</span></a></span><span> </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *) (t :: * -&gt; *) b.
+(ArrowTree a, Tree t) =&gt;
+a (t b) (t b)
+</span><a href="Control.Arrow.ArrowTree.html#getChildren"><span class="hs-identifier hs-var">getChildren</span></a></span><span> </span><span class="annot"><span class="annottext">LA XmlTree String -&gt; (String -&gt; String) -&gt; LA XmlTree String
+forall (a :: * -&gt; * -&gt; *) b c d.
+Arrow a =&gt;
+a b c -&gt; (c -&gt; d) -&gt; a b d
+</span><span class="hs-operator hs-var">&gt;&gt;^</span></span><span> </span><span class="annot"><span class="annottext">Maybe XmlTree -&gt; String -&gt; String
+</span><a href="Text.XML.HXT.DTDValidation.AttributeValueValidation.html#normalizeAttributeValue"><span class="hs-identifier hs-var">normalizeAttributeValue</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe XmlTree
+</span><a href="#local-6989586621679182635"><span class="hs-identifier hs-var">descr</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">LA XmlTree String -&gt; LA String XmlTree -&gt; XmlArrow
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">LA String XmlTree
+forall (a :: * -&gt; * -&gt; *). ArrowXml a =&gt; a String XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#mkText"><span class="hs-identifier hs-var">mkText</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-173"></span><span>
+</span><span id="line-174"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-175"></span><span class="hs-comment">-- Set default attribute values if they are not set.</span><span>
+</span><span id="line-176"></span><span class="hs-comment">--</span><span>
+</span><span id="line-177"></span><span class="hs-comment">--    * returns : a function which takes an element (XTag), adds missing attribute</span><span>
+</span><span id="line-178"></span><span class="hs-comment">--                  defaults and returns the changed element</span><span>
+</span><span id="line-179"></span><span>
+</span><span id="line-180"></span><span class="annot"><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#setDefaultAttributeValues"><span class="hs-identifier hs-type">setDefaultAttributeValues</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#XmlTrees"><span class="hs-identifier hs-type">XmlTrees</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#XmlTree"><span class="hs-identifier hs-type">XmlTree</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-181"></span><span id="setDefaultAttributeValues"><span class="annot"><span class="annottext">setDefaultAttributeValues :: XmlTrees -&gt; XmlTree -&gt; XmlArrow
+</span><a href="Text.XML.HXT.DTDValidation.DocTransformation.html#setDefaultAttributeValues"><span class="hs-identifier hs-var hs-var">setDefaultAttributeValues</span></a></span></span><span> </span><span id="local-6989586621679182629"><span class="annot"><span class="annottext">XmlTrees
+</span><a href="#local-6989586621679182629"><span class="hs-identifier hs-var">dtdPart</span></a></span></span><span> </span><span id="local-6989586621679182628"><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679182628"><span class="hs-identifier hs-var">dn</span></a></span></span><span>
+</span><span id="line-182"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">XmlTree -&gt; Bool
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#isDTDElementNode"><span class="hs-identifier hs-var">isDTDElementNode</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679182628"><span class="hs-identifier hs-var">dn</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[XmlArrow] -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) b. ArrowList a =&gt; [a b b] -&gt; a b b
+</span><a href="Control.Arrow.ArrowList.html#seqA"><span class="hs-identifier hs-var">seqA</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(XmlTree -&gt; XmlArrow) -&gt; XmlTrees -&gt; [XmlArrow]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">XmlTree -&gt; XmlArrow
+</span><a href="#local-6989586621679182626"><span class="hs-identifier hs-var">setDefault</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTrees
+</span><a href="#local-6989586621679182625"><span class="hs-identifier hs-var">defaultAtts</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-183"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *) b. ArrowList a =&gt; a b b
+</span><a href="Control.Arrow.ArrowList.html#this"><span class="hs-identifier hs-var">this</span></a></span><span>
+</span><span id="line-184"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-185"></span><span>    </span><span id="local-6989586621679182624"><span class="annot"><span class="annottext">elemName :: String
+</span><a href="#local-6989586621679182624"><span class="hs-identifier hs-var hs-var">elemName</span></a></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Attributes -&gt; String
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#dtd_name"><span class="hs-identifier hs-var">dtd_name</span></a></span><span> </span><span class="annot"><span class="annottext">(Attributes -&gt; String)
+-&gt; (XmlTree -&gt; Attributes) -&gt; XmlTree -&gt; String
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">XmlTree -&gt; Attributes
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#getDTDAttributes"><span class="hs-identifier hs-var">getDTDAttributes</span></a></span><span> </span><span class="annot"><span class="annottext">(XmlTree -&gt; String) -&gt; XmlTree -&gt; String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679182628"><span class="hs-identifier hs-var">dn</span></a></span><span>
+</span><span id="line-186"></span><span>    </span><span id="local-6989586621679182625"><span class="annot"><span class="annottext">defaultAtts :: XmlTrees
+</span><a href="#local-6989586621679182625"><span class="hs-identifier hs-var hs-var">defaultAtts</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">String -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *).
+ArrowDTD a =&gt;
+String -&gt; a XmlTree XmlTree
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#isAttlistOfElement"><span class="hs-identifier hs-var">isAttlistOfElement</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679182624"><span class="hs-identifier hs-var">elemName</span></a></span><span>
+</span><span id="line-187"></span><span>                    </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow -&gt; XmlArrow
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span>
+</span><span id="line-188"></span><span>                    </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *). ArrowDTD a =&gt; a XmlTree XmlTree
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#isFixedAttrKind"><span class="hs-identifier hs-var">isFixedAttrKind</span></a></span><span>           </span><span class="hs-comment">-- select attributes with default values</span><span>
+</span><span id="line-189"></span><span>                      </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) b c. ArrowIf a =&gt; a b c -&gt; a b c -&gt; a b c
+</span><a href="Control.Arrow.ArrowIf.html#orElse"><span class="hs-operator hs-var">`orElse`</span></a></span><span>
+</span><span id="line-190"></span><span>                      </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *). ArrowDTD a =&gt; a XmlTree XmlTree
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#isDefaultAttrKind"><span class="hs-identifier hs-var">isDefaultAttrKind</span></a></span><span>
+</span><span id="line-191"></span><span>                    </span><span class="hs-special">)</span><span>
+</span><span id="line-192"></span><span>                  </span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlTrees -&gt; XmlTrees
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#%24%24"><span class="hs-operator hs-var">$$</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTrees
+</span><a href="#local-6989586621679182629"><span class="hs-identifier hs-var">dtdPart</span></a></span><span>
+</span><span id="line-193"></span><span>
+</span><span id="line-194"></span><span>    </span><span class="annot"><a href="#local-6989586621679182626"><span class="hs-identifier hs-type">setDefault</span></a></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#XmlTree"><span class="hs-identifier hs-type">XmlTree</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#XmlArrow"><span class="hs-identifier hs-type">XmlArrow</span></a></span><span>
+</span><span id="line-195"></span><span>    </span><span id="local-6989586621679182626"><span class="annot"><span class="annottext">setDefault :: XmlTree -&gt; XmlArrow
+</span><a href="#local-6989586621679182626"><span class="hs-identifier hs-var hs-var">setDefault</span></a></span></span><span> </span><span id="local-6989586621679182620"><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679182620"><span class="hs-identifier hs-var">attrDescr</span></a></span></span><span>                        </span><span class="hs-comment">-- add the default attributes</span><span>
+</span><span id="line-196"></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *).
+ArrowXml a =&gt;
+String -&gt; String -&gt; a XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#addAttr"><span class="hs-identifier hs-var">addAttr</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679182618"><span class="hs-identifier hs-var">attName</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679182617"><span class="hs-identifier hs-var">defaultValue</span></a></span><span>      </span><span class="hs-comment">-- to tag nodes with missing attributes</span><span>
+</span><span id="line-197"></span><span>              </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) b c. ArrowIf a =&gt; a b b -&gt; a b c -&gt; a b b
+</span><a href="Control.Arrow.ArrowIf.html#whenNot"><span class="hs-operator hs-var">`whenNot`</span></a></span><span>
+</span><span id="line-198"></span><span>              </span><span class="annot"><span class="annottext">String -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *).
+ArrowXml a =&gt;
+String -&gt; a XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#hasAttr"><span class="hs-identifier hs-var">hasAttr</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679182618"><span class="hs-identifier hs-var">attName</span></a></span><span>
+</span><span id="line-199"></span><span>            </span><span class="hs-special">)</span><span>
+</span><span id="line-200"></span><span>            </span><span class="annot"><span class="annottext">XmlArrow -&gt; XmlArrow -&gt; XmlArrow
+forall (a :: * -&gt; * -&gt; *) b c. ArrowIf a =&gt; a b b -&gt; a b c -&gt; a b b
+</span><a href="Control.Arrow.ArrowIf.html#when"><span class="hs-operator hs-var">`when`</span></a></span><span>
+</span><span id="line-201"></span><span>            </span><span class="annot"><span class="annottext">XmlArrow
+forall (a :: * -&gt; * -&gt; *). ArrowXml a =&gt; a XmlTree XmlTree
+</span><a href="Text.XML.HXT.Arrow.XmlArrow.html#isElem"><span class="hs-identifier hs-var">isElem</span></a></span><span>
+</span><span id="line-202"></span><span>        </span><span class="hs-keyword">where</span><span>
+</span><span id="line-203"></span><span>        </span><span id="local-6989586621679182614"><span class="annot"><span class="annottext">al :: Attributes
+</span><a href="#local-6989586621679182614"><span class="hs-identifier hs-var hs-var">al</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">XmlTree -&gt; Attributes
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#getDTDAttributes"><span class="hs-identifier hs-var">getDTDAttributes</span></a></span><span> </span><span class="annot"><span class="annottext">XmlTree
+</span><a href="#local-6989586621679182620"><span class="hs-identifier hs-var">attrDescr</span></a></span><span>
+</span><span id="line-204"></span><span>        </span><span id="local-6989586621679182618"><span class="annot"><span class="annottext">attName :: String
+</span><a href="#local-6989586621679182618"><span class="hs-identifier hs-var hs-var">attName</span></a></span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Attributes -&gt; String
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#dtd_value"><span class="hs-identifier hs-var">dtd_value</span></a></span><span>   </span><span class="annot"><span class="annottext">Attributes
+</span><a href="#local-6989586621679182614"><span class="hs-identifier hs-var">al</span></a></span><span>
+</span><span id="line-205"></span><span>        </span><span id="local-6989586621679182617"><span class="annot"><span class="annottext">defaultValue :: String
+</span><a href="#local-6989586621679182617"><span class="hs-identifier hs-var hs-var">defaultValue</span></a></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Attributes -&gt; String
+</span><a href="Text.XML.HXT.DTDValidation.TypeDefs.html#dtd_default"><span class="hs-identifier hs-var">dtd_default</span></a></span><span> </span><span class="annot"><span class="annottext">Attributes
+</span><a href="#local-6989586621679182614"><span class="hs-identifier hs-var">al</span></a></span><span>
+</span><span id="line-206"></span><span>
+</span><span id="line-207"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-208"></span><span>
+</span><span id="line-209"></span></pre></body></html>

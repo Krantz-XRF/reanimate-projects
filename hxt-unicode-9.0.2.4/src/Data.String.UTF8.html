@@ -1,0 +1,1108 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-
+
+Copyright (c) 2002, members of the Haskell Internationalisation Working
+Group All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+* Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+* Neither the name of the Haskell Internationalisation Working Group nor
+   the names of its contributors may be used to endorse or promote products
+   derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &quot;AS IS&quot;
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+This module provides lazy stream encoding/decoding facilities for UTF-8,
+the Unicode Transformation Format with 8-bit words.
+
+2002-09-02  Sven Moritz Hallberg &lt;pesco@gmx.de&gt;
+
+-}</span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-comment">{-
+
+2007-04-30 Henning Thielemann:
+Slight changes to make decode lazy.
+The calls of 'reverse' in the original version have broken laziness
+and thus had memory leaks.
+
+-}</span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Data.String.UTF8</span><span>
+</span><span id="line-47"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Data.String.UTF8.html#encode"><span class="hs-identifier">encode</span></a></span><span>
+</span><span id="line-48"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.String.UTF8.html#decode"><span class="hs-identifier">decode</span></a></span><span>
+</span><span id="line-49"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.String.UTF8.html#decodeEmbedErrors"><span class="hs-identifier">decodeEmbedErrors</span></a></span><span>
+</span><span id="line-50"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.String.UTF8.html#encodeOne"><span class="hs-identifier">encodeOne</span></a></span><span>
+</span><span id="line-51"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.String.UTF8.html#decodeOne"><span class="hs-identifier">decodeOne</span></a></span><span>
+</span><span id="line-52"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.String.UTF8.html#Error"><span class="hs-identifier">Error</span></a></span><span>
+</span><span id="line-53"></span><span>         </span><span class="hs-comment">-- Haddock does not want to document signatures with private types</span><span>
+</span><span id="line-54"></span><span>         </span><span class="hs-comment">-- these functions should be moved to a utility module</span><span>
+</span><span id="line-55"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Char</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">ord</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">chr</span></span><span class="hs-special">)</span><span>
+</span><span id="line-58"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Word</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Word8</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Word16</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Word32</span></span><span class="hs-special">)</span><span>
+</span><span id="line-59"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Bits</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">shiftL</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">shiftR</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(.&amp;.)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(.|.)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">unfoldr</span></span><span class="hs-special">)</span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="hs-comment">-- - UTF-8 in General -</span><span>
+</span><span id="line-64"></span><span>
+</span><span id="line-65"></span><span class="hs-comment">-- Adapted from the Unicode standard, version 3.2,</span><span>
+</span><span id="line-66"></span><span class="hs-comment">-- Table 3.1 &quot;UTF-8 Bit Distribution&quot; (excluded are UTF-16 encodings):</span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span class="hs-comment">--   Scalar                    1st Byte  2nd Byte  3rd Byte  4th Byte</span><span>
+</span><span id="line-69"></span><span class="hs-comment">--           000000000xxxxxxx  0xxxxxxx</span><span>
+</span><span id="line-70"></span><span class="hs-comment">--           00000yyyyyxxxxxx  110yyyyy  10xxxxxx</span><span>
+</span><span id="line-71"></span><span class="hs-comment">--           zzzzyyyyyyxxxxxx  1110zzzz  10yyyyyy  10xxxxxx</span><span>
+</span><span id="line-72"></span><span class="hs-comment">--   000uuuzzzzzzyyyyyyxxxxxx  11110uuu  10zzzzzz  10yyyyyy  10xxxxxx</span><span>
+</span><span id="line-73"></span><span>
+</span><span id="line-74"></span><span class="hs-comment">-- Also from the Unicode standard, version 3.2,</span><span>
+</span><span id="line-75"></span><span class="hs-comment">-- Table 3.1B &quot;Legal UTF-8 Byte Sequences&quot;:</span><span>
+</span><span id="line-76"></span><span>
+</span><span id="line-77"></span><span class="hs-comment">--   Code Points         1st Byte  2nd Byte  3rd Byte  4th Byte</span><span>
+</span><span id="line-78"></span><span class="hs-comment">--     U+0000..U+007F    00..7F</span><span>
+</span><span id="line-79"></span><span class="hs-comment">--     U+0080..U+07FF    C2..DF    80..BF</span><span>
+</span><span id="line-80"></span><span class="hs-comment">--     U+0800..U+0FFF    E0        A0..BF    80..BF</span><span>
+</span><span id="line-81"></span><span class="hs-comment">--     U+1000..U+CFFF    E1..EC    80..BF    80..BF</span><span>
+</span><span id="line-82"></span><span class="hs-comment">--     U+D000..U+D7FF    ED        80..9F    80..BF</span><span>
+</span><span id="line-83"></span><span class="hs-comment">--     U+D800..U+DFFF    ill-formed</span><span>
+</span><span id="line-84"></span><span class="hs-comment">--     U+E000..U+FFFF    EE..EF    80..BF    80..BF</span><span>
+</span><span id="line-85"></span><span class="hs-comment">--    U+10000..U+3FFFF   F0        90..BF    80..BF    80..BF</span><span>
+</span><span id="line-86"></span><span class="hs-comment">--    U+40000..U+FFFFF   F1..F3    80..BF    80..BF    80..BF</span><span>
+</span><span id="line-87"></span><span class="hs-comment">--   U+100000..U+10FFFF  F4        80..8F    80..BF    80..BF</span><span>
+</span><span id="line-88"></span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span>
+</span><span id="line-91"></span><span class="hs-comment">-- - Encoding Functions -</span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span class="hs-comment">-- Must the encoder ensure that no illegal byte sequences are output or</span><span>
+</span><span id="line-94"></span><span class="hs-comment">-- can we trust the Haskell system to supply only legal values?</span><span>
+</span><span id="line-95"></span><span class="hs-comment">-- For now I include error case for the surrogate values U+D800..U+DFFF and</span><span>
+</span><span id="line-96"></span><span class="hs-comment">-- out-of-range scalars.</span><span>
+</span><span id="line-97"></span><span>
+</span><span id="line-98"></span><span class="hs-comment">-- The function is pretty much a transscript of table 3.1B with error checks.</span><span>
+</span><span id="line-99"></span><span class="hs-comment">-- It dispatches the actual encoding to functions specific to the number of</span><span>
+</span><span id="line-100"></span><span class="hs-comment">-- required bytes.</span><span>
+</span><span id="line-101"></span><span>
+</span><span id="line-102"></span><span class="annot"><a href="Data.String.UTF8.html#encodeOne"><span class="hs-identifier hs-type">encodeOne</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span>
+</span><span id="line-103"></span><span id="encodeOne"><span class="annot"><span class="annottext">encodeOne :: Char -&gt; [Word8]
+</span><a href="Data.String.UTF8.html#encodeOne"><span class="hs-identifier hs-var hs-var">encodeOne</span></a></span></span><span> </span><span id="local-6989586621679033319"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033319"><span class="hs-identifier hs-var">c</span></a></span></span><span>
+</span><span id="line-104"></span><span>    </span><span class="hs-comment">-- The report guarantees in (6.1.2) that this won't happen:</span><span>
+</span><span id="line-105"></span><span>    </span><span class="hs-comment">--   | n &lt; 0       = error &quot;encodeUTF8: ord returned a negative value&quot;</span><span>
+</span><span id="line-106"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033318"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0x0080</span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; [Word8]
+</span><a href="Data.String.UTF8.html#encodeOne_onebyte"><span class="hs-identifier hs-var">encodeOne_onebyte</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033315"><span class="hs-identifier hs-var">n8</span></a></span><span>
+</span><span id="line-107"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033318"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0x0800</span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word16 -&gt; [Word8]
+</span><a href="Data.String.UTF8.html#encodeOne_twobyte"><span class="hs-identifier hs-var">encodeOne_twobyte</span></a></span><span> </span><span class="annot"><span class="annottext">Word16
+</span><a href="#local-6989586621679033313"><span class="hs-identifier hs-var">n16</span></a></span><span>
+</span><span id="line-108"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033318"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0xD800</span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word16 -&gt; [Word8]
+</span><a href="Data.String.UTF8.html#encodeOne_threebyte"><span class="hs-identifier hs-var">encodeOne_threebyte</span></a></span><span> </span><span class="annot"><span class="annottext">Word16
+</span><a href="#local-6989586621679033313"><span class="hs-identifier hs-var">n16</span></a></span><span>
+</span><span id="line-109"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033318"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0xE000</span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; [Word8]
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;encodeUTF8: ord returned a surrogate value&quot;</span></span><span>
+</span><span id="line-110"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033318"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0x10000</span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word16 -&gt; [Word8]
+</span><a href="Data.String.UTF8.html#encodeOne_threebyte"><span class="hs-identifier hs-var">encodeOne_threebyte</span></a></span><span> </span><span class="annot"><span class="annottext">Word16
+</span><a href="#local-6989586621679033313"><span class="hs-identifier hs-var">n16</span></a></span><span>
+</span><span id="line-111"></span><span>    </span><span class="hs-comment">-- Haskell 98 only talks about 16 bit characters, but ghc handles 20.1.</span><span>
+</span><span id="line-112"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033318"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0x10FFFF</span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; [Word8]
+</span><a href="Data.String.UTF8.html#encodeOne_fourbyte"><span class="hs-identifier hs-var">encodeOne_fourbyte</span></a></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033309"><span class="hs-identifier hs-var">n32</span></a></span><span>
+</span><span id="line-113"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; [Word8]
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;encodeUTF8: ord returned a value above 0x10FFFF&quot;</span></span><span>
+</span><span id="line-114"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-115"></span><span>    </span><span id="local-6989586621679033318"><span class="annot"><span class="annottext">n :: Int
+</span><a href="#local-6989586621679033318"><span class="hs-identifier hs-var hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Int
+</span><span class="hs-identifier hs-var">ord</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679033319"><span class="hs-identifier hs-var">c</span></a></span><span>            </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-116"></span><span>    </span><span id="local-6989586621679033315"><span class="annot"><span class="annottext">n8 :: Word8
+</span><a href="#local-6989586621679033315"><span class="hs-identifier hs-var hs-var">n8</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Word8
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033318"><span class="hs-identifier hs-var">n</span></a></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span>
+</span><span id="line-117"></span><span>    </span><span id="local-6989586621679033313"><span class="annot"><span class="annottext">n16 :: Word16
+</span><a href="#local-6989586621679033313"><span class="hs-identifier hs-var hs-var">n16</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Word16
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033318"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word16</span></span><span>
+</span><span id="line-118"></span><span>    </span><span id="local-6989586621679033309"><span class="annot"><span class="annottext">n32 :: Word32
+</span><a href="#local-6989586621679033309"><span class="hs-identifier hs-var hs-var">n32</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Word32
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033318"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word32</span></span><span>
+</span><span id="line-119"></span><span>
+</span><span id="line-120"></span><span>
+</span><span id="line-121"></span><span class="hs-comment">-- With the above, a stream decoder is trivial:</span><span>
+</span><span id="line-122"></span><span>
+</span><span id="line-123"></span><span class="annot"><a href="Data.String.UTF8.html#encode"><span class="hs-identifier hs-type">encode</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span>
+</span><span id="line-124"></span><span id="encode"><span class="annot"><span class="annottext">encode :: [Char] -&gt; [Word8]
+</span><a href="Data.String.UTF8.html#encode"><span class="hs-identifier hs-var hs-var">encode</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; [Word8]) -&gt; [Char] -&gt; [Word8]
+forall (t :: * -&gt; *) a b. Foldable t =&gt; (a -&gt; [b]) -&gt; t a -&gt; [b]
+</span><span class="hs-identifier hs-var">concatMap</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; [Word8]
+</span><a href="Data.String.UTF8.html#encodeOne"><span class="hs-identifier hs-var">encodeOne</span></a></span><span>
+</span><span id="line-125"></span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span class="hs-comment">-- Now follow the individual encoders for certain numbers of bytes...</span><span>
+</span><span id="line-128"></span><span class="hs-comment">--           _</span><span>
+</span><span id="line-129"></span><span class="hs-comment">--          / |  __  ___  __ __</span><span>
+</span><span id="line-130"></span><span class="hs-comment">--         / ^| //  /__/ // //</span><span>
+</span><span id="line-131"></span><span class="hs-comment">--        /.==| \\ //_  // //</span><span>
+</span><span id="line-132"></span><span class="hs-comment">-- It's  //  || // \_/_//_//_  and it's here to stay!</span><span>
+</span><span id="line-133"></span><span>
+</span><span id="line-134"></span><span class="annot"><a href="Data.String.UTF8.html#encodeOne_onebyte"><span class="hs-identifier hs-type">encodeOne_onebyte</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span>
+</span><span id="line-135"></span><span id="encodeOne_onebyte"><span class="annot"><span class="annottext">encodeOne_onebyte :: Word8 -&gt; [Word8]
+</span><a href="Data.String.UTF8.html#encodeOne_onebyte"><span class="hs-identifier hs-var hs-var">encodeOne_onebyte</span></a></span></span><span> </span><span id="local-6989586621679033307"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033307"><span class="hs-identifier hs-var">cp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033307"><span class="hs-identifier hs-var">cp</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-136"></span><span>
+</span><span id="line-137"></span><span>
+</span><span id="line-138"></span><span class="hs-comment">-- 00000yyyyyxxxxxx -&gt; 110yyyyy 10xxxxxx</span><span>
+</span><span id="line-139"></span><span>
+</span><span id="line-140"></span><span class="annot"><a href="Data.String.UTF8.html#encodeOne_twobyte"><span class="hs-identifier hs-type">encodeOne_twobyte</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word16</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span>
+</span><span id="line-141"></span><span id="encodeOne_twobyte"><span class="annot"><span class="annottext">encodeOne_twobyte :: Word16 -&gt; [Word8]
+</span><a href="Data.String.UTF8.html#encodeOne_twobyte"><span class="hs-identifier hs-var hs-var">encodeOne_twobyte</span></a></span></span><span> </span><span id="local-6989586621679033306"><span class="annot"><span class="annottext">Word16
+</span><a href="#local-6989586621679033306"><span class="hs-identifier hs-var">cp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0xC0</span></span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.|.</span></span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033305"><span class="hs-identifier hs-var">ys</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x80</span></span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.|.</span></span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033304"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-142"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-143"></span><span>    </span><span class="annot"><a href="#local-6989586621679033304"><span class="hs-identifier hs-type">xs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679033305"><span class="hs-identifier hs-type">ys</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span>
+</span><span id="line-144"></span><span>    </span><span id="local-6989586621679033305"><span class="annot"><span class="annottext">ys :: Word8
+</span><a href="#local-6989586621679033305"><span class="hs-identifier hs-var hs-var">ys</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word16 -&gt; Word8
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word16 -&gt; Int -&gt; Word16
+forall a. Bits a =&gt; a -&gt; Int -&gt; a
+</span><span class="hs-identifier hs-var">shiftR</span></span><span> </span><span class="annot"><span class="annottext">Word16
+</span><a href="#local-6989586621679033306"><span class="hs-identifier hs-var">cp</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">6</span></span><span class="hs-special">)</span><span>
+</span><span id="line-145"></span><span>    </span><span id="local-6989586621679033304"><span class="annot"><span class="annottext">xs :: Word8
+</span><a href="#local-6989586621679033304"><span class="hs-identifier hs-var hs-var">xs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word16 -&gt; Word8
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Word16
+</span><a href="#local-6989586621679033306"><span class="hs-identifier hs-var">cp</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.&amp;.</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x3F</span></span><span>
+</span><span id="line-146"></span><span>
+</span><span id="line-147"></span><span>
+</span><span id="line-148"></span><span class="hs-comment">-- zzzzyyyyyyxxxxxx -&gt; 1110zzzz 10yyyyyy 10xxxxxx</span><span>
+</span><span id="line-149"></span><span>
+</span><span id="line-150"></span><span class="annot"><a href="Data.String.UTF8.html#encodeOne_threebyte"><span class="hs-identifier hs-type">encodeOne_threebyte</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word16</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span>
+</span><span id="line-151"></span><span id="encodeOne_threebyte"><span class="annot"><span class="annottext">encodeOne_threebyte :: Word16 -&gt; [Word8]
+</span><a href="Data.String.UTF8.html#encodeOne_threebyte"><span class="hs-identifier hs-var hs-var">encodeOne_threebyte</span></a></span></span><span> </span><span id="local-6989586621679033303"><span class="annot"><span class="annottext">Word16
+</span><a href="#local-6989586621679033303"><span class="hs-identifier hs-var">cp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0xE0</span></span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.|.</span></span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033302"><span class="hs-identifier hs-var">zs</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x80</span></span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.|.</span></span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033301"><span class="hs-identifier hs-var">ys</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x80</span></span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.|.</span></span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033300"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-152"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-153"></span><span>    </span><span class="annot"><a href="#local-6989586621679033300"><span class="hs-identifier hs-type">xs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679033301"><span class="hs-identifier hs-type">ys</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679033302"><span class="hs-identifier hs-type">zs</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span>
+</span><span id="line-154"></span><span>    </span><span id="local-6989586621679033300"><span class="annot"><span class="annottext">xs :: Word8
+</span><a href="#local-6989586621679033300"><span class="hs-identifier hs-var hs-var">xs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word16 -&gt; Word8
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Word16
+</span><a href="#local-6989586621679033303"><span class="hs-identifier hs-var">cp</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.&amp;.</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x3F</span></span><span>
+</span><span id="line-155"></span><span>    </span><span id="local-6989586621679033301"><span class="annot"><span class="annottext">ys :: Word8
+</span><a href="#local-6989586621679033301"><span class="hs-identifier hs-var hs-var">ys</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word16 -&gt; Word8
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word16 -&gt; Int -&gt; Word16
+forall a. Bits a =&gt; a -&gt; Int -&gt; a
+</span><span class="hs-identifier hs-var">shiftR</span></span><span> </span><span class="annot"><span class="annottext">Word16
+</span><a href="#local-6989586621679033303"><span class="hs-identifier hs-var">cp</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">6</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.&amp;.</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x3F</span></span><span>
+</span><span id="line-156"></span><span>    </span><span id="local-6989586621679033302"><span class="annot"><span class="annottext">zs :: Word8
+</span><a href="#local-6989586621679033302"><span class="hs-identifier hs-var hs-var">zs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word16 -&gt; Word8
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word16 -&gt; Int -&gt; Word16
+forall a. Bits a =&gt; a -&gt; Int -&gt; a
+</span><span class="hs-identifier hs-var">shiftR</span></span><span> </span><span class="annot"><span class="annottext">Word16
+</span><a href="#local-6989586621679033303"><span class="hs-identifier hs-var">cp</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">12</span></span><span class="hs-special">)</span><span>
+</span><span id="line-157"></span><span>
+</span><span id="line-158"></span><span>
+</span><span id="line-159"></span><span class="hs-comment">-- 000uuuzzzzzzyyyyyyxxxxxx -&gt; 11110uuu 10zzzzzz 10yyyyyy 10xxxxxx</span><span>
+</span><span id="line-160"></span><span>
+</span><span id="line-161"></span><span class="annot"><a href="Data.String.UTF8.html#encodeOne_fourbyte"><span class="hs-identifier hs-type">encodeOne_fourbyte</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word32</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span>
+</span><span id="line-162"></span><span id="encodeOne_fourbyte"><span class="annot"><span class="annottext">encodeOne_fourbyte :: Word32 -&gt; [Word8]
+</span><a href="Data.String.UTF8.html#encodeOne_fourbyte"><span class="hs-identifier hs-var hs-var">encodeOne_fourbyte</span></a></span></span><span> </span><span id="local-6989586621679033299"><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033299"><span class="hs-identifier hs-var">cp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0xF0</span></span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.|.</span></span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033298"><span class="hs-identifier hs-var">us</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x80</span></span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.|.</span></span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033297"><span class="hs-identifier hs-var">zs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x80</span></span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.|.</span></span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033296"><span class="hs-identifier hs-var">ys</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x80</span></span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.|.</span></span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033295"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-163"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-164"></span><span>    </span><span class="annot"><a href="#local-6989586621679033295"><span class="hs-identifier hs-type">xs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679033296"><span class="hs-identifier hs-type">ys</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679033297"><span class="hs-identifier hs-type">zs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679033298"><span class="hs-identifier hs-type">us</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span>
+</span><span id="line-165"></span><span>    </span><span id="local-6989586621679033295"><span class="annot"><span class="annottext">xs :: Word8
+</span><a href="#local-6989586621679033295"><span class="hs-identifier hs-var hs-var">xs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word32 -&gt; Word8
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033299"><span class="hs-identifier hs-var">cp</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.&amp;.</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x3F</span></span><span>
+</span><span id="line-166"></span><span>    </span><span id="local-6989586621679033296"><span class="annot"><span class="annottext">ys :: Word8
+</span><a href="#local-6989586621679033296"><span class="hs-identifier hs-var hs-var">ys</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word32 -&gt; Word8
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word32 -&gt; Int -&gt; Word32
+forall a. Bits a =&gt; a -&gt; Int -&gt; a
+</span><span class="hs-identifier hs-var">shiftR</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033299"><span class="hs-identifier hs-var">cp</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">6</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.&amp;.</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x3F</span></span><span>
+</span><span id="line-167"></span><span>    </span><span id="local-6989586621679033297"><span class="annot"><span class="annottext">zs :: Word8
+</span><a href="#local-6989586621679033297"><span class="hs-identifier hs-var hs-var">zs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word32 -&gt; Word8
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word32 -&gt; Int -&gt; Word32
+forall a. Bits a =&gt; a -&gt; Int -&gt; a
+</span><span class="hs-identifier hs-var">shiftR</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033299"><span class="hs-identifier hs-var">cp</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">12</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.&amp;.</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x3F</span></span><span>
+</span><span id="line-168"></span><span>    </span><span id="local-6989586621679033298"><span class="annot"><span class="annottext">us :: Word8
+</span><a href="#local-6989586621679033298"><span class="hs-identifier hs-var hs-var">us</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Word8
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word32 -&gt; Int -&gt; Word32
+forall a. Bits a =&gt; a -&gt; Int -&gt; a
+</span><span class="hs-identifier hs-var">shiftR</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033299"><span class="hs-identifier hs-var">cp</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">18</span></span><span class="hs-special">)</span><span>
+</span><span id="line-169"></span><span>
+</span><span id="line-170"></span><span>
+</span><span id="line-171"></span><span>
+</span><span id="line-172"></span><span class="hs-comment">-- - Decoding -</span><span>
+</span><span id="line-173"></span><span>
+</span><span id="line-174"></span><span class="hs-comment">-- The decoding is a bit more involved. The byte sequence could contain all</span><span>
+</span><span id="line-175"></span><span class="hs-comment">-- sorts of corruptions. The user must be able to either notice or ignore these</span><span>
+</span><span id="line-176"></span><span class="hs-comment">-- errors.</span><span>
+</span><span id="line-177"></span><span>
+</span><span id="line-178"></span><span class="hs-comment">-- I will first look at the decoding of a single character. The process</span><span>
+</span><span id="line-179"></span><span class="hs-comment">-- consumes a certain number of bytes from the input. It returns the</span><span>
+</span><span id="line-180"></span><span class="hs-comment">-- remaining input and either an error and the index of its occurance in the</span><span>
+</span><span id="line-181"></span><span class="hs-comment">-- byte sequence or the decoded character.</span><span>
+</span><span id="line-182"></span><span>
+</span><span id="line-183"></span><span class="hs-keyword">data</span><span> </span><span id="Error"><span class="annot"><a href="Data.String.UTF8.html#Error"><span class="hs-identifier hs-var">Error</span></a></span></span><span>
+</span><span id="line-184"></span><span>
+</span><span id="line-185"></span><span class="hs-comment">-- The first byte in a sequence starts with either zero, two, three, or four</span><span>
+</span><span id="line-186"></span><span class="hs-comment">-- ones and one zero to indicate the length of the sequence. If it doesn't,</span><span>
+</span><span id="line-187"></span><span class="hs-comment">-- it is invalid. It is dropped and the next byte interpreted as the start</span><span>
+</span><span id="line-188"></span><span class="hs-comment">-- of a new sequence.</span><span>
+</span><span id="line-189"></span><span>
+</span><span id="line-190"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span id="InvalidFirstByte"><span class="annot"><a href="Data.String.UTF8.html#InvalidFirstByte"><span class="hs-identifier hs-var">InvalidFirstByte</span></a></span></span><span>
+</span><span id="line-191"></span><span>
+</span><span id="line-192"></span><span class="hs-comment">-- All bytes in the sequence except the first match the bit pattern 10xxxxxx.</span><span>
+</span><span id="line-193"></span><span class="hs-comment">-- If one doesn't, it is invalid. The sequence up to that point is dropped</span><span>
+</span><span id="line-194"></span><span class="hs-comment">-- and the &quot;invalid&quot; byte interpreted as the start of a new sequence. The error</span><span>
+</span><span id="line-195"></span><span class="hs-comment">-- includes the length of the partial sequence and the number of expected bytes.</span><span>
+</span><span id="line-196"></span><span>
+</span><span id="line-197"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="InvalidLaterByte"><span class="annot"><a href="Data.String.UTF8.html#InvalidLaterByte"><span class="hs-identifier hs-var">InvalidLaterByte</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>      </span><span class="hs-comment">-- the byte at relative index n was invalid</span><span>
+</span><span id="line-198"></span><span>
+</span><span id="line-199"></span><span class="hs-comment">-- If a sequence ends prematurely, it has been truncated. It dropped and</span><span>
+</span><span id="line-200"></span><span class="hs-comment">-- decoding stops. The error reports the actual and expected lengths of the</span><span>
+</span><span id="line-201"></span><span class="hs-comment">-- sequence.</span><span>
+</span><span id="line-202"></span><span>
+</span><span id="line-203"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="Truncated"><span class="annot"><a href="Data.String.UTF8.html#Truncated"><span class="hs-identifier hs-var">Truncated</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>         </span><span class="hs-comment">-- only n of m expected bytes were present</span><span>
+</span><span id="line-204"></span><span>
+</span><span id="line-205"></span><span class="hs-comment">-- Some sequences would represent code points which would be encoded as a</span><span>
+</span><span id="line-206"></span><span class="hs-comment">-- shorter sequence by a conformant encoder. Such non-shortest sequences are</span><span>
+</span><span id="line-207"></span><span class="hs-comment">-- considered erroneous and dropped. The error reports the actual and</span><span>
+</span><span id="line-208"></span><span class="hs-comment">-- expected number of bytes used.</span><span>
+</span><span id="line-209"></span><span>
+</span><span id="line-210"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="NonShortest"><span class="annot"><a href="Data.String.UTF8.html#NonShortest"><span class="hs-identifier hs-var">NonShortest</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>       </span><span class="hs-comment">-- n instead of m bytes were used</span><span>
+</span><span id="line-211"></span><span>
+</span><span id="line-212"></span><span class="hs-comment">-- Unicode code points are in the range of [0..0x10FFFF]. Any values outside</span><span>
+</span><span id="line-213"></span><span class="hs-comment">-- of those bounds are simply invalid.</span><span>
+</span><span id="line-214"></span><span>
+</span><span id="line-215"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="ValueOutOfBounds"><span class="annot"><a href="Data.String.UTF8.html#ValueOutOfBounds"><span class="hs-identifier hs-var">ValueOutOfBounds</span></a></span></span><span>
+</span><span id="line-216"></span><span>
+</span><span id="line-217"></span><span class="hs-comment">-- There is no such thing as &quot;surrogate pairs&quot; any more in UTF-8. The</span><span>
+</span><span id="line-218"></span><span class="hs-comment">-- corresponding code points now form illegal byte sequences.</span><span>
+</span><span id="line-219"></span><span>
+</span><span id="line-220"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="Surrogate"><span class="annot"><a href="Data.String.UTF8.html#Surrogate"><span class="hs-identifier hs-var">Surrogate</span></a></span></span><span>
+</span><span id="line-221"></span><span>      </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679033283"><span id="local-6989586621679033285"><span id="local-6989586621679033287"><span class="annot"><span class="annottext">Int -&gt; Error -&gt; ShowS
+[Error] -&gt; ShowS
+Error -&gt; [Char]
+(Int -&gt; Error -&gt; ShowS)
+-&gt; (Error -&gt; [Char]) -&gt; ([Error] -&gt; ShowS) -&gt; Show Error
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; [Char]) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Error] -&gt; ShowS
+$cshowList :: [Error] -&gt; ShowS
+show :: Error -&gt; [Char]
+$cshow :: Error -&gt; [Char]
+showsPrec :: Int -&gt; Error -&gt; ShowS
+$cshowsPrec :: Int -&gt; Error -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033278"><span id="local-6989586621679033280"><span class="annot"><span class="annottext">Error -&gt; Error -&gt; Bool
+(Error -&gt; Error -&gt; Bool) -&gt; (Error -&gt; Error -&gt; Bool) -&gt; Eq Error
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: Error -&gt; Error -&gt; Bool
+$c/= :: Error -&gt; Error -&gt; Bool
+== :: Error -&gt; Error -&gt; Bool
+$c== :: Error -&gt; Error -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-222"></span><span>
+</span><span id="line-223"></span><span>
+</span><span id="line-224"></span><span class="hs-comment">-- Second, third, and fourth bytes share the common requirement to start</span><span>
+</span><span id="line-225"></span><span class="hs-comment">-- with the bit sequence 10. So, here's the function to check that property.</span><span>
+</span><span id="line-226"></span><span>
+</span><span id="line-227"></span><span class="annot"><a href="Data.String.UTF8.html#first_bits_not_10"><span class="hs-identifier hs-type">first_bits_not_10</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-228"></span><span id="first_bits_not_10"><span class="annot"><span class="annottext">first_bits_not_10 :: Word8 -&gt; Bool
+</span><a href="Data.String.UTF8.html#first_bits_not_10"><span class="hs-identifier hs-var hs-var">first_bits_not_10</span></a></span></span><span> </span><span id="local-6989586621679033275"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033275"><span class="hs-identifier hs-var">b</span></a></span></span><span>
+</span><span id="line-229"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033275"><span class="hs-identifier hs-var">b</span></a></span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.&amp;.</span></span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0xC0</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">/=</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x80</span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-230"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-231"></span><span>
+</span><span id="line-232"></span><span>
+</span><span id="line-233"></span><span class="hs-comment">-- Erm, OK, the single-character decoding function's return type is a bit</span><span>
+</span><span id="line-234"></span><span class="hs-comment">-- longish. It is a tripel:</span><span>
+</span><span id="line-235"></span><span>
+</span><span id="line-236"></span><span class="hs-comment">--  - The first component contains the decoded character or an error</span><span>
+</span><span id="line-237"></span><span class="hs-comment">--    if the byte sequence was erroneous.</span><span>
+</span><span id="line-238"></span><span class="hs-comment">--  - The second component contains the number of bytes that were consumed</span><span>
+</span><span id="line-239"></span><span class="hs-comment">--    from the input.</span><span>
+</span><span id="line-240"></span><span class="hs-comment">--  - The third component contains the remaining bytes of input.</span><span>
+</span><span id="line-241"></span><span>
+</span><span id="line-242"></span><span class="annot"><a href="Data.String.UTF8.html#decodeOne"><span class="hs-identifier hs-type">decodeOne</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><a href="Data.String.UTF8.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-243"></span><span id="decodeOne"><span class="annot"><span class="annottext">decodeOne :: [Word8] -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#decodeOne"><span class="hs-identifier hs-var hs-var">decodeOne</span></a></span></span><span> </span><span id="local-6989586621679033273"><span class="annot"><span class="annottext">bs :: [Word8]
+</span><a href="#local-6989586621679033273"><span class="hs-identifier hs-var">bs</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span id="local-6989586621679033272"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033272"><span class="hs-identifier hs-var">b1</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033271"><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033271"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-244"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033272"><span class="hs-identifier hs-var">b1</span></a></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x80</span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Word8] -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#decodeOne_onebyte"><span class="hs-identifier hs-var">decodeOne_onebyte</span></a></span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033273"><span class="hs-identifier hs-var">bs</span></a></span><span>
+</span><span id="line-245"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033272"><span class="hs-identifier hs-var">b1</span></a></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0xC0</span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">Error
+</span><a href="Data.String.UTF8.html#InvalidFirstByte"><span class="hs-identifier hs-var">InvalidFirstByte</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033271"><span class="hs-identifier hs-var">rest</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-246"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033272"><span class="hs-identifier hs-var">b1</span></a></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0xE0</span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Word8] -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#decodeOne_twobyte"><span class="hs-identifier hs-var">decodeOne_twobyte</span></a></span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033273"><span class="hs-identifier hs-var">bs</span></a></span><span>
+</span><span id="line-247"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033272"><span class="hs-identifier hs-var">b1</span></a></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0xF0</span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Word8] -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#decodeOne_threebyte"><span class="hs-identifier hs-var">decodeOne_threebyte</span></a></span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033273"><span class="hs-identifier hs-var">bs</span></a></span><span>
+</span><span id="line-248"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033272"><span class="hs-identifier hs-var">b1</span></a></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0xF5</span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Word8] -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#decodeOne_fourbyte"><span class="hs-identifier hs-var">decodeOne_fourbyte</span></a></span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033273"><span class="hs-identifier hs-var">bs</span></a></span><span>
+</span><span id="line-249"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">Error
+</span><a href="Data.String.UTF8.html#ValueOutOfBounds"><span class="hs-identifier hs-var">ValueOutOfBounds</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033271"><span class="hs-identifier hs-var">rest</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-250"></span><span class="annot"><a href="Data.String.UTF8.html#decodeOne"><span class="hs-identifier hs-var">decodeOne</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; (Either Error Char, Int, [Word8])
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;UTF8.decodeOne: No input&quot;</span></span><span>
+</span><span id="line-251"></span><span>
+</span><span id="line-252"></span><span>
+</span><span id="line-253"></span><span class="hs-comment">-- 0xxxxxxx -&gt; 000000000xxxxxxx</span><span>
+</span><span id="line-254"></span><span>
+</span><span id="line-255"></span><span class="annot"><a href="Data.String.UTF8.html#decodeOne_onebyte"><span class="hs-identifier hs-type">decodeOne_onebyte</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><a href="Data.String.UTF8.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-256"></span><span id="decodeOne_onebyte"><span class="annot"><span class="annottext">decodeOne_onebyte :: [Word8] -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#decodeOne_onebyte"><span class="hs-identifier hs-var hs-var">decodeOne_onebyte</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679033266"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033266"><span class="hs-identifier hs-var">b</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033265"><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033265"><span class="hs-identifier hs-var">bs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Either Error Char
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8 -&gt; Char
+forall a. Integral a =&gt; a -&gt; Char
+</span><a href="Data.String.UTF8.html#cpToChar"><span class="hs-identifier hs-var">cpToChar</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033266"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033265"><span class="hs-identifier hs-var">bs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-257"></span><span class="annot"><a href="Data.String.UTF8.html#decodeOne_onebyte"><span class="hs-identifier hs-var">decodeOne_onebyte</span></a></span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; (Either Error Char, Int, [Word8])
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;UTF8.decodeOne_onebyte: No input (can't happen)&quot;</span></span><span>
+</span><span id="line-258"></span><span>
+</span><span id="line-259"></span><span id="local-6989586621679033362"><span class="annot"><a href="Data.String.UTF8.html#cpToChar"><span class="hs-identifier hs-type">cpToChar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Integral</span></span><span> </span><span class="annot"><a href="#local-6989586621679033362"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679033362"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span></span><span>
+</span><span id="line-260"></span><span id="cpToChar"><span class="annot"><span class="annottext">cpToChar :: a -&gt; Char
+</span><a href="Data.String.UTF8.html#cpToChar"><span class="hs-identifier hs-var hs-var">cpToChar</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Char
+</span><span class="hs-identifier hs-var">chr</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Char) -&gt; (a -&gt; Int) -&gt; a -&gt; Char
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; Int
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span>
+</span><span id="line-261"></span><span>
+</span><span id="line-262"></span><span>
+</span><span id="line-263"></span><span class="hs-comment">-- 110yyyyy 10xxxxxx -&gt; 00000yyyyyxxxxxx</span><span>
+</span><span id="line-264"></span><span>
+</span><span id="line-265"></span><span class="annot"><a href="Data.String.UTF8.html#decodeOne_twobyte"><span class="hs-identifier hs-type">decodeOne_twobyte</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><a href="Data.String.UTF8.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-266"></span><span id="decodeOne_twobyte"><span class="annot"><span class="annottext">decodeOne_twobyte :: [Word8] -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#decodeOne_twobyte"><span class="hs-identifier hs-var hs-var">decodeOne_twobyte</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-267"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Error
+</span><a href="Data.String.UTF8.html#Truncated"><span class="hs-identifier hs-var">Truncated</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-268"></span><span class="annot"><a href="Data.String.UTF8.html#decodeOne_twobyte"><span class="hs-identifier hs-var">decodeOne_twobyte</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679033262"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033262"><span class="hs-identifier hs-var">b1</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033261"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033261"><span class="hs-identifier hs-var">b2</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033260"><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033260"><span class="hs-identifier hs-var">bs</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-269"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033262"><span class="hs-identifier hs-var">b1</span></a></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0xC2</span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Error
+</span><a href="Data.String.UTF8.html#NonShortest"><span class="hs-identifier hs-var">NonShortest</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033260"><span class="hs-identifier hs-var">bs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-270"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Bool
+</span><a href="Data.String.UTF8.html#first_bits_not_10"><span class="hs-identifier hs-var">first_bits_not_10</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033261"><span class="hs-identifier hs-var">b2</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Error
+</span><a href="Data.String.UTF8.html#InvalidLaterByte"><span class="hs-identifier hs-var">InvalidLaterByte</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033261"><span class="hs-identifier hs-var">b2</span></a></span><span class="annot"><span class="annottext">Word8 -&gt; [Word8] -&gt; [Word8]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033260"><span class="hs-identifier hs-var">bs</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-271"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Either Error Char
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word32 -&gt; Char
+forall a. Integral a =&gt; a -&gt; Char
+</span><a href="Data.String.UTF8.html#cpToChar"><span class="hs-identifier hs-var">cpToChar</span></a></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033259"><span class="hs-identifier hs-var">result</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033260"><span class="hs-identifier hs-var">bs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-272"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-273"></span><span>    </span><span class="annot"><a href="#local-6989586621679033258"><span class="hs-identifier hs-type">xs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679033257"><span class="hs-identifier hs-type">ys</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679033259"><span class="hs-identifier hs-type">result</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word32</span></span><span>
+</span><span id="line-274"></span><span>    </span><span id="local-6989586621679033258"><span class="annot"><span class="annottext">xs :: Word32
+</span><a href="#local-6989586621679033258"><span class="hs-identifier hs-var hs-var">xs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word32
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033261"><span class="hs-identifier hs-var">b2</span></a></span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.&amp;.</span></span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x3F</span></span><span class="hs-special">)</span><span>
+</span><span id="line-275"></span><span>    </span><span id="local-6989586621679033257"><span class="annot"><span class="annottext">ys :: Word32
+</span><a href="#local-6989586621679033257"><span class="hs-identifier hs-var hs-var">ys</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word32
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033262"><span class="hs-identifier hs-var">b1</span></a></span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.&amp;.</span></span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x1F</span></span><span class="hs-special">)</span><span>
+</span><span id="line-276"></span><span>    </span><span id="local-6989586621679033259"><span class="annot"><span class="annottext">result :: Word32
+</span><a href="#local-6989586621679033259"><span class="hs-identifier hs-var hs-var">result</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Int -&gt; Word32
+forall a. Bits a =&gt; a -&gt; Int -&gt; a
+</span><span class="hs-identifier hs-var">shiftL</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033257"><span class="hs-identifier hs-var">ys</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">6</span></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Word32 -&gt; Word32
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.|.</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033258"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-277"></span><span class="annot"><a href="Data.String.UTF8.html#decodeOne_twobyte"><span class="hs-identifier hs-var">decodeOne_twobyte</span></a></span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; (Either Error Char, Int, [Word8])
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;UTF8.decodeOne_twobyte: No input (can't happen)&quot;</span></span><span>
+</span><span id="line-278"></span><span>
+</span><span id="line-279"></span><span>
+</span><span id="line-280"></span><span class="hs-comment">-- 1110zzzz 10yyyyyy 10xxxxxx -&gt; zzzzyyyyyyxxxxxx</span><span>
+</span><span id="line-281"></span><span>
+</span><span id="line-282"></span><span class="annot"><a href="Data.String.UTF8.html#decodeOne_threebyte"><span class="hs-identifier hs-type">decodeOne_threebyte</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><a href="Data.String.UTF8.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-283"></span><span id="decodeOne_threebyte"><span class="annot"><span class="annottext">decodeOne_threebyte :: [Word8] -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#decodeOne_threebyte"><span class="hs-identifier hs-var hs-var">decodeOne_threebyte</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#threebyte_truncated"><span class="hs-identifier hs-var">threebyte_truncated</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-284"></span><span class="annot"><a href="Data.String.UTF8.html#decodeOne_threebyte"><span class="hs-identifier hs-var">decodeOne_threebyte</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#threebyte_truncated"><span class="hs-identifier hs-var">threebyte_truncated</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span>
+</span><span id="line-285"></span><span class="annot"><a href="Data.String.UTF8.html#decodeOne_threebyte"><span class="hs-identifier hs-var">decodeOne_threebyte</span></a></span><span> </span><span id="local-6989586621679033255"><span class="annot"><span class="annottext">bs :: [Word8]
+</span><a href="#local-6989586621679033255"><span class="hs-identifier hs-var">bs</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span id="local-6989586621679033254"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033254"><span class="hs-identifier hs-var">b1</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033253"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033253"><span class="hs-identifier hs-var">b2</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033252"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033252"><span class="hs-identifier hs-var">b3</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033251"><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033251"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-286"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Bool
+</span><a href="Data.String.UTF8.html#first_bits_not_10"><span class="hs-identifier hs-var">first_bits_not_10</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033253"><span class="hs-identifier hs-var">b2</span></a></span><span>
+</span><span id="line-287"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Error
+</span><a href="Data.String.UTF8.html#InvalidLaterByte"><span class="hs-identifier hs-var">InvalidLaterByte</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int -&gt; [Word8] -&gt; [Word8]
+forall a. Int -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">drop</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033255"><span class="hs-identifier hs-var">bs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-288"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Bool
+</span><a href="Data.String.UTF8.html#first_bits_not_10"><span class="hs-identifier hs-var">first_bits_not_10</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033252"><span class="hs-identifier hs-var">b3</span></a></span><span>
+</span><span id="line-289"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Error
+</span><a href="Data.String.UTF8.html#InvalidLaterByte"><span class="hs-identifier hs-var">InvalidLaterByte</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int -&gt; [Word8] -&gt; [Word8]
+forall a. Int -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">drop</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033255"><span class="hs-identifier hs-var">bs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-290"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033249"><span class="hs-identifier hs-var">result</span></a></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Word32 -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><span class="hs-number">0x0080</span></span><span>
+</span><span id="line-291"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Error
+</span><a href="Data.String.UTF8.html#NonShortest"><span class="hs-identifier hs-var">NonShortest</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033251"><span class="hs-identifier hs-var">rest</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-292"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033249"><span class="hs-identifier hs-var">result</span></a></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Word32 -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><span class="hs-number">0x0800</span></span><span>
+</span><span id="line-293"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Error
+</span><a href="Data.String.UTF8.html#NonShortest"><span class="hs-identifier hs-var">NonShortest</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033251"><span class="hs-identifier hs-var">rest</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-294"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033249"><span class="hs-identifier hs-var">result</span></a></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Word32 -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><span class="hs-number">0xD800</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033249"><span class="hs-identifier hs-var">result</span></a></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Word32 -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><span class="hs-number">0xE000</span></span><span>
+</span><span id="line-295"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">Error
+</span><a href="Data.String.UTF8.html#Surrogate"><span class="hs-identifier hs-var">Surrogate</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033251"><span class="hs-identifier hs-var">rest</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-296"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>
+</span><span id="line-297"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Either Error Char
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word32 -&gt; Char
+forall a. Integral a =&gt; a -&gt; Char
+</span><a href="Data.String.UTF8.html#cpToChar"><span class="hs-identifier hs-var">cpToChar</span></a></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033249"><span class="hs-identifier hs-var">result</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033251"><span class="hs-identifier hs-var">rest</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-298"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-299"></span><span>    </span><span class="annot"><a href="#local-6989586621679033247"><span class="hs-identifier hs-type">xs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679033246"><span class="hs-identifier hs-type">ys</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679033245"><span class="hs-identifier hs-type">zs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679033249"><span class="hs-identifier hs-type">result</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word32</span></span><span>
+</span><span id="line-300"></span><span>    </span><span id="local-6989586621679033247"><span class="annot"><span class="annottext">xs :: Word32
+</span><a href="#local-6989586621679033247"><span class="hs-identifier hs-var hs-var">xs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word32
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033252"><span class="hs-identifier hs-var">b3</span></a></span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.&amp;.</span></span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x3F</span></span><span class="hs-special">)</span><span>
+</span><span id="line-301"></span><span>    </span><span id="local-6989586621679033246"><span class="annot"><span class="annottext">ys :: Word32
+</span><a href="#local-6989586621679033246"><span class="hs-identifier hs-var hs-var">ys</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word32
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033253"><span class="hs-identifier hs-var">b2</span></a></span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.&amp;.</span></span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x3F</span></span><span class="hs-special">)</span><span>
+</span><span id="line-302"></span><span>    </span><span id="local-6989586621679033245"><span class="annot"><span class="annottext">zs :: Word32
+</span><a href="#local-6989586621679033245"><span class="hs-identifier hs-var hs-var">zs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word32
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033254"><span class="hs-identifier hs-var">b1</span></a></span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.&amp;.</span></span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x0F</span></span><span class="hs-special">)</span><span>
+</span><span id="line-303"></span><span>    </span><span id="local-6989586621679033249"><span class="annot"><span class="annottext">result :: Word32
+</span><a href="#local-6989586621679033249"><span class="hs-identifier hs-var hs-var">result</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Int -&gt; Word32
+forall a. Bits a =&gt; a -&gt; Int -&gt; a
+</span><span class="hs-identifier hs-var">shiftL</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033245"><span class="hs-identifier hs-var">zs</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">12</span></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Word32 -&gt; Word32
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.|.</span></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Int -&gt; Word32
+forall a. Bits a =&gt; a -&gt; Int -&gt; a
+</span><span class="hs-identifier hs-var">shiftL</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033246"><span class="hs-identifier hs-var">ys</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">6</span></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Word32 -&gt; Word32
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.|.</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033247"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-304"></span><span class="annot"><a href="Data.String.UTF8.html#decodeOne_threebyte"><span class="hs-identifier hs-var">decodeOne_threebyte</span></a></span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-305"></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; (Either Error Char, Int, [Word8])
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;UTF8.decodeOne_threebyte: No input (can't happen)&quot;</span></span><span>
+</span><span id="line-306"></span><span>
+</span><span id="line-307"></span><span class="annot"><a href="Data.String.UTF8.html#threebyte_truncated"><span class="hs-identifier hs-type">threebyte_truncated</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><a href="Data.String.UTF8.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-308"></span><span id="threebyte_truncated"><span class="annot"><span class="annottext">threebyte_truncated :: Int -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#threebyte_truncated"><span class="hs-identifier hs-var hs-var">threebyte_truncated</span></a></span></span><span> </span><span id="local-6989586621679033244"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033244"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Error
+</span><a href="Data.String.UTF8.html#Truncated"><span class="hs-identifier hs-var">Truncated</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033244"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033244"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-309"></span><span>
+</span><span id="line-310"></span><span>
+</span><span id="line-311"></span><span class="hs-comment">-- 11110uuu 10zzzzzz 10yyyyyy 10xxxxxx -&gt; 000uuuzzzzzzyyyyyyxxxxxx</span><span>
+</span><span id="line-312"></span><span>
+</span><span id="line-313"></span><span class="annot"><a href="Data.String.UTF8.html#decodeOne_fourbyte"><span class="hs-identifier hs-type">decodeOne_fourbyte</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><a href="Data.String.UTF8.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-314"></span><span id="decodeOne_fourbyte"><span class="annot"><span class="annottext">decodeOne_fourbyte :: [Word8] -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#decodeOne_fourbyte"><span class="hs-identifier hs-var hs-var">decodeOne_fourbyte</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#fourbyte_truncated"><span class="hs-identifier hs-var">fourbyte_truncated</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-315"></span><span class="annot"><a href="Data.String.UTF8.html#decodeOne_fourbyte"><span class="hs-identifier hs-var">decodeOne_fourbyte</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#fourbyte_truncated"><span class="hs-identifier hs-var">fourbyte_truncated</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span>
+</span><span id="line-316"></span><span class="annot"><a href="Data.String.UTF8.html#decodeOne_fourbyte"><span class="hs-identifier hs-var">decodeOne_fourbyte</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#fourbyte_truncated"><span class="hs-identifier hs-var">fourbyte_truncated</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span>
+</span><span id="line-317"></span><span class="annot"><a href="Data.String.UTF8.html#decodeOne_fourbyte"><span class="hs-identifier hs-var">decodeOne_fourbyte</span></a></span><span> </span><span id="local-6989586621679033242"><span class="annot"><span class="annottext">bs :: [Word8]
+</span><a href="#local-6989586621679033242"><span class="hs-identifier hs-var">bs</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span id="local-6989586621679033241"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033241"><span class="hs-identifier hs-var">b1</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033240"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033240"><span class="hs-identifier hs-var">b2</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033239"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033239"><span class="hs-identifier hs-var">b3</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033238"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033238"><span class="hs-identifier hs-var">b4</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679033237"><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033237"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-318"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Bool
+</span><a href="Data.String.UTF8.html#first_bits_not_10"><span class="hs-identifier hs-var">first_bits_not_10</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033240"><span class="hs-identifier hs-var">b2</span></a></span><span>
+</span><span id="line-319"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Error
+</span><a href="Data.String.UTF8.html#InvalidLaterByte"><span class="hs-identifier hs-var">InvalidLaterByte</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int -&gt; [Word8] -&gt; [Word8]
+forall a. Int -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">drop</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033242"><span class="hs-identifier hs-var">bs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-320"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Bool
+</span><a href="Data.String.UTF8.html#first_bits_not_10"><span class="hs-identifier hs-var">first_bits_not_10</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033239"><span class="hs-identifier hs-var">b3</span></a></span><span>
+</span><span id="line-321"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Error
+</span><a href="Data.String.UTF8.html#InvalidLaterByte"><span class="hs-identifier hs-var">InvalidLaterByte</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int -&gt; [Word8] -&gt; [Word8]
+forall a. Int -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">drop</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033242"><span class="hs-identifier hs-var">bs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-322"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Bool
+</span><a href="Data.String.UTF8.html#first_bits_not_10"><span class="hs-identifier hs-var">first_bits_not_10</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033238"><span class="hs-identifier hs-var">b4</span></a></span><span>
+</span><span id="line-323"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Error
+</span><a href="Data.String.UTF8.html#InvalidLaterByte"><span class="hs-identifier hs-var">InvalidLaterByte</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int -&gt; [Word8] -&gt; [Word8]
+forall a. Int -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">drop</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033242"><span class="hs-identifier hs-var">bs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-324"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033236"><span class="hs-identifier hs-var">result</span></a></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Word32 -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><span class="hs-number">0x0080</span></span><span>
+</span><span id="line-325"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Error
+</span><a href="Data.String.UTF8.html#NonShortest"><span class="hs-identifier hs-var">NonShortest</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033237"><span class="hs-identifier hs-var">rest</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-326"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033236"><span class="hs-identifier hs-var">result</span></a></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Word32 -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><span class="hs-number">0x0800</span></span><span>
+</span><span id="line-327"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Error
+</span><a href="Data.String.UTF8.html#NonShortest"><span class="hs-identifier hs-var">NonShortest</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033237"><span class="hs-identifier hs-var">rest</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-328"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033236"><span class="hs-identifier hs-var">result</span></a></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Word32 -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><span class="hs-number">0x10000</span></span><span>
+</span><span id="line-329"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Error
+</span><a href="Data.String.UTF8.html#NonShortest"><span class="hs-identifier hs-var">NonShortest</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033237"><span class="hs-identifier hs-var">rest</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-330"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033236"><span class="hs-identifier hs-var">result</span></a></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Word32 -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><span class="hs-number">0x10FFFF</span></span><span>
+</span><span id="line-331"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">Error
+</span><a href="Data.String.UTF8.html#ValueOutOfBounds"><span class="hs-identifier hs-var">ValueOutOfBounds</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033237"><span class="hs-identifier hs-var">rest</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-332"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>
+</span><span id="line-333"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Either Error Char
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word32 -&gt; Char
+forall a. Integral a =&gt; a -&gt; Char
+</span><a href="Data.String.UTF8.html#cpToChar"><span class="hs-identifier hs-var">cpToChar</span></a></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033236"><span class="hs-identifier hs-var">result</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033237"><span class="hs-identifier hs-var">rest</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-334"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-335"></span><span>    </span><span class="annot"><a href="#local-6989586621679033234"><span class="hs-identifier hs-type">xs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679033233"><span class="hs-identifier hs-type">ys</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679033232"><span class="hs-identifier hs-type">zs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679033231"><span class="hs-identifier hs-type">us</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679033236"><span class="hs-identifier hs-type">result</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word32</span></span><span>
+</span><span id="line-336"></span><span>    </span><span id="local-6989586621679033234"><span class="annot"><span class="annottext">xs :: Word32
+</span><a href="#local-6989586621679033234"><span class="hs-identifier hs-var hs-var">xs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word32
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033238"><span class="hs-identifier hs-var">b4</span></a></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.&amp;.</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x3F</span></span><span class="hs-special">)</span><span>
+</span><span id="line-337"></span><span>    </span><span id="local-6989586621679033233"><span class="annot"><span class="annottext">ys :: Word32
+</span><a href="#local-6989586621679033233"><span class="hs-identifier hs-var hs-var">ys</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word32
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033239"><span class="hs-identifier hs-var">b3</span></a></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.&amp;.</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x3F</span></span><span class="hs-special">)</span><span>
+</span><span id="line-338"></span><span>    </span><span id="local-6989586621679033232"><span class="annot"><span class="annottext">zs :: Word32
+</span><a href="#local-6989586621679033232"><span class="hs-identifier hs-var hs-var">zs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word32
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033240"><span class="hs-identifier hs-var">b2</span></a></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.&amp;.</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x3F</span></span><span class="hs-special">)</span><span>
+</span><span id="line-339"></span><span>    </span><span id="local-6989586621679033231"><span class="annot"><span class="annottext">us :: Word32
+</span><a href="#local-6989586621679033231"><span class="hs-identifier hs-var hs-var">us</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word32
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679033241"><span class="hs-identifier hs-var">b1</span></a></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.&amp;.</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x07</span></span><span class="hs-special">)</span><span>
+</span><span id="line-340"></span><span>    </span><span id="local-6989586621679033236"><span class="annot"><span class="annottext">result :: Word32
+</span><a href="#local-6989586621679033236"><span class="hs-identifier hs-var hs-var">result</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033234"><span class="hs-identifier hs-var">xs</span></a></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Word32 -&gt; Word32
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.|.</span></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Int -&gt; Word32
+forall a. Bits a =&gt; a -&gt; Int -&gt; a
+</span><span class="hs-identifier hs-var">shiftL</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033233"><span class="hs-identifier hs-var">ys</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">6</span></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Word32 -&gt; Word32
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.|.</span></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Int -&gt; Word32
+forall a. Bits a =&gt; a -&gt; Int -&gt; a
+</span><span class="hs-identifier hs-var">shiftL</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033232"><span class="hs-identifier hs-var">zs</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">12</span></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Word32 -&gt; Word32
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.|.</span></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Int -&gt; Word32
+forall a. Bits a =&gt; a -&gt; Int -&gt; a
+</span><span class="hs-identifier hs-var">shiftL</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679033231"><span class="hs-identifier hs-var">us</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">18</span></span><span>
+</span><span id="line-341"></span><span class="annot"><a href="Data.String.UTF8.html#decodeOne_fourbyte"><span class="hs-identifier hs-var">decodeOne_fourbyte</span></a></span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-342"></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; (Either Error Char, Int, [Word8])
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;UTF8.decodeOne_fourbyte: No input (can't happen)&quot;</span></span><span>
+</span><span id="line-343"></span><span>
+</span><span id="line-344"></span><span class="annot"><a href="Data.String.UTF8.html#fourbyte_truncated"><span class="hs-identifier hs-type">fourbyte_truncated</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><a href="Data.String.UTF8.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-345"></span><span id="fourbyte_truncated"><span class="annot"><span class="annottext">fourbyte_truncated :: Int -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#fourbyte_truncated"><span class="hs-identifier hs-var hs-var">fourbyte_truncated</span></a></span></span><span> </span><span id="local-6989586621679033230"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033230"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error -&gt; Either Error Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Error
+</span><a href="Data.String.UTF8.html#Truncated"><span class="hs-identifier hs-var">Truncated</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033230"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033230"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-346"></span><span>
+</span><span id="line-347"></span><span>
+</span><span id="line-348"></span><span class="hs-comment">-- The decoder examines all input, recording decoded characters as well as</span><span>
+</span><span id="line-349"></span><span class="hs-comment">-- error-index pairs along the way.</span><span>
+</span><span id="line-350"></span><span>
+</span><span id="line-351"></span><span class="annot"><a href="Data.String.UTF8.html#decode"><span class="hs-identifier hs-type">decode</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><a href="Data.String.UTF8.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-352"></span><span id="decode"><span class="annot"><span class="annottext">decode :: [Word8] -&gt; ([Char], [(Error, Int)])
+</span><a href="Data.String.UTF8.html#decode"><span class="hs-identifier hs-var hs-var">decode</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">([(Error, Int)], [Char]) -&gt; ([Char], [(Error, Int)])
+forall a b. (a, b) -&gt; (b, a)
+</span><a href="Data.String.UTF8.html#swap"><span class="hs-identifier hs-var">swap</span></a></span><span> </span><span class="annot"><span class="annottext">(([(Error, Int)], [Char]) -&gt; ([Char], [(Error, Int)]))
+-&gt; ([Word8] -&gt; ([(Error, Int)], [Char]))
+-&gt; [Word8]
+-&gt; ([Char], [(Error, Int)])
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Either (Error, Int) Char] -&gt; ([(Error, Int)], [Char])
+forall a b. [Either a b] -&gt; ([a], [b])
+</span><a href="Data.String.UTF8.html#partitionEither"><span class="hs-identifier hs-var">partitionEither</span></a></span><span> </span><span class="annot"><span class="annottext">([Either (Error, Int) Char] -&gt; ([(Error, Int)], [Char]))
+-&gt; ([Word8] -&gt; [Either (Error, Int) Char])
+-&gt; [Word8]
+-&gt; ([(Error, Int)], [Char])
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Word8] -&gt; [Either (Error, Int) Char]
+</span><a href="Data.String.UTF8.html#decodeEmbedErrors"><span class="hs-identifier hs-var">decodeEmbedErrors</span></a></span><span>
+</span><span id="line-353"></span><span>
+</span><span id="line-354"></span><span class="annot"><a href="Data.String.UTF8.html#decodeEmbedErrors"><span class="hs-identifier hs-type">decodeEmbedErrors</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.String.UTF8.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">]</span><span>
+</span><span id="line-355"></span><span id="decodeEmbedErrors"><span class="annot"><span class="annottext">decodeEmbedErrors :: [Word8] -&gt; [Either (Error, Int) Char]
+</span><a href="Data.String.UTF8.html#decodeEmbedErrors"><span class="hs-identifier hs-var hs-var">decodeEmbedErrors</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-356"></span><span>   </span><span class="annot"><span class="annottext">((Int, [Word8])
+ -&gt; Maybe (Either (Error, Int) Char, (Int, [Word8])))
+-&gt; (Int, [Word8]) -&gt; [Either (Error, Int) Char]
+forall b a. (b -&gt; Maybe (a, b)) -&gt; b -&gt; [a]
+</span><span class="hs-identifier hs-var">unfoldr</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="hs-special">(</span><span id="local-6989586621679033227"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033227"><span class="hs-identifier hs-var">pos</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679033226"><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033226"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-357"></span><span>       </span><span class="annot"><span class="annottext">Bool
+-&gt; (Either (Error, Int) Char, (Int, [Word8]))
+-&gt; Maybe (Either (Error, Int) Char, (Int, [Word8]))
+forall a. Bool -&gt; a -&gt; Maybe a
+</span><a href="Data.String.UTF8.html#toMaybe"><span class="hs-identifier hs-var">toMaybe</span></a></span><span>
+</span><span id="line-358"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; Bool -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Word8] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033226"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-359"></span><span>          </span><span class="hs-special">(</span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679033222"><span class="annot"><span class="annottext">Either Error Char
+</span><a href="#local-6989586621679033222"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679033221"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033221"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679033220"><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033220"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Word8] -&gt; (Either Error Char, Int, [Word8])
+</span><a href="Data.String.UTF8.html#decodeOne"><span class="hs-identifier hs-var">decodeOne</span></a></span><span> </span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033226"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-360"></span><span>           </span><span class="hs-keyword">in</span><span>  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Error -&gt; Either (Error, Int) Char)
+-&gt; (Char -&gt; Either (Error, Int) Char)
+-&gt; Either Error Char
+-&gt; Either (Error, Int) Char
+forall a c b. (a -&gt; c) -&gt; (b -&gt; c) -&gt; Either a b -&gt; c
+</span><span class="hs-identifier hs-var">either</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679033218"><span class="annot"><span class="annottext">Error
+</span><a href="#local-6989586621679033218"><span class="hs-identifier hs-var">err</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Error, Int) -&gt; Either (Error, Int) Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Error
+</span><a href="#local-6989586621679033218"><span class="hs-identifier hs-var">err</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033227"><span class="hs-identifier hs-var">pos</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Either (Error, Int) Char
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">Either Error Char
+</span><a href="#local-6989586621679033222"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-361"></span><span>                </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033227"><span class="hs-identifier hs-var">pos</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033221"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">[Word8]
+</span><a href="#local-6989586621679033220"><span class="hs-identifier hs-var">rest</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">((Int, [Word8]) -&gt; [Either (Error, Int) Char])
+-&gt; ([Word8] -&gt; (Int, [Word8]))
+-&gt; [Word8]
+-&gt; [Either (Error, Int) Char]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span>
+</span><span id="line-362"></span><span>   </span><span class="hs-special">(</span><span class="hs-special">,</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-363"></span><span>
+</span><span id="line-364"></span><span id="local-6989586621679033354"><span id="local-6989586621679033355"><span class="annot"><a href="Data.String.UTF8.html#swap"><span class="hs-identifier hs-type">swap</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679033355"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span class="annot"><a href="#local-6989586621679033354"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679033354"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span class="annot"><a href="#local-6989586621679033355"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-365"></span><span id="swap"><span class="annot"><span class="annottext">swap :: (a, b) -&gt; (b, a)
+</span><a href="Data.String.UTF8.html#swap"><span class="hs-identifier hs-var hs-var">swap</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679033216"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679033216"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679033215"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679033215"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679033215"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679033216"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-366"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.String.UTF8.html#swap"><span class="hs-pragma hs-type">swap</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-367"></span><span>
+</span><span id="line-368"></span><span id="local-6989586621679033352"><span id="local-6989586621679033353"><span class="annot"><a href="Data.String.UTF8.html#partitionEither"><span class="hs-identifier hs-type">partitionEither</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><a href="#local-6989586621679033353"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679033352"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679033353"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679033352"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-369"></span><span id="partitionEither"><span class="annot"><span class="annottext">partitionEither :: [Either a b] -&gt; ([a], [b])
+</span><a href="Data.String.UTF8.html#partitionEither"><span class="hs-identifier hs-var hs-var">partitionEither</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-370"></span><span>   </span><span class="annot"><span class="annottext">(Either a b -&gt; ([a], [b]) -&gt; ([a], [b]))
+-&gt; ([a], [b]) -&gt; [Either a b] -&gt; ([a], [b])
+forall (t :: * -&gt; *) a b.
+Foldable t =&gt;
+(a -&gt; b -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldr</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679033213"><span class="annot"><span class="annottext">Either a b
+</span><a href="#local-6989586621679033213"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679033212"><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679033212"><span class="hs-identifier hs-var">ls</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679033211"><span class="annot"><span class="annottext">[b]
+</span><a href="#local-6989586621679033211"><span class="hs-identifier hs-var">rs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(a -&gt; ([a], [b])) -&gt; (b -&gt; ([a], [b])) -&gt; Either a b -&gt; ([a], [b])
+forall a c b. (a -&gt; c) -&gt; (b -&gt; c) -&gt; Either a b -&gt; c
+</span><span class="hs-identifier hs-var">either</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679033210"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679033210"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679033210"><span class="hs-identifier hs-var">l</span></a></span><span class="annot"><span class="annottext">a -&gt; [a] -&gt; [a]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679033212"><span class="hs-identifier hs-var">ls</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">[b]
+</span><a href="#local-6989586621679033211"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679033209"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679033209"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679033212"><span class="hs-identifier hs-var">ls</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679033209"><span class="hs-identifier hs-var">r</span></a></span><span class="annot"><span class="annottext">b -&gt; [b] -&gt; [b]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[b]
+</span><a href="#local-6989586621679033211"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Either a b
+</span><a href="#local-6989586621679033213"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-371"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.String.UTF8.html#partitionEither"><span class="hs-pragma hs-type">partitionEither</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-372"></span><span>
+</span><span id="line-373"></span><span id="local-6989586621679033349"><span class="annot"><a href="Data.String.UTF8.html#toMaybe"><span class="hs-identifier hs-type">toMaybe</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679033349"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679033349"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-374"></span><span id="toMaybe"><span class="annot"><span class="annottext">toMaybe :: Bool -&gt; a -&gt; Maybe a
+</span><a href="Data.String.UTF8.html#toMaybe"><span class="hs-identifier hs-var hs-var">toMaybe</span></a></span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe a
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-375"></span><span class="annot"><a href="Data.String.UTF8.html#toMaybe"><span class="hs-identifier hs-var">toMaybe</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>  </span><span id="local-6989586621679033208"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679033208"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Maybe a
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679033208"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-376"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.String.UTF8.html#toMaybe"><span class="hs-pragma hs-type">toMaybe</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-377"></span><span>
+</span><span id="line-378"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-379"></span></pre></body></html>

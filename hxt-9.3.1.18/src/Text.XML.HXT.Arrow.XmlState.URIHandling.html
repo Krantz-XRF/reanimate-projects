@@ -1,0 +1,632 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+   Module     : Text.XML.HXT.Arrow.XmlState.URIHandling
+   Copyright  : Copyright (C) 2010 Uwe Schmidt
+   License    : MIT
+
+   Maintainer : Uwe Schmidt (uwe@fh-wedel.de)
+   Stability  : stable
+   Portability: portable
+
+   the basic state arrows for URI handling
+
+-}</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.XML.HXT.Arrow.XmlState.URIHandling</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Arrow</span></span><span>                            </span><span class="hs-comment">-- arrow classes</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html"><span class="hs-identifier">Control.Arrow.ArrowList</span></a></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowIf.html"><span class="hs-identifier">Control.Arrow.ArrowIf</span></a></span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowIO.html"><span class="hs-identifier">Control.Arrow.ArrowIO</span></a></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>                    </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-identifier">mzero</span></span><span>
+</span><span id="line-28"></span><span>                                        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">mplus</span></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlArrow.html"><span class="hs-identifier">Text.XML.HXT.Arrow.XmlArrow</span></a></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html"><span class="hs-identifier">Text.XML.HXT.Arrow.XmlState.TypeDefs</span></a></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TraceHandling.html"><span class="hs-identifier">Text.XML.HXT.Arrow.XmlState.TraceHandling</span></a></span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Network.URI</span></span><span>                      </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-identifier">URI</span></span><span>
+</span><span id="line-37"></span><span>                                        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">escapeURIChar</span></span><span>
+</span><span id="line-38"></span><span>                                        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">isUnescapedInURI</span></span><span>
+</span><span id="line-39"></span><span>                                        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">nonStrictRelativeTo</span></span><span>
+</span><span id="line-40"></span><span>                                        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">parseURIReference</span></span><span>
+</span><span id="line-41"></span><span>                                        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">uriAuthority</span></span><span>
+</span><span id="line-42"></span><span>                                        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">uriFragment</span></span><span>
+</span><span id="line-43"></span><span>                                        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">uriPath</span></span><span>
+</span><span id="line-44"></span><span>                                        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">uriPort</span></span><span>
+</span><span id="line-45"></span><span>                                        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">uriQuery</span></span><span>
+</span><span id="line-46"></span><span>                                        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">uriRegName</span></span><span>
+</span><span id="line-47"></span><span>                                        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">uriScheme</span></span><span>
+</span><span id="line-48"></span><span>                                        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">uriUserInfo</span></span><span>
+</span><span id="line-49"></span><span>                                        </span><span class="hs-special">)</span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">System.Directory</span></span><span>                 </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-identifier">getCurrentDirectory</span></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-54"></span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- | set the base URI of a document, used e.g. for reading includes, e.g. external entities,</span><span>
+</span><span id="line-56"></span><span class="hs-comment">-- the input must be an absolute URI</span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span id="local-6989586621679185301"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#setBaseURI"><span class="hs-identifier hs-type">setBaseURI</span></a></span><span>              </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOStateArrow"><span class="hs-identifier hs-type">IOStateArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185301"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span></span><span>
+</span><span id="line-59"></span><span id="setBaseURI"><span class="annot"><span class="annottext">setBaseURI :: IOStateArrow s String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#setBaseURI"><span class="hs-identifier hs-var hs-var">setBaseURI</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState String -&gt; IOStateArrow s String String
+forall c s. Selector XIOSysState c -&gt; IOStateArrow s c c
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#setSysVar"><span class="hs-identifier hs-var">setSysVar</span></a></span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState String
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#theBaseURI"><span class="hs-identifier hs-var">theBaseURI</span></a></span><span>
+</span><span id="line-60"></span><span>                          </span><span class="annot"><span class="annottext">IOStateArrow s String String
+-&gt; IOStateArrow s String String -&gt; IOStateArrow s String String
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span>
+</span><span id="line-61"></span><span>                          </span><span class="annot"><span class="annottext">Int -&gt; (String -&gt; String) -&gt; IOStateArrow s String String
+forall b s. Int -&gt; (b -&gt; String) -&gt; IOStateArrow s b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.TraceHandling.html#traceValue"><span class="hs-identifier hs-var">traceValue</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;setBaseURI: new base URI is &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(String -&gt; String) -&gt; (String -&gt; String) -&gt; String -&gt; String
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span class="hs-special">)</span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="hs-comment">-- | read the base URI from the globale state</span><span>
+</span><span id="line-64"></span><span>
+</span><span id="line-65"></span><span id="local-6989586621679185199"><span id="local-6989586621679185200"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getBaseURI"><span class="hs-identifier hs-type">getBaseURI</span></a></span><span>              </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOStateArrow"><span class="hs-identifier hs-type">IOStateArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185200"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185199"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span></span></span><span>
+</span><span id="line-66"></span><span id="getBaseURI"><span class="annot"><span class="annottext">getBaseURI :: IOStateArrow s b String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getBaseURI"><span class="hs-identifier hs-var hs-var">getBaseURI</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState String -&gt; IOStateArrow s b String
+forall c s b. Selector XIOSysState c -&gt; IOStateArrow s b c
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#getSysVar"><span class="hs-identifier hs-var">getSysVar</span></a></span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState String
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#theBaseURI"><span class="hs-identifier hs-var">theBaseURI</span></a></span><span>
+</span><span id="line-67"></span><span>                          </span><span class="annot"><span class="annottext">IOStateArrow s b String
+-&gt; IOSLA (XIOState s) String String -&gt; IOStateArrow s b String
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span>
+</span><span id="line-68"></span><span>                          </span><span class="hs-special">(</span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">IOSLA (XIOState s) String String
+forall s b. IOStateArrow s b String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getDefaultBaseURI"><span class="hs-identifier hs-var">getDefaultBaseURI</span></a></span><span>
+</span><span id="line-69"></span><span>                              </span><span class="annot"><span class="annottext">IOSLA (XIOState s) String String
+-&gt; IOSLA (XIOState s) String String
+-&gt; IOSLA (XIOState s) String String
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span>
+</span><span id="line-70"></span><span>                              </span><span class="annot"><span class="annottext">IOSLA (XIOState s) String String
+forall s. IOStateArrow s String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#setBaseURI"><span class="hs-identifier hs-var">setBaseURI</span></a></span><span>
+</span><span id="line-71"></span><span>                              </span><span class="annot"><span class="annottext">IOSLA (XIOState s) String String
+-&gt; IOSLA (XIOState s) String String
+-&gt; IOSLA (XIOState s) String String
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span>
+</span><span id="line-72"></span><span>                              </span><span class="annot"><span class="annottext">IOSLA (XIOState s) String String
+forall s b. IOStateArrow s b String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getBaseURI"><span class="hs-identifier hs-var">getBaseURI</span></a></span><span>
+</span><span id="line-73"></span><span>                            </span><span class="hs-special">)</span><span>
+</span><span id="line-74"></span><span>                            </span><span class="annot"><span class="annottext">IOSLA (XIOState s) String String
+-&gt; IOSLA (XIOState s) String String
+-&gt; IOSLA (XIOState s) String String
+forall (a :: * -&gt; * -&gt; *) b c. ArrowIf a =&gt; a b b -&gt; a b c -&gt; a b b
+</span><a href="Control.Arrow.ArrowIf.html#when"><span class="hs-operator hs-var">`when`</span></a></span><span>
+</span><span id="line-75"></span><span>                            </span><span class="annot"><span class="annottext">(String -&gt; Bool) -&gt; IOSLA (XIOState s) String String
+forall (a :: * -&gt; * -&gt; *) b. ArrowList a =&gt; (b -&gt; Bool) -&gt; a b b
+</span><a href="Control.Arrow.ArrowList.html#isA"><span class="hs-identifier hs-var">isA</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span>                                </span><span class="hs-comment">-- set and get it, if not yet done</span><span>
+</span><span id="line-76"></span><span>                          </span><span class="hs-special">)</span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span class="hs-comment">-- | change the base URI with a possibly relative URI, can be used for</span><span>
+</span><span id="line-79"></span><span class="hs-comment">-- evaluating the xml:base attribute. Returns the new absolute base URI.</span><span>
+</span><span id="line-80"></span><span class="hs-comment">-- Fails, if input is not parsable with parseURIReference</span><span>
+</span><span id="line-81"></span><span class="hs-comment">--</span><span>
+</span><span id="line-82"></span><span class="hs-comment">-- see also: 'setBaseURI', 'mkAbsURI'</span><span>
+</span><span id="line-83"></span><span>
+</span><span id="line-84"></span><span id="local-6989586621679185192"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#changeBaseURI"><span class="hs-identifier hs-type">changeBaseURI</span></a></span><span>           </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOStateArrow"><span class="hs-identifier hs-type">IOStateArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185192"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span></span><span>
+</span><span id="line-85"></span><span id="changeBaseURI"><span class="annot"><span class="annottext">changeBaseURI :: IOStateArrow s String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#changeBaseURI"><span class="hs-identifier hs-var hs-var">changeBaseURI</span></a></span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IOStateArrow s String String
+forall s. IOStateArrow s String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#mkAbsURI"><span class="hs-identifier hs-var">mkAbsURI</span></a></span><span> </span><span class="annot"><span class="annottext">IOStateArrow s String String
+-&gt; IOStateArrow s String String -&gt; IOStateArrow s String String
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">IOStateArrow s String String
+forall s. IOStateArrow s String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#setBaseURI"><span class="hs-identifier hs-var">setBaseURI</span></a></span><span>
+</span><span id="line-86"></span><span>
+</span><span id="line-87"></span><span class="hs-comment">-- | set the default base URI, if parameter is null, the system base (@ file:\/\/\/\&lt;cwd\&gt;\/ @) is used,</span><span>
+</span><span id="line-88"></span><span class="hs-comment">-- else the parameter, must be called before any document is read</span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span id="local-6989586621679185271"><span id="local-6989586621679185272"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#setDefaultBaseURI"><span class="hs-identifier hs-type">setDefaultBaseURI</span></a></span><span>       </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOStateArrow"><span class="hs-identifier hs-type">IOStateArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185272"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185271"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span></span></span><span>
+</span><span id="line-91"></span><span id="setDefaultBaseURI"><span class="annot"><span class="annottext">setDefaultBaseURI :: String -&gt; IOStateArrow s b String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#setDefaultBaseURI"><span class="hs-identifier hs-var hs-var">setDefaultBaseURI</span></a></span></span><span> </span><span id="local-6989586621679185188"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185188"><span class="hs-identifier hs-var">base</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">String -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185188"><span class="hs-identifier hs-var">base</span></a></span><span>
+</span><span id="line-92"></span><span>                            </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">(b -&gt; IO String) -&gt; IOStateArrow s b String
+forall (a :: * -&gt; * -&gt; *) b c. ArrowIO a =&gt; (b -&gt; IO c) -&gt; a b c
+</span><a href="Control.Arrow.ArrowIO.html#arrIO"><span class="hs-identifier hs-var">arrIO</span></a></span><span> </span><span class="annot"><span class="annottext">b -&gt; IO String
+forall p. p -&gt; IO String
+</span><a href="#local-6989586621679185186"><span class="hs-identifier hs-var">getDir</span></a></span><span>
+</span><span id="line-93"></span><span>                            </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">String -&gt; IOStateArrow s b String
+forall (a :: * -&gt; * -&gt; *) c b. ArrowList a =&gt; c -&gt; a b c
+</span><a href="Control.Arrow.ArrowList.html#constA"><span class="hs-identifier hs-var">constA</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185188"><span class="hs-identifier hs-var">base</span></a></span><span>
+</span><span id="line-94"></span><span>                          </span><span class="hs-special">)</span><span>
+</span><span id="line-95"></span><span>                          </span><span class="annot"><span class="annottext">IOStateArrow s b String
+-&gt; IOSLA (XIOState s) String String -&gt; IOStateArrow s b String
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span>
+</span><span id="line-96"></span><span>                          </span><span class="annot"><span class="annottext">Selector XIOSysState String -&gt; IOSLA (XIOState s) String String
+forall c s. Selector XIOSysState c -&gt; IOStateArrow s c c
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#setSysVar"><span class="hs-identifier hs-var">setSysVar</span></a></span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState String
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#theDefaultBaseURI"><span class="hs-identifier hs-var">theDefaultBaseURI</span></a></span><span>
+</span><span id="line-97"></span><span>                          </span><span class="annot"><span class="annottext">IOSLA (XIOState s) String String
+-&gt; IOSLA (XIOState s) String String
+-&gt; IOSLA (XIOState s) String String
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span>
+</span><span id="line-98"></span><span>                          </span><span class="annot"><span class="annottext">Int -&gt; (String -&gt; String) -&gt; IOSLA (XIOState s) String String
+forall b s. Int -&gt; (b -&gt; String) -&gt; IOStateArrow s b b
+</span><a href="Text.XML.HXT.Arrow.XmlState.TraceHandling.html#traceValue"><span class="hs-identifier hs-var">traceValue</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;setDefaultBaseURI: new default base URI is &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(String -&gt; String) -&gt; (String -&gt; String) -&gt; String -&gt; String
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span class="hs-special">)</span><span>
+</span><span id="line-99"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-100"></span><span>    </span><span id="local-6989586621679185186"><span class="annot"><span class="annottext">getDir :: p -&gt; IO String
+</span><a href="#local-6989586621679185186"><span class="hs-identifier hs-var hs-var">getDir</span></a></span></span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-identifier">_</span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-101"></span><span>                          </span><span id="local-6989586621679185183"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185183"><span class="hs-identifier hs-var">cwd</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO String
+</span><span class="hs-identifier hs-var">getCurrentDirectory</span></span><span>
+</span><span id="line-102"></span><span>                          </span><span class="annot"><span class="annottext">String -&gt; IO String
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;file://&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+</span><a href="#local-6989586621679185182"><span class="hs-identifier hs-var">normalize</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185183"><span class="hs-identifier hs-var">cwd</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;/&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-103"></span><span>
+</span><span id="line-104"></span><span>    </span><span class="hs-comment">-- under Windows getCurrentDirectory returns something like: &quot;c:\path\to\file&quot;</span><span>
+</span><span id="line-105"></span><span>    </span><span class="hs-comment">-- backslaches are not allowed in URIs and paths must start with a /</span><span>
+</span><span id="line-106"></span><span>    </span><span class="hs-comment">-- so this is transformed into &quot;/c:/path/to/file&quot;</span><span>
+</span><span id="line-107"></span><span>
+</span><span id="line-108"></span><span>    </span><span id="local-6989586621679185182"><span class="annot"><span class="annottext">normalize :: String -&gt; String
+</span><a href="#local-6989586621679185182"><span class="hs-identifier hs-var hs-var">normalize</span></a></span></span><span> </span><span id="local-6989586621679185181"><span class="annot"><span class="annottext">wd' :: String
+</span><a href="#local-6989586621679185181"><span class="hs-identifier hs-var">wd'</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span id="local-6989586621679185180"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679185180"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">':'</span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span>
+</span><span id="line-109"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679185180"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; String -&gt; Bool
+forall (t :: * -&gt; *) a. (Foldable t, Eq a) =&gt; a -&gt; t a -&gt; Bool
+</span><span class="hs-operator hs-var">`elem`</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'A'</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'Z'</span></span><span class="hs-special">]</span><span>
+</span><span id="line-110"></span><span>          </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span>
+</span><span id="line-111"></span><span>          </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679185180"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; String -&gt; Bool
+forall (t :: * -&gt; *) a. (Foldable t, Eq a) =&gt; a -&gt; t a -&gt; Bool
+</span><span class="hs-operator hs-var">`elem`</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'a'</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'z'</span></span><span class="hs-special">]</span><span>
+</span><span id="line-112"></span><span>                        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'/'</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; String -&gt; String
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">(Char -&gt; String) -&gt; String -&gt; String
+forall (t :: * -&gt; *) a b. Foldable t =&gt; (a -&gt; [b]) -&gt; t a -&gt; [b]
+</span><span class="hs-identifier hs-var">concatMap</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; String
+</span><a href="#local-6989586621679185176"><span class="hs-identifier hs-var">win32ToUriChar</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185181"><span class="hs-identifier hs-var">wd'</span></a></span><span>
+</span><span id="line-113"></span><span>    </span><span class="annot"><a href="#local-6989586621679185182"><span class="hs-identifier hs-var">normalize</span></a></span><span> </span><span id="local-6989586621679185175"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185175"><span class="hs-identifier hs-var">wd'</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; String) -&gt; String -&gt; String
+forall (t :: * -&gt; *) a b. Foldable t =&gt; (a -&gt; [b]) -&gt; t a -&gt; [b]
+</span><span class="hs-identifier hs-var">concatMap</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; String
+</span><a href="#local-6989586621679185174"><span class="hs-identifier hs-var">escapeNonUriChar</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185175"><span class="hs-identifier hs-var">wd'</span></a></span><span>
+</span><span id="line-114"></span><span>
+</span><span id="line-115"></span><span>    </span><span id="local-6989586621679185176"><span class="annot"><span class="annottext">win32ToUriChar :: Char -&gt; String
+</span><a href="#local-6989586621679185176"><span class="hs-identifier hs-var hs-var">win32ToUriChar</span></a></span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\\'</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;/&quot;</span></span><span>
+</span><span id="line-116"></span><span>    </span><span class="annot"><a href="#local-6989586621679185176"><span class="hs-identifier hs-var">win32ToUriChar</span></a></span><span> </span><span id="local-6989586621679185173"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679185173"><span class="hs-identifier hs-var">c</span></a></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; String
+</span><a href="#local-6989586621679185174"><span class="hs-identifier hs-var">escapeNonUriChar</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679185173"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-117"></span><span>
+</span><span id="line-118"></span><span>    </span><span id="local-6989586621679185174"><span class="annot"><span class="annottext">escapeNonUriChar :: Char -&gt; String
+</span><a href="#local-6989586621679185174"><span class="hs-identifier hs-var hs-var">escapeNonUriChar</span></a></span></span><span> </span><span id="local-6989586621679185172"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679185172"><span class="hs-identifier hs-var">c</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Bool) -&gt; Char -&gt; String
+</span><span class="hs-identifier hs-var">escapeURIChar</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Bool
+</span><span class="hs-identifier hs-var">isUnescapedInURI</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679185172"><span class="hs-identifier hs-var">c</span></a></span><span>   </span><span class="hs-comment">-- from Network.URI</span><span>
+</span><span id="line-119"></span><span>
+</span><span id="line-120"></span><span>
+</span><span id="line-121"></span><span class="hs-comment">-- | get the default base URI</span><span>
+</span><span id="line-122"></span><span>
+</span><span id="line-123"></span><span id="local-6989586621679185302"><span id="local-6989586621679185303"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getDefaultBaseURI"><span class="hs-identifier hs-type">getDefaultBaseURI</span></a></span><span>       </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOStateArrow"><span class="hs-identifier hs-type">IOStateArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185303"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185302"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span></span></span><span>
+</span><span id="line-124"></span><span id="getDefaultBaseURI"><span class="annot"><span class="annottext">getDefaultBaseURI :: IOStateArrow s b String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getDefaultBaseURI"><span class="hs-identifier hs-var hs-var">getDefaultBaseURI</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState String -&gt; IOStateArrow s b String
+forall c s b. Selector XIOSysState c -&gt; IOStateArrow s b c
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#getSysVar"><span class="hs-identifier hs-var">getSysVar</span></a></span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState String
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#theDefaultBaseURI"><span class="hs-identifier hs-var">theDefaultBaseURI</span></a></span><span>            </span><span class="hs-comment">-- read default uri in system  state</span><span>
+</span><span id="line-125"></span><span>                          </span><span class="annot"><span class="annottext">IOStateArrow s b String
+-&gt; IOSLA (XIOState s) String String -&gt; IOStateArrow s b String
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span>
+</span><span id="line-126"></span><span>                          </span><span class="hs-special">(</span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">String -&gt; IOSLA (XIOState s) String String
+forall s b. String -&gt; IOStateArrow s b String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#setDefaultBaseURI"><span class="hs-identifier hs-var">setDefaultBaseURI</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>                  </span><span class="hs-comment">-- set the default uri in system state</span><span>
+</span><span id="line-127"></span><span>                              </span><span class="annot"><span class="annottext">IOSLA (XIOState s) String String
+-&gt; IOSLA (XIOState s) String String
+-&gt; IOSLA (XIOState s) String String
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span>
+</span><span id="line-128"></span><span>                              </span><span class="annot"><span class="annottext">IOSLA (XIOState s) String String
+forall s b. IOStateArrow s b String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getDefaultBaseURI"><span class="hs-identifier hs-var">getDefaultBaseURI</span></a></span><span>
+</span><span id="line-129"></span><span>                            </span><span class="hs-special">)</span><span>
+</span><span id="line-130"></span><span>                            </span><span class="annot"><span class="annottext">IOSLA (XIOState s) String String
+-&gt; IOSLA (XIOState s) String String
+-&gt; IOSLA (XIOState s) String String
+forall (a :: * -&gt; * -&gt; *) b c. ArrowIf a =&gt; a b b -&gt; a b c -&gt; a b b
+</span><a href="Control.Arrow.ArrowIf.html#when"><span class="hs-operator hs-var">`when`</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Bool) -&gt; IOSLA (XIOState s) String String
+forall (a :: * -&gt; * -&gt; *) b. ArrowList a =&gt; (b -&gt; Bool) -&gt; a b b
+</span><a href="Control.Arrow.ArrowList.html#isA"><span class="hs-identifier hs-var">isA</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span>
+</span><span id="line-131"></span><span>                          </span><span class="hs-special">)</span><span>                                         </span><span class="hs-comment">-- when uri not yet set</span><span>
+</span><span id="line-132"></span><span>
+</span><span id="line-133"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-134"></span><span>
+</span><span id="line-135"></span><span class="hs-comment">-- | remember base uri, run an arrow and restore the base URI, used with external entity substitution</span><span>
+</span><span id="line-136"></span><span>
+</span><span id="line-137"></span><span id="local-6989586621679185169"><span id="local-6989586621679185170"><span id="local-6989586621679185171"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#runInLocalURIContext"><span class="hs-identifier hs-type">runInLocalURIContext</span></a></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOStateArrow"><span class="hs-identifier hs-type">IOStateArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185171"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185170"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185169"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOStateArrow"><span class="hs-identifier hs-type">IOStateArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185171"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185170"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185169"><span class="hs-identifier hs-type">c</span></a></span></span></span></span><span>
+</span><span id="line-138"></span><span id="runInLocalURIContext"><span class="annot"><span class="annottext">runInLocalURIContext :: IOStateArrow s b c -&gt; IOStateArrow s b c
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#runInLocalURIContext"><span class="hs-identifier hs-var hs-var">runInLocalURIContext</span></a></span></span><span> </span><span id="local-6989586621679185167"><span class="annot"><span class="annottext">IOStateArrow s b c
+</span><a href="#local-6989586621679185167"><span class="hs-identifier hs-var">f</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState String
+-&gt; IOStateArrow s b c -&gt; IOStateArrow s b c
+forall c s a b.
+Selector XIOSysState c -&gt; IOStateArrow s a b -&gt; IOStateArrow s a b
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#localSysVar"><span class="hs-identifier hs-var">localSysVar</span></a></span><span> </span><span class="annot"><span class="annottext">Selector XIOSysState String
+</span><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#theBaseURI"><span class="hs-identifier hs-var">theBaseURI</span></a></span><span> </span><span class="annot"><span class="annottext">IOStateArrow s b c
+</span><a href="#local-6989586621679185167"><span class="hs-identifier hs-var">f</span></a></span><span>
+</span><span id="line-139"></span><span>
+</span><span id="line-140"></span><span class="hs-comment">-- ----------------------------------------------------------</span><span>
+</span><span id="line-141"></span><span>
+</span><span id="line-142"></span><span class="hs-comment">-- | parse a URI reference, in case of a failure,</span><span>
+</span><span id="line-143"></span><span class="hs-comment">-- try to escape unescaped chars, convert backslashes to slashes for windows paths,</span><span>
+</span><span id="line-144"></span><span class="hs-comment">-- and try parsing again</span><span>
+</span><span id="line-145"></span><span>
+</span><span id="line-146"></span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#parseURIReference%27"><span class="hs-identifier hs-type">parseURIReference'</span></a></span><span>      </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">URI</span></span><span>
+</span><span id="line-147"></span><span id="parseURIReference%27"><span class="annot"><span class="annottext">parseURIReference' :: String -&gt; Maybe URI
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#parseURIReference%27"><span class="hs-identifier hs-var hs-var">parseURIReference'</span></a></span></span><span> </span><span id="local-6989586621679185164"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185164"><span class="hs-identifier hs-var">uri</span></a></span></span><span>
+</span><span id="line-148"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Maybe URI
+</span><span class="hs-identifier hs-var">parseURIReference</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185164"><span class="hs-identifier hs-var">uri</span></a></span><span>
+</span><span id="line-149"></span><span>      </span><span class="annot"><span class="annottext">Maybe URI -&gt; Maybe URI -&gt; Maybe URI
+forall (m :: * -&gt; *) a. MonadPlus m =&gt; m a -&gt; m a -&gt; m a
+</span><span class="hs-operator hs-var">`mplus`</span></span><span>
+</span><span id="line-150"></span><span>      </span><span class="hs-special">(</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679185163"><span class="hs-identifier hs-var">unesc</span></a></span><span>
+</span><span id="line-151"></span><span>        </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">String -&gt; Maybe URI
+</span><span class="hs-identifier hs-var">parseURIReference</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185162"><span class="hs-identifier hs-var">uri'</span></a></span><span>
+</span><span id="line-152"></span><span>        </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Maybe URI
+forall (m :: * -&gt; *) a. MonadPlus m =&gt; m a
+</span><span class="hs-identifier hs-var">mzero</span></span><span>
+</span><span id="line-153"></span><span>      </span><span class="hs-special">)</span><span>
+</span><span id="line-154"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-155"></span><span>    </span><span id="local-6989586621679185163"><span class="annot"><span class="annottext">unesc :: Bool
+</span><a href="#local-6989586621679185163"><span class="hs-identifier hs-var hs-var">unesc</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; (String -&gt; Bool) -&gt; String -&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Bool) -&gt; String -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; (a -&gt; Bool) -&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">all</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Bool
+</span><span class="hs-identifier hs-var">isUnescapedInURI</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Bool) -&gt; String -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185164"><span class="hs-identifier hs-var">uri</span></a></span><span>
+</span><span id="line-156"></span><span>
+</span><span id="line-157"></span><span>    </span><span id="local-6989586621679185159"><span class="annot"><span class="annottext">escape :: Char -&gt; String
+</span><a href="#local-6989586621679185159"><span class="hs-identifier hs-var hs-var">escape</span></a></span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\\'</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;/&quot;</span></span><span>
+</span><span id="line-158"></span><span>    </span><span class="annot"><a href="#local-6989586621679185159"><span class="hs-identifier hs-var">escape</span></a></span><span> </span><span id="local-6989586621679185158"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679185158"><span class="hs-identifier hs-var">c</span></a></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Bool) -&gt; Char -&gt; String
+</span><span class="hs-identifier hs-var">escapeURIChar</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Bool
+</span><span class="hs-identifier hs-var">isUnescapedInURI</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679185158"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-159"></span><span>
+</span><span id="line-160"></span><span>    </span><span id="local-6989586621679185162"><span class="annot"><span class="annottext">uri' :: String
+</span><a href="#local-6989586621679185162"><span class="hs-identifier hs-var hs-var">uri'</span></a></span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; String) -&gt; String -&gt; String
+forall (t :: * -&gt; *) a b. Foldable t =&gt; (a -&gt; [b]) -&gt; t a -&gt; [b]
+</span><span class="hs-identifier hs-var">concatMap</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; String
+</span><a href="#local-6989586621679185159"><span class="hs-identifier hs-var">escape</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185164"><span class="hs-identifier hs-var">uri</span></a></span><span>
+</span><span id="line-161"></span><span>
+</span><span id="line-162"></span><span class="hs-comment">-- | compute the absolut URI for a given URI and a base URI</span><span>
+</span><span id="line-163"></span><span>
+</span><span id="line-164"></span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#expandURIString"><span class="hs-identifier hs-type">expandURIString</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-165"></span><span id="expandURIString"><span class="annot"><span class="annottext">expandURIString :: String -&gt; String -&gt; Maybe String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#expandURIString"><span class="hs-identifier hs-var hs-var">expandURIString</span></a></span></span><span> </span><span id="local-6989586621679185156"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185156"><span class="hs-identifier hs-var">uri</span></a></span></span><span> </span><span id="local-6989586621679185155"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185155"><span class="hs-identifier hs-var">base</span></a></span></span><span>
+</span><span id="line-166"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-167"></span><span>      </span><span id="local-6989586621679185154"><span class="annot"><span class="annottext">URI
+</span><a href="#local-6989586621679185154"><span class="hs-identifier hs-var">base'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; Maybe URI
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#parseURIReference%27"><span class="hs-identifier hs-var">parseURIReference'</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185155"><span class="hs-identifier hs-var">base</span></a></span><span>
+</span><span id="line-168"></span><span>      </span><span id="local-6989586621679185153"><span class="annot"><span class="annottext">URI
+</span><a href="#local-6989586621679185153"><span class="hs-identifier hs-var">uri'</span></a></span></span><span>  </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; Maybe URI
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#parseURIReference%27"><span class="hs-identifier hs-var">parseURIReference'</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185156"><span class="hs-identifier hs-var">uri</span></a></span><span>
+</span><span id="line-169"></span><span>      </span><span class="hs-comment">--  abs' &lt;- nonStrictRelativeTo uri' base'</span><span>
+</span><span id="line-170"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679185152"><span class="annot"><span class="annottext">abs' :: URI
+</span><a href="#local-6989586621679185152"><span class="hs-identifier hs-var hs-var">abs'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>  </span><span class="annot"><span class="annottext">URI -&gt; URI -&gt; URI
+</span><span class="hs-identifier hs-var">nonStrictRelativeTo</span></span><span> </span><span class="annot"><span class="annottext">URI
+</span><a href="#local-6989586621679185153"><span class="hs-identifier hs-var">uri'</span></a></span><span> </span><span class="annot"><span class="annottext">URI
+</span><a href="#local-6989586621679185154"><span class="hs-identifier hs-var">base'</span></a></span><span>
+</span><span id="line-171"></span><span>      </span><span class="annot"><span class="annottext">String -&gt; Maybe String
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Maybe String) -&gt; String -&gt; Maybe String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">URI -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">URI
+</span><a href="#local-6989586621679185152"><span class="hs-identifier hs-var">abs'</span></a></span><span>
+</span><span id="line-172"></span><span>
+</span><span id="line-173"></span><span class="hs-comment">-- | arrow variant of 'expandURIString', fails if 'expandURIString' returns Nothing</span><span>
+</span><span id="line-174"></span><span>
+</span><span id="line-175"></span><span id="local-6989586621679185239"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#expandURI"><span class="hs-identifier hs-type">expandURI</span></a></span><span>               </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlArrow.html#ArrowXml"><span class="hs-identifier hs-type">ArrowXml</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185239"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185239"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span></span><span>
+</span><span id="line-176"></span><span id="expandURI"><span class="annot"><span class="annottext">expandURI :: a (String, String) String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#expandURI"><span class="hs-identifier hs-var hs-var">expandURI</span></a></span></span><span>
+</span><span id="line-177"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((String, String) -&gt; [String]) -&gt; a (String, String) String
+forall (a :: * -&gt; * -&gt; *) b c. ArrowList a =&gt; (b -&gt; [c]) -&gt; a b c
+</span><a href="Control.Arrow.ArrowList.html#arrL"><span class="hs-identifier hs-var">arrL</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe String -&gt; [String]
+forall a. Maybe a -&gt; [a]
+</span><span class="hs-identifier hs-var">maybeToList</span></span><span> </span><span class="annot"><span class="annottext">(Maybe String -&gt; [String])
+-&gt; ((String, String) -&gt; Maybe String)
+-&gt; (String, String)
+-&gt; [String]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; String -&gt; Maybe String)
+-&gt; (String, String) -&gt; Maybe String
+forall a b c. (a -&gt; b -&gt; c) -&gt; (a, b) -&gt; c
+</span><span class="hs-identifier hs-var">uncurry</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; Maybe String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#expandURIString"><span class="hs-identifier hs-var">expandURIString</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-178"></span><span>
+</span><span id="line-179"></span><span class="hs-comment">-- | arrow for expanding an input URI into an absolute URI using global base URI, fails if input is not a legal URI</span><span>
+</span><span id="line-180"></span><span>
+</span><span id="line-181"></span><span id="local-6989586621679185147"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#mkAbsURI"><span class="hs-identifier hs-type">mkAbsURI</span></a></span><span>                </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.TypeDefs.html#IOStateArrow"><span class="hs-identifier hs-type">IOStateArrow</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185147"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span></span><span>
+</span><span id="line-182"></span><span id="mkAbsURI"><span class="annot"><span class="annottext">mkAbsURI :: IOStateArrow s String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#mkAbsURI"><span class="hs-identifier hs-var hs-var">mkAbsURI</span></a></span></span><span>
+</span><span id="line-183"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">IOStateArrow s String String
+forall (a :: * -&gt; * -&gt; *) b. ArrowList a =&gt; a b b
+</span><a href="Control.Arrow.ArrowList.html#this"><span class="hs-identifier hs-var">this</span></a></span><span> </span><span class="annot"><span class="annottext">IOStateArrow s String String
+-&gt; IOStateArrow s String String
+-&gt; IOSLA (XIOState s) String (String, String)
+forall (a :: * -&gt; * -&gt; *) b c c'.
+Arrow a =&gt;
+a b c -&gt; a b c' -&gt; a b (c, c')
+</span><span class="hs-operator hs-var">&amp;&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">IOStateArrow s String String
+forall s b. IOStateArrow s b String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getBaseURI"><span class="hs-identifier hs-var">getBaseURI</span></a></span><span> </span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">IOSLA (XIOState s) String (String, String)
+-&gt; IOSLA (XIOState s) (String, String) String
+-&gt; IOStateArrow s String String
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">IOSLA (XIOState s) (String, String) String
+forall (a :: * -&gt; * -&gt; *). ArrowXml a =&gt; a (String, String) String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#expandURI"><span class="hs-identifier hs-var">expandURI</span></a></span><span>
+</span><span id="line-184"></span><span>
+</span><span id="line-185"></span><span class="hs-comment">-- | arrow for selecting the scheme (protocol) of the URI, fails if input is not a legal URI.</span><span>
+</span><span id="line-186"></span><span class="hs-comment">--</span><span>
+</span><span id="line-187"></span><span class="hs-comment">-- See Network.URI for URI components</span><span>
+</span><span id="line-188"></span><span>
+</span><span id="line-189"></span><span id="local-6989586621679185144"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getSchemeFromURI"><span class="hs-identifier hs-type">getSchemeFromURI</span></a></span><span>        </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#ArrowList"><span class="hs-identifier hs-type">ArrowList</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185144"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185144"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span></span><span>
+</span><span id="line-190"></span><span id="getSchemeFromURI"><span class="annot"><span class="annottext">getSchemeFromURI :: a String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getSchemeFromURI"><span class="hs-identifier hs-var hs-var">getSchemeFromURI</span></a></span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(URI -&gt; String) -&gt; a String String
+forall (a :: * -&gt; * -&gt; *).
+ArrowList a =&gt;
+(URI -&gt; String) -&gt; a String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getPartFromURI"><span class="hs-identifier hs-var">getPartFromURI</span></a></span><span> </span><span class="annot"><span class="annottext">URI -&gt; String
+</span><a href="#local-6989586621679185141"><span class="hs-identifier hs-var">scheme</span></a></span><span>
+</span><span id="line-191"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-192"></span><span>    </span><span id="local-6989586621679185141"><span class="annot"><span class="annottext">scheme :: URI -&gt; String
+</span><a href="#local-6989586621679185141"><span class="hs-identifier hs-var hs-var">scheme</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">init</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; String) -&gt; (URI -&gt; String) -&gt; URI -&gt; String
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">URI -&gt; String
+</span><span class="hs-identifier hs-var hs-var">uriScheme</span></span><span>
+</span><span id="line-193"></span><span>
+</span><span id="line-194"></span><span class="hs-comment">-- | arrow for selecting the registered name (host) of the URI, fails if input is not a legal URI</span><span>
+</span><span id="line-195"></span><span>
+</span><span id="line-196"></span><span id="local-6989586621679185139"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getRegNameFromURI"><span class="hs-identifier hs-type">getRegNameFromURI</span></a></span><span>       </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#ArrowList"><span class="hs-identifier hs-type">ArrowList</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185139"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185139"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span></span><span>
+</span><span id="line-197"></span><span id="getRegNameFromURI"><span class="annot"><span class="annottext">getRegNameFromURI :: a String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getRegNameFromURI"><span class="hs-identifier hs-var hs-var">getRegNameFromURI</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(URI -&gt; String) -&gt; a String String
+forall (a :: * -&gt; * -&gt; *).
+ArrowList a =&gt;
+(URI -&gt; String) -&gt; a String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getPartFromURI"><span class="hs-identifier hs-var">getPartFromURI</span></a></span><span> </span><span class="annot"><span class="annottext">URI -&gt; String
+</span><a href="#local-6989586621679185137"><span class="hs-identifier hs-var">host</span></a></span><span>
+</span><span id="line-198"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-199"></span><span>    </span><span id="local-6989586621679185137"><span class="annot"><span class="annottext">host :: URI -&gt; String
+</span><a href="#local-6989586621679185137"><span class="hs-identifier hs-var hs-var">host</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; (URIAuth -&gt; String) -&gt; Maybe URIAuth -&gt; String
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="annot"><span class="annottext">URIAuth -&gt; String
+</span><span class="hs-identifier hs-var hs-var">uriRegName</span></span><span> </span><span class="annot"><span class="annottext">(Maybe URIAuth -&gt; String)
+-&gt; (URI -&gt; Maybe URIAuth) -&gt; URI -&gt; String
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">URI -&gt; Maybe URIAuth
+</span><span class="hs-identifier hs-var hs-var">uriAuthority</span></span><span>
+</span><span id="line-200"></span><span>
+</span><span id="line-201"></span><span class="hs-comment">-- | arrow for selecting the port number of the URI without leading \':\', fails if input is not a legal URI</span><span>
+</span><span id="line-202"></span><span>
+</span><span id="line-203"></span><span id="local-6989586621679185135"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getPortFromURI"><span class="hs-identifier hs-type">getPortFromURI</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#ArrowList"><span class="hs-identifier hs-type">ArrowList</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185135"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185135"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span></span><span>
+</span><span id="line-204"></span><span id="getPortFromURI"><span class="annot"><span class="annottext">getPortFromURI :: a String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getPortFromURI"><span class="hs-identifier hs-var hs-var">getPortFromURI</span></a></span></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(URI -&gt; String) -&gt; a String String
+forall (a :: * -&gt; * -&gt; *).
+ArrowList a =&gt;
+(URI -&gt; String) -&gt; a String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getPartFromURI"><span class="hs-identifier hs-var">getPartFromURI</span></a></span><span> </span><span class="annot"><span class="annottext">URI -&gt; String
+</span><a href="#local-6989586621679185133"><span class="hs-identifier hs-var">port</span></a></span><span>
+</span><span id="line-205"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-206"></span><span>    </span><span id="local-6989586621679185133"><span class="annot"><span class="annottext">port :: URI -&gt; String
+</span><a href="#local-6989586621679185133"><span class="hs-identifier hs-var hs-var">port</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Bool) -&gt; String -&gt; String
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">dropWhile</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">':'</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(String -&gt; String) -&gt; (URI -&gt; String) -&gt; URI -&gt; String
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; (URIAuth -&gt; String) -&gt; Maybe URIAuth -&gt; String
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="annot"><span class="annottext">URIAuth -&gt; String
+</span><span class="hs-identifier hs-var hs-var">uriPort</span></span><span> </span><span class="annot"><span class="annottext">(Maybe URIAuth -&gt; String)
+-&gt; (URI -&gt; Maybe URIAuth) -&gt; URI -&gt; String
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">URI -&gt; Maybe URIAuth
+</span><span class="hs-identifier hs-var hs-var">uriAuthority</span></span><span>
+</span><span id="line-207"></span><span>
+</span><span id="line-208"></span><span class="hs-comment">-- | arrow for selecting the user info of the URI without trailing \'\@\', fails if input is not a legal URI</span><span>
+</span><span id="line-209"></span><span>
+</span><span id="line-210"></span><span id="local-6989586621679185131"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getUserInfoFromURI"><span class="hs-identifier hs-type">getUserInfoFromURI</span></a></span><span>              </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#ArrowList"><span class="hs-identifier hs-type">ArrowList</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185131"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185131"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span></span><span>
+</span><span id="line-211"></span><span id="getUserInfoFromURI"><span class="annot"><span class="annottext">getUserInfoFromURI :: a String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getUserInfoFromURI"><span class="hs-identifier hs-var hs-var">getUserInfoFromURI</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(URI -&gt; String) -&gt; a String String
+forall (a :: * -&gt; * -&gt; *).
+ArrowList a =&gt;
+(URI -&gt; String) -&gt; a String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getPartFromURI"><span class="hs-identifier hs-var">getPartFromURI</span></a></span><span> </span><span class="annot"><span class="annottext">URI -&gt; String
+</span><a href="#local-6989586621679185129"><span class="hs-identifier hs-var">ui</span></a></span><span>
+</span><span id="line-212"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-213"></span><span>    </span><span id="local-6989586621679185129"><span class="annot"><span class="annottext">ui :: URI -&gt; String
+</span><a href="#local-6989586621679185129"><span class="hs-identifier hs-var hs-var">ui</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; String) -&gt; (URI -&gt; String) -&gt; URI -&gt; String
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Bool) -&gt; String -&gt; String
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">dropWhile</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'@'</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(String -&gt; String) -&gt; (URI -&gt; String) -&gt; URI -&gt; String
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; String) -&gt; (URI -&gt; String) -&gt; URI -&gt; String
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; (URIAuth -&gt; String) -&gt; Maybe URIAuth -&gt; String
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="annot"><span class="annottext">URIAuth -&gt; String
+</span><span class="hs-identifier hs-var hs-var">uriUserInfo</span></span><span> </span><span class="annot"><span class="annottext">(Maybe URIAuth -&gt; String)
+-&gt; (URI -&gt; Maybe URIAuth) -&gt; URI -&gt; String
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">URI -&gt; Maybe URIAuth
+</span><span class="hs-identifier hs-var hs-var">uriAuthority</span></span><span>
+</span><span id="line-214"></span><span>
+</span><span id="line-215"></span><span class="hs-comment">-- | arrow for computing the path component of an URI, fails if input is not a legal URI</span><span>
+</span><span id="line-216"></span><span>
+</span><span id="line-217"></span><span id="local-6989586621679185127"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getPathFromURI"><span class="hs-identifier hs-type">getPathFromURI</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#ArrowList"><span class="hs-identifier hs-type">ArrowList</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185127"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185127"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span></span><span>
+</span><span id="line-218"></span><span id="getPathFromURI"><span class="annot"><span class="annottext">getPathFromURI :: a String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getPathFromURI"><span class="hs-identifier hs-var hs-var">getPathFromURI</span></a></span></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(URI -&gt; String) -&gt; a String String
+forall (a :: * -&gt; * -&gt; *).
+ArrowList a =&gt;
+(URI -&gt; String) -&gt; a String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getPartFromURI"><span class="hs-identifier hs-var">getPartFromURI</span></a></span><span> </span><span class="annot"><span class="annottext">URI -&gt; String
+</span><span class="hs-identifier hs-var hs-var">uriPath</span></span><span>
+</span><span id="line-219"></span><span>
+</span><span id="line-220"></span><span class="hs-comment">-- | arrow for computing the query component of an URI, fails if input is not a legal URI</span><span>
+</span><span id="line-221"></span><span>
+</span><span id="line-222"></span><span id="local-6989586621679185125"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getQueryFromURI"><span class="hs-identifier hs-type">getQueryFromURI</span></a></span><span>         </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#ArrowList"><span class="hs-identifier hs-type">ArrowList</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185125"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185125"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span></span><span>
+</span><span id="line-223"></span><span id="getQueryFromURI"><span class="annot"><span class="annottext">getQueryFromURI :: a String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getQueryFromURI"><span class="hs-identifier hs-var hs-var">getQueryFromURI</span></a></span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(URI -&gt; String) -&gt; a String String
+forall (a :: * -&gt; * -&gt; *).
+ArrowList a =&gt;
+(URI -&gt; String) -&gt; a String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getPartFromURI"><span class="hs-identifier hs-var">getPartFromURI</span></a></span><span> </span><span class="annot"><span class="annottext">URI -&gt; String
+</span><span class="hs-identifier hs-var hs-var">uriQuery</span></span><span>
+</span><span id="line-224"></span><span>
+</span><span id="line-225"></span><span class="hs-comment">-- | arrow for computing the fragment component of an URI, fails if input is not a legal URI</span><span>
+</span><span id="line-226"></span><span>
+</span><span id="line-227"></span><span id="local-6989586621679185123"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getFragmentFromURI"><span class="hs-identifier hs-type">getFragmentFromURI</span></a></span><span>      </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#ArrowList"><span class="hs-identifier hs-type">ArrowList</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185123"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185123"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span></span><span>
+</span><span id="line-228"></span><span id="getFragmentFromURI"><span class="annot"><span class="annottext">getFragmentFromURI :: a String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getFragmentFromURI"><span class="hs-identifier hs-var hs-var">getFragmentFromURI</span></a></span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(URI -&gt; String) -&gt; a String String
+forall (a :: * -&gt; * -&gt; *).
+ArrowList a =&gt;
+(URI -&gt; String) -&gt; a String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getPartFromURI"><span class="hs-identifier hs-var">getPartFromURI</span></a></span><span> </span><span class="annot"><span class="annottext">URI -&gt; String
+</span><span class="hs-identifier hs-var hs-var">uriFragment</span></span><span>
+</span><span id="line-229"></span><span>
+</span><span id="line-230"></span><span class="hs-comment">-- | arrow for computing the path component of an URI, fails if input is not a legal URI</span><span>
+</span><span id="line-231"></span><span>
+</span><span id="line-232"></span><span id="local-6989586621679185236"><span class="annot"><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getPartFromURI"><span class="hs-identifier hs-type">getPartFromURI</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#ArrowList"><span class="hs-identifier hs-type">ArrowList</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185236"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">URI</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185236"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span></span><span>
+</span><span id="line-233"></span><span id="getPartFromURI"><span class="annot"><span class="annottext">getPartFromURI :: (URI -&gt; String) -&gt; a String String
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#getPartFromURI"><span class="hs-identifier hs-var hs-var">getPartFromURI</span></a></span></span><span> </span><span id="local-6989586621679185121"><span class="annot"><span class="annottext">URI -&gt; String
+</span><a href="#local-6989586621679185121"><span class="hs-identifier hs-var">sel</span></a></span></span><span>
+</span><span id="line-234"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(String -&gt; [String]) -&gt; a String String
+forall (a :: * -&gt; * -&gt; *) b c. ArrowList a =&gt; (b -&gt; [c]) -&gt; a b c
+</span><a href="Control.Arrow.ArrowList.html#arrL"><span class="hs-identifier hs-var">arrL</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe String -&gt; [String]
+forall a. Maybe a -&gt; [a]
+</span><span class="hs-identifier hs-var">maybeToList</span></span><span> </span><span class="annot"><span class="annottext">(Maybe String -&gt; [String])
+-&gt; (String -&gt; Maybe String) -&gt; String -&gt; [String]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Maybe String
+</span><a href="#local-6989586621679185120"><span class="hs-identifier hs-var">getPart</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-235"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-236"></span><span>      </span><span id="local-6989586621679185120"><span class="annot"><span class="annottext">getPart :: String -&gt; Maybe String
+</span><a href="#local-6989586621679185120"><span class="hs-identifier hs-var hs-var">getPart</span></a></span></span><span> </span><span id="local-6989586621679185119"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185119"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-237"></span><span>                  </span><span id="local-6989586621679185118"><span class="annot"><span class="annottext">URI
+</span><a href="#local-6989586621679185118"><span class="hs-identifier hs-var">uri</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; Maybe URI
+</span><a href="Text.XML.HXT.Arrow.XmlState.URIHandling.html#parseURIReference%27"><span class="hs-identifier hs-var">parseURIReference'</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679185119"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-238"></span><span>                  </span><span class="annot"><span class="annottext">String -&gt; Maybe String
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">URI -&gt; String
+</span><a href="#local-6989586621679185121"><span class="hs-identifier hs-var">sel</span></a></span><span> </span><span class="annot"><span class="annottext">URI
+</span><a href="#local-6989586621679185118"><span class="hs-identifier hs-var">uri</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-239"></span><span>
+</span><span id="line-240"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-241"></span></pre></body></html>

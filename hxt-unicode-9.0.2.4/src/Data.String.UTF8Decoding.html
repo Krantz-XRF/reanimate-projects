@@ -1,0 +1,137 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+   Module     : Data.String.UTF8Decoding
+   Copyright  : Copyright (C) 2010- Uwe Schmidt
+   License    : MIT
+
+   Maintainer : Uwe Schmidt (uwe@fh-wedel.de)
+   Stability  : stable
+   Portability: portable
+
+   Interface for Data.Char.UTF8 funtions
+
+-}</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Data.String.UTF8Decoding</span><span> </span><span class="hs-special">(</span><span>
+</span><span id="line-19"></span><span>   </span><span class="annot"><a href="Data.String.UTF8Decoding.html#decodeUtf8"><span class="hs-identifier">decodeUtf8</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-20"></span><span>   </span><span class="annot"><a href="Data.String.UTF8Decoding.html#decodeUtf8EmbedErrors"><span class="hs-identifier">decodeUtf8EmbedErrors</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-21"></span><span>   </span><span class="annot"><a href="Data.String.UTF8Decoding.html#decodeUtf8IgnoreErrors"><span class="hs-identifier">decodeUtf8IgnoreErrors</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-22"></span><span>   </span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Data.String.UTF8.html"><span class="hs-identifier">Data.String.UTF8</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">UTF8</span></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Word</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Word8</span></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- | calls 'Data.Char.UTF8.decode' for parsing and decoding UTF-8</span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="annot"><a href="Data.String.UTF8Decoding.html#decodeUtf8"><span class="hs-identifier hs-type">decodeUtf8</span></a></span><span>      </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span id="decodeUtf8"><span class="annot"><span class="annottext">decodeUtf8 :: String -&gt; (String, [String])
+</span><a href="Data.String.UTF8Decoding.html#decodeUtf8"><span class="hs-identifier hs-var hs-var">decodeUtf8</span></a></span></span><span> </span><span id="local-6989586621679033395"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679033395"><span class="hs-identifier hs-var">str</span></a></span></span><span>
+</span><span id="line-32"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679033394"><span class="hs-identifier hs-var">res</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">((Error, Int) -&gt; String) -&gt; [(Error, Int)] -&gt; [String]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Error -&gt; Int -&gt; String) -&gt; (Error, Int) -&gt; String
+forall a b c. (a -&gt; b -&gt; c) -&gt; (a, b) -&gt; c
+</span><span class="hs-identifier hs-var">uncurry</span></span><span> </span><span class="annot"><span class="annottext">Error -&gt; Int -&gt; String
+</span><a href="Data.String.UTF8Decoding.html#toErrStr"><span class="hs-identifier hs-var">toErrStr</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[(Error, Int)]
+</span><a href="#local-6989586621679033391"><span class="hs-identifier hs-var">errs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-34"></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679033394"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679033394"><span class="hs-identifier hs-var">res</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033391"><span class="annot"><span class="annottext">[(Error, Int)]
+</span><a href="#local-6989586621679033391"><span class="hs-identifier hs-var">errs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Word8] -&gt; (String, [(Error, Int)])
+</span><a href="Data.String.UTF8.html#decode"><span class="hs-identifier hs-var">UTF8.decode</span></a></span><span> </span><span class="annot"><span class="annottext">([Word8] -&gt; (String, [(Error, Int)]))
+-&gt; (String -&gt; [Word8]) -&gt; String -&gt; (String, [(Error, Int)])
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; [Word8]
+</span><a href="Data.String.UTF8Decoding.html#stringToByteString"><span class="hs-identifier hs-var">stringToByteString</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; (String, [(Error, Int)]))
+-&gt; String -&gt; (String, [(Error, Int)])
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679033395"><span class="hs-identifier hs-var">str</span></a></span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="annot"><a href="Data.String.UTF8Decoding.html#decodeUtf8IgnoreErrors"><span class="hs-identifier hs-type">decodeUtf8IgnoreErrors</span></a></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-37"></span><span id="decodeUtf8IgnoreErrors"><span class="annot"><span class="annottext">decodeUtf8IgnoreErrors :: String -&gt; String
+</span><a href="Data.String.UTF8Decoding.html#decodeUtf8IgnoreErrors"><span class="hs-identifier hs-var hs-var">decodeUtf8IgnoreErrors</span></a></span></span><span>
+</span><span id="line-38"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(String, [String]) -&gt; String
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="annot"><span class="annottext">((String, [String]) -&gt; String)
+-&gt; (String -&gt; (String, [String])) -&gt; String -&gt; String
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; (String, [String])
+</span><a href="Data.String.UTF8Decoding.html#decodeUtf8"><span class="hs-identifier hs-var">decodeUtf8</span></a></span><span>
+</span><span id="line-39"></span><span>
+</span><span id="line-40"></span><span class="annot"><a href="Data.String.UTF8Decoding.html#decodeUtf8EmbedErrors"><span class="hs-identifier hs-type">decodeUtf8EmbedErrors</span></a></span><span>   </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">]</span><span>
+</span><span id="line-41"></span><span id="decodeUtf8EmbedErrors"><span class="annot"><span class="annottext">decodeUtf8EmbedErrors :: String -&gt; [Either String Char]
+</span><a href="Data.String.UTF8Decoding.html#decodeUtf8EmbedErrors"><span class="hs-identifier hs-var hs-var">decodeUtf8EmbedErrors</span></a></span></span><span> </span><span id="local-6989586621679033387"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679033387"><span class="hs-identifier hs-var">str</span></a></span></span><span>
+</span><span id="line-42"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Either (Error, Int) Char -&gt; Either String Char)
+-&gt; [Either (Error, Int) Char] -&gt; [Either String Char]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">((Error, Int) -&gt; Either String Char)
+-&gt; (Char -&gt; Either String Char)
+-&gt; Either (Error, Int) Char
+-&gt; Either String Char
+forall a c b. (a -&gt; c) -&gt; (b -&gt; c) -&gt; Either a b -&gt; c
+</span><span class="hs-identifier hs-var">either</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Either String Char
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Either String Char)
+-&gt; ((Error, Int) -&gt; String) -&gt; (Error, Int) -&gt; Either String Char
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Error -&gt; Int -&gt; String) -&gt; (Error, Int) -&gt; String
+forall a b c. (a -&gt; b -&gt; c) -&gt; (a, b) -&gt; c
+</span><span class="hs-identifier hs-var">uncurry</span></span><span> </span><span class="annot"><span class="annottext">Error -&gt; Int -&gt; String
+</span><a href="Data.String.UTF8Decoding.html#toErrStr"><span class="hs-identifier hs-var">toErrStr</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Either String Char
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([Either (Error, Int) Char] -&gt; [Either String Char])
+-&gt; [Either (Error, Int) Char] -&gt; [Either String Char]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-43"></span><span>      </span><span class="annot"><span class="annottext">[Word8] -&gt; [Either (Error, Int) Char]
+</span><a href="Data.String.UTF8.html#decodeEmbedErrors"><span class="hs-identifier hs-var">UTF8.decodeEmbedErrors</span></a></span><span> </span><span class="annot"><span class="annottext">([Word8] -&gt; [Either (Error, Int) Char])
+-&gt; [Word8] -&gt; [Either (Error, Int) Char]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; [Word8]
+</span><a href="Data.String.UTF8Decoding.html#stringToByteString"><span class="hs-identifier hs-var">stringToByteString</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; [Word8]) -&gt; String -&gt; [Word8]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679033387"><span class="hs-identifier hs-var">str</span></a></span><span>
+</span><span id="line-44"></span><span>
+</span><span id="line-45"></span><span class="annot"><a href="Data.String.UTF8Decoding.html#stringToByteString"><span class="hs-identifier hs-type">stringToByteString</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span class="hs-special">]</span><span>
+</span><span id="line-46"></span><span id="stringToByteString"><span class="annot"><span class="annottext">stringToByteString :: String -&gt; [Word8]
+</span><a href="Data.String.UTF8Decoding.html#stringToByteString"><span class="hs-identifier hs-var hs-var">stringToByteString</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Word8) -&gt; String -&gt; [Word8]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Word8
+forall a. Enum a =&gt; Int -&gt; a
+</span><span class="hs-identifier hs-var">toEnum</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Word8) -&gt; (Char -&gt; Int) -&gt; Char -&gt; Word8
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Int
+forall a. Enum a =&gt; a -&gt; Int
+</span><span class="hs-identifier hs-var">fromEnum</span></span><span class="hs-special">)</span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span class="annot"><a href="Data.String.UTF8Decoding.html#toErrStr"><span class="hs-identifier hs-type">toErrStr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.String.UTF8.html#Error"><span class="hs-identifier hs-type">UTF8.Error</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-49"></span><span id="toErrStr"><span class="annot"><span class="annottext">toErrStr :: Error -&gt; Int -&gt; String
+</span><a href="Data.String.UTF8Decoding.html#toErrStr"><span class="hs-identifier hs-var hs-var">toErrStr</span></a></span></span><span> </span><span id="local-6989586621679033382"><span class="annot"><span class="annottext">Error
+</span><a href="#local-6989586621679033382"><span class="hs-identifier hs-var">err</span></a></span></span><span> </span><span id="local-6989586621679033381"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033381"><span class="hs-identifier hs-var">pos</span></a></span></span><span>
+</span><span id="line-50"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; at input position &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679033381"><span class="hs-identifier hs-var">pos</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;: &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">Error -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Error
+</span><a href="#local-6989586621679033382"><span class="hs-identifier hs-var">err</span></a></span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-53"></span></pre></body></html>

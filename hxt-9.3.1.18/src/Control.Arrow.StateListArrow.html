@@ -1,0 +1,679 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-4"></span><span>
+</span><span id="line-5"></span><span class="hs-comment">{- |
+   Module     : Control.Arrow.StateListArrow
+   Copyright  : Copyright (C) 2010 Uwe Schmidt
+   License    : MIT
+
+   Maintainer : Uwe Schmidt (uwe\@fh-wedel.de)
+   Stability  : experimental
+   Portability: portable
+
+   Implementation of list arrows with a state
+
+-}</span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Control.Arrow.StateListArrow</span><span>
+</span><span id="line-21"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier">SLA</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Control.Arrow.StateListArrow.html#fromSLA"><span class="hs-identifier">fromSLA</span></a></span><span>
+</span><span id="line-23"></span><span>    </span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Prelude</span></span><span> </span><span class="hs-keyword">hiding</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">id</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(.)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Category</span></span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Arrow</span></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Control.Arrow.ArrowIf.html"><span class="hs-identifier">Control.Arrow.ArrowIf</span></a></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Control.Arrow.ArrowList.html"><span class="hs-identifier">Control.Arrow.ArrowList</span></a></span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Control.Arrow.ArrowNF.html"><span class="hs-identifier">Control.Arrow.ArrowNF</span></a></span><span>
+</span><span id="line-34"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Control.Arrow.ArrowState.html"><span class="hs-identifier">Control.Arrow.ArrowState</span></a></span><span>
+</span><span id="line-35"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Control.Arrow.ArrowTree.html"><span class="hs-identifier">Control.Arrow.ArrowTree</span></a></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Control.Arrow.ArrowNavigatableTree.html"><span class="hs-identifier">Control.Arrow.ArrowNavigatableTree</span></a></span><span>
+</span><span id="line-37"></span><span>
+</span><span id="line-38"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.DeepSeq</span></span><span>
+</span><span id="line-39"></span><span>
+</span><span id="line-40"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- | list arrow combined with a state</span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span class="hs-keyword">newtype</span><span> </span><span id="SLA"><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span></span><span> </span><span id="local-6989586621679171829"><span class="annot"><a href="#local-6989586621679171829"><span class="hs-identifier hs-type">s</span></a></span></span><span> </span><span id="local-6989586621679171828"><span class="annot"><a href="#local-6989586621679171828"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span id="local-6989586621679171827"><span class="annot"><a href="#local-6989586621679171827"><span class="hs-identifier hs-type">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="SLA"><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="runSLA"><span class="annot"><span class="annottext">SLA s a b -&gt; s -&gt; a -&gt; (s, [b])
+</span><a href="Control.Arrow.StateListArrow.html#runSLA"><span class="hs-identifier hs-var hs-var">runSLA</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679171829"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679171828"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679171829"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679171827"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span id="local-6989586621679171351"><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Category</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679171351"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-47"></span><span>    </span><span id="local-6989586621679171347"><span class="annot"><span class="annottext">id :: SLA s a a
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">id</span></span></span><span>                  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; a -&gt; (s, [a])) -&gt; SLA s a a
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; a -&gt; (s, [a])) -&gt; SLA s a a)
+-&gt; (s -&gt; a -&gt; (s, [a])) -&gt; SLA s a a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171345"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171345"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679171344"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679171344"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171345"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679171344"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-48"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><span class="hs-pragma hs-type">id</span></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span>    </span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171343"><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171343"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span id="local-6989586621679171342"><span class="annot"><span class="annottext">. :: SLA s b c -&gt; SLA s a b -&gt; SLA s a c
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">.</span></span></span><span> </span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171340"><span class="annot"><span class="annottext">s -&gt; a -&gt; (s, [b])
+</span><a href="#local-6989586621679171340"><span class="hs-identifier hs-var">f</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; a -&gt; (s, [c])) -&gt; SLA s a c
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; a -&gt; (s, [c])) -&gt; SLA s a c)
+-&gt; (s -&gt; a -&gt; (s, [c])) -&gt; SLA s a c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171339"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171339"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679171338"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679171338"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span>
+</span><span id="line-51"></span><span>                                         </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171337"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171337"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171336"><span class="annot"><span class="annottext">[b]
+</span><a href="#local-6989586621679171336"><span class="hs-identifier hs-var">ys</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; a -&gt; (s, [b])
+</span><a href="#local-6989586621679171340"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171339"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679171338"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-52"></span><span>                                         </span><span id="local-6989586621679171335"><span class="annot"><span class="annottext">sequence' :: s -&gt; [b] -&gt; (s, [c])
+</span><a href="#local-6989586621679171335"><span class="hs-identifier hs-var hs-var">sequence'</span></a></span></span><span> </span><span id="local-6989586621679171334"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171334"><span class="hs-identifier hs-var">s'</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-53"></span><span>                                             </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171334"><span class="hs-identifier hs-var">s'</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-54"></span><span>                                         </span><span class="annot"><a href="#local-6989586621679171335"><span class="hs-identifier hs-var">sequence'</span></a></span><span> </span><span id="local-6989586621679171333"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171333"><span class="hs-identifier hs-var">s'</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679171332"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171332"><span class="hs-identifier hs-var">x'</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679171331"><span class="annot"><span class="annottext">[b]
+</span><a href="#local-6989586621679171331"><span class="hs-identifier hs-var">xs'</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-55"></span><span>                                             </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span>
+</span><span id="line-56"></span><span>                                               </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171330"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171330"><span class="hs-identifier hs-var">s1'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171329"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171329"><span class="hs-identifier hs-var">ys'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171343"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171333"><span class="hs-identifier hs-var">s'</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171332"><span class="hs-identifier hs-var">x'</span></a></span><span>
+</span><span id="line-57"></span><span>                                               </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171328"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171328"><span class="hs-identifier hs-var">s2'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171327"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171327"><span class="hs-identifier hs-var">zs'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; [b] -&gt; (s, [c])
+</span><a href="#local-6989586621679171335"><span class="hs-identifier hs-var">sequence'</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171330"><span class="hs-identifier hs-var">s1'</span></a></span><span> </span><span class="annot"><span class="annottext">[b]
+</span><a href="#local-6989586621679171331"><span class="hs-identifier hs-var">xs'</span></a></span><span>
+</span><span id="line-58"></span><span>                                               </span><span class="hs-keyword">in</span><span>
+</span><span id="line-59"></span><span>                                               </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171328"><span class="hs-identifier hs-var">s2'</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171329"><span class="hs-identifier hs-var">ys'</span></a></span><span> </span><span class="annot"><span class="annottext">[c] -&gt; [c] -&gt; [c]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171327"><span class="hs-identifier hs-var">zs'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-60"></span><span>                                         </span><span class="hs-keyword">in</span><span>
+</span><span id="line-61"></span><span>                                         </span><span class="annot"><span class="annottext">s -&gt; [b] -&gt; (s, [c])
+</span><a href="#local-6989586621679171335"><span class="hs-identifier hs-var">sequence'</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171337"><span class="hs-identifier hs-var">s1</span></a></span><span> </span><span class="annot"><span class="annottext">[b]
+</span><a href="#local-6989586621679171336"><span class="hs-identifier hs-var">ys</span></a></span></span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span id="local-6989586621679171326"><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Arrow</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679171326"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-64"></span><span>    </span><span id="local-6989586621679171318"><span class="annot"><span class="annottext">arr :: (b -&gt; c) -&gt; SLA s b c
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">arr</span></span></span><span> </span><span id="local-6989586621679171317"><span class="annot"><span class="annottext">b -&gt; c
+</span><a href="#local-6989586621679171317"><span class="hs-identifier hs-var">f</span></a></span></span><span>               </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c)
+-&gt; (s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171316"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171316"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679171315"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171315"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171316"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">b -&gt; c
+</span><a href="#local-6989586621679171317"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171315"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-65"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><span class="hs-pragma hs-type">arr</span></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-66"></span><span>
+</span><span id="line-67"></span><span>    </span><span id="local-6989586621679171314"><span class="annot"><span class="annottext">first :: SLA s b c -&gt; SLA s (b, d) (c, d)
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">first</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171313"><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171313"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; (b, d) -&gt; (s, [(c, d)])) -&gt; SLA s (b, d) (c, d)
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; (b, d) -&gt; (s, [(c, d)])) -&gt; SLA s (b, d) (c, d))
+-&gt; (s -&gt; (b, d) -&gt; (s, [(c, d)])) -&gt; SLA s (b, d) (c, d)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171312"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171312"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171311"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171311"><span class="hs-identifier hs-var">x1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171310"><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679171310"><span class="hs-identifier hs-var">x2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span>
+</span><span id="line-68"></span><span>                                                 </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171309"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171309"><span class="hs-identifier hs-var">s'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171308"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171308"><span class="hs-identifier hs-var">ys1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171313"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171312"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171311"><span class="hs-identifier hs-var">x1</span></a></span><span>
+</span><span id="line-69"></span><span>                                                 </span><span class="hs-keyword">in</span><span>
+</span><span id="line-70"></span><span>                                                 </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171309"><span class="hs-identifier hs-var">s'</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679171307"><span class="hs-identifier hs-var">y1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679171310"><span class="hs-identifier hs-var">x2</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679171307"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679171307"><span class="hs-identifier hs-var">y1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171308"><span class="hs-identifier hs-var">ys1</span></a></span><span> </span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-71"></span><span>
+</span><span id="line-72"></span><span>    </span><span class="hs-comment">-- just for efficiency</span><span>
+</span><span id="line-73"></span><span>    </span><span id="local-6989586621679171306"><span class="annot"><span class="annottext">second :: SLA s b c -&gt; SLA s (d, b) (d, c)
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">second</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171304"><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171304"><span class="hs-identifier hs-var">g</span></a></span></span><span class="hs-special">)</span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; (d, b) -&gt; (s, [(d, c)])) -&gt; SLA s (d, b) (d, c)
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; (d, b) -&gt; (s, [(d, c)])) -&gt; SLA s (d, b) (d, c))
+-&gt; (s -&gt; (d, b) -&gt; (s, [(d, c)])) -&gt; SLA s (d, b) (d, c)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171303"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171303"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171302"><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679171302"><span class="hs-identifier hs-var">x1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171301"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171301"><span class="hs-identifier hs-var">x2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span>
+</span><span id="line-74"></span><span>                                                 </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171300"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171300"><span class="hs-identifier hs-var">s'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171299"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171299"><span class="hs-identifier hs-var">ys2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171304"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171303"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171301"><span class="hs-identifier hs-var">x2</span></a></span><span>
+</span><span id="line-75"></span><span>                                                 </span><span class="hs-keyword">in</span><span>
+</span><span id="line-76"></span><span>                                                 </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171300"><span class="hs-identifier hs-var">s'</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679171302"><span class="hs-identifier hs-var">x1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679171298"><span class="hs-identifier hs-var">y2</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679171298"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679171298"><span class="hs-identifier hs-var">y2</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171299"><span class="hs-identifier hs-var">ys2</span></a></span><span> </span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span>    </span><span class="hs-comment">-- just for efficiency</span><span>
+</span><span id="line-79"></span><span>    </span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171297"><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171297"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679171296"><span class="annot"><span class="annottext">*** :: SLA s b c -&gt; SLA s b' c' -&gt; SLA s (b, b') (c, c')
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">***</span></span></span><span> </span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171294"><span class="annot"><span class="annottext">s -&gt; b' -&gt; (s, [c'])
+</span><a href="#local-6989586621679171294"><span class="hs-identifier hs-var">g</span></a></span></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; (b, b') -&gt; (s, [(c, c')])) -&gt; SLA s (b, b') (c, c')
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; (b, b') -&gt; (s, [(c, c')])) -&gt; SLA s (b, b') (c, c'))
+-&gt; (s -&gt; (b, b') -&gt; (s, [(c, c')])) -&gt; SLA s (b, b') (c, c')
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171293"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171293"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171292"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171292"><span class="hs-identifier hs-var">x1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171291"><span class="annot"><span class="annottext">b'
+</span><a href="#local-6989586621679171291"><span class="hs-identifier hs-var">x2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span>
+</span><span id="line-80"></span><span>                                                 </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171290"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171290"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171289"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171289"><span class="hs-identifier hs-var">ys1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171297"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171293"><span class="hs-identifier hs-var">s</span></a></span><span>  </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171292"><span class="hs-identifier hs-var">x1</span></a></span><span>
+</span><span id="line-81"></span><span>                                                 </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171288"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171288"><span class="hs-identifier hs-var">s2</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171287"><span class="annot"><span class="annottext">[c']
+</span><a href="#local-6989586621679171287"><span class="hs-identifier hs-var">ys2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b' -&gt; (s, [c'])
+</span><a href="#local-6989586621679171294"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171290"><span class="hs-identifier hs-var">s1</span></a></span><span> </span><span class="annot"><span class="annottext">b'
+</span><a href="#local-6989586621679171291"><span class="hs-identifier hs-var">x2</span></a></span><span>
+</span><span id="line-82"></span><span>                                                 </span><span class="hs-keyword">in</span><span>
+</span><span id="line-83"></span><span>                                                 </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171288"><span class="hs-identifier hs-var">s2</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679171286"><span class="hs-identifier hs-var">y1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">c'
+</span><a href="#local-6989586621679171285"><span class="hs-identifier hs-var">y2</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679171286"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679171286"><span class="hs-identifier hs-var">y1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171289"><span class="hs-identifier hs-var">ys1</span></a></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171285"><span class="annot"><span class="annottext">c'
+</span><a href="#local-6989586621679171285"><span class="hs-identifier hs-var">y2</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[c']
+</span><a href="#local-6989586621679171287"><span class="hs-identifier hs-var">ys2</span></a></span><span> </span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-84"></span><span>
+</span><span id="line-85"></span><span>    </span><span class="hs-comment">-- just for efficiency</span><span>
+</span><span id="line-86"></span><span>    </span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171284"><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171284"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679171283"><span class="annot"><span class="annottext">&amp;&amp;&amp; :: SLA s b c -&gt; SLA s b c' -&gt; SLA s b (c, c')
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">&amp;&amp;&amp;</span></span></span><span> </span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171281"><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c'])
+</span><a href="#local-6989586621679171281"><span class="hs-identifier hs-var">g</span></a></span></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; (s, [(c, c')])) -&gt; SLA s b (c, c')
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; (s, [(c, c')])) -&gt; SLA s b (c, c'))
+-&gt; (s -&gt; b -&gt; (s, [(c, c')])) -&gt; SLA s b (c, c')
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171280"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171280"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679171279"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171279"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span>
+</span><span id="line-87"></span><span>                                         </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171278"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171278"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171277"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171277"><span class="hs-identifier hs-var">ys1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171284"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171280"><span class="hs-identifier hs-var">s</span></a></span><span>  </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171279"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-88"></span><span>                                         </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171276"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171276"><span class="hs-identifier hs-var">s2</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171275"><span class="annot"><span class="annottext">[c']
+</span><a href="#local-6989586621679171275"><span class="hs-identifier hs-var">ys2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c'])
+</span><a href="#local-6989586621679171281"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171278"><span class="hs-identifier hs-var">s1</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171279"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-89"></span><span>                                         </span><span class="hs-keyword">in</span><span>
+</span><span id="line-90"></span><span>                                         </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171276"><span class="hs-identifier hs-var">s2</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679171274"><span class="hs-identifier hs-var">y1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">c'
+</span><a href="#local-6989586621679171273"><span class="hs-identifier hs-var">y2</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679171274"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679171274"><span class="hs-identifier hs-var">y1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171277"><span class="hs-identifier hs-var">ys1</span></a></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171273"><span class="annot"><span class="annottext">c'
+</span><a href="#local-6989586621679171273"><span class="hs-identifier hs-var">y2</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[c']
+</span><a href="#local-6989586621679171275"><span class="hs-identifier hs-var">ys2</span></a></span><span> </span><span class="hs-special">]</span><span class="hs-special">)</span></span><span>
+</span><span id="line-91"></span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span id="local-6989586621679171272"><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ArrowZero</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679171272"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-94"></span><span>    </span><span id="local-6989586621679171268"><span class="annot"><span class="annottext">zeroArrow :: SLA s b c
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">zeroArrow</span></span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c)
+-&gt; (s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171266"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171266"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(s, [c]) -&gt; b -&gt; (s, [c])
+forall a b. a -&gt; b -&gt; a
+</span><span class="hs-identifier hs-var">const</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171266"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-95"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><span class="hs-pragma hs-type">zeroArrow</span></span><span> </span><span class="hs-pragma">#-}</span></span><span>
+</span><span id="line-96"></span><span>
+</span><span id="line-97"></span><span>
+</span><span id="line-98"></span><span id="local-6989586621679171264"><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ArrowPlus</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679171264"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-99"></span><span>    </span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171260"><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171260"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679171259"><span class="annot"><span class="annottext">&lt;+&gt; :: SLA s b c -&gt; SLA s b c -&gt; SLA s b c
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">&lt;+&gt;</span></span></span><span> </span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171257"><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171257"><span class="hs-identifier hs-var">g</span></a></span></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c)
+-&gt; (s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171256"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171256"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679171255"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171255"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span>
+</span><span id="line-100"></span><span>                                         </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171254"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171254"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171253"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171253"><span class="hs-identifier hs-var">rs1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171260"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171256"><span class="hs-identifier hs-var">s</span></a></span><span>  </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171255"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-101"></span><span>                                         </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171252"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171252"><span class="hs-identifier hs-var">s2</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171251"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171251"><span class="hs-identifier hs-var">rs2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171257"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171254"><span class="hs-identifier hs-var">s1</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171255"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-102"></span><span>                                         </span><span class="hs-keyword">in</span><span>
+</span><span id="line-103"></span><span>                                         </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171252"><span class="hs-identifier hs-var">s2</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171253"><span class="hs-identifier hs-var">rs1</span></a></span><span> </span><span class="annot"><span class="annottext">[c] -&gt; [c] -&gt; [c]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171251"><span class="hs-identifier hs-var">rs2</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-104"></span><span>
+</span><span id="line-105"></span><span id="local-6989586621679171250"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679171243"><span id="local-6989586621679171245"><span class="annot"><span class="hs-identifier hs-type">ArrowChoice</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679171250"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-106"></span><span>    </span><span id="local-6989586621679171241"><span class="annot"><span class="annottext">left :: SLA s b c -&gt; SLA s (Either b d) (Either c d)
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">left</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171239"><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171239"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">)</span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; Either b d -&gt; (s, [Either c d]))
+-&gt; SLA s (Either b d) (Either c d)
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; Either b d -&gt; (s, [Either c d]))
+ -&gt; SLA s (Either b d) (Either c d))
+-&gt; (s -&gt; Either b d -&gt; (s, [Either c d]))
+-&gt; SLA s (Either b d) (Either c d)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171238"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171238"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span>
+</span><span id="line-107"></span><span>                                       </span><span id="local-6989586621679171237"><span class="annot"><span class="annottext">lf :: b -&gt; (s, [Either c b])
+</span><a href="#local-6989586621679171237"><span class="hs-identifier hs-var hs-var">lf</span></a></span></span><span> </span><span id="local-6989586621679171236"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171236"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171235"><span class="hs-identifier hs-var">s1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(c -&gt; Either c b) -&gt; [c] -&gt; [Either c b]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">c -&gt; Either c b
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171234"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-108"></span><span>                                              </span><span class="hs-keyword">where</span><span>
+</span><span id="line-109"></span><span>                                              </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171235"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171235"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171234"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171234"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171239"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171238"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171236"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-110"></span><span>                                       </span><span id="local-6989586621679171233"><span class="annot"><span class="annottext">rf :: b -&gt; (s, [Either a b])
+</span><a href="#local-6989586621679171233"><span class="hs-identifier hs-var hs-var">rf</span></a></span></span><span> </span><span id="local-6989586621679171232"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171232"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171238"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">b -&gt; Either a b
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171232"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-111"></span><span>                                       </span><span class="hs-keyword">in</span><span>
+</span><span id="line-112"></span><span>                                       </span><span class="annot"><span class="annottext">(b -&gt; (s, [Either c d]))
+-&gt; (d -&gt; (s, [Either c d])) -&gt; Either b d -&gt; (s, [Either c d])
+forall a c b. (a -&gt; c) -&gt; (b -&gt; c) -&gt; Either a b -&gt; c
+</span><span class="hs-identifier hs-var">either</span></span><span> </span><span class="annot"><span class="annottext">b -&gt; (s, [Either c d])
+forall b. b -&gt; (s, [Either c b])
+</span><a href="#local-6989586621679171237"><span class="hs-identifier hs-var">lf</span></a></span><span> </span><span class="annot"><span class="annottext">d -&gt; (s, [Either c d])
+forall b a. b -&gt; (s, [Either a b])
+</span><a href="#local-6989586621679171233"><span class="hs-identifier hs-var">rf</span></a></span><span>
+</span><span id="line-113"></span><span>
+</span><span id="line-114"></span><span>    </span><span id="local-6989586621679171230"><span class="annot"><span class="annottext">right :: SLA s b c -&gt; SLA s (Either d b) (Either d c)
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">right</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171228"><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171228"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; Either d b -&gt; (s, [Either d c]))
+-&gt; SLA s (Either d b) (Either d c)
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; Either d b -&gt; (s, [Either d c]))
+ -&gt; SLA s (Either d b) (Either d c))
+-&gt; (s -&gt; Either d b -&gt; (s, [Either d c]))
+-&gt; SLA s (Either d b) (Either d c)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171227"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171227"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span>
+</span><span id="line-115"></span><span>                                       </span><span id="local-6989586621679171226"><span class="annot"><span class="annottext">lf :: a -&gt; (s, [Either a b])
+</span><a href="#local-6989586621679171226"><span class="hs-identifier hs-var hs-var">lf</span></a></span></span><span> </span><span id="local-6989586621679171225"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679171225"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171227"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">a -&gt; Either a b
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679171225"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-116"></span><span>                                       </span><span id="local-6989586621679171224"><span class="annot"><span class="annottext">rf :: b -&gt; (s, [Either a c])
+</span><a href="#local-6989586621679171224"><span class="hs-identifier hs-var hs-var">rf</span></a></span></span><span> </span><span id="local-6989586621679171223"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171223"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171222"><span class="hs-identifier hs-var">s1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(c -&gt; Either a c) -&gt; [c] -&gt; [Either a c]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">c -&gt; Either a c
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171221"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-117"></span><span>                                              </span><span class="hs-keyword">where</span><span>
+</span><span id="line-118"></span><span>                                              </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171222"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171222"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171221"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171221"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171228"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171227"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171223"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-119"></span><span>                                       </span><span class="hs-keyword">in</span><span>
+</span><span id="line-120"></span><span>                                       </span><span class="annot"><span class="annottext">(d -&gt; (s, [Either d c]))
+-&gt; (b -&gt; (s, [Either d c])) -&gt; Either d b -&gt; (s, [Either d c])
+forall a c b. (a -&gt; c) -&gt; (b -&gt; c) -&gt; Either a b -&gt; c
+</span><span class="hs-identifier hs-var">either</span></span><span> </span><span class="annot"><span class="annottext">d -&gt; (s, [Either d c])
+forall a b. a -&gt; (s, [Either a b])
+</span><a href="#local-6989586621679171226"><span class="hs-identifier hs-var">lf</span></a></span><span> </span><span class="annot"><span class="annottext">b -&gt; (s, [Either d c])
+forall a. b -&gt; (s, [Either a c])
+</span><a href="#local-6989586621679171224"><span class="hs-identifier hs-var">rf</span></a></span></span><span>
+</span><span id="line-121"></span><span>
+</span><span id="line-122"></span><span>
+</span><span id="line-123"></span><span id="local-6989586621679171220"><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ArrowApply</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679171220"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-124"></span><span>    </span><span id="local-6989586621679171216"><span class="annot"><span class="annottext">app :: SLA s (SLA s b c, b) c
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">app</span></span></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; (SLA s b c, b) -&gt; (s, [c])) -&gt; SLA s (SLA s b c, b) c
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; (SLA s b c, b) -&gt; (s, [c])) -&gt; SLA s (SLA s b c, b) c)
+-&gt; (s -&gt; (SLA s b c, b) -&gt; (s, [c])) -&gt; SLA s (SLA s b c, b) c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171215"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171215"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171214"><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171214"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171213"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171213"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171214"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171215"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171213"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-125"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><span class="hs-pragma hs-type">app</span></span><span> </span><span class="hs-pragma">#-}</span></span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span>
+</span><span id="line-128"></span><span id="local-6989586621679171212"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679171160"><span id="local-6989586621679171162"><span id="local-6989586621679171165"><span id="local-6989586621679171167"><span id="local-6989586621679171169"><span id="local-6989586621679171171"><span id="local-6989586621679171173"><span id="local-6989586621679171175"><span id="local-6989586621679171177"><span id="local-6989586621679171179"><span id="local-6989586621679171181"><span id="local-6989586621679171183"><span id="local-6989586621679171185"><span id="local-6989586621679171187"><span id="local-6989586621679171189"><span id="local-6989586621679171191"><span id="local-6989586621679171195"><span id="local-6989586621679171198"><span id="local-6989586621679171202"><span id="local-6989586621679171204"><span id="local-6989586621679171206"><span class="annot"><a href="Control.Arrow.ArrowList.html#ArrowList"><span class="hs-identifier hs-type">ArrowList</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679171212"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-129"></span><span>    </span><span id="local-6989586621679171158"><span class="annot"><span class="annottext">arrL :: (b -&gt; [c]) -&gt; SLA s b c
+</span><a href="Control.Arrow.ArrowList.html#arrL"><span class="hs-identifier hs-var hs-var hs-var hs-var">arrL</span></a></span></span><span> </span><span id="local-6989586621679171156"><span class="annot"><span class="annottext">b -&gt; [c]
+</span><a href="#local-6989586621679171156"><span class="hs-identifier hs-var">f</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c)
+-&gt; (s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171155"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171155"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679171154"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171154"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171155"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b -&gt; [c]
+</span><a href="#local-6989586621679171156"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171154"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-130"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#arrL"><span class="hs-pragma hs-type">arrL</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-131"></span><span>    </span><span id="local-6989586621679171153"><span class="annot"><span class="annottext">arr2A :: (b -&gt; SLA s c d) -&gt; SLA s (b, c) d
+</span><a href="Control.Arrow.ArrowList.html#arr2A"><span class="hs-identifier hs-var hs-var hs-var hs-var">arr2A</span></a></span></span><span> </span><span id="local-6989586621679171151"><span class="annot"><span class="annottext">b -&gt; SLA s c d
+</span><a href="#local-6989586621679171151"><span class="hs-identifier hs-var">f</span></a></span></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; (b, c) -&gt; (s, [d])) -&gt; SLA s (b, c) d
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; (b, c) -&gt; (s, [d])) -&gt; SLA s (b, c) d)
+-&gt; (s -&gt; (b, c) -&gt; (s, [d])) -&gt; SLA s (b, c) d
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171150"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171150"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171149"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171149"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171148"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679171148"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">SLA s c d -&gt; s -&gt; c -&gt; (s, [d])
+forall s a b. SLA s a b -&gt; s -&gt; a -&gt; (s, [b])
+</span><a href="Control.Arrow.StateListArrow.html#runSLA"><span class="hs-identifier hs-var hs-var">runSLA</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b -&gt; SLA s c d
+</span><a href="#local-6989586621679171151"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171149"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171150"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679171148"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-132"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#arr2A"><span class="hs-pragma hs-type">arr2A</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-133"></span><span>    </span><span id="local-6989586621679171147"><span class="annot"><span class="annottext">constA :: c -&gt; SLA s b c
+</span><a href="Control.Arrow.ArrowList.html#constA"><span class="hs-identifier hs-var hs-var hs-var hs-var">constA</span></a></span></span><span> </span><span id="local-6989586621679171145"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679171145"><span class="hs-identifier hs-var">c</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c)
+-&gt; (s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171144"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171144"><span class="hs-identifier hs-var">s</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(s, [c]) -&gt; b -&gt; (s, [c])
+forall a b. a -&gt; b -&gt; a
+</span><span class="hs-identifier hs-var">const</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171144"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679171145"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-134"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#constA"><span class="hs-pragma hs-type">constA</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-135"></span><span>    </span><span id="local-6989586621679171143"><span class="annot"><span class="annottext">isA :: (b -&gt; Bool) -&gt; SLA s b b
+</span><a href="Control.Arrow.ArrowList.html#isA"><span class="hs-identifier hs-var hs-var hs-var hs-var">isA</span></a></span></span><span> </span><span id="local-6989586621679171141"><span class="annot"><span class="annottext">b -&gt; Bool
+</span><a href="#local-6989586621679171141"><span class="hs-identifier hs-var">p</span></a></span></span><span>               </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; (s, [b])) -&gt; SLA s b b
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; (s, [b])) -&gt; SLA s b b)
+-&gt; (s -&gt; b -&gt; (s, [b])) -&gt; SLA s b b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171140"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171140"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679171139"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171139"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171140"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">b -&gt; Bool
+</span><a href="#local-6989586621679171141"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171139"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171139"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-136"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#isA"><span class="hs-pragma hs-type">isA</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-137"></span><span>    </span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171138"><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171138"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679171137"><span class="annot"><span class="annottext">&gt;&gt;. :: SLA s b c -&gt; ([c] -&gt; [d]) -&gt; SLA s b d
+</span><a href="Control.Arrow.ArrowList.html#%3E%3E."><span class="hs-operator hs-var hs-var hs-var hs-var">&gt;&gt;.</span></a></span></span><span> </span><span id="local-6989586621679171135"><span class="annot"><span class="annottext">[c] -&gt; [d]
+</span><a href="#local-6989586621679171135"><span class="hs-identifier hs-var">g</span></a></span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; (s, [d])) -&gt; SLA s b d
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; (s, [d])) -&gt; SLA s b d)
+-&gt; (s -&gt; b -&gt; (s, [d])) -&gt; SLA s b d
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171134"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171134"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679171133"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171133"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span>
+</span><span id="line-138"></span><span>                                         </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171132"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171132"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171131"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171131"><span class="hs-identifier hs-var">ys</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171138"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171134"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171133"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-139"></span><span>                                         </span><span class="hs-keyword">in</span><span>
+</span><span id="line-140"></span><span>                                         </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171132"><span class="hs-identifier hs-var">s1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[c] -&gt; [d]
+</span><a href="#local-6989586621679171135"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171131"><span class="hs-identifier hs-var">ys</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-141"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="hs-pragma">(</span><span class="hs-pragma">&gt;&gt;.</span><span class="hs-pragma">)</span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-142"></span><span>    </span><span class="hs-comment">-- just for efficency</span><span>
+</span><span id="line-143"></span><span>    </span><span id="local-6989586621679171130"><span class="annot"><span class="annottext">perform :: SLA s b c -&gt; SLA s b b
+</span><a href="Control.Arrow.ArrowList.html#perform"><span class="hs-identifier hs-var hs-var hs-var hs-var">perform</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171128"><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171128"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; (s, [b])) -&gt; SLA s b b
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; (s, [b])) -&gt; SLA s b b)
+-&gt; (s -&gt; b -&gt; (s, [b])) -&gt; SLA s b b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171127"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171127"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679171126"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171126"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span>
+</span><span id="line-144"></span><span>                                         </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171125"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171125"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171124"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171124"><span class="hs-identifier hs-var">_ys</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171128"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171127"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171126"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-145"></span><span>                                         </span><span class="hs-keyword">in</span><span>
+</span><span id="line-146"></span><span>                                         </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171125"><span class="hs-identifier hs-var">s1</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171126"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-147"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#perform"><span class="hs-pragma hs-type">perform</span></a></span><span> </span><span class="hs-pragma">#-}</span></span><span>
+</span><span id="line-148"></span><span>
+</span><span id="line-149"></span><span id="local-6989586621679171123"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679171090"><span id="local-6989586621679171092"><span id="local-6989586621679171094"><span id="local-6989586621679171096"><span id="local-6989586621679171099"><span id="local-6989586621679171101"><span id="local-6989586621679171103"><span id="local-6989586621679171105"><span id="local-6989586621679171107"><span id="local-6989586621679171109"><span id="local-6989586621679171111"><span id="local-6989586621679171113"><span id="local-6989586621679171115"><span id="local-6989586621679171117"><span id="local-6989586621679171119"><span class="annot"><a href="Control.Arrow.ArrowIf.html#ArrowIf"><span class="hs-identifier hs-type">ArrowIf</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679171123"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-150"></span><span>    </span><span id="local-6989586621679171088"><span class="annot"><span class="annottext">ifA :: SLA s b c -&gt; SLA s b d -&gt; SLA s b d -&gt; SLA s b d
+</span><a href="Control.Arrow.ArrowIf.html#ifA"><span class="hs-identifier hs-var hs-var hs-var hs-var">ifA</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171086"><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171086"><span class="hs-identifier hs-var">p</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679171085"><span class="annot"><span class="annottext">SLA s b d
+</span><a href="#local-6989586621679171085"><span class="hs-identifier hs-var">ta</span></a></span></span><span> </span><span id="local-6989586621679171084"><span class="annot"><span class="annottext">SLA s b d
+</span><a href="#local-6989586621679171084"><span class="hs-identifier hs-var">ea</span></a></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; (s, [d])) -&gt; SLA s b d
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; (s, [d])) -&gt; SLA s b d)
+-&gt; (s -&gt; b -&gt; (s, [d])) -&gt; SLA s b d
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171083"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171083"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679171082"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171082"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span>
+</span><span id="line-151"></span><span>                                         </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679171081"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171081"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171080"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171080"><span class="hs-identifier hs-var">res</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171086"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171083"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171082"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-152"></span><span>                                         </span><span class="hs-keyword">in</span><span>
+</span><span id="line-153"></span><span>                                         </span><span class="annot"><span class="annottext">SLA s b d -&gt; s -&gt; b -&gt; (s, [d])
+forall s a b. SLA s a b -&gt; s -&gt; a -&gt; (s, [b])
+</span><a href="Control.Arrow.StateListArrow.html#runSLA"><span class="hs-identifier hs-var hs-var">runSLA</span></a></span><span> </span><span class="hs-special">(</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">[c] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171080"><span class="hs-identifier hs-var">res</span></a></span><span>
+</span><span id="line-154"></span><span>                                                  </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">SLA s b d
+</span><a href="#local-6989586621679171084"><span class="hs-identifier hs-var">ea</span></a></span><span>
+</span><span id="line-155"></span><span>                                                  </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">SLA s b d
+</span><a href="#local-6989586621679171085"><span class="hs-identifier hs-var">ta</span></a></span><span>
+</span><span id="line-156"></span><span>                                                </span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171081"><span class="hs-identifier hs-var">s1</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171082"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-157"></span><span>
+</span><span id="line-158"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679171078"><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171078"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679171077"><span class="annot"><span class="annottext">orElse :: SLA s b c -&gt; SLA s b c -&gt; SLA s b c
+</span><a href="Control.Arrow.ArrowIf.html#orElse"><span class="hs-operator hs-var hs-var hs-var hs-var">`orElse`</span></a></span></span><span> </span><span id="local-6989586621679171075"><span class="annot"><span class="annottext">SLA s b c
+</span><a href="#local-6989586621679171075"><span class="hs-identifier hs-var">g</span></a></span></span><span>
+</span><span id="line-159"></span><span>                        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c)
+-&gt; (s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171074"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171074"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679171073"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171073"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>  </span><span class="hs-keyword">let</span><span>
+</span><span id="line-160"></span><span>                                          </span><span id="local-6989586621679171072"><span class="annot"><span class="annottext">r :: (s, [c])
+</span><a href="#local-6989586621679171072"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span id="local-6989586621679171071"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171071"><span class="hs-identifier hs-var">s1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679171070"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171070"><span class="hs-identifier hs-var">res</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679171078"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171074"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171073"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-161"></span><span>                                          </span><span class="hs-keyword">in</span><span>
+</span><span id="line-162"></span><span>                                          </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">[c] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679171070"><span class="hs-identifier hs-var">res</span></a></span><span>
+</span><span id="line-163"></span><span>                                          </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">SLA s b c -&gt; s -&gt; b -&gt; (s, [c])
+forall s a b. SLA s a b -&gt; s -&gt; a -&gt; (s, [b])
+</span><a href="Control.Arrow.StateListArrow.html#runSLA"><span class="hs-identifier hs-var hs-var">runSLA</span></a></span><span> </span><span class="annot"><span class="annottext">SLA s b c
+</span><a href="#local-6989586621679171075"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171071"><span class="hs-identifier hs-var">s1</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171073"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-164"></span><span>                                          </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">(s, [c])
+</span><a href="#local-6989586621679171072"><span class="hs-identifier hs-var">r</span></a></span></span><span>
+</span><span id="line-165"></span><span>
+</span><span id="line-166"></span><span>
+</span><span id="line-167"></span><span id="local-6989586621679171069"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679171060"><span id="local-6989586621679171062"><span id="local-6989586621679171064"><span class="annot"><a href="Control.Arrow.ArrowState.html#ArrowState"><span class="hs-identifier hs-type">ArrowState</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679171069"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679171069"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-168"></span><span>    </span><span id="local-6989586621679171058"><span class="annot"><span class="annottext">changeState :: (s -&gt; b -&gt; s) -&gt; SLA s b b
+</span><a href="Control.Arrow.ArrowState.html#changeState"><span class="hs-identifier hs-var hs-var hs-var hs-var">changeState</span></a></span></span><span> </span><span id="local-6989586621679171056"><span class="annot"><span class="annottext">s -&gt; b -&gt; s
+</span><a href="#local-6989586621679171056"><span class="hs-identifier hs-var">cf</span></a></span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; (s, [b])) -&gt; SLA s b b
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; (s, [b])) -&gt; SLA s b b)
+-&gt; (s -&gt; b -&gt; (s, [b])) -&gt; SLA s b b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171055"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171055"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679171054"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171054"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s -&gt; b -&gt; s
+</span><a href="#local-6989586621679171056"><span class="hs-identifier hs-var">cf</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171055"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171054"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171054"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-169"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowState.html#changeState"><span class="hs-pragma hs-type">changeState</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-170"></span><span>    </span><span id="local-6989586621679171053"><span class="annot"><span class="annottext">accessState :: (s -&gt; b -&gt; c) -&gt; SLA s b c
+</span><a href="Control.Arrow.ArrowState.html#accessState"><span class="hs-identifier hs-var hs-var hs-var hs-var">accessState</span></a></span></span><span> </span><span id="local-6989586621679171051"><span class="annot"><span class="annottext">s -&gt; b -&gt; c
+</span><a href="#local-6989586621679171051"><span class="hs-identifier hs-var">af</span></a></span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c)
+-&gt; (s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679171050"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171050"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679171049"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171049"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171050"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">s -&gt; b -&gt; c
+</span><a href="#local-6989586621679171051"><span class="hs-identifier hs-var">af</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679171050"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679171049"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-171"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowState.html#accessState"><span class="hs-pragma hs-type">accessState</span></a></span><span> </span><span class="hs-pragma">#-}</span></span><span>
+</span><span id="line-172"></span><span>
+</span><span id="line-173"></span><span id="local-6989586621679171048"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679170998"><span id="local-6989586621679171000"><span id="local-6989586621679171002"><span id="local-6989586621679171004"><span id="local-6989586621679171006"><span id="local-6989586621679171008"><span id="local-6989586621679171010"><span id="local-6989586621679171012"><span id="local-6989586621679171014"><span id="local-6989586621679171016"><span id="local-6989586621679171018"><span id="local-6989586621679171020"><span id="local-6989586621679171022"><span id="local-6989586621679171024"><span id="local-6989586621679171026"><span id="local-6989586621679171028"><span id="local-6989586621679171030"><span id="local-6989586621679171032"><span id="local-6989586621679171034"><span id="local-6989586621679171036"><span id="local-6989586621679171038"><span id="local-6989586621679171040"><span id="local-6989586621679171042"><span id="local-6989586621679171044"><span class="annot"><a href="Control.Arrow.ArrowTree.html#ArrowTree"><span class="hs-identifier hs-type">ArrowTree</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679171048"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span>
+</span><span id="line-174"></span><span>
+</span><span id="line-175"></span><span id="local-6989586621679170996"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679170987"><span id="local-6989586621679170989"><span id="local-6989586621679170991"><span id="local-6989586621679170993"><span class="annot"><a href="Control.Arrow.ArrowNavigatableTree.html#ArrowNavigatableTree"><span class="hs-identifier hs-type">ArrowNavigatableTree</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170996"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span></span></span></span><span>
+</span><span id="line-176"></span><span>
+</span><span id="line-177"></span><span id="local-6989586621679170985"><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowNF.html#ArrowNF"><span class="hs-identifier hs-type">ArrowNF</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170985"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-178"></span><span>    </span><span id="local-6989586621679170981"><span class="annot"><span class="annottext">rnfA :: SLA s b c -&gt; SLA s b c
+</span><a href="Control.Arrow.ArrowNF.html#rnfA"><span class="hs-identifier hs-var hs-var hs-var hs-var">rnfA</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span id="local-6989586621679170979"><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679170979"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">)</span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c
+forall s a b. (s -&gt; a -&gt; (s, [b])) -&gt; SLA s a b
+</span><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-var">SLA</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c)
+-&gt; (s -&gt; b -&gt; (s, [c])) -&gt; SLA s b c
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679170978"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679170978"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679170977"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679170977"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679170976"><span class="annot"><span class="annottext">res :: (s, [c])
+</span><a href="#local-6989586621679170976"><span class="hs-identifier hs-var hs-var">res</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; b -&gt; (s, [c])
+</span><a href="#local-6989586621679170979"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679170978"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679170977"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-179"></span><span>                                         </span><span class="hs-keyword">in</span><span>
+</span><span id="line-180"></span><span>                                         </span><span class="annot"><span class="annottext">(s, [c]) -&gt; [c]
+forall a b. (a, b) -&gt; b
+</span><span class="hs-identifier hs-var">snd</span></span><span> </span><span class="annot"><span class="annottext">(s, [c])
+</span><a href="#local-6989586621679170976"><span class="hs-identifier hs-var">res</span></a></span><span> </span><span class="annot"><span class="annottext">[c] -&gt; (s, [c]) -&gt; (s, [c])
+forall a b. NFData a =&gt; a -&gt; b -&gt; b
+</span><span class="hs-operator hs-var">`deepseq`</span></span><span>  </span><span class="annot"><span class="annottext">(s, [c])
+</span><a href="#local-6989586621679170976"><span class="hs-identifier hs-var">res</span></a></span></span><span>
+</span><span id="line-181"></span><span>
+</span><span id="line-182"></span><span id="local-6989586621679170974"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679170968"><span id="local-6989586621679170970"><span class="annot"><a href="Control.Arrow.ArrowNF.html#ArrowWNF"><span class="hs-identifier hs-type">ArrowWNF</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170974"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span></span><span>
+</span><span id="line-183"></span><span>
+</span><span id="line-184"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-185"></span><span>
+</span><span id="line-186"></span><span class="hs-comment">-- | conversion of state list arrows into arbitray other</span><span>
+</span><span id="line-187"></span><span class="hs-comment">-- list arrows.</span><span>
+</span><span id="line-188"></span><span class="hs-comment">--</span><span>
+</span><span id="line-189"></span><span class="hs-comment">-- allows running a state list arrow within another arrow:</span><span>
+</span><span id="line-190"></span><span class="hs-comment">--</span><span>
+</span><span id="line-191"></span><span class="hs-comment">-- example:</span><span>
+</span><span id="line-192"></span><span class="hs-comment">--</span><span>
+</span><span id="line-193"></span><span class="hs-comment">-- &gt; ... &gt;&gt;&gt; fromSLA 0 (... setState ... getState ... ) &gt;&gt;&gt; ...</span><span>
+</span><span id="line-194"></span><span class="hs-comment">--</span><span>
+</span><span id="line-195"></span><span class="hs-comment">-- runs a state arrow with initial state 0 (e..g. an Int) within</span><span>
+</span><span id="line-196"></span><span class="hs-comment">-- another arrow sequence</span><span>
+</span><span id="line-197"></span><span>
+</span><span id="line-198"></span><span id="local-6989586621679170963"><span id="local-6989586621679170964"><span id="local-6989586621679170965"><span id="local-6989586621679170966"><span class="annot"><a href="Control.Arrow.StateListArrow.html#fromSLA"><span class="hs-identifier hs-type">fromSLA</span></a></span><span>         </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#ArrowList"><span class="hs-identifier hs-type">ArrowList</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170966"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170965"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Control.Arrow.StateListArrow.html#SLA"><span class="hs-identifier hs-type">SLA</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170965"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170964"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170963"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679170966"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170964"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170963"><span class="hs-identifier hs-type">c</span></a></span></span></span></span></span><span>
+</span><span id="line-199"></span><span id="fromSLA"><span class="annot"><span class="annottext">fromSLA :: s -&gt; SLA s b c -&gt; a b c
+</span><a href="Control.Arrow.StateListArrow.html#fromSLA"><span class="hs-identifier hs-var hs-var">fromSLA</span></a></span></span><span> </span><span id="local-6989586621679170962"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679170962"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679170961"><span class="annot"><span class="annottext">SLA s b c
+</span><a href="#local-6989586621679170961"><span class="hs-identifier hs-var">f</span></a></span></span><span>     </span><span class="hs-glyph">=</span><span>  </span><span class="annot"><span class="annottext">(b -&gt; [c]) -&gt; a b c
+forall (a :: * -&gt; * -&gt; *) b c. ArrowList a =&gt; (b -&gt; [c]) -&gt; a b c
+</span><a href="Control.Arrow.ArrowList.html#arrL"><span class="hs-identifier hs-var">arrL</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(s, [c]) -&gt; [c]
+forall a b. (a, b) -&gt; b
+</span><span class="hs-identifier hs-var">snd</span></span><span> </span><span class="annot"><span class="annottext">((s, [c]) -&gt; [c]) -&gt; (b -&gt; (s, [c])) -&gt; b -&gt; [c]
+forall k (cat :: k -&gt; k -&gt; *) (b :: k) (c :: k) (a :: k).
+Category cat =&gt;
+cat b c -&gt; cat a b -&gt; cat a c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SLA s b c -&gt; s -&gt; b -&gt; (s, [c])
+forall s a b. SLA s a b -&gt; s -&gt; a -&gt; (s, [b])
+</span><a href="Control.Arrow.StateListArrow.html#runSLA"><span class="hs-identifier hs-var hs-var">runSLA</span></a></span><span> </span><span class="annot"><span class="annottext">SLA s b c
+</span><a href="#local-6989586621679170961"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679170962"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-200"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.StateListArrow.html#fromSLA"><span class="hs-pragma hs-type">fromSLA</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-201"></span><span>
+</span><span id="line-202"></span><span>
+</span><span id="line-203"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-204"></span></pre></body></html>

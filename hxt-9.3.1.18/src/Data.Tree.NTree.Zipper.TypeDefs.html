@@ -1,0 +1,761 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# OPTIONS -fno-warn-orphans #-}</span><span>
+</span><span id="line-3"></span><span>
+</span><span id="line-4"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-comment">{- |
+   Module     : Data.Tree.NTree.Zipper.TypeDefs
+   Copyright  : Copyright (C) 2010 Uwe Schmidt
+   License    : MIT
+
+   Maintainer : Uwe Schmidt (uwe\@fh-wedel.de)
+   Stability  : stable
+   Portability: portable
+
+   Implementation of navigateble trees for
+   rose trees. The implementation is done with zippers.
+   A description and introductory tutorial about zippers
+   can be found in &lt;http://learnyouahaskell.com/zippers&gt;
+-}</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Data.Tree.NTree.Zipper.TypeDefs</span><span>
+</span><span id="line-24"></span><span class="hs-comment">{-
+    ( NTZipper
+    , NTree
+    , toNTZipper
+    , fromNTZipper
+    )
+-}</span><span>
+</span><span id="line-31"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Data.Tree.Class.html"><span class="hs-identifier">Data.Tree.Class</span></a></span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html"><span class="hs-identifier">Data.Tree.NavigatableTree.Class</span></a></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html"><span class="hs-identifier">Data.Tree.NavigatableTree.XPathAxis</span></a></span><span>      </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.XPathAxis.html#childAxis"><span class="hs-identifier">childAxis</span></a></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-37"></span><span>
+</span><span id="line-38"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html"><span class="hs-identifier">Data.Tree.NTree.TypeDefs</span></a></span><span>
+</span><span id="line-39"></span><span>
+</span><span id="line-40"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- | Zipper for rose trees</span><span>
+</span><span id="line-43"></span><span class="hs-comment">--</span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- A zipper consist of the current tree and the branches on the way back to the root</span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span class="hs-keyword">data</span><span> </span><span id="NTZipper"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-var">NTZipper</span></a></span></span><span> </span><span id="local-6989586621679170571"><span class="annot"><a href="#local-6989586621679170571"><span class="hs-identifier hs-type">a</span></a></span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span id="NTZ"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-var">NTZ</span></a></span></span><span>
+</span><span id="line-47"></span><span>                          </span><span class="hs-special">{</span><span> </span><span id="ntree"><span class="annot"><span class="annottext">NTZipper a -&gt; NTree a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#ntree"><span class="hs-identifier hs-var hs-var">ntree</span></a></span></span><span>   </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170571"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-48"></span><span>                          </span><span class="hs-special">,</span><span> </span><span id="context"><span class="annot"><span class="annottext">NTZipper a -&gt; NTBreadCrumbs a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#context"><span class="hs-identifier hs-var hs-var">context</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTBreadCrumbs"><span class="hs-identifier hs-type">NTBreadCrumbs</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170571"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-49"></span><span>                          </span><span class="hs-special">}</span><span>
+</span><span id="line-50"></span><span>                          </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679170454"><span id="local-6989586621679170456"><span id="local-6989586621679170458"><span class="annot"><span class="annottext">Int -&gt; NTZipper a -&gt; ShowS
+[NTZipper a] -&gt; ShowS
+NTZipper a -&gt; String
+(Int -&gt; NTZipper a -&gt; ShowS)
+-&gt; (NTZipper a -&gt; String)
+-&gt; ([NTZipper a] -&gt; ShowS)
+-&gt; Show (NTZipper a)
+forall a. Show a =&gt; Int -&gt; NTZipper a -&gt; ShowS
+forall a. Show a =&gt; [NTZipper a] -&gt; ShowS
+forall a. Show a =&gt; NTZipper a -&gt; String
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [NTZipper a] -&gt; ShowS
+$cshowList :: forall a. Show a =&gt; [NTZipper a] -&gt; ShowS
+show :: NTZipper a -&gt; String
+$cshow :: forall a. Show a =&gt; NTZipper a -&gt; String
+showsPrec :: Int -&gt; NTZipper a -&gt; ShowS
+$cshowsPrec :: forall a. Show a =&gt; Int -&gt; NTZipper a -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span class="hs-comment">-- | The list of unzipped nodes from a current tree back to the root</span><span>
+</span><span id="line-53"></span><span>
+</span><span id="line-54"></span><span class="hs-keyword">type</span><span> </span><span id="NTBreadCrumbs"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTBreadCrumbs"><span class="hs-identifier hs-var">NTBreadCrumbs</span></a></span></span><span> </span><span id="local-6989586621679170452"><span class="annot"><a href="#local-6989586621679170452"><span class="hs-identifier hs-type">a</span></a></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTCrumb"><span class="hs-identifier hs-type">NTCrumb</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170452"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span class="hs-comment">-- | One unzipped step consists of the left siblings, the node info and the right siblings</span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span class="hs-keyword">data</span><span> </span><span id="NTCrumb"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTCrumb"><span class="hs-identifier hs-var">NTCrumb</span></a></span></span><span> </span><span id="local-6989586621679170557"><span class="annot"><a href="#local-6989586621679170557"><span class="hs-identifier hs-type">a</span></a></span></span><span>          </span><span class="hs-glyph">=</span><span> </span><span id="NTC"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-var">NTC</span></a></span></span><span>
+</span><span id="line-59"></span><span>                          </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTrees"><span class="hs-identifier hs-type">NTrees</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170557"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>            </span><span class="hs-comment">-- left side</span><span>
+</span><span id="line-60"></span><span>                          </span><span class="annot"><a href="#local-6989586621679170557"><span class="hs-identifier hs-type">a</span></a></span><span>                     </span><span class="hs-comment">-- node</span><span>
+</span><span id="line-61"></span><span>                          </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTrees"><span class="hs-identifier hs-type">NTrees</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170557"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>            </span><span class="hs-comment">-- right side</span><span>
+</span><span id="line-62"></span><span>                          </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679170445"><span id="local-6989586621679170447"><span id="local-6989586621679170449"><span class="annot"><span class="annottext">Int -&gt; NTCrumb a -&gt; ShowS
+[NTCrumb a] -&gt; ShowS
+NTCrumb a -&gt; String
+(Int -&gt; NTCrumb a -&gt; ShowS)
+-&gt; (NTCrumb a -&gt; String)
+-&gt; ([NTCrumb a] -&gt; ShowS)
+-&gt; Show (NTCrumb a)
+forall a. Show a =&gt; Int -&gt; NTCrumb a -&gt; ShowS
+forall a. Show a =&gt; [NTCrumb a] -&gt; ShowS
+forall a. Show a =&gt; NTCrumb a -&gt; String
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [NTCrumb a] -&gt; ShowS
+$cshowList :: forall a. Show a =&gt; [NTCrumb a] -&gt; ShowS
+show :: NTCrumb a -&gt; String
+$cshow :: forall a. Show a =&gt; NTCrumb a -&gt; String
+showsPrec :: Int -&gt; NTCrumb a -&gt; ShowS
+$cshowsPrec :: forall a. Show a =&gt; Int -&gt; NTCrumb a -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-63"></span><span>
+</span><span id="line-64"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-65"></span><span>
+</span><span id="line-66"></span><span class="hs-comment">-- | Conversion of a rose tree into a navigatable rose tree</span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span id="local-6989586621679170497"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#toNTZipper"><span class="hs-identifier hs-type">toNTZipper</span></a></span><span>              </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170497"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170497"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-69"></span><span id="toNTZipper"><span class="annot"><span class="annottext">toNTZipper :: NTree a -&gt; NTZipper a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#toNTZipper"><span class="hs-identifier hs-var hs-var">toNTZipper</span></a></span></span><span> </span><span id="local-6989586621679170443"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170443"><span class="hs-identifier hs-var">t</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+forall a. NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-var">NTZ</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170443"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#toNTZipper"><span class="hs-pragma hs-type">toNTZipper</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-72"></span><span>
+</span><span id="line-73"></span><span class="hs-comment">-- | Conversion of a navigatable rose tree into an ordinary rose tree.</span><span>
+</span><span id="line-74"></span><span class="hs-comment">--</span><span>
+</span><span id="line-75"></span><span class="hs-comment">-- The context, the parts for moving up to the root are just removed from the tree.</span><span>
+</span><span id="line-76"></span><span class="hs-comment">-- So when transforming a navigatable tree by moving around and by changing some nodes,</span><span>
+</span><span id="line-77"></span><span class="hs-comment">-- one has to navigate back</span><span>
+</span><span id="line-78"></span><span class="hs-comment">-- to the root, else that parts are removed from the result</span><span>
+</span><span id="line-79"></span><span>
+</span><span id="line-80"></span><span id="local-6989586621679170442"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#fromNTZipper"><span class="hs-identifier hs-type">fromNTZipper</span></a></span><span>            </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170442"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170442"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-81"></span><span id="fromNTZipper"><span class="annot"><span class="annottext">fromNTZipper :: NTZipper a -&gt; NTree a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#fromNTZipper"><span class="hs-identifier hs-var hs-var">fromNTZipper</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; NTree a
+forall a. NTZipper a -&gt; NTree a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#ntree"><span class="hs-identifier hs-var hs-var">ntree</span></a></span><span>
+</span><span id="line-82"></span><span>
+</span><span id="line-83"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#fromNTZipper"><span class="hs-pragma hs-type">fromNTZipper</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-84"></span><span>
+</span><span id="line-85"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-86"></span><span>
+</span><span id="line-87"></span><span id="local-6989586621679170440"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#up"><span class="hs-identifier hs-type">up</span></a></span><span>                      </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170440"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170440"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-88"></span><span id="up"><span class="annot"><span class="annottext">up :: NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#up"><span class="hs-identifier hs-var hs-var">up</span></a></span></span><span> </span><span id="local-6989586621679170438"><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170438"><span class="hs-identifier hs-var">z</span></a></span></span><span>
+</span><span id="line-89"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Bool
+forall a. NTZipper a -&gt; Bool
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#isTop"><span class="hs-identifier hs-var">isTop</span></a></span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170438"><span class="hs-identifier hs-var">z</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (NTZipper a)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-90"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Maybe (NTZipper a)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(NTZipper a -&gt; Maybe (NTZipper a))
+-&gt; NTZipper a -&gt; Maybe (NTZipper a)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+forall a. NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-var">NTZ</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTree a -&gt; NTCrumb a -&gt; NTree a
+forall a. NTree a -&gt; NTCrumb a -&gt; NTree a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#up1"><span class="hs-identifier hs-var">up1</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170435"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">NTCrumb a
+</span><a href="#local-6989586621679170434"><span class="hs-identifier hs-var">bc</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170433"><span class="hs-identifier hs-var">bcs</span></a></span><span>
+</span><span id="line-91"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-92"></span><span>    </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-type">NTZ</span></a></span><span> </span><span id="local-6989586621679170435"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170435"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679170434"><span class="annot"><span class="annottext">NTCrumb a
+</span><a href="#local-6989586621679170434"><span class="hs-identifier hs-var">bc</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679170433"><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170433"><span class="hs-identifier hs-var">bcs</span></a></span></span><span class="hs-special">)</span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170438"><span class="hs-identifier hs-var">z</span></a></span><span>
+</span><span id="line-93"></span><span>
+</span><span id="line-94"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#up"><span class="hs-pragma hs-type">up</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-95"></span><span>
+</span><span id="line-96"></span><span id="local-6989586621679170432"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#down"><span class="hs-identifier hs-type">down</span></a></span><span>                    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170432"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170432"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-97"></span><span id="down"><span class="annot"><span class="annottext">down :: NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#down"><span class="hs-identifier hs-var hs-var">down</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-type">NTZ</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span id="local-6989586621679170429"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170429"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679170428"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170428"><span class="hs-identifier hs-var">cs</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679170427"><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170427"><span class="hs-identifier hs-var">bcs</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-98"></span><span>          </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">NTrees a -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170428"><span class="hs-identifier hs-var">cs</span></a></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (NTZipper a)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-99"></span><span>          </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Maybe (NTZipper a)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(NTZipper a -&gt; Maybe (NTZipper a))
+-&gt; NTZipper a -&gt; Maybe (NTZipper a)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+forall a. NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-var">NTZ</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTrees a -&gt; NTree a
+forall a. [a] -&gt; a
+</span><span class="hs-identifier hs-var">head</span></span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170428"><span class="hs-identifier hs-var">cs</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTrees a -&gt; a -&gt; NTrees a -&gt; NTCrumb a
+forall a. NTrees a -&gt; a -&gt; NTrees a -&gt; NTCrumb a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-var">NTC</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170429"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTrees a -&gt; NTrees a
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">tail</span></span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170428"><span class="hs-identifier hs-var">cs</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NTCrumb a -&gt; NTBreadCrumbs a -&gt; NTBreadCrumbs a
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170427"><span class="hs-identifier hs-var">bcs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#down"><span class="hs-pragma hs-type">down</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-102"></span><span>
+</span><span id="line-103"></span><span id="local-6989586621679170423"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#toTheRight"><span class="hs-identifier hs-type">toTheRight</span></a></span><span>                   </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170423"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170423"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-104"></span><span id="toTheRight"><span class="annot"><span class="annottext">toTheRight :: NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#toTheRight"><span class="hs-identifier hs-var hs-var">toTheRight</span></a></span></span><span> </span><span id="local-6989586621679170421"><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170421"><span class="hs-identifier hs-var">z</span></a></span></span><span>
+</span><span id="line-105"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Bool
+forall a. NTZipper a -&gt; Bool
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#isTop"><span class="hs-identifier hs-var">isTop</span></a></span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170421"><span class="hs-identifier hs-var">z</span></a></span><span>
+</span><span id="line-106"></span><span>      </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span>
+</span><span id="line-107"></span><span>      </span><span class="annot"><span class="annottext">[NTree a] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170419"><span class="hs-identifier hs-var">rs</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (NTZipper a)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-108"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Maybe (NTZipper a)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(NTZipper a -&gt; Maybe (NTZipper a))
+-&gt; NTZipper a -&gt; Maybe (NTZipper a)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+forall a. NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-var">NTZ</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170418"><span class="hs-identifier hs-var">t'</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTCrumb a
+</span><a href="#local-6989586621679170417"><span class="hs-identifier hs-var">bc'</span></a></span><span> </span><span class="annot"><span class="annottext">NTCrumb a -&gt; NTBreadCrumbs a -&gt; NTBreadCrumbs a
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170416"><span class="hs-identifier hs-var">bcs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-109"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-110"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-type">NTZ</span></a></span><span> </span><span id="local-6989586621679170415"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170415"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679170414"><span class="annot"><span class="annottext">NTCrumb a
+</span><a href="#local-6989586621679170414"><span class="hs-identifier hs-var">bc</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679170416"><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170416"><span class="hs-identifier hs-var">bcs</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170421"><span class="hs-identifier hs-var">z</span></a></span><span>
+</span><span id="line-111"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-type">NTC</span></a></span><span> </span><span id="local-6989586621679170413"><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170413"><span class="hs-identifier hs-var">ls</span></a></span></span><span> </span><span id="local-6989586621679170412"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170412"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679170419"><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170419"><span class="hs-identifier hs-var">rs</span></a></span></span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTCrumb a
+</span><a href="#local-6989586621679170414"><span class="hs-identifier hs-var">bc</span></a></span><span>
+</span><span id="line-112"></span><span>    </span><span id="local-6989586621679170418"><span class="annot"><span class="annottext">t' :: NTree a
+</span><a href="#local-6989586621679170418"><span class="hs-identifier hs-var hs-var">t'</span></a></span></span><span>                  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[NTree a] -&gt; NTree a
+forall a. [a] -&gt; a
+</span><span class="hs-identifier hs-var">head</span></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170419"><span class="hs-identifier hs-var">rs</span></a></span><span>
+</span><span id="line-113"></span><span>    </span><span id="local-6989586621679170417"><span class="annot"><span class="annottext">bc' :: NTCrumb a
+</span><a href="#local-6989586621679170417"><span class="hs-identifier hs-var hs-var">bc'</span></a></span></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[NTree a] -&gt; a -&gt; [NTree a] -&gt; NTCrumb a
+forall a. NTrees a -&gt; a -&gt; NTrees a -&gt; NTCrumb a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-var">NTC</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170415"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; [NTree a] -&gt; [NTree a]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170413"><span class="hs-identifier hs-var">ls</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170412"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[NTree a] -&gt; [NTree a]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">tail</span></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170419"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-114"></span><span>
+</span><span id="line-115"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#toTheRight"><span class="hs-pragma hs-type">toTheRight</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-116"></span><span>
+</span><span id="line-117"></span><span id="local-6989586621679170411"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#toTheLeft"><span class="hs-identifier hs-type">toTheLeft</span></a></span><span>                    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170411"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170411"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-118"></span><span id="toTheLeft"><span class="annot"><span class="annottext">toTheLeft :: NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#toTheLeft"><span class="hs-identifier hs-var hs-var">toTheLeft</span></a></span></span><span> </span><span id="local-6989586621679170409"><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170409"><span class="hs-identifier hs-var">z</span></a></span></span><span>
+</span><span id="line-119"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Bool
+forall a. NTZipper a -&gt; Bool
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#isTop"><span class="hs-identifier hs-var">isTop</span></a></span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170409"><span class="hs-identifier hs-var">z</span></a></span><span>
+</span><span id="line-120"></span><span>      </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span>
+</span><span id="line-121"></span><span>      </span><span class="annot"><span class="annottext">[NTree a] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170408"><span class="hs-identifier hs-var">ls</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (NTZipper a)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-122"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Maybe (NTZipper a)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(NTZipper a -&gt; Maybe (NTZipper a))
+-&gt; NTZipper a -&gt; Maybe (NTZipper a)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+forall a. NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-var">NTZ</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170407"><span class="hs-identifier hs-var">t'</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTCrumb a
+</span><a href="#local-6989586621679170406"><span class="hs-identifier hs-var">bc'</span></a></span><span> </span><span class="annot"><span class="annottext">NTCrumb a -&gt; NTBreadCrumbs a -&gt; NTBreadCrumbs a
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170405"><span class="hs-identifier hs-var">bcs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-123"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-124"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-type">NTZ</span></a></span><span> </span><span id="local-6989586621679170404"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170404"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679170403"><span class="annot"><span class="annottext">NTCrumb a
+</span><a href="#local-6989586621679170403"><span class="hs-identifier hs-var">bc</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679170405"><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170405"><span class="hs-identifier hs-var">bcs</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170409"><span class="hs-identifier hs-var">z</span></a></span><span>
+</span><span id="line-125"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-type">NTC</span></a></span><span> </span><span id="local-6989586621679170408"><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170408"><span class="hs-identifier hs-var">ls</span></a></span></span><span> </span><span id="local-6989586621679170402"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170402"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679170401"><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170401"><span class="hs-identifier hs-var">rs</span></a></span></span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTCrumb a
+</span><a href="#local-6989586621679170403"><span class="hs-identifier hs-var">bc</span></a></span><span>
+</span><span id="line-126"></span><span>    </span><span id="local-6989586621679170407"><span class="annot"><span class="annottext">t' :: NTree a
+</span><a href="#local-6989586621679170407"><span class="hs-identifier hs-var hs-var">t'</span></a></span></span><span>                  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[NTree a] -&gt; NTree a
+forall a. [a] -&gt; a
+</span><span class="hs-identifier hs-var">head</span></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170408"><span class="hs-identifier hs-var">ls</span></a></span><span>
+</span><span id="line-127"></span><span>    </span><span id="local-6989586621679170406"><span class="annot"><span class="annottext">bc' :: NTCrumb a
+</span><a href="#local-6989586621679170406"><span class="hs-identifier hs-var hs-var">bc'</span></a></span></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[NTree a] -&gt; a -&gt; [NTree a] -&gt; NTCrumb a
+forall a. NTrees a -&gt; a -&gt; NTrees a -&gt; NTCrumb a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-var">NTC</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[NTree a] -&gt; [NTree a]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">tail</span></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170408"><span class="hs-identifier hs-var">ls</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170402"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170404"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; [NTree a] -&gt; [NTree a]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170401"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-128"></span><span>
+</span><span id="line-129"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#toTheLeft"><span class="hs-pragma hs-type">toTheLeft</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-130"></span><span>
+</span><span id="line-131"></span><span id="local-6989586621679170400"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#addToTheLeft"><span class="hs-identifier hs-type">addToTheLeft</span></a></span><span>            </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170400"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170400"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170400"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-132"></span><span id="addToTheLeft"><span class="annot"><span class="annottext">addToTheLeft :: NTree a -&gt; NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#addToTheLeft"><span class="hs-identifier hs-var hs-var">addToTheLeft</span></a></span></span><span> </span><span id="local-6989586621679170398"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170398"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679170397"><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170397"><span class="hs-identifier hs-var">z</span></a></span></span><span>
+</span><span id="line-133"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Bool
+forall a. NTZipper a -&gt; Bool
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#isTop"><span class="hs-identifier hs-var">isTop</span></a></span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170397"><span class="hs-identifier hs-var">z</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (NTZipper a)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-134"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Maybe (NTZipper a)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(NTZipper a -&gt; Maybe (NTZipper a))
+-&gt; NTZipper a -&gt; Maybe (NTZipper a)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+forall a. NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-var">NTZ</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170396"><span class="hs-identifier hs-var">t'</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTrees a -&gt; a -&gt; NTrees a -&gt; NTCrumb a
+forall a. NTrees a -&gt; a -&gt; NTrees a -&gt; NTCrumb a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-var">NTC</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170398"><span class="hs-identifier hs-var">t</span></a></span><span class="annot"><span class="annottext">NTree a -&gt; NTrees a -&gt; NTrees a
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170395"><span class="hs-identifier hs-var">ls</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170394"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170393"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="annot"><span class="annottext">NTCrumb a -&gt; NTBreadCrumbs a -&gt; NTBreadCrumbs a
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170392"><span class="hs-identifier hs-var">bcs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-135"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-136"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-type">NTZ</span></a></span><span> </span><span id="local-6989586621679170396"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170396"><span class="hs-identifier hs-var">t'</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679170391"><span class="annot"><span class="annottext">NTCrumb a
+</span><a href="#local-6989586621679170391"><span class="hs-identifier hs-var">bc</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679170392"><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170392"><span class="hs-identifier hs-var">bcs</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170397"><span class="hs-identifier hs-var">z</span></a></span><span>
+</span><span id="line-137"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-type">NTC</span></a></span><span> </span><span id="local-6989586621679170395"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170395"><span class="hs-identifier hs-var">ls</span></a></span></span><span> </span><span id="local-6989586621679170394"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170394"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679170393"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170393"><span class="hs-identifier hs-var">rs</span></a></span></span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTCrumb a
+</span><a href="#local-6989586621679170391"><span class="hs-identifier hs-var">bc</span></a></span><span>
+</span><span id="line-138"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#addToTheLeft"><span class="hs-pragma hs-type">addToTheLeft</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-139"></span><span>
+</span><span id="line-140"></span><span id="local-6989586621679170390"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#addToTheRight"><span class="hs-identifier hs-type">addToTheRight</span></a></span><span>            </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170390"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170390"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170390"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-141"></span><span id="addToTheRight"><span class="annot"><span class="annottext">addToTheRight :: NTree a -&gt; NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#addToTheRight"><span class="hs-identifier hs-var hs-var">addToTheRight</span></a></span></span><span> </span><span id="local-6989586621679170388"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170388"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679170387"><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170387"><span class="hs-identifier hs-var">z</span></a></span></span><span>
+</span><span id="line-142"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Bool
+forall a. NTZipper a -&gt; Bool
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#isTop"><span class="hs-identifier hs-var">isTop</span></a></span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170387"><span class="hs-identifier hs-var">z</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (NTZipper a)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-143"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Maybe (NTZipper a)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(NTZipper a -&gt; Maybe (NTZipper a))
+-&gt; NTZipper a -&gt; Maybe (NTZipper a)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+forall a. NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-var">NTZ</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170386"><span class="hs-identifier hs-var">t'</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTrees a -&gt; a -&gt; NTrees a -&gt; NTCrumb a
+forall a. NTrees a -&gt; a -&gt; NTrees a -&gt; NTCrumb a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-var">NTC</span></a></span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170385"><span class="hs-identifier hs-var">ls</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170384"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170388"><span class="hs-identifier hs-var">t</span></a></span><span class="annot"><span class="annottext">NTree a -&gt; NTrees a -&gt; NTrees a
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170383"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NTCrumb a -&gt; NTBreadCrumbs a -&gt; NTBreadCrumbs a
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170382"><span class="hs-identifier hs-var">bcs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-144"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-145"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-type">NTZ</span></a></span><span> </span><span id="local-6989586621679170386"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170386"><span class="hs-identifier hs-var">t'</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679170381"><span class="annot"><span class="annottext">NTCrumb a
+</span><a href="#local-6989586621679170381"><span class="hs-identifier hs-var">bc</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679170382"><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170382"><span class="hs-identifier hs-var">bcs</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170387"><span class="hs-identifier hs-var">z</span></a></span><span>
+</span><span id="line-146"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-type">NTC</span></a></span><span> </span><span id="local-6989586621679170385"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170385"><span class="hs-identifier hs-var">ls</span></a></span></span><span> </span><span id="local-6989586621679170384"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170384"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679170383"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170383"><span class="hs-identifier hs-var">rs</span></a></span></span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTCrumb a
+</span><a href="#local-6989586621679170381"><span class="hs-identifier hs-var">bc</span></a></span><span>
+</span><span id="line-147"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#addToTheRight"><span class="hs-pragma hs-type">addToTheRight</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-148"></span><span>
+</span><span id="line-149"></span><span id="local-6989586621679170380"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#dropFromTheLeft"><span class="hs-identifier hs-type">dropFromTheLeft</span></a></span><span>            </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170380"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170380"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-150"></span><span id="dropFromTheLeft"><span class="annot"><span class="annottext">dropFromTheLeft :: NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#dropFromTheLeft"><span class="hs-identifier hs-var hs-var">dropFromTheLeft</span></a></span></span><span> </span><span id="local-6989586621679170378"><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170378"><span class="hs-identifier hs-var">z</span></a></span></span><span>
+</span><span id="line-151"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Bool
+forall a. NTZipper a -&gt; Bool
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#isTop"><span class="hs-identifier hs-var">isTop</span></a></span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170378"><span class="hs-identifier hs-var">z</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (NTZipper a)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-152"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">[NTree a] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170377"><span class="hs-identifier hs-var">ls</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (NTZipper a)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-153"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Maybe (NTZipper a)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(NTZipper a -&gt; Maybe (NTZipper a))
+-&gt; NTZipper a -&gt; Maybe (NTZipper a)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+forall a. NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-var">NTZ</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170376"><span class="hs-identifier hs-var">t'</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[NTree a] -&gt; a -&gt; [NTree a] -&gt; NTCrumb a
+forall a. NTrees a -&gt; a -&gt; NTrees a -&gt; NTCrumb a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-var">NTC</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[NTree a] -&gt; [NTree a]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">tail</span></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170377"><span class="hs-identifier hs-var">ls</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170375"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170374"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="annot"><span class="annottext">NTCrumb a -&gt; NTBreadCrumbs a -&gt; NTBreadCrumbs a
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170373"><span class="hs-identifier hs-var">bcs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-154"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-155"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-type">NTZ</span></a></span><span> </span><span id="local-6989586621679170376"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170376"><span class="hs-identifier hs-var">t'</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679170372"><span class="annot"><span class="annottext">NTCrumb a
+</span><a href="#local-6989586621679170372"><span class="hs-identifier hs-var">bc</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679170373"><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170373"><span class="hs-identifier hs-var">bcs</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170378"><span class="hs-identifier hs-var">z</span></a></span><span>
+</span><span id="line-156"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-type">NTC</span></a></span><span> </span><span id="local-6989586621679170377"><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170377"><span class="hs-identifier hs-var">ls</span></a></span></span><span> </span><span id="local-6989586621679170375"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170375"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679170374"><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170374"><span class="hs-identifier hs-var">rs</span></a></span></span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTCrumb a
+</span><a href="#local-6989586621679170372"><span class="hs-identifier hs-var">bc</span></a></span><span>
+</span><span id="line-157"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#dropFromTheLeft"><span class="hs-pragma hs-type">dropFromTheLeft</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-158"></span><span>
+</span><span id="line-159"></span><span id="local-6989586621679170371"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#dropFromTheRight"><span class="hs-identifier hs-type">dropFromTheRight</span></a></span><span>        </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170371"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170371"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-160"></span><span id="dropFromTheRight"><span class="annot"><span class="annottext">dropFromTheRight :: NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#dropFromTheRight"><span class="hs-identifier hs-var hs-var">dropFromTheRight</span></a></span></span><span> </span><span id="local-6989586621679170369"><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170369"><span class="hs-identifier hs-var">z</span></a></span></span><span>
+</span><span id="line-161"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Bool
+forall a. NTZipper a -&gt; Bool
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#isTop"><span class="hs-identifier hs-var">isTop</span></a></span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170369"><span class="hs-identifier hs-var">z</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (NTZipper a)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-162"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">[NTree a] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170368"><span class="hs-identifier hs-var">rs</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (NTZipper a)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-163"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Maybe (NTZipper a)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(NTZipper a -&gt; Maybe (NTZipper a))
+-&gt; NTZipper a -&gt; Maybe (NTZipper a)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+forall a. NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-var">NTZ</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170367"><span class="hs-identifier hs-var">t'</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[NTree a] -&gt; a -&gt; [NTree a] -&gt; NTCrumb a
+forall a. NTrees a -&gt; a -&gt; NTrees a -&gt; NTCrumb a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-var">NTC</span></a></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170366"><span class="hs-identifier hs-var">ls</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170365"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[NTree a] -&gt; [NTree a]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">tail</span></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170368"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NTCrumb a -&gt; NTBreadCrumbs a -&gt; NTBreadCrumbs a
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170364"><span class="hs-identifier hs-var">bcs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-164"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-165"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-type">NTZ</span></a></span><span> </span><span id="local-6989586621679170367"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170367"><span class="hs-identifier hs-var">t'</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679170363"><span class="annot"><span class="annottext">NTCrumb a
+</span><a href="#local-6989586621679170363"><span class="hs-identifier hs-var">bc</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679170364"><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170364"><span class="hs-identifier hs-var">bcs</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170369"><span class="hs-identifier hs-var">z</span></a></span><span>
+</span><span id="line-166"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-type">NTC</span></a></span><span> </span><span id="local-6989586621679170366"><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170366"><span class="hs-identifier hs-var">ls</span></a></span></span><span> </span><span id="local-6989586621679170365"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170365"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679170368"><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679170368"><span class="hs-identifier hs-var">rs</span></a></span></span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTCrumb a
+</span><a href="#local-6989586621679170363"><span class="hs-identifier hs-var">bc</span></a></span><span>
+</span><span id="line-167"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#dropFromTheRight"><span class="hs-pragma hs-type">dropFromTheRight</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-168"></span><span>
+</span><span id="line-169"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-170"></span><span>
+</span><span id="line-171"></span><span id="local-6989586621679170567"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#isTop"><span class="hs-identifier hs-type">isTop</span></a></span><span>                   </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170567"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span></span><span>
+</span><span id="line-172"></span><span id="isTop"><span class="annot"><span class="annottext">isTop :: NTZipper a -&gt; Bool
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#isTop"><span class="hs-identifier hs-var hs-var">isTop</span></a></span></span><span>                   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[NTCrumb a] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">([NTCrumb a] -&gt; Bool)
+-&gt; (NTZipper a -&gt; [NTCrumb a]) -&gt; NTZipper a -&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; [NTCrumb a]
+forall a. NTZipper a -&gt; NTBreadCrumbs a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#context"><span class="hs-identifier hs-var hs-var">context</span></a></span><span>
+</span><span id="line-173"></span><span>
+</span><span id="line-174"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#isTop"><span class="hs-pragma hs-type">isTop</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-175"></span><span>
+</span><span id="line-176"></span><span id="local-6989586621679170563"><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#up1"><span class="hs-identifier hs-type">up1</span></a></span><span>                     </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170563"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTCrumb"><span class="hs-identifier hs-type">NTCrumb</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170563"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679170563"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-177"></span><span id="up1"><span class="annot"><span class="annottext">up1 :: NTree a -&gt; NTCrumb a -&gt; NTree a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#up1"><span class="hs-identifier hs-var hs-var">up1</span></a></span></span><span> </span><span id="local-6989586621679170361"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170361"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-type">NTC</span></a></span><span> </span><span id="local-6989586621679170360"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170360"><span class="hs-identifier hs-var">ls</span></a></span></span><span> </span><span id="local-6989586621679170359"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170359"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679170358"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170358"><span class="hs-identifier hs-var">rs</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; NTrees a -&gt; NTree a
+forall a. a -&gt; NTrees a -&gt; NTree a
+</span><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-var">NTree</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170359"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(NTrees a -&gt; NTree a -&gt; NTrees a)
+-&gt; NTrees a -&gt; NTrees a -&gt; NTrees a
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(NTree a -&gt; NTrees a -&gt; NTrees a)
+-&gt; NTrees a -&gt; NTree a -&gt; NTrees a
+forall a b c. (a -&gt; b -&gt; c) -&gt; b -&gt; a -&gt; c
+</span><span class="hs-identifier hs-var">flip</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">:</span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170361"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTrees a -&gt; NTrees a
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170358"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170360"><span class="hs-identifier hs-var">ls</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-178"></span><span>
+</span><span id="line-179"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#up1"><span class="hs-pragma hs-type">up1</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-180"></span><span>
+</span><span id="line-181"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-182"></span><span>
+</span><span id="line-183"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679170353"><span class="annot"><span class="hs-identifier hs-type">Functor</span></span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-184"></span><span>    </span><span id="local-6989586621679170351"><span class="annot"><span class="annottext">fmap :: (a -&gt; b) -&gt; NTZipper a -&gt; NTZipper b
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">fmap</span></span></span><span> </span><span id="local-6989586621679170350"><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679170350"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-type">NTZ</span></a></span><span> </span><span id="local-6989586621679170349"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170349"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679170348"><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170348"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTree b -&gt; NTBreadCrumbs b -&gt; NTZipper b
+forall a. NTree a -&gt; NTBreadCrumbs a -&gt; NTZipper a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZ"><span class="hs-identifier hs-var">NTZ</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a -&gt; b) -&gt; NTree a -&gt; NTree b
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679170350"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170349"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(NTCrumb a -&gt; NTCrumb b) -&gt; NTBreadCrumbs a -&gt; NTBreadCrumbs b
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a -&gt; b) -&gt; NTCrumb a -&gt; NTCrumb b
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679170350"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NTBreadCrumbs a
+</span><a href="#local-6989586621679170348"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-185"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><span class="hs-pragma hs-type">fmap</span></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-186"></span><span>
+</span><span id="line-187"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679170345"><span class="annot"><span class="hs-identifier hs-type">Functor</span></span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTCrumb"><span class="hs-identifier hs-type">NTCrumb</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-188"></span><span>    </span><span id="local-6989586621679170344"><span class="annot"><span class="annottext">fmap :: (a -&gt; b) -&gt; NTCrumb a -&gt; NTCrumb b
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">fmap</span></span></span><span> </span><span id="local-6989586621679170343"><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679170343"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-type">NTC</span></a></span><span> </span><span id="local-6989586621679170342"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170342"><span class="hs-identifier hs-var">xs</span></a></span></span><span> </span><span id="local-6989586621679170341"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170341"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679170340"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170340"><span class="hs-identifier hs-var">ys</span></a></span></span><span class="hs-special">)</span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTrees b -&gt; b -&gt; NTrees b -&gt; NTCrumb b
+forall a. NTrees a -&gt; a -&gt; NTrees a -&gt; NTCrumb a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTC"><span class="hs-identifier hs-var">NTC</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(NTree a -&gt; NTree b) -&gt; NTrees a -&gt; NTrees b
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a -&gt; b) -&gt; NTree a -&gt; NTree b
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679170343"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170342"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679170343"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170341"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(NTree a -&gt; NTree b) -&gt; NTrees a -&gt; NTrees b
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a -&gt; b) -&gt; NTree a -&gt; NTree b
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679170343"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679170340"><span class="hs-identifier hs-var">ys</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-189"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><span class="hs-pragma hs-type">fmap</span></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-190"></span><span>
+</span><span id="line-191"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679170316"><span id="local-6989586621679170318"><span id="local-6989586621679170320"><span id="local-6989586621679170322"><span id="local-6989586621679170325"><span id="local-6989586621679170327"><span id="local-6989586621679170333"><span id="local-6989586621679170335"><span id="local-6989586621679170337"><span class="annot"><a href="Data.Tree.Class.html#Tree"><span class="hs-identifier hs-type">Tree</span></a></span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span></span></span></span></span></span></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-192"></span><span>    </span><span id="local-6989586621679170314"><span class="annot"><span class="annottext">mkTree :: a -&gt; [NTZipper a] -&gt; NTZipper a
+</span><a href="Data.Tree.Class.html#mkTree"><span class="hs-identifier hs-var hs-var hs-var hs-var">mkTree</span></a></span></span><span> </span><span id="local-6989586621679170312"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170312"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679170311"><span class="annot"><span class="annottext">[NTZipper a]
+</span><a href="#local-6989586621679170311"><span class="hs-identifier hs-var">cl</span></a></span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTZipper a
+forall a. NTree a -&gt; NTZipper a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#toNTZipper"><span class="hs-identifier hs-var">toNTZipper</span></a></span><span> </span><span class="annot"><span class="annottext">(NTree a -&gt; NTZipper a)
+-&gt; ([NTree a] -&gt; NTree a) -&gt; [NTree a] -&gt; NTZipper a
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; [NTree a] -&gt; NTree a
+forall (t :: * -&gt; *) a. Tree t =&gt; a -&gt; [t a] -&gt; t a
+</span><a href="Data.Tree.Class.html#mkTree"><span class="hs-identifier hs-var">mkTree</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679170312"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">([NTree a] -&gt; NTZipper a) -&gt; [NTree a] -&gt; NTZipper a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(NTZipper a -&gt; NTree a) -&gt; [NTZipper a] -&gt; [NTree a]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; NTree a
+forall a. NTZipper a -&gt; NTree a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#ntree"><span class="hs-identifier hs-var hs-var">ntree</span></a></span><span> </span><span class="annot"><span class="annottext">[NTZipper a]
+</span><a href="#local-6989586621679170311"><span class="hs-identifier hs-var">cl</span></a></span><span>
+</span><span id="line-193"></span><span>
+</span><span id="line-194"></span><span>    </span><span id="local-6989586621679170310"><span class="annot"><span class="annottext">getNode :: NTZipper a -&gt; a
+</span><a href="Data.Tree.Class.html#getNode"><span class="hs-identifier hs-var hs-var hs-var hs-var">getNode</span></a></span></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; a
+forall (t :: * -&gt; *) a. Tree t =&gt; t a -&gt; a
+</span><a href="Data.Tree.Class.html#getNode"><span class="hs-identifier hs-var">getNode</span></a></span><span> </span><span class="annot"><span class="annottext">(NTree a -&gt; a) -&gt; (NTZipper a -&gt; NTree a) -&gt; NTZipper a -&gt; a
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; NTree a
+forall a. NTZipper a -&gt; NTree a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#ntree"><span class="hs-identifier hs-var hs-var">ntree</span></a></span><span>
+</span><span id="line-195"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.Class.html#getNode"><span class="hs-pragma hs-type">getNode</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-196"></span><span>    </span><span id="local-6989586621679170308"><span class="annot"><span class="annottext">getChildren :: NTZipper a -&gt; [NTZipper a]
+</span><a href="Data.Tree.Class.html#getChildren"><span class="hs-identifier hs-var hs-var hs-var hs-var">getChildren</span></a></span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; [NTZipper a]
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#childAxis"><span class="hs-identifier hs-var">childAxis</span></a></span><span>
+</span><span id="line-197"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.Class.html#getChildren"><span class="hs-pragma hs-type">getChildren</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-198"></span><span>
+</span><span id="line-199"></span><span>    </span><span id="local-6989586621679170306"><span class="annot"><span class="annottext">changeNode :: (a -&gt; a) -&gt; NTZipper a -&gt; NTZipper a
+</span><a href="Data.Tree.Class.html#changeNode"><span class="hs-identifier hs-var hs-var hs-var hs-var">changeNode</span></a></span></span><span>     </span><span id="local-6989586621679170304"><span class="annot"><span class="annottext">a -&gt; a
+</span><a href="#local-6989586621679170304"><span class="hs-identifier hs-var">cf</span></a></span></span><span> </span><span id="local-6989586621679170303"><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170303"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170303"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">ntree :: NTree a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#ntree"><span class="hs-identifier hs-var">ntree</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(a -&gt; a) -&gt; NTree a -&gt; NTree a
+forall (t :: * -&gt; *) a. Tree t =&gt; (a -&gt; a) -&gt; t a -&gt; t a
+</span><a href="Data.Tree.Class.html#changeNode"><span class="hs-identifier hs-var">changeNode</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a
+</span><a href="#local-6989586621679170304"><span class="hs-identifier hs-var">cf</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTZipper a -&gt; NTree a
+forall a. NTZipper a -&gt; NTree a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#ntree"><span class="hs-identifier hs-var hs-var">ntree</span></a></span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170303"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-200"></span><span>    </span><span id="local-6989586621679170302"><span class="annot"><span class="annottext">changeChildren :: ([NTZipper a] -&gt; [NTZipper a]) -&gt; NTZipper a -&gt; NTZipper a
+</span><a href="Data.Tree.Class.html#changeChildren"><span class="hs-identifier hs-var hs-var hs-var hs-var">changeChildren</span></a></span></span><span> </span><span id="local-6989586621679170300"><span class="annot"><span class="annottext">[NTZipper a] -&gt; [NTZipper a]
+</span><a href="#local-6989586621679170300"><span class="hs-identifier hs-var">cf</span></a></span></span><span> </span><span id="local-6989586621679170299"><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170299"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170299"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">ntree :: NTree a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#ntree"><span class="hs-identifier hs-var">ntree</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[NTree a] -&gt; NTree a -&gt; NTree a
+forall (t :: * -&gt; *) a. Tree t =&gt; [t a] -&gt; t a -&gt; t a
+</span><a href="Data.Tree.Class.html#setChildren"><span class="hs-identifier hs-var">setChildren</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(NTZipper a -&gt; NTree a) -&gt; [NTZipper a] -&gt; [NTree a]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; NTree a
+forall a. NTZipper a -&gt; NTree a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#ntree"><span class="hs-identifier hs-var hs-var">ntree</span></a></span><span> </span><span class="annot"><span class="annottext">([NTZipper a] -&gt; [NTree a])
+-&gt; (NTZipper a -&gt; [NTZipper a]) -&gt; NTZipper a -&gt; [NTree a]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[NTZipper a] -&gt; [NTZipper a]
+</span><a href="#local-6989586621679170300"><span class="hs-identifier hs-var">cf</span></a></span><span> </span><span class="annot"><span class="annottext">([NTZipper a] -&gt; [NTZipper a])
+-&gt; (NTZipper a -&gt; [NTZipper a]) -&gt; NTZipper a -&gt; [NTZipper a]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; [NTZipper a]
+forall (t :: * -&gt; *) a. NavigatableTree t =&gt; t a -&gt; [t a]
+</span><a href="Data.Tree.NavigatableTree.XPathAxis.html#childAxis"><span class="hs-identifier hs-var">childAxis</span></a></span><span> </span><span class="annot"><span class="annottext">(NTZipper a -&gt; [NTree a]) -&gt; NTZipper a -&gt; [NTree a]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170299"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NTZipper a -&gt; NTree a
+forall a. NTZipper a -&gt; NTree a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#ntree"><span class="hs-identifier hs-var hs-var">ntree</span></a></span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170299"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-201"></span><span>
+</span><span id="line-202"></span><span>    </span><span id="local-6989586621679170297"><span class="annot"><span class="annottext">foldTree :: (a -&gt; [b] -&gt; b) -&gt; NTZipper a -&gt; b
+</span><a href="Data.Tree.Class.html#foldTree"><span class="hs-identifier hs-var hs-var hs-var hs-var">foldTree</span></a></span></span><span> </span><span id="local-6989586621679170295"><span class="annot"><span class="annottext">a -&gt; [b] -&gt; b
+</span><a href="#local-6989586621679170295"><span class="hs-identifier hs-var">f</span></a></span></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(a -&gt; [b] -&gt; b) -&gt; NTree a -&gt; b
+forall (t :: * -&gt; *) a b. Tree t =&gt; (a -&gt; [b] -&gt; b) -&gt; t a -&gt; b
+</span><a href="Data.Tree.Class.html#foldTree"><span class="hs-identifier hs-var">foldTree</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; [b] -&gt; b
+</span><a href="#local-6989586621679170295"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">(NTree a -&gt; b) -&gt; (NTZipper a -&gt; NTree a) -&gt; NTZipper a -&gt; b
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; NTree a
+forall a. NTZipper a -&gt; NTree a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#ntree"><span class="hs-identifier hs-var hs-var">ntree</span></a></span><span>
+</span><span id="line-203"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.Class.html#foldTree"><span class="hs-pragma hs-type">foldTree</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-204"></span><span>
+</span><span id="line-205"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTree"><span class="hs-identifier hs-type">NavigatableTree</span></a></span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-206"></span><span>    </span><span id="local-6989586621679170289"><span class="annot"><span class="annottext">mvDown :: NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#mvDown"><span class="hs-identifier hs-var hs-var hs-var hs-var">mvDown</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Maybe (NTZipper a)
+forall a. NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#down"><span class="hs-identifier hs-var">down</span></a></span><span>
+</span><span id="line-207"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#mvDown"><span class="hs-pragma hs-type">mvDown</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-208"></span><span>
+</span><span id="line-209"></span><span>    </span><span id="local-6989586621679170287"><span class="annot"><span class="annottext">mvUp :: NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#mvUp"><span class="hs-identifier hs-var hs-var hs-var hs-var">mvUp</span></a></span></span><span>                </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Maybe (NTZipper a)
+forall a. NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#up"><span class="hs-identifier hs-var">up</span></a></span><span>
+</span><span id="line-210"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#mvUp"><span class="hs-pragma hs-type">mvUp</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-211"></span><span>
+</span><span id="line-212"></span><span>    </span><span id="local-6989586621679170285"><span class="annot"><span class="annottext">mvLeft :: NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#mvLeft"><span class="hs-identifier hs-var hs-var hs-var hs-var">mvLeft</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Maybe (NTZipper a)
+forall a. NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#toTheLeft"><span class="hs-identifier hs-var">toTheLeft</span></a></span><span>
+</span><span id="line-213"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#mvLeft"><span class="hs-pragma hs-type">mvLeft</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-214"></span><span>
+</span><span id="line-215"></span><span>    </span><span id="local-6989586621679170283"><span class="annot"><span class="annottext">mvRight :: NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#mvRight"><span class="hs-identifier hs-var hs-var hs-var hs-var">mvRight</span></a></span></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Maybe (NTZipper a)
+forall a. NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#toTheRight"><span class="hs-identifier hs-var">toTheRight</span></a></span><span>
+</span><span id="line-216"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#mvRight"><span class="hs-pragma hs-type">mvRight</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-217"></span><span>
+</span><span id="line-218"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTreeToTree"><span class="hs-identifier hs-type">NavigatableTreeToTree</span></a></span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-219"></span><span>    </span><span id="local-6989586621679170278"><span class="annot"><span class="annottext">fromTree :: NTree a -&gt; NTZipper a
+</span><a href="Data.Tree.NavigatableTree.Class.html#fromTree"><span class="hs-identifier hs-var hs-var hs-var hs-var">fromTree</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTZipper a
+forall a. NTree a -&gt; NTZipper a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#toNTZipper"><span class="hs-identifier hs-var">toNTZipper</span></a></span><span>
+</span><span id="line-220"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#fromTree"><span class="hs-pragma hs-type">fromTree</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-221"></span><span>
+</span><span id="line-222"></span><span>    </span><span id="local-6989586621679170276"><span class="annot"><span class="annottext">toTree :: NTZipper a -&gt; NTree a
+</span><a href="Data.Tree.NavigatableTree.Class.html#toTree"><span class="hs-identifier hs-var hs-var hs-var hs-var">toTree</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; NTree a
+forall a. NTZipper a -&gt; NTree a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#fromNTZipper"><span class="hs-identifier hs-var">fromNTZipper</span></a></span><span>
+</span><span id="line-223"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#toTree"><span class="hs-pragma hs-type">toTree</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-224"></span><span>
+</span><span id="line-225"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#NavigatableTreeModify"><span class="hs-identifier hs-type">NavigatableTreeModify</span></a></span><span> </span><span class="annot"><a href="Data.Tree.NTree.Zipper.TypeDefs.html#NTZipper"><span class="hs-identifier hs-type">NTZipper</span></a></span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-226"></span><span>    </span><span id="local-6989586621679170268"><span class="annot"><span class="annottext">addTreeLeft :: NTree a -&gt; NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#addTreeLeft"><span class="hs-identifier hs-var hs-var hs-var hs-var">addTreeLeft</span></a></span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTZipper a -&gt; Maybe (NTZipper a)
+forall a. NTree a -&gt; NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#addToTheLeft"><span class="hs-identifier hs-var">addToTheLeft</span></a></span><span>
+</span><span id="line-227"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#addTreeLeft"><span class="hs-pragma hs-type">addTreeLeft</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-228"></span><span>
+</span><span id="line-229"></span><span>    </span><span id="local-6989586621679170266"><span class="annot"><span class="annottext">addTreeRight :: NTree a -&gt; NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#addTreeRight"><span class="hs-identifier hs-var hs-var hs-var hs-var">addTreeRight</span></a></span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; NTZipper a -&gt; Maybe (NTZipper a)
+forall a. NTree a -&gt; NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#addToTheRight"><span class="hs-identifier hs-var">addToTheRight</span></a></span><span>
+</span><span id="line-230"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#addTreeRight"><span class="hs-pragma hs-type">addTreeRight</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-231"></span><span>
+</span><span id="line-232"></span><span>    </span><span id="local-6989586621679170264"><span class="annot"><span class="annottext">dropTreeLeft :: NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#dropTreeLeft"><span class="hs-identifier hs-var hs-var hs-var hs-var">dropTreeLeft</span></a></span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Maybe (NTZipper a)
+forall a. NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#dropFromTheLeft"><span class="hs-identifier hs-var">dropFromTheLeft</span></a></span><span>
+</span><span id="line-233"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#dropTreeLeft"><span class="hs-pragma hs-type">dropTreeLeft</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-234"></span><span>
+</span><span id="line-235"></span><span>    </span><span id="local-6989586621679170262"><span class="annot"><span class="annottext">dropTreeRight :: NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NavigatableTree.Class.html#dropTreeRight"><span class="hs-identifier hs-var hs-var hs-var hs-var">dropTreeRight</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a -&gt; Maybe (NTZipper a)
+forall a. NTZipper a -&gt; Maybe (NTZipper a)
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#dropFromTheRight"><span class="hs-identifier hs-var">dropFromTheRight</span></a></span><span>
+</span><span id="line-236"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#dropTreeRight"><span class="hs-pragma hs-type">dropTreeRight</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-237"></span><span>
+</span><span id="line-238"></span><span>    </span><span id="local-6989586621679170260"><span class="annot"><span class="annottext">substThisTree :: NTree a -&gt; NTZipper a -&gt; NTZipper a
+</span><a href="Data.Tree.NavigatableTree.Class.html#substThisTree"><span class="hs-identifier hs-var hs-var hs-var hs-var">substThisTree</span></a></span></span><span> </span><span id="local-6989586621679170258"><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170258"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679170257"><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170257"><span class="hs-identifier hs-var">nt</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTZipper a
+</span><a href="#local-6989586621679170257"><span class="hs-identifier hs-var">nt</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">ntree :: NTree a
+</span><a href="Data.Tree.NTree.Zipper.TypeDefs.html#ntree"><span class="hs-identifier hs-var">ntree</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NTree a
+</span><a href="#local-6989586621679170258"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-239"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.NavigatableTree.Class.html#substThisTree"><span class="hs-pragma hs-type">substThisTree</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-240"></span><span>
+</span><span id="line-241"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-242"></span></pre></body></html>

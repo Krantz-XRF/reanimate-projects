@@ -1,0 +1,577 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+   Module     : Text.XML.HXT.Arrow.Pickle.Schema
+   Copyright  : Copyright (C) 2005 Uwe Schmidt
+   License    : MIT
+
+   Maintainer : Uwe Schmidt (uwe@fh-wedel.de)
+   Stability  : experimental
+   Portability: portable
+   Version    : $Id$
+
+Datatypes and functions for building a content model
+for XML picklers. A schema is part of every pickler
+and can be used to derive a corrensponding DTD (or Relax NG schema).
+This schema further enables checking the picklers.
+
+-}</span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-21"></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.XML.HXT.Arrow.Pickle.Schema</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html"><span class="hs-identifier">Text.XML.HXT.DOM.TypeDefs</span></a></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.HXT.XMLSchema.DataTypeLibW3CNames.html"><span class="hs-identifier">Text.XML.HXT.XMLSchema.DataTypeLibW3CNames</span></a></span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span>
+</span><span id="line-29"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-identifier">sort</span></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="hs-comment">-- | The datatype for modelling the structure of an</span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="hs-keyword">data</span><span> </span><span id="Schema"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-var">Schema</span></a></span></span><span>                     </span><span class="hs-glyph">=</span><span> </span><span id="Any"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Any"><span class="hs-identifier hs-var">Any</span></a></span></span><span>
+</span><span id="line-36"></span><span>                                </span><span class="hs-glyph">|</span><span> </span><span id="Seq"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Seq"><span class="hs-identifier hs-var">Seq</span></a></span></span><span>           </span><span class="hs-special">{</span><span> </span><span id="sc_l"><span class="annot"><span class="annottext">Schema -&gt; [Schema]
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#sc_l"><span class="hs-identifier hs-var hs-var">sc_l</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-37"></span><span>                                                </span><span class="hs-special">}</span><span>
+</span><span id="line-38"></span><span>                                </span><span class="hs-glyph">|</span><span> </span><span id="Alt"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Alt"><span class="hs-identifier hs-var">Alt</span></a></span></span><span>           </span><span class="hs-special">{</span><span> </span><span id="sc_l"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#sc_l"><span class="hs-identifier hs-var">sc_l</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-39"></span><span>                                                </span><span class="hs-special">}</span><span>
+</span><span id="line-40"></span><span>                                </span><span class="hs-glyph">|</span><span> </span><span id="Rep"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Rep"><span class="hs-identifier hs-var">Rep</span></a></span></span><span>           </span><span class="hs-special">{</span><span> </span><span id="sc_lb"><span class="annot"><span class="annottext">Schema -&gt; Int
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#sc_lb"><span class="hs-identifier hs-var hs-var">sc_lb</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-41"></span><span>                                                </span><span class="hs-special">,</span><span> </span><span id="sc_ub"><span class="annot"><span class="annottext">Schema -&gt; Int
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#sc_ub"><span class="hs-identifier hs-var hs-var">sc_ub</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-42"></span><span>                                                </span><span class="hs-special">,</span><span> </span><span id="sc_1"><span class="annot"><span class="annottext">Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#sc_1"><span class="hs-identifier hs-var hs-var">sc_1</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-43"></span><span>                                                </span><span class="hs-special">}</span><span>
+</span><span id="line-44"></span><span>                                </span><span class="hs-glyph">|</span><span> </span><span id="Element"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Element"><span class="hs-identifier hs-var">Element</span></a></span></span><span>       </span><span class="hs-special">{</span><span> </span><span id="sc_n"><span class="annot"><span class="annottext">Schema -&gt; Name
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#sc_n"><span class="hs-identifier hs-var hs-var">sc_n</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Name"><span class="hs-identifier hs-type">Name</span></a></span><span>
+</span><span id="line-45"></span><span>                                                </span><span class="hs-special">,</span><span> </span><span id="sc_1"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#sc_1"><span class="hs-identifier hs-var">sc_1</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-46"></span><span>                                                </span><span class="hs-special">}</span><span>
+</span><span id="line-47"></span><span>                                </span><span class="hs-glyph">|</span><span> </span><span id="Attribute"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Attribute"><span class="hs-identifier hs-var">Attribute</span></a></span></span><span>     </span><span class="hs-special">{</span><span> </span><span id="sc_n"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#sc_n"><span class="hs-identifier hs-var">sc_n</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Name"><span class="hs-identifier hs-type">Name</span></a></span><span>
+</span><span id="line-48"></span><span>                                                </span><span class="hs-special">,</span><span> </span><span id="sc_1"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#sc_1"><span class="hs-identifier hs-var">sc_1</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-49"></span><span>                                                </span><span class="hs-special">}</span><span>
+</span><span id="line-50"></span><span>                                </span><span class="hs-glyph">|</span><span> </span><span id="ElemRef"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#ElemRef"><span class="hs-identifier hs-var">ElemRef</span></a></span></span><span>       </span><span class="hs-special">{</span><span> </span><span id="sc_n"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#sc_n"><span class="hs-identifier hs-var">sc_n</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Name"><span class="hs-identifier hs-type">Name</span></a></span><span>
+</span><span id="line-51"></span><span>                                                </span><span class="hs-special">}</span><span>
+</span><span id="line-52"></span><span>                                </span><span class="hs-glyph">|</span><span> </span><span id="CharData"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#CharData"><span class="hs-identifier hs-var">CharData</span></a></span></span><span>      </span><span class="hs-special">{</span><span> </span><span id="sc_dt"><span class="annot"><span class="annottext">Schema -&gt; DataTypeDescr
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#sc_dt"><span class="hs-identifier hs-var hs-var">sc_dt</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#DataTypeDescr"><span class="hs-identifier hs-type">DataTypeDescr</span></a></span><span>
+</span><span id="line-53"></span><span>                                                </span><span class="hs-special">}</span><span>
+</span><span id="line-54"></span><span>                                  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679187838"><span id="local-6989586621679187840"><span class="annot"><span class="annottext">Schema -&gt; Schema -&gt; Bool
+(Schema -&gt; Schema -&gt; Bool)
+-&gt; (Schema -&gt; Schema -&gt; Bool) -&gt; Eq Schema
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: Schema -&gt; Schema -&gt; Bool
+$c/= :: Schema -&gt; Schema -&gt; Bool
+== :: Schema -&gt; Schema -&gt; Bool
+$c== :: Schema -&gt; Schema -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679187831"><span id="local-6989586621679187833"><span id="local-6989586621679187835"><span class="annot"><span class="annottext">Int -&gt; Schema -&gt; ShowS
+[Schema] -&gt; ShowS
+Schema -&gt; Name
+(Int -&gt; Schema -&gt; ShowS)
+-&gt; (Schema -&gt; Name) -&gt; ([Schema] -&gt; ShowS) -&gt; Show Schema
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; Name) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Schema] -&gt; ShowS
+$cshowList :: [Schema] -&gt; ShowS
+show :: Schema -&gt; Name
+$cshow :: Schema -&gt; Name
+showsPrec :: Int -&gt; Schema -&gt; ShowS
+$cshowsPrec :: Int -&gt; Schema -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span class="hs-keyword">type</span><span> </span><span id="Name"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Name"><span class="hs-identifier hs-var">Name</span></a></span></span><span>                       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-57"></span><span class="hs-keyword">type</span><span> </span><span id="Schemas"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schemas"><span class="hs-identifier hs-var">Schemas</span></a></span></span><span>                    </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span class="hs-keyword">data</span><span> </span><span id="DataTypeDescr"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#DataTypeDescr"><span class="hs-identifier hs-var">DataTypeDescr</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span id="DTDescr"><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#DTDescr"><span class="hs-identifier hs-var">DTDescr</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="dtLib"><span class="annot"><span class="annottext">DataTypeDescr -&gt; Name
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#dtLib"><span class="hs-identifier hs-var hs-var">dtLib</span></a></span></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-60"></span><span>                                          </span><span class="hs-special">,</span><span> </span><span id="dtName"><span class="annot"><span class="annottext">DataTypeDescr -&gt; Name
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#dtName"><span class="hs-identifier hs-var hs-var">dtName</span></a></span></span><span>   </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-61"></span><span>                                          </span><span class="hs-special">,</span><span> </span><span id="dtParams"><span class="annot"><span class="annottext">DataTypeDescr -&gt; Attributes
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#dtParams"><span class="hs-identifier hs-var hs-var">dtParams</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#Attributes"><span class="hs-identifier hs-type">Attributes</span></a></span><span>
+</span><span id="line-62"></span><span>                                          </span><span class="hs-special">}</span><span>
+</span><span id="line-63"></span><span>                                  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679187818"><span id="local-6989586621679187820"><span id="local-6989586621679187822"><span class="annot"><span class="annottext">Int -&gt; DataTypeDescr -&gt; ShowS
+[DataTypeDescr] -&gt; ShowS
+DataTypeDescr -&gt; Name
+(Int -&gt; DataTypeDescr -&gt; ShowS)
+-&gt; (DataTypeDescr -&gt; Name)
+-&gt; ([DataTypeDescr] -&gt; ShowS)
+-&gt; Show DataTypeDescr
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; Name) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [DataTypeDescr] -&gt; ShowS
+$cshowList :: [DataTypeDescr] -&gt; ShowS
+show :: DataTypeDescr -&gt; Name
+$cshow :: DataTypeDescr -&gt; Name
+showsPrec :: Int -&gt; DataTypeDescr -&gt; ShowS
+$cshowsPrec :: Int -&gt; DataTypeDescr -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-64"></span><span>
+</span><span id="line-65"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679187815"><span class="annot"><span class="hs-identifier hs-type">Eq</span></span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#DataTypeDescr"><span class="hs-identifier hs-type">DataTypeDescr</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-66"></span><span>    </span><span id="local-6989586621679187814"><span class="annot"><span class="annottext">DataTypeDescr
+</span><a href="#local-6989586621679187814"><span class="hs-identifier hs-var">x1</span></a></span></span><span> </span><span id="local-6989586621679187813"><span class="annot"><span class="annottext">== :: DataTypeDescr -&gt; DataTypeDescr -&gt; Bool
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">==</span></span></span><span> </span><span id="local-6989586621679187812"><span class="annot"><span class="annottext">DataTypeDescr
+</span><a href="#local-6989586621679187812"><span class="hs-identifier hs-var">x2</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">DataTypeDescr -&gt; Name
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#dtLib"><span class="hs-identifier hs-var hs-var">dtLib</span></a></span><span> </span><span class="annot"><span class="annottext">DataTypeDescr
+</span><a href="#local-6989586621679187814"><span class="hs-identifier hs-var">x1</span></a></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">DataTypeDescr -&gt; Name
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#dtLib"><span class="hs-identifier hs-var hs-var">dtLib</span></a></span><span> </span><span class="annot"><span class="annottext">DataTypeDescr
+</span><a href="#local-6989586621679187812"><span class="hs-identifier hs-var">x2</span></a></span><span>
+</span><span id="line-67"></span><span>               </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span>
+</span><span id="line-68"></span><span>               </span><span class="annot"><span class="annottext">DataTypeDescr -&gt; Name
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#dtName"><span class="hs-identifier hs-var hs-var">dtName</span></a></span><span> </span><span class="annot"><span class="annottext">DataTypeDescr
+</span><a href="#local-6989586621679187814"><span class="hs-identifier hs-var">x1</span></a></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">DataTypeDescr -&gt; Name
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#dtName"><span class="hs-identifier hs-var hs-var">dtName</span></a></span><span> </span><span class="annot"><span class="annottext">DataTypeDescr
+</span><a href="#local-6989586621679187812"><span class="hs-identifier hs-var">x2</span></a></span><span>
+</span><span id="line-69"></span><span>               </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span>
+</span><span id="line-70"></span><span>               </span><span class="annot"><span class="annottext">Attributes -&gt; Attributes
+forall a. Ord a =&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">sort</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DataTypeDescr -&gt; Attributes
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#dtParams"><span class="hs-identifier hs-var hs-var">dtParams</span></a></span><span> </span><span class="annot"><span class="annottext">DataTypeDescr
+</span><a href="#local-6989586621679187814"><span class="hs-identifier hs-var">x1</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Attributes -&gt; Attributes -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Attributes -&gt; Attributes
+forall a. Ord a =&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">sort</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DataTypeDescr -&gt; Attributes
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#dtParams"><span class="hs-identifier hs-var hs-var">dtParams</span></a></span><span> </span><span class="annot"><span class="annottext">DataTypeDescr
+</span><a href="#local-6989586621679187812"><span class="hs-identifier hs-var">x2</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-71"></span><span>
+</span><span id="line-72"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-73"></span><span>
+</span><span id="line-74"></span><span class="hs-comment">-- | test: is schema a simple XML Schema datatype</span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScXsd"><span class="hs-identifier hs-type">isScXsd</span></a></span><span>                 </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span id="isScXsd"><span class="annot"><span class="annottext">isScXsd :: (Name -&gt; Bool) -&gt; Schema -&gt; Bool
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScXsd"><span class="hs-identifier hs-var hs-var">isScXsd</span></a></span></span><span> </span><span id="local-6989586621679187809"><span class="annot"><span class="annottext">Name -&gt; Bool
+</span><a href="#local-6989586621679187809"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#CharData"><span class="hs-identifier hs-type">CharData</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#DTDescr"><span class="hs-identifier hs-type">DTDescr</span></a></span><span> </span><span id="local-6989586621679187808"><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187808"><span class="hs-identifier hs-var">lib</span></a></span></span><span> </span><span id="local-6989586621679187807"><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187807"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679187806"><span class="annot"><span class="annottext">Attributes
+</span><a href="#local-6989586621679187806"><span class="hs-identifier hs-var">_ps</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-79"></span><span>                        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187808"><span class="hs-identifier hs-var">lib</span></a></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="Text.XML.HXT.XMLSchema.DataTypeLibW3CNames.html#w3cNS"><span class="hs-identifier hs-var">w3cNS</span></a></span><span>
+</span><span id="line-80"></span><span>                          </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span>
+</span><span id="line-81"></span><span>                          </span><span class="annot"><span class="annottext">Name -&gt; Bool
+</span><a href="#local-6989586621679187809"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187807"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-82"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScXsd"><span class="hs-identifier hs-var">isScXsd</span></a></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Bool
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><span class="hs-identifier">_</span></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-83"></span><span>
+</span><span id="line-84"></span><span class="hs-comment">-- | test: is type a fixed value attribute type</span><span>
+</span><span id="line-85"></span><span>
+</span><span id="line-86"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScFixed"><span class="hs-identifier hs-type">isScFixed</span></a></span><span>               </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-87"></span><span id="isScFixed"><span class="annot"><span class="annottext">isScFixed :: Schema -&gt; Bool
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScFixed"><span class="hs-identifier hs-var hs-var">isScFixed</span></a></span></span><span> </span><span id="local-6989586621679187803"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187803"><span class="hs-identifier hs-var">sc</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Bool) -&gt; Schema -&gt; Bool
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScXsd"><span class="hs-identifier hs-var">isScXsd</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Name -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="Text.XML.HXT.XMLSchema.DataTypeLibW3CNames.html#xsd_string"><span class="hs-identifier hs-var">xsd_string</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187803"><span class="hs-identifier hs-var">sc</span></a></span><span>
+</span><span id="line-88"></span><span>                          </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span>
+</span><span id="line-89"></span><span>                          </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Bool) -&gt; (Schema -&gt; Int) -&gt; Schema -&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Name] -&gt; Int
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Int
+</span><span class="hs-identifier hs-var">length</span></span><span> </span><span class="annot"><span class="annottext">([Name] -&gt; Int) -&gt; (Schema -&gt; [Name]) -&gt; Schema -&gt; Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; [Name]
+</span><span class="hs-identifier hs-var">words</span></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; [Name]) -&gt; (Schema -&gt; Name) -&gt; Schema -&gt; [Name]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Schema -&gt; Name
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#xsdParam"><span class="hs-identifier hs-var">xsdParam</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="Text.XML.HXT.XMLSchema.DataTypeLibW3CNames.html#xsd_enumeration"><span class="hs-identifier hs-var">xsd_enumeration</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187803"><span class="hs-identifier hs-var">sc</span></a></span><span>
+</span><span id="line-90"></span><span>
+</span><span id="line-91"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScEnum"><span class="hs-identifier hs-type">isScEnum</span></a></span><span>                </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-92"></span><span id="isScEnum"><span class="annot"><span class="annottext">isScEnum :: Schema -&gt; Bool
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScEnum"><span class="hs-identifier hs-var hs-var">isScEnum</span></a></span></span><span> </span><span id="local-6989586621679187795"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187795"><span class="hs-identifier hs-var">sc</span></a></span></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Bool) -&gt; Schema -&gt; Bool
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScXsd"><span class="hs-identifier hs-var">isScXsd</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Name -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="Text.XML.HXT.XMLSchema.DataTypeLibW3CNames.html#xsd_string"><span class="hs-identifier hs-var">xsd_string</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187795"><span class="hs-identifier hs-var">sc</span></a></span><span>
+</span><span id="line-93"></span><span>                          </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span>
+</span><span id="line-94"></span><span>                          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; (Schema -&gt; Bool) -&gt; Schema -&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">(Name -&gt; Bool) -&gt; (Schema -&gt; Name) -&gt; Schema -&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Schema -&gt; Name
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#xsdParam"><span class="hs-identifier hs-var">xsdParam</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="Text.XML.HXT.XMLSchema.DataTypeLibW3CNames.html#xsd_enumeration"><span class="hs-identifier hs-var">xsd_enumeration</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187795"><span class="hs-identifier hs-var">sc</span></a></span><span>
+</span><span id="line-95"></span><span>
+</span><span id="line-96"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScElem"><span class="hs-identifier hs-type">isScElem</span></a></span><span>                </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-97"></span><span id="isScElem"><span class="annot"><span class="annottext">isScElem :: Schema -&gt; Bool
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScElem"><span class="hs-identifier hs-var hs-var">isScElem</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Element"><span class="hs-identifier hs-type">Element</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-98"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScElem"><span class="hs-identifier hs-var">isScElem</span></a></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><span class="hs-identifier">_</span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScAttr"><span class="hs-identifier hs-type">isScAttr</span></a></span><span>                </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-101"></span><span id="isScAttr"><span class="annot"><span class="annottext">isScAttr :: Schema -&gt; Bool
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScAttr"><span class="hs-identifier hs-var hs-var">isScAttr</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Attribute"><span class="hs-identifier hs-type">Attribute</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-102"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScAttr"><span class="hs-identifier hs-var">isScAttr</span></a></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><span class="hs-identifier">_</span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-103"></span><span>
+</span><span id="line-104"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScElemRef"><span class="hs-identifier hs-type">isScElemRef</span></a></span><span>             </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-105"></span><span id="isScElemRef"><span class="annot"><span class="annottext">isScElemRef :: Schema -&gt; Bool
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScElemRef"><span class="hs-identifier hs-var hs-var">isScElemRef</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#ElemRef"><span class="hs-identifier hs-type">ElemRef</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-106"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScElemRef"><span class="hs-identifier hs-var">isScElemRef</span></a></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><span class="hs-identifier">_</span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-107"></span><span>
+</span><span id="line-108"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScCharData"><span class="hs-identifier hs-type">isScCharData</span></a></span><span>            </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-109"></span><span id="isScCharData"><span class="annot"><span class="annottext">isScCharData :: Schema -&gt; Bool
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScCharData"><span class="hs-identifier hs-var hs-var">isScCharData</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#CharData"><span class="hs-identifier hs-type">CharData</span></a></span><span> </span><span class="annot"><span class="annottext">DataTypeDescr
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-110"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScCharData"><span class="hs-identifier hs-var">isScCharData</span></a></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><span class="hs-identifier">_</span></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-111"></span><span>
+</span><span id="line-112"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScSARE"><span class="hs-identifier hs-type">isScSARE</span></a></span><span>                </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-113"></span><span id="isScSARE"><span class="annot"><span class="annottext">isScSARE :: Schema -&gt; Bool
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScSARE"><span class="hs-identifier hs-var hs-var">isScSARE</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Seq"><span class="hs-identifier hs-type">Seq</span></a></span><span> </span><span class="annot"><span class="annottext">[Schema]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-114"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScSARE"><span class="hs-identifier hs-var">isScSARE</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Alt"><span class="hs-identifier hs-type">Alt</span></a></span><span> </span><span class="annot"><span class="annottext">[Schema]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-115"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScSARE"><span class="hs-identifier hs-var">isScSARE</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Rep"><span class="hs-identifier hs-type">Rep</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-116"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScSARE"><span class="hs-identifier hs-var">isScSARE</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#ElemRef"><span class="hs-identifier hs-type">ElemRef</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-117"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScSARE"><span class="hs-identifier hs-var">isScSARE</span></a></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><span class="hs-identifier">_</span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-118"></span><span>
+</span><span id="line-119"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScList"><span class="hs-identifier hs-type">isScList</span></a></span><span>                </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-120"></span><span id="isScList"><span class="annot"><span class="annottext">isScList :: Schema -&gt; Bool
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScList"><span class="hs-identifier hs-var hs-var">isScList</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Rep"><span class="hs-identifier hs-type">Rep</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="hs-number">1</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Schema
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-121"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScList"><span class="hs-identifier hs-var">isScList</span></a></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><span class="hs-identifier">_</span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-122"></span><span>
+</span><span id="line-123"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScOpt"><span class="hs-identifier hs-type">isScOpt</span></a></span><span>                 </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-124"></span><span id="isScOpt"><span class="annot"><span class="annottext">isScOpt :: Schema -&gt; Bool
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScOpt"><span class="hs-identifier hs-var hs-var">isScOpt</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Rep"><span class="hs-identifier hs-type">Rep</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-125"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#isScOpt"><span class="hs-identifier hs-var">isScOpt</span></a></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><span class="hs-identifier">_</span></span><span>               </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span class="hs-comment">-- | access an attribute of a descr of an atomic type</span><span>
+</span><span id="line-128"></span><span>
+</span><span id="line-129"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#xsdParam"><span class="hs-identifier hs-type">xsdParam</span></a></span><span>                </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-130"></span><span id="xsdParam"><span class="annot"><span class="annottext">xsdParam :: Name -&gt; Schema -&gt; Name
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#xsdParam"><span class="hs-identifier hs-var hs-var">xsdParam</span></a></span></span><span> </span><span id="local-6989586621679187785"><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187785"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#CharData"><span class="hs-identifier hs-type">CharData</span></a></span><span> </span><span id="local-6989586621679187784"><span class="annot"><span class="annottext">DataTypeDescr
+</span><a href="#local-6989586621679187784"><span class="hs-identifier hs-var">dtd</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-131"></span><span>                        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Attributes -&gt; Name
+forall k e. Eq k =&gt; k -&gt; AssocList k [e] -&gt; [e]
+</span><a href="Data.AssocList.html#lookup1"><span class="hs-identifier hs-var">lookup1</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187785"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DataTypeDescr -&gt; Attributes
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#dtParams"><span class="hs-identifier hs-var hs-var">dtParams</span></a></span><span> </span><span class="annot"><span class="annottext">DataTypeDescr
+</span><a href="#local-6989586621679187784"><span class="hs-identifier hs-var">dtd</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-132"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#xsdParam"><span class="hs-identifier hs-var">xsdParam</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><span class="hs-identifier">_</span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-133"></span><span>
+</span><span id="line-134"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-135"></span><span>
+</span><span id="line-136"></span><span class="hs-comment">-- smart constructors for Schema datatype</span><span>
+</span><span id="line-137"></span><span>
+</span><span id="line-138"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-139"></span><span class="hs-comment">--</span><span>
+</span><span id="line-140"></span><span class="hs-comment">-- predefined xsd data types for representation of DTD types</span><span>
+</span><span id="line-141"></span><span>
+</span><span id="line-142"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scDT"><span class="hs-identifier hs-type">scDT</span></a></span><span>            </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#Attributes"><span class="hs-identifier hs-type">Attributes</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-143"></span><span id="scDT"><span class="annot"><span class="annottext">scDT :: Name -&gt; Name -&gt; Attributes -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scDT"><span class="hs-identifier hs-var hs-var">scDT</span></a></span></span><span> </span><span id="local-6989586621679187781"><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187781"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679187780"><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187780"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679187779"><span class="annot"><span class="annottext">Attributes
+</span><a href="#local-6989586621679187779"><span class="hs-identifier hs-var">rl</span></a></span></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">DataTypeDescr -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#CharData"><span class="hs-identifier hs-var">CharData</span></a></span><span> </span><span class="annot"><span class="annottext">(DataTypeDescr -&gt; Schema) -&gt; DataTypeDescr -&gt; Schema
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name -&gt; Attributes -&gt; DataTypeDescr
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#DTDescr"><span class="hs-identifier hs-var">DTDescr</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187781"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187780"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Attributes
+</span><a href="#local-6989586621679187779"><span class="hs-identifier hs-var">rl</span></a></span><span>
+</span><span id="line-144"></span><span>
+</span><span id="line-145"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scDTxsd"><span class="hs-identifier hs-type">scDTxsd</span></a></span><span>         </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.DOM.TypeDefs.html#Attributes"><span class="hs-identifier hs-type">Attributes</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-146"></span><span id="scDTxsd"><span class="annot"><span class="annottext">scDTxsd :: Name -&gt; Attributes -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scDTxsd"><span class="hs-identifier hs-var hs-var">scDTxsd</span></a></span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Name -&gt; Attributes -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scDT"><span class="hs-identifier hs-var">scDT</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="Text.XML.HXT.XMLSchema.DataTypeLibW3CNames.html#w3cNS"><span class="hs-identifier hs-var">w3cNS</span></a></span><span>
+</span><span id="line-147"></span><span>
+</span><span id="line-148"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scString"><span class="hs-identifier hs-type">scString</span></a></span><span>        </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-149"></span><span id="scString"><span class="annot"><span class="annottext">scString :: Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scString"><span class="hs-identifier hs-var hs-var">scString</span></a></span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Attributes -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scDTxsd"><span class="hs-identifier hs-var">scDTxsd</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="Text.XML.HXT.XMLSchema.DataTypeLibW3CNames.html#xsd_string"><span class="hs-identifier hs-var">xsd_string</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-150"></span><span>
+</span><span id="line-151"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scString1"><span class="hs-identifier hs-type">scString1</span></a></span><span>       </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-152"></span><span id="scString1"><span class="annot"><span class="annottext">scString1 :: Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scString1"><span class="hs-identifier hs-var hs-var">scString1</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Attributes -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scDTxsd"><span class="hs-identifier hs-var">scDTxsd</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="Text.XML.HXT.XMLSchema.DataTypeLibW3CNames.html#xsd_string"><span class="hs-identifier hs-var">xsd_string</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name
+</span><a href="Text.XML.HXT.XMLSchema.DataTypeLibW3CNames.html#xsd_minLength"><span class="hs-identifier hs-var">xsd_minLength</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Name
+</span><span class="hs-string">&quot;1&quot;</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-153"></span><span>
+</span><span id="line-154"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scFixed"><span class="hs-identifier hs-type">scFixed</span></a></span><span>         </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-155"></span><span id="scFixed"><span class="annot"><span class="annottext">scFixed :: Name -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scFixed"><span class="hs-identifier hs-var hs-var">scFixed</span></a></span></span><span> </span><span id="local-6989586621679187773"><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187773"><span class="hs-identifier hs-var">v</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Attributes -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scDTxsd"><span class="hs-identifier hs-var">scDTxsd</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="Text.XML.HXT.XMLSchema.DataTypeLibW3CNames.html#xsd_string"><span class="hs-identifier hs-var">xsd_string</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name
+</span><a href="Text.XML.HXT.XMLSchema.DataTypeLibW3CNames.html#xsd_enumeration"><span class="hs-identifier hs-var">xsd_enumeration</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187773"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-156"></span><span>
+</span><span id="line-157"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scEnum"><span class="hs-identifier hs-type">scEnum</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-158"></span><span id="scEnum"><span class="annot"><span class="annottext">scEnum :: [Name] -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scEnum"><span class="hs-identifier hs-var hs-var">scEnum</span></a></span></span><span> </span><span id="local-6989586621679187771"><span class="annot"><span class="annottext">[Name]
+</span><a href="#local-6989586621679187771"><span class="hs-identifier hs-var">vs</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scFixed"><span class="hs-identifier hs-var">scFixed</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Name] -&gt; Name
+</span><span class="hs-identifier hs-var">unwords</span></span><span> </span><span class="annot"><span class="annottext">[Name]
+</span><a href="#local-6989586621679187771"><span class="hs-identifier hs-var">vs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-159"></span><span>
+</span><span id="line-160"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scNmtoken"><span class="hs-identifier hs-type">scNmtoken</span></a></span><span>       </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-161"></span><span id="scNmtoken"><span class="annot"><span class="annottext">scNmtoken :: Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scNmtoken"><span class="hs-identifier hs-var hs-var">scNmtoken</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Attributes -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scDTxsd"><span class="hs-identifier hs-var">scDTxsd</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="Text.XML.HXT.XMLSchema.DataTypeLibW3CNames.html#xsd_NCName"><span class="hs-identifier hs-var">xsd_NCName</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-162"></span><span>
+</span><span id="line-163"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scNmtokens"><span class="hs-identifier hs-type">scNmtokens</span></a></span><span>      </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-164"></span><span id="scNmtokens"><span class="annot"><span class="annottext">scNmtokens :: Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scNmtokens"><span class="hs-identifier hs-var hs-var">scNmtokens</span></a></span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scList"><span class="hs-identifier hs-var">scList</span></a></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scNmtoken"><span class="hs-identifier hs-var">scNmtoken</span></a></span><span>
+</span><span id="line-165"></span><span>
+</span><span id="line-166"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-167"></span><span>
+</span><span id="line-168"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scEmpty"><span class="hs-identifier hs-type">scEmpty</span></a></span><span>                         </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-169"></span><span id="scEmpty"><span class="annot"><span class="annottext">scEmpty :: Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scEmpty"><span class="hs-identifier hs-var hs-var">scEmpty</span></a></span></span><span>                         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Schema] -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Seq"><span class="hs-identifier hs-var">Seq</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-170"></span><span>
+</span><span id="line-171"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scSeq"><span class="hs-identifier hs-type">scSeq</span></a></span><span>                           </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-172"></span><span id="scSeq"><span class="annot"><span class="annottext">scSeq :: Schema -&gt; Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scSeq"><span class="hs-identifier hs-var hs-var">scSeq</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Seq"><span class="hs-identifier hs-type">Seq</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>   </span><span id="local-6989586621679187763"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187763"><span class="hs-identifier hs-var">sc2</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187763"><span class="hs-identifier hs-var">sc2</span></a></span><span>
+</span><span id="line-173"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scSeq"><span class="hs-identifier hs-var">scSeq</span></a></span><span> </span><span id="local-6989586621679187762"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187762"><span class="hs-identifier hs-var">sc1</span></a></span></span><span>        </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Seq"><span class="hs-identifier hs-type">Seq</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187762"><span class="hs-identifier hs-var">sc1</span></a></span><span>
+</span><span id="line-174"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scSeq"><span class="hs-identifier hs-var">scSeq</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Seq"><span class="hs-identifier hs-type">Seq</span></a></span><span> </span><span id="local-6989586621679187761"><span class="annot"><span class="annottext">[Schema]
+</span><a href="#local-6989586621679187761"><span class="hs-identifier hs-var">scs1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Seq"><span class="hs-identifier hs-type">Seq</span></a></span><span> </span><span id="local-6989586621679187760"><span class="annot"><span class="annottext">[Schema]
+</span><a href="#local-6989586621679187760"><span class="hs-identifier hs-var">scs2</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Schema] -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Seq"><span class="hs-identifier hs-var">Seq</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Schema]
+</span><a href="#local-6989586621679187761"><span class="hs-identifier hs-var">scs1</span></a></span><span> </span><span class="annot"><span class="annottext">[Schema] -&gt; [Schema] -&gt; [Schema]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[Schema]
+</span><a href="#local-6989586621679187760"><span class="hs-identifier hs-var">scs2</span></a></span><span class="hs-special">)</span><span>    </span><span class="hs-comment">-- prevent nested Seq expr</span><span>
+</span><span id="line-175"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scSeq"><span class="hs-identifier hs-var">scSeq</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Seq"><span class="hs-identifier hs-type">Seq</span></a></span><span> </span><span id="local-6989586621679187759"><span class="annot"><span class="annottext">[Schema]
+</span><a href="#local-6989586621679187759"><span class="hs-identifier hs-var">scs1</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679187758"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187758"><span class="hs-identifier hs-var">sc2</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Schema] -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Seq"><span class="hs-identifier hs-var">Seq</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Schema]
+</span><a href="#local-6989586621679187759"><span class="hs-identifier hs-var">scs1</span></a></span><span> </span><span class="annot"><span class="annottext">[Schema] -&gt; [Schema] -&gt; [Schema]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187758"><span class="hs-identifier hs-var">sc2</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-176"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scSeq"><span class="hs-identifier hs-var">scSeq</span></a></span><span> </span><span id="local-6989586621679187757"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187757"><span class="hs-identifier hs-var">sc1</span></a></span></span><span>        </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Seq"><span class="hs-identifier hs-type">Seq</span></a></span><span> </span><span id="local-6989586621679187756"><span class="annot"><span class="annottext">[Schema]
+</span><a href="#local-6989586621679187756"><span class="hs-identifier hs-var">scs2</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Schema] -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Seq"><span class="hs-identifier hs-var">Seq</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187757"><span class="hs-identifier hs-var">sc1</span></a></span><span>  </span><span class="annot"><span class="annottext">Schema -&gt; [Schema] -&gt; [Schema]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span>  </span><span class="annot"><span class="annottext">[Schema]
+</span><a href="#local-6989586621679187756"><span class="hs-identifier hs-var">scs2</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-177"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scSeq"><span class="hs-identifier hs-var">scSeq</span></a></span><span> </span><span id="local-6989586621679187755"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187755"><span class="hs-identifier hs-var">sc1</span></a></span></span><span>        </span><span id="local-6989586621679187754"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187754"><span class="hs-identifier hs-var">sc2</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Schema] -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Seq"><span class="hs-identifier hs-var">Seq</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187755"><span class="hs-identifier hs-var">sc1</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187754"><span class="hs-identifier hs-var">sc2</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-178"></span><span>
+</span><span id="line-179"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scSeqs"><span class="hs-identifier hs-type">scSeqs</span></a></span><span>                          </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-180"></span><span id="scSeqs"><span class="annot"><span class="annottext">scSeqs :: [Schema] -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scSeqs"><span class="hs-identifier hs-var hs-var">scSeqs</span></a></span></span><span>                          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Schema -&gt; Schema -&gt; Schema) -&gt; Schema -&gt; [Schema] -&gt; Schema
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl</span></span><span> </span><span class="annot"><span class="annottext">Schema -&gt; Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scSeq"><span class="hs-identifier hs-var">scSeq</span></a></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scEmpty"><span class="hs-identifier hs-var">scEmpty</span></a></span><span>
+</span><span id="line-181"></span><span>
+</span><span id="line-182"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scNull"><span class="hs-identifier hs-type">scNull</span></a></span><span>                          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-183"></span><span id="scNull"><span class="annot"><span class="annottext">scNull :: Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scNull"><span class="hs-identifier hs-var hs-var">scNull</span></a></span></span><span>                          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Schema] -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Alt"><span class="hs-identifier hs-var">Alt</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-184"></span><span>
+</span><span id="line-185"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scAlt"><span class="hs-identifier hs-type">scAlt</span></a></span><span>                           </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-186"></span><span id="scAlt"><span class="annot"><span class="annottext">scAlt :: Schema -&gt; Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scAlt"><span class="hs-identifier hs-var hs-var">scAlt</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Alt"><span class="hs-identifier hs-type">Alt</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>   </span><span id="local-6989586621679187749"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187749"><span class="hs-identifier hs-var">sc2</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187749"><span class="hs-identifier hs-var">sc2</span></a></span><span>
+</span><span id="line-187"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scAlt"><span class="hs-identifier hs-var">scAlt</span></a></span><span> </span><span id="local-6989586621679187748"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187748"><span class="hs-identifier hs-var">sc1</span></a></span></span><span>        </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Alt"><span class="hs-identifier hs-type">Alt</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187748"><span class="hs-identifier hs-var">sc1</span></a></span><span>
+</span><span id="line-188"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scAlt"><span class="hs-identifier hs-var">scAlt</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Alt"><span class="hs-identifier hs-type">Alt</span></a></span><span> </span><span id="local-6989586621679187747"><span class="annot"><span class="annottext">[Schema]
+</span><a href="#local-6989586621679187747"><span class="hs-identifier hs-var">scs1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Alt"><span class="hs-identifier hs-type">Alt</span></a></span><span> </span><span id="local-6989586621679187746"><span class="annot"><span class="annottext">[Schema]
+</span><a href="#local-6989586621679187746"><span class="hs-identifier hs-var">scs2</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Schema] -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Alt"><span class="hs-identifier hs-var">Alt</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Schema]
+</span><a href="#local-6989586621679187747"><span class="hs-identifier hs-var">scs1</span></a></span><span> </span><span class="annot"><span class="annottext">[Schema] -&gt; [Schema] -&gt; [Schema]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[Schema]
+</span><a href="#local-6989586621679187746"><span class="hs-identifier hs-var">scs2</span></a></span><span class="hs-special">)</span><span>    </span><span class="hs-comment">-- prevent nested Alt expr</span><span>
+</span><span id="line-189"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scAlt"><span class="hs-identifier hs-var">scAlt</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Alt"><span class="hs-identifier hs-type">Alt</span></a></span><span> </span><span id="local-6989586621679187745"><span class="annot"><span class="annottext">[Schema]
+</span><a href="#local-6989586621679187745"><span class="hs-identifier hs-var">scs1</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679187744"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187744"><span class="hs-identifier hs-var">sc2</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Schema] -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Alt"><span class="hs-identifier hs-var">Alt</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Schema]
+</span><a href="#local-6989586621679187745"><span class="hs-identifier hs-var">scs1</span></a></span><span> </span><span class="annot"><span class="annottext">[Schema] -&gt; [Schema] -&gt; [Schema]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187744"><span class="hs-identifier hs-var">sc2</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-190"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scAlt"><span class="hs-identifier hs-var">scAlt</span></a></span><span> </span><span id="local-6989586621679187743"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187743"><span class="hs-identifier hs-var">sc1</span></a></span></span><span>        </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Alt"><span class="hs-identifier hs-type">Alt</span></a></span><span> </span><span id="local-6989586621679187742"><span class="annot"><span class="annottext">[Schema]
+</span><a href="#local-6989586621679187742"><span class="hs-identifier hs-var">scs2</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Schema] -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Alt"><span class="hs-identifier hs-var">Alt</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187743"><span class="hs-identifier hs-var">sc1</span></a></span><span>  </span><span class="annot"><span class="annottext">Schema -&gt; [Schema] -&gt; [Schema]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span>  </span><span class="annot"><span class="annottext">[Schema]
+</span><a href="#local-6989586621679187742"><span class="hs-identifier hs-var">scs2</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-191"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scAlt"><span class="hs-identifier hs-var">scAlt</span></a></span><span> </span><span id="local-6989586621679187741"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187741"><span class="hs-identifier hs-var">sc1</span></a></span></span><span>        </span><span id="local-6989586621679187740"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187740"><span class="hs-identifier hs-var">sc2</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Schema] -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Alt"><span class="hs-identifier hs-var">Alt</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187741"><span class="hs-identifier hs-var">sc1</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187740"><span class="hs-identifier hs-var">sc2</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-192"></span><span>
+</span><span id="line-193"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scAlts"><span class="hs-identifier hs-type">scAlts</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-194"></span><span id="scAlts"><span class="annot"><span class="annottext">scAlts :: [Schema] -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scAlts"><span class="hs-identifier hs-var hs-var">scAlts</span></a></span></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Schema -&gt; Schema -&gt; Schema) -&gt; Schema -&gt; [Schema] -&gt; Schema
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl</span></span><span> </span><span class="annot"><span class="annottext">Schema -&gt; Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scAlt"><span class="hs-identifier hs-var">scAlt</span></a></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scNull"><span class="hs-identifier hs-var">scNull</span></a></span><span>
+</span><span id="line-195"></span><span>
+</span><span id="line-196"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scOption"><span class="hs-identifier hs-type">scOption</span></a></span><span>        </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-197"></span><span id="scOption"><span class="annot"><span class="annottext">scOption :: Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scOption"><span class="hs-identifier hs-var hs-var">scOption</span></a></span></span><span>     </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Seq"><span class="hs-identifier hs-type">Seq</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scEmpty"><span class="hs-identifier hs-var">scEmpty</span></a></span><span>
+</span><span id="line-198"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scOption"><span class="hs-identifier hs-var">scOption</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Attribute"><span class="hs-identifier hs-type">Attribute</span></a></span><span> </span><span id="local-6989586621679187737"><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187737"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679187736"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187736"><span class="hs-identifier hs-var">sc2</span></a></span></span><span class="hs-special">)</span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Attribute"><span class="hs-identifier hs-var">Attribute</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187737"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scOption"><span class="hs-identifier hs-var">scOption</span></a></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187736"><span class="hs-identifier hs-var">sc2</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-199"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scOption"><span class="hs-identifier hs-var">scOption</span></a></span><span> </span><span id="local-6989586621679187735"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187735"><span class="hs-identifier hs-var">sc1</span></a></span></span><span>
+</span><span id="line-200"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187735"><span class="hs-identifier hs-var">sc1</span></a></span><span> </span><span class="annot"><span class="annottext">Schema -&gt; Schema -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scString1"><span class="hs-identifier hs-var">scString1</span></a></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scString"><span class="hs-identifier hs-var">scString</span></a></span><span>
+</span><span id="line-201"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scOpt"><span class="hs-identifier hs-var">scOpt</span></a></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187735"><span class="hs-identifier hs-var">sc1</span></a></span><span>
+</span><span id="line-202"></span><span>
+</span><span id="line-203"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scList"><span class="hs-identifier hs-type">scList</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-204"></span><span id="scList"><span class="annot"><span class="annottext">scList :: Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scList"><span class="hs-identifier hs-var hs-var">scList</span></a></span></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scRep"><span class="hs-identifier hs-var">scRep</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span>
+</span><span id="line-205"></span><span>
+</span><span id="line-206"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scList1"><span class="hs-identifier hs-type">scList1</span></a></span><span>         </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-207"></span><span id="scList1"><span class="annot"><span class="annottext">scList1 :: Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scList1"><span class="hs-identifier hs-var hs-var">scList1</span></a></span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scRep"><span class="hs-identifier hs-var">scRep</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span>
+</span><span id="line-208"></span><span>
+</span><span id="line-209"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scOpt"><span class="hs-identifier hs-type">scOpt</span></a></span><span>           </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-210"></span><span id="scOpt"><span class="annot"><span class="annottext">scOpt :: Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scOpt"><span class="hs-identifier hs-var hs-var">scOpt</span></a></span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scRep"><span class="hs-identifier hs-var">scRep</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-211"></span><span>
+</span><span id="line-212"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scRep"><span class="hs-identifier hs-type">scRep</span></a></span><span>           </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-213"></span><span id="scRep"><span class="annot"><span class="annottext">scRep :: Int -&gt; Int -&gt; Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scRep"><span class="hs-identifier hs-var hs-var">scRep</span></a></span></span><span> </span><span id="local-6989586621679187731"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679187731"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679187730"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679187730"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span id="local-6989586621679187729"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187729"><span class="hs-identifier hs-var">sc1</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Rep"><span class="hs-identifier hs-var">Rep</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679187731"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679187730"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187729"><span class="hs-identifier hs-var">sc1</span></a></span><span>
+</span><span id="line-214"></span><span>
+</span><span id="line-215"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scElem"><span class="hs-identifier hs-type">scElem</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-216"></span><span id="scElem"><span class="annot"><span class="annottext">scElem :: Name -&gt; Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scElem"><span class="hs-identifier hs-var hs-var">scElem</span></a></span></span><span> </span><span id="local-6989586621679187727"><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187727"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679187726"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187726"><span class="hs-identifier hs-var">sc1</span></a></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Element"><span class="hs-identifier hs-var">Element</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187727"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187726"><span class="hs-identifier hs-var">sc1</span></a></span><span>
+</span><span id="line-217"></span><span>
+</span><span id="line-218"></span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scAttr"><span class="hs-identifier hs-type">scAttr</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Schema"><span class="hs-identifier hs-type">Schema</span></a></span><span>
+</span><span id="line-219"></span><span id="scAttr"><span class="annot"><span class="annottext">scAttr :: Name -&gt; Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#scAttr"><span class="hs-identifier hs-var hs-var">scAttr</span></a></span></span><span> </span><span id="local-6989586621679187724"><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187724"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679187723"><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187723"><span class="hs-identifier hs-var">sc1</span></a></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Name -&gt; Schema -&gt; Schema
+</span><a href="Text.XML.HXT.Arrow.Pickle.Schema.html#Attribute"><span class="hs-identifier hs-var">Attribute</span></a></span><span> </span><span class="annot"><span class="annottext">Name
+</span><a href="#local-6989586621679187724"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Schema
+</span><a href="#local-6989586621679187723"><span class="hs-identifier hs-var">sc1</span></a></span><span>
+</span><span id="line-220"></span><span>
+</span><span id="line-221"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-222"></span></pre></body></html>

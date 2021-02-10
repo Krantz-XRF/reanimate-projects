@@ -1,0 +1,213 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">-- |</span><span>
+</span><span id="line-2"></span><span class="hs-comment">-- Module      : Data.Double.Conversion.ByteString</span><span>
+</span><span id="line-3"></span><span class="hs-comment">-- Copyright   : (c) 2011 MailRank, Inc.</span><span>
+</span><span id="line-4"></span><span class="hs-comment">--</span><span>
+</span><span id="line-5"></span><span class="hs-comment">-- License     : BSD-style</span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- Maintainer  : bos@serpentine.com</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- Stability   : experimental</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- Portability : GHC</span><span>
+</span><span id="line-9"></span><span class="hs-comment">--</span><span>
+</span><span id="line-10"></span><span class="hs-comment">-- Fast, efficient support for converting between double precision</span><span>
+</span><span id="line-11"></span><span class="hs-comment">-- floating point values and text.</span><span>
+</span><span id="line-12"></span><span class="hs-comment">--</span><span>
+</span><span id="line-13"></span><span class="hs-comment">-- Although about 15 times faster than plain 'show', these functions</span><span>
+</span><span id="line-14"></span><span class="hs-comment">-- are /slower/ than their 'Text' counterparts, at roughly half the</span><span>
+</span><span id="line-15"></span><span class="hs-comment">-- speed.  (This seems to be due to the cost of allocating</span><span>
+</span><span id="line-16"></span><span class="hs-comment">-- 'ByteString' values via @malloc@.)</span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Data.Double.Conversion.ByteString</span><span>
+</span><span id="line-19"></span><span>    </span><span class="hs-special">(</span><span>
+</span><span id="line-20"></span><span>      </span><span class="annot"><a href="Data.Double.Conversion.ByteString.html#toExponential"><span class="hs-identifier">toExponential</span></a></span><span>
+</span><span id="line-21"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Double.Conversion.ByteString.html#toFixed"><span class="hs-identifier">toFixed</span></a></span><span>
+</span><span id="line-22"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Double.Conversion.ByteString.html#toPrecision"><span class="hs-identifier">toPrecision</span></a></span><span>
+</span><span id="line-23"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Double.Conversion.ByteString.html#toShortest"><span class="hs-identifier">toShortest</span></a></span><span>
+</span><span id="line-24"></span><span>    </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">when</span></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Foreign.ForeignPtr</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">withForeignPtr</span></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Data.Double.Conversion.FFI.html"><span class="hs-identifier">Data.Double.Conversion.FFI</span></a></span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Word</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Word8</span></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString.Internal</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">ByteString</span></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">mallocByteString</span></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Foreign.C.Types</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">CDouble</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">CInt</span></span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Foreign.Ptr</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Ptr</span></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">System.IO.Unsafe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">unsafePerformIO</span></span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="hs-comment">-- | Compute a representation in exponential format with the requested</span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- number of digits after the decimal point. The last emitted digit is</span><span>
+</span><span id="line-37"></span><span class="hs-comment">-- rounded.  If -1 digits are requested, then the shortest exponential</span><span>
+</span><span id="line-38"></span><span class="hs-comment">-- representation is computed.</span><span>
+</span><span id="line-39"></span><span class="annot"><a href="Data.Double.Conversion.ByteString.html#toExponential"><span class="hs-identifier hs-type">toExponential</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ByteString</span></span><span>
+</span><span id="line-40"></span><span id="toExponential"><span class="annot"><span class="annottext">toExponential :: Int -&gt; Double -&gt; ByteString
+</span><a href="Data.Double.Conversion.ByteString.html#toExponential"><span class="hs-identifier hs-var hs-var">toExponential</span></a></span></span><span> </span><span id="local-6989586621679029258"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679029258"><span class="hs-identifier hs-var">ndigits</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+-&gt; CInt
+-&gt; (CDouble -&gt; Ptr Word8 -&gt; IO CInt)
+-&gt; Double
+-&gt; ByteString
+</span><a href="Data.Double.Conversion.ByteString.html#convert"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;toExponential&quot;</span></span><span> </span><span class="annot"><span class="annottext">CInt
+</span><a href="#local-6989586621679029256"><span class="hs-identifier hs-var">len</span></a></span><span> </span><span class="annot"><span class="annottext">((CDouble -&gt; Ptr Word8 -&gt; IO CInt) -&gt; Double -&gt; ByteString)
+-&gt; (CDouble -&gt; Ptr Word8 -&gt; IO CInt) -&gt; Double -&gt; ByteString
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679029255"><span class="annot"><span class="annottext">CDouble
+</span><a href="#local-6989586621679029255"><span class="hs-identifier hs-var">val</span></a></span></span><span> </span><span id="local-6989586621679029254"><span class="annot"><span class="annottext">Ptr Word8
+</span><a href="#local-6989586621679029254"><span class="hs-identifier hs-var">mba</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-41"></span><span>                        </span><span class="annot"><span class="annottext">CDouble -&gt; Ptr Word8 -&gt; CInt -&gt; IO CInt
+</span><a href="Data.Double.Conversion.FFI.html#c_ToExponential"><span class="hs-identifier hs-var">c_ToExponential</span></a></span><span> </span><span class="annot"><span class="annottext">CDouble
+</span><a href="#local-6989586621679029255"><span class="hs-identifier hs-var">val</span></a></span><span> </span><span class="annot"><span class="annottext">Ptr Word8
+</span><a href="#local-6989586621679029254"><span class="hs-identifier hs-var">mba</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; CInt
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679029258"><span class="hs-identifier hs-var">ndigits</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-42"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679029256"><span class="annot"><span class="annottext">len :: CInt
+</span><a href="#local-6989586621679029256"><span class="hs-identifier hs-var hs-var">len</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CInt
+</span><a href="Data.Double.Conversion.FFI.html#c_ToExponentialLength"><span class="hs-identifier hs-var">c_ToExponentialLength</span></a></span><span>
+</span><span id="line-43"></span><span>        </span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="#local-6989586621679029256"><span class="hs-pragma hs-type">len</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-44"></span><span>
+</span><span id="line-45"></span><span class="hs-comment">-- | Compute a decimal representation with a fixed number of digits</span><span>
+</span><span id="line-46"></span><span class="hs-comment">-- after the decimal point. The last emitted digit is rounded.</span><span>
+</span><span id="line-47"></span><span class="annot"><a href="Data.Double.Conversion.ByteString.html#toFixed"><span class="hs-identifier hs-type">toFixed</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ByteString</span></span><span>
+</span><span id="line-48"></span><span id="toFixed"><span class="annot"><span class="annottext">toFixed :: Int -&gt; Double -&gt; ByteString
+</span><a href="Data.Double.Conversion.ByteString.html#toFixed"><span class="hs-identifier hs-var hs-var">toFixed</span></a></span></span><span> </span><span id="local-6989586621679029251"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679029251"><span class="hs-identifier hs-var">ndigits</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+-&gt; CInt
+-&gt; (CDouble -&gt; Ptr Word8 -&gt; IO CInt)
+-&gt; Double
+-&gt; ByteString
+</span><a href="Data.Double.Conversion.ByteString.html#convert"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;toFixed&quot;</span></span><span> </span><span class="annot"><span class="annottext">CInt
+</span><a href="#local-6989586621679029250"><span class="hs-identifier hs-var">len</span></a></span><span> </span><span class="annot"><span class="annottext">((CDouble -&gt; Ptr Word8 -&gt; IO CInt) -&gt; Double -&gt; ByteString)
+-&gt; (CDouble -&gt; Ptr Word8 -&gt; IO CInt) -&gt; Double -&gt; ByteString
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679029249"><span class="annot"><span class="annottext">CDouble
+</span><a href="#local-6989586621679029249"><span class="hs-identifier hs-var">val</span></a></span></span><span> </span><span id="local-6989586621679029248"><span class="annot"><span class="annottext">Ptr Word8
+</span><a href="#local-6989586621679029248"><span class="hs-identifier hs-var">mba</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-49"></span><span>                  </span><span class="annot"><span class="annottext">CDouble -&gt; Ptr Word8 -&gt; CInt -&gt; IO CInt
+</span><a href="Data.Double.Conversion.FFI.html#c_ToFixed"><span class="hs-identifier hs-var">c_ToFixed</span></a></span><span> </span><span class="annot"><span class="annottext">CDouble
+</span><a href="#local-6989586621679029249"><span class="hs-identifier hs-var">val</span></a></span><span> </span><span class="annot"><span class="annottext">Ptr Word8
+</span><a href="#local-6989586621679029248"><span class="hs-identifier hs-var">mba</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; CInt
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679029251"><span class="hs-identifier hs-var">ndigits</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-50"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679029250"><span class="annot"><span class="annottext">len :: CInt
+</span><a href="#local-6989586621679029250"><span class="hs-identifier hs-var hs-var">len</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CInt
+</span><a href="Data.Double.Conversion.FFI.html#c_ToFixedLength"><span class="hs-identifier hs-var">c_ToFixedLength</span></a></span><span>
+</span><span id="line-51"></span><span>        </span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="#local-6989586621679029250"><span class="hs-pragma hs-type">len</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="hs-comment">-- | Compute the shortest string of digits that correctly represent</span><span>
+</span><span id="line-54"></span><span class="hs-comment">-- the input number.</span><span>
+</span><span id="line-55"></span><span class="annot"><a href="Data.Double.Conversion.ByteString.html#toShortest"><span class="hs-identifier hs-type">toShortest</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ByteString</span></span><span>
+</span><span id="line-56"></span><span id="toShortest"><span class="annot"><span class="annottext">toShortest :: Double -&gt; ByteString
+</span><a href="Data.Double.Conversion.ByteString.html#toShortest"><span class="hs-identifier hs-var hs-var">toShortest</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+-&gt; CInt
+-&gt; (CDouble -&gt; Ptr Word8 -&gt; IO CInt)
+-&gt; Double
+-&gt; ByteString
+</span><a href="Data.Double.Conversion.ByteString.html#convert"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;toShortest&quot;</span></span><span> </span><span class="annot"><span class="annottext">CInt
+</span><a href="#local-6989586621679029245"><span class="hs-identifier hs-var">len</span></a></span><span> </span><span class="annot"><span class="annottext">CDouble -&gt; Ptr Word8 -&gt; IO CInt
+</span><a href="Data.Double.Conversion.FFI.html#c_ToShortest"><span class="hs-identifier hs-var">c_ToShortest</span></a></span><span>
+</span><span id="line-57"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679029245"><span class="annot"><span class="annottext">len :: CInt
+</span><a href="#local-6989586621679029245"><span class="hs-identifier hs-var hs-var">len</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CInt
+</span><a href="Data.Double.Conversion.FFI.html#c_ToShortestLength"><span class="hs-identifier hs-var">c_ToShortestLength</span></a></span><span>
+</span><span id="line-58"></span><span>        </span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="#local-6989586621679029245"><span class="hs-pragma hs-type">len</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-59"></span><span>
+</span><span id="line-60"></span><span class="hs-comment">-- | Compute @precision@ leading digits of the given value either in</span><span>
+</span><span id="line-61"></span><span class="hs-comment">-- exponential or decimal format. The last computed digit is rounded.</span><span>
+</span><span id="line-62"></span><span class="annot"><a href="Data.Double.Conversion.ByteString.html#toPrecision"><span class="hs-identifier hs-type">toPrecision</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ByteString</span></span><span>
+</span><span id="line-63"></span><span id="toPrecision"><span class="annot"><span class="annottext">toPrecision :: Int -&gt; Double -&gt; ByteString
+</span><a href="Data.Double.Conversion.ByteString.html#toPrecision"><span class="hs-identifier hs-var hs-var">toPrecision</span></a></span></span><span> </span><span id="local-6989586621679029242"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679029242"><span class="hs-identifier hs-var">ndigits</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+-&gt; CInt
+-&gt; (CDouble -&gt; Ptr Word8 -&gt; IO CInt)
+-&gt; Double
+-&gt; ByteString
+</span><a href="Data.Double.Conversion.ByteString.html#convert"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;toPrecision&quot;</span></span><span> </span><span class="annot"><span class="annottext">CInt
+</span><a href="#local-6989586621679029241"><span class="hs-identifier hs-var">len</span></a></span><span> </span><span class="annot"><span class="annottext">((CDouble -&gt; Ptr Word8 -&gt; IO CInt) -&gt; Double -&gt; ByteString)
+-&gt; (CDouble -&gt; Ptr Word8 -&gt; IO CInt) -&gt; Double -&gt; ByteString
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679029240"><span class="annot"><span class="annottext">CDouble
+</span><a href="#local-6989586621679029240"><span class="hs-identifier hs-var">val</span></a></span></span><span> </span><span id="local-6989586621679029239"><span class="annot"><span class="annottext">Ptr Word8
+</span><a href="#local-6989586621679029239"><span class="hs-identifier hs-var">mba</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-64"></span><span>                      </span><span class="annot"><span class="annottext">CDouble -&gt; Ptr Word8 -&gt; CInt -&gt; IO CInt
+</span><a href="Data.Double.Conversion.FFI.html#c_ToPrecision"><span class="hs-identifier hs-var">c_ToPrecision</span></a></span><span> </span><span class="annot"><span class="annottext">CDouble
+</span><a href="#local-6989586621679029240"><span class="hs-identifier hs-var">val</span></a></span><span> </span><span class="annot"><span class="annottext">Ptr Word8
+</span><a href="#local-6989586621679029239"><span class="hs-identifier hs-var">mba</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; CInt
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679029242"><span class="hs-identifier hs-var">ndigits</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-65"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679029241"><span class="annot"><span class="annottext">len :: CInt
+</span><a href="#local-6989586621679029241"><span class="hs-identifier hs-var hs-var">len</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CInt
+</span><a href="Data.Double.Conversion.FFI.html#c_ToPrecisionLength"><span class="hs-identifier hs-var">c_ToPrecisionLength</span></a></span><span>
+</span><span id="line-66"></span><span>        </span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="#local-6989586621679029241"><span class="hs-pragma hs-type">len</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span class="annot"><a href="Data.Double.Conversion.ByteString.html#convert"><span class="hs-identifier hs-type">convert</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">CInt</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">CDouble</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Ptr</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">CInt</span></span><span class="hs-special">)</span><span>
+</span><span id="line-69"></span><span>        </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ByteString</span></span><span>
+</span><span id="line-70"></span><span id="convert"><span class="annot"><span class="annottext">convert :: String
+-&gt; CInt
+-&gt; (CDouble -&gt; Ptr Word8 -&gt; IO CInt)
+-&gt; Double
+-&gt; ByteString
+</span><a href="Data.Double.Conversion.ByteString.html#convert"><span class="hs-identifier hs-var hs-var">convert</span></a></span></span><span> </span><span id="local-6989586621679029236"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679029236"><span class="hs-identifier hs-var">func</span></a></span></span><span> </span><span id="local-6989586621679029235"><span class="annot"><span class="annottext">CInt
+</span><a href="#local-6989586621679029235"><span class="hs-identifier hs-var">len</span></a></span></span><span> </span><span id="local-6989586621679029234"><span class="annot"><span class="annottext">CDouble -&gt; Ptr Word8 -&gt; IO CInt
+</span><a href="#local-6989586621679029234"><span class="hs-identifier hs-var">act</span></a></span></span><span> </span><span id="local-6989586621679029233"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679029233"><span class="hs-identifier hs-var">val</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO ByteString -&gt; ByteString
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO ByteString -&gt; ByteString) -&gt; IO ByteString -&gt; ByteString
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-71"></span><span>  </span><span id="local-6989586621679029232"><span class="annot"><span class="annottext">ForeignPtr Word8
+</span><a href="#local-6989586621679029232"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Int -&gt; IO (ForeignPtr Word8)
+forall a. Int -&gt; IO (ForeignPtr a)
+</span><span class="hs-identifier hs-var">mallocByteString</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CInt -&gt; Int
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">CInt
+</span><a href="#local-6989586621679029235"><span class="hs-identifier hs-var">len</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-72"></span><span>  </span><span id="local-6989586621679029231"><span class="annot"><span class="annottext">CInt
+</span><a href="#local-6989586621679029231"><span class="hs-identifier hs-var">size</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ForeignPtr Word8 -&gt; (Ptr Word8 -&gt; IO CInt) -&gt; IO CInt
+forall a b. ForeignPtr a -&gt; (Ptr a -&gt; IO b) -&gt; IO b
+</span><span class="hs-identifier hs-var">withForeignPtr</span></span><span> </span><span class="annot"><span class="annottext">ForeignPtr Word8
+</span><a href="#local-6989586621679029232"><span class="hs-identifier hs-var">fp</span></a></span><span> </span><span class="annot"><span class="annottext">((Ptr Word8 -&gt; IO CInt) -&gt; IO CInt)
+-&gt; (Ptr Word8 -&gt; IO CInt) -&gt; IO CInt
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CDouble -&gt; Ptr Word8 -&gt; IO CInt
+</span><a href="#local-6989586621679029234"><span class="hs-identifier hs-var">act</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; CDouble
+forall a b. (Real a, Fractional b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">realToFrac</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679029233"><span class="hs-identifier hs-var">val</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-73"></span><span>  </span><span class="annot"><span class="annottext">Bool -&gt; IO () -&gt; IO ()
+forall (f :: * -&gt; *). Applicative f =&gt; Bool -&gt; f () -&gt; f ()
+</span><span class="hs-identifier hs-var">when</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CInt
+</span><a href="#local-6989586621679029231"><span class="hs-identifier hs-var">size</span></a></span><span> </span><span class="annot"><span class="annottext">CInt -&gt; CInt -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">CInt
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(IO () -&gt; IO ()) -&gt; (String -&gt; IO ()) -&gt; String -&gt; IO ()
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span>
+</span><span id="line-74"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; IO ()
+forall (m :: * -&gt; *) a. MonadFail m =&gt; String -&gt; m a
+</span><span class="hs-identifier hs-var">fail</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; IO ()) -&gt; String -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Data.Double.Conversion.ByteString.&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679029236"><span class="hs-identifier hs-var">func</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span>
+</span><span id="line-75"></span><span>           </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;: conversion failed (invalid precision requested)&quot;</span></span><span>
+</span><span id="line-76"></span><span>  </span><span class="annot"><span class="annottext">ByteString -&gt; IO ByteString
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(ByteString -&gt; IO ByteString) -&gt; ByteString -&gt; IO ByteString
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">ForeignPtr Word8 -&gt; Int -&gt; Int -&gt; ByteString
+</span><span class="hs-identifier hs-var">PS</span></span><span> </span><span class="annot"><span class="annottext">ForeignPtr Word8
+</span><a href="#local-6989586621679029232"><span class="hs-identifier hs-var">fp</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CInt -&gt; Int
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">CInt
+</span><a href="#local-6989586621679029231"><span class="hs-identifier hs-var">size</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-77"></span></pre></body></html>

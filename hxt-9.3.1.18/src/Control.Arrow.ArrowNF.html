@@ -1,0 +1,111 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{- |
+   Module     : Control.Arrow.ArrowNF
+   Copyright  : Copyright (C) 2011 Uwe Schmidt
+   License    : MIT
+
+   Maintainer : Uwe Schmidt (uwe\@fh-wedel.de)
+   Stability  : experimental
+   Portability: non-portable
+
+   Arrows for evaluation of normal form results
+
+-}</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Control.Arrow.ArrowNF</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Arrow</span></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Control.Arrow.ArrowList.html"><span class="hs-identifier">Control.Arrow.ArrowList</span></a></span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.DeepSeq</span></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Control.FlatSeq.html"><span class="hs-identifier">Control.FlatSeq</span></a></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- complete evaluation of an arrow result using 'Control.DeepSeq'</span><span>
+</span><span id="line-29"></span><span class="hs-comment">--</span><span>
+</span><span id="line-30"></span><span class="hs-comment">-- this is sometimes useful for preventing space leaks, especially after reading</span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- and validation of a document, all DTD stuff is not longer in use and can be</span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- recycled by the GC.</span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span id="local-6989586621679168854"><span id="local-6989586621679168855"><span class="annot"><a href="Control.Arrow.ArrowNF.html#strictA"><span class="hs-identifier hs-type">strictA</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Arrow</span></span><span> </span><span class="annot"><a href="#local-6989586621679168855"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NFData</span></span><span> </span><span class="annot"><a href="#local-6989586621679168854"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679168855"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168854"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168854"><span class="hs-identifier hs-type">b</span></a></span></span></span><span>
+</span><span id="line-35"></span><span id="strictA"><span class="annot"><span class="annottext">strictA :: a b b
+</span><a href="Control.Arrow.ArrowNF.html#strictA"><span class="hs-identifier hs-var hs-var">strictA</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(b -&gt; b) -&gt; a b b
+forall (a :: * -&gt; * -&gt; *) b c. Arrow a =&gt; (b -&gt; c) -&gt; a b c
+</span><span class="hs-identifier hs-var">arr</span></span><span> </span><span class="annot"><span class="annottext">((b -&gt; b) -&gt; a b b) -&gt; (b -&gt; b) -&gt; a b b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679168852"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679168852"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">b -&gt; b -&gt; b
+forall a b. NFData a =&gt; a -&gt; b -&gt; b
+</span><span class="hs-identifier hs-var">deepseq</span></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679168852"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679168852"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-keyword">class</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Arrow</span></span><span> </span><span class="annot"><a href="#local-6989586621679168878"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span id="ArrowNF"><span class="annot"><a href="Control.Arrow.ArrowNF.html#ArrowNF"><span class="hs-identifier hs-var">ArrowNF</span></a></span></span><span> </span><span id="local-6989586621679168878"><span class="annot"><a href="#local-6989586621679168878"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-38"></span><span>    </span><span id="local-6989586621679168848"><span id="local-6989586621679168849"><span id="rnfA"><span class="annot"><a href="Control.Arrow.ArrowNF.html#rnfA"><span class="hs-identifier hs-type">rnfA</span></a></span></span><span>                        </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">NFData</span></span><span> </span><span class="annot"><a href="#local-6989586621679168849"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679168878"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168848"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168849"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679168878"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168848"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168849"><span class="hs-identifier hs-type">c</span></a></span></span></span><span>
+</span><span id="line-39"></span><span>    </span><span id="local-6989586621679168846"><span class="annot"><a href="Control.Arrow.ArrowNF.html#rnfA"><span class="hs-identifier hs-var hs-var">rnfA</span></a></span><span> </span><span id="local-6989586621679168845"><span class="annot"><span class="annottext">a b c
+</span><a href="#local-6989586621679168845"><span class="hs-identifier hs-var">f</span></a></span></span><span>                      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a b c
+</span><a href="#local-6989586621679168845"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a b c -&gt; (c -&gt; c) -&gt; a b c
+forall (a :: * -&gt; * -&gt; *) b c d.
+Arrow a =&gt;
+a b c -&gt; (c -&gt; d) -&gt; a b d
+</span><span class="hs-operator hs-var">&gt;&gt;^</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679168843"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679168843"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">c -&gt; c -&gt; c
+forall a b. NFData a =&gt; a -&gt; b -&gt; b
+</span><span class="hs-identifier hs-var">deepseq</span></span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679168843"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679168843"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-40"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowNF.html#rnfA"><span class="hs-pragma hs-type">rnfA</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-43"></span><span class="hs-comment">-- partial evaluation of an arrow result using 'Control.FlatSeq'</span><span>
+</span><span id="line-44"></span><span class="hs-comment">--</span><span>
+</span><span id="line-45"></span><span class="hs-comment">-- There are two arrows with force the partial evaluation. By convention</span><span>
+</span><span id="line-46"></span><span class="hs-comment">-- the 2. should be less lazy than the 1.</span><span>
+</span><span id="line-47"></span><span class="hs-comment">--</span><span>
+</span><span id="line-48"></span><span class="hs-comment">-- These arrows are sometimes useful for preventing space leaks, especially when parsing</span><span>
+</span><span id="line-49"></span><span class="hs-comment">-- complex data structures. In many cases the evaluated AST is more space efficient</span><span>
+</span><span id="line-50"></span><span class="hs-comment">-- than the unevaluaded with a lot of closures.</span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span class="hs-keyword">class</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Arrow</span></span><span> </span><span class="annot"><a href="#local-6989586621679168871"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowList.html#ArrowList"><span class="hs-identifier hs-type">ArrowList</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168871"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span id="ArrowWNF"><span class="annot"><a href="Control.Arrow.ArrowNF.html#ArrowWNF"><span class="hs-identifier hs-var">ArrowWNF</span></a></span></span><span> </span><span id="local-6989586621679168871"><span class="annot"><a href="#local-6989586621679168871"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-53"></span><span>    </span><span id="local-6989586621679168840"><span id="local-6989586621679168841"><span id="rwnfA"><span class="annot"><a href="Control.Arrow.ArrowNF.html#rwnfA"><span class="hs-identifier hs-type">rwnfA</span></a></span></span><span>                       </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.FlatSeq.html#WNFData"><span class="hs-identifier hs-type">WNFData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168841"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679168871"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168840"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168841"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679168871"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168840"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168841"><span class="hs-identifier hs-type">c</span></a></span></span></span><span>
+</span><span id="line-54"></span><span>    </span><span id="local-6989586621679168838"><span class="annot"><a href="Control.Arrow.ArrowNF.html#rwnfA"><span class="hs-identifier hs-var hs-var">rwnfA</span></a></span><span> </span><span id="local-6989586621679168837"><span class="annot"><span class="annottext">a b c
+</span><a href="#local-6989586621679168837"><span class="hs-identifier hs-var">f</span></a></span></span><span>                     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a b c
+</span><a href="#local-6989586621679168837"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a b c -&gt; ([c] -&gt; [c]) -&gt; a b c
+forall (a :: * -&gt; * -&gt; *) b c d.
+ArrowList a =&gt;
+a b c -&gt; ([c] -&gt; [d]) -&gt; a b d
+</span><a href="Control.Arrow.ArrowList.html#%3E%3E."><span class="hs-operator hs-var">&gt;&gt;.</span></a></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679168835"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679168835"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(c -&gt; ()) -&gt; [c] -&gt; ()
+forall a. (a -&gt; ()) -&gt; [a] -&gt; ()
+</span><a href="Control.FlatSeq.html#rlnf"><span class="hs-identifier hs-var">rlnf</span></a></span><span> </span><span class="annot"><span class="annottext">c -&gt; ()
+forall a. WNFData a =&gt; a -&gt; ()
+</span><a href="Control.FlatSeq.html#rwnf"><span class="hs-identifier hs-var">rwnf</span></a></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679168835"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">() -&gt; [c] -&gt; [c]
+</span><span class="hs-operator hs-var">`seq`</span></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679168835"><span class="hs-identifier hs-var">x</span></a></span></span><span>
+</span><span id="line-55"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowNF.html#rwnfA"><span class="hs-pragma hs-type">rwnfA</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span>    </span><span id="local-6989586621679168831"><span id="local-6989586621679168832"><span id="rwnf2A"><span class="annot"><a href="Control.Arrow.ArrowNF.html#rwnf2A"><span class="hs-identifier hs-type">rwnf2A</span></a></span></span><span>                      </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.FlatSeq.html#WNFData"><span class="hs-identifier hs-type">WNFData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168832"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679168871"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168831"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168832"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679168871"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168831"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679168832"><span class="hs-identifier hs-type">c</span></a></span></span></span><span>
+</span><span id="line-58"></span><span>    </span><span id="local-6989586621679168829"><span class="annot"><a href="Control.Arrow.ArrowNF.html#rwnf2A"><span class="hs-identifier hs-var hs-var">rwnf2A</span></a></span><span> </span><span id="local-6989586621679168828"><span class="annot"><span class="annottext">a b c
+</span><a href="#local-6989586621679168828"><span class="hs-identifier hs-var">f</span></a></span></span><span>                    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a b c
+</span><a href="#local-6989586621679168828"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a b c -&gt; ([c] -&gt; [c]) -&gt; a b c
+forall (a :: * -&gt; * -&gt; *) b c d.
+ArrowList a =&gt;
+a b c -&gt; ([c] -&gt; [d]) -&gt; a b d
+</span><a href="Control.Arrow.ArrowList.html#%3E%3E."><span class="hs-operator hs-var">&gt;&gt;.</span></a></span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679168827"><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679168827"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(c -&gt; ()) -&gt; [c] -&gt; ()
+forall a. (a -&gt; ()) -&gt; [a] -&gt; ()
+</span><a href="Control.FlatSeq.html#rlnf"><span class="hs-identifier hs-var">rlnf</span></a></span><span> </span><span class="annot"><span class="annottext">c -&gt; ()
+forall a. WNFData a =&gt; a -&gt; ()
+</span><a href="Control.FlatSeq.html#rwnf2"><span class="hs-identifier hs-var">rwnf2</span></a></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679168827"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">() -&gt; [c] -&gt; [c]
+</span><span class="hs-operator hs-var">`seq`</span></span><span> </span><span class="annot"><span class="annottext">[c]
+</span><a href="#local-6989586621679168827"><span class="hs-identifier hs-var">x</span></a></span></span><span>
+</span><span id="line-59"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.Arrow.ArrowNF.html#rwnf2A"><span class="hs-pragma hs-type">rwnf2A</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-62"></span></pre></body></html>

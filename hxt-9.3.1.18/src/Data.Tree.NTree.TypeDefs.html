@@ -1,0 +1,383 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE CPP                #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE DeriveDataTypeable #-}</span><span>
+</span><span id="line-3"></span><span>
+</span><span id="line-4"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-comment">{- |
+   Module     : Data.Tree.NTree.TypeDefs
+   Copyright  : Copyright (C) 2005-2010 Uwe Schmidt
+   License    : MIT
+
+   Maintainer : Uwe Schmidt (uwe\@fh-wedel.de)
+   Stability  : stable
+   Portability: portable
+
+   Interface definition for trees
+
+   n-ary tree structure (rose trees)
+
+-}</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Data.Tree.NTree.TypeDefs</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.DeepSeq</span></span><span>     </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">NFData</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Control.FlatSeq.html"><span class="hs-identifier">Control.FlatSeq</span></a></span><span>     </span><span class="hs-special">(</span><span class="annot"><a href="Control.FlatSeq.html#WNFData"><span class="hs-identifier">WNFData</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Control.FlatSeq.html#rlnf"><span class="hs-identifier">rlnf</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Binary</span></span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Monoid</span></span><span>         </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(&lt;&gt;)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Data.Tree.Class.html"><span class="hs-identifier">Data.Tree.Class</span></a></span><span>     </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.Class.html#Tree"><span class="hs-identifier">Tree</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Typeable</span></span><span>       </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Typeable</span></span><span class="hs-special">)</span><span class="hs-cpp">
+
+#if MIN_VERSION_base(4,8,2)
+</span><span class="hs-cpp">#else
+</span><span class="hs-keyword">import</span><span>           </span><span class="hs-identifier">Control.Applicative</span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="hs-operator">&lt;$&gt;</span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-cpp">
+#endif
+</span><span class="hs-cpp">
+#if MIN_VERSION_base(4,8,0)
+</span><span class="hs-cpp">#else
+</span><span class="hs-keyword">import</span><span>           </span><span class="hs-identifier">Control.Applicative</span><span> </span><span class="hs-special">(</span><span class="hs-identifier">Applicative</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-42"></span><span class="hs-keyword">import</span><span>           </span><span class="hs-identifier">Data.Foldable</span><span>       </span><span class="hs-special">(</span><span class="hs-identifier">Foldable</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-43"></span><span class="hs-keyword">import</span><span>           </span><span class="hs-identifier">Data.Monoid</span><span>         </span><span class="hs-special">(</span><span class="hs-identifier">Monoid</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-44"></span><span class="hs-keyword">import</span><span>           </span><span class="hs-identifier">Data.Traversable</span><span>    </span><span class="hs-special">(</span><span class="hs-identifier">Traversable</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-identifier">sequenceA</span><span class="hs-special">)</span><span class="hs-cpp">
+#endif
+</span><span>
+</span><span id="line-47"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-48"></span><span>
+</span><span id="line-49"></span><span class="hs-comment">-- | n-ary ordered tree (rose trees)</span><span>
+</span><span id="line-50"></span><span class="hs-comment">--</span><span>
+</span><span id="line-51"></span><span class="hs-comment">-- a tree consists of a node and a possible empty list of children.</span><span>
+</span><span id="line-52"></span><span class="hs-comment">-- If the list of children is empty, the node is a leaf, else it's</span><span>
+</span><span id="line-53"></span><span class="hs-comment">-- an inner node.</span><span>
+</span><span id="line-54"></span><span class="hs-comment">--</span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- NTree implements Eq, Ord, Show and Read</span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span class="hs-keyword">data</span><span> </span><span id="NTree"><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-var">NTree</span></a></span></span><span>  </span><span id="local-6989586621679169999"><span class="annot"><a href="#local-6989586621679169999"><span class="hs-identifier hs-type">a</span></a></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span id="NTree"><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-var">NTree</span></a></span></span><span> </span><span class="annot"><a href="#local-6989586621679169999"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTrees"><span class="hs-identifier hs-type">NTrees</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679169999"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-58"></span><span>    </span><span class="hs-keyword">deriving</span><span>
+</span><span id="line-59"></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679169883"><span id="local-6989586621679169885"><span class="annot"><span class="annottext">NTree a -&gt; NTree a -&gt; Bool
+(NTree a -&gt; NTree a -&gt; Bool)
+-&gt; (NTree a -&gt; NTree a -&gt; Bool) -&gt; Eq (NTree a)
+forall a. Eq a =&gt; NTree a -&gt; NTree a -&gt; Bool
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: NTree a -&gt; NTree a -&gt; Bool
+$c/= :: forall a. Eq a =&gt; NTree a -&gt; NTree a -&gt; Bool
+== :: NTree a -&gt; NTree a -&gt; Bool
+$c== :: forall a. Eq a =&gt; NTree a -&gt; NTree a -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679169867"><span id="local-6989586621679169869"><span id="local-6989586621679169871"><span id="local-6989586621679169873"><span id="local-6989586621679169875"><span id="local-6989586621679169877"><span id="local-6989586621679169879"><span class="annot"><span class="annottext">Eq (NTree a)
+Eq (NTree a)
+-&gt; (NTree a -&gt; NTree a -&gt; Ordering)
+-&gt; (NTree a -&gt; NTree a -&gt; Bool)
+-&gt; (NTree a -&gt; NTree a -&gt; Bool)
+-&gt; (NTree a -&gt; NTree a -&gt; Bool)
+-&gt; (NTree a -&gt; NTree a -&gt; Bool)
+-&gt; (NTree a -&gt; NTree a -&gt; NTree a)
+-&gt; (NTree a -&gt; NTree a -&gt; NTree a)
+-&gt; Ord (NTree a)
+NTree a -&gt; NTree a -&gt; Bool
+NTree a -&gt; NTree a -&gt; Ordering
+NTree a -&gt; NTree a -&gt; NTree a
+forall a.
+Eq a
+-&gt; (a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+forall a. Ord a =&gt; Eq (NTree a)
+forall a. Ord a =&gt; NTree a -&gt; NTree a -&gt; Bool
+forall a. Ord a =&gt; NTree a -&gt; NTree a -&gt; Ordering
+forall a. Ord a =&gt; NTree a -&gt; NTree a -&gt; NTree a
+min :: NTree a -&gt; NTree a -&gt; NTree a
+$cmin :: forall a. Ord a =&gt; NTree a -&gt; NTree a -&gt; NTree a
+max :: NTree a -&gt; NTree a -&gt; NTree a
+$cmax :: forall a. Ord a =&gt; NTree a -&gt; NTree a -&gt; NTree a
+&gt;= :: NTree a -&gt; NTree a -&gt; Bool
+$c&gt;= :: forall a. Ord a =&gt; NTree a -&gt; NTree a -&gt; Bool
+&gt; :: NTree a -&gt; NTree a -&gt; Bool
+$c&gt; :: forall a. Ord a =&gt; NTree a -&gt; NTree a -&gt; Bool
+&lt;= :: NTree a -&gt; NTree a -&gt; Bool
+$c&lt;= :: forall a. Ord a =&gt; NTree a -&gt; NTree a -&gt; Bool
+&lt; :: NTree a -&gt; NTree a -&gt; Bool
+$c&lt; :: forall a. Ord a =&gt; NTree a -&gt; NTree a -&gt; Bool
+compare :: NTree a -&gt; NTree a -&gt; Ordering
+$ccompare :: forall a. Ord a =&gt; NTree a -&gt; NTree a -&gt; Ordering
+$cp1Ord :: forall a. Ord a =&gt; Eq (NTree a)
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679169860"><span id="local-6989586621679169862"><span id="local-6989586621679169864"><span class="annot"><span class="annottext">Int -&gt; NTree a -&gt; ShowS
+[NTree a] -&gt; ShowS
+NTree a -&gt; String
+(Int -&gt; NTree a -&gt; ShowS)
+-&gt; (NTree a -&gt; String) -&gt; ([NTree a] -&gt; ShowS) -&gt; Show (NTree a)
+forall a. Show a =&gt; Int -&gt; NTree a -&gt; ShowS
+forall a. Show a =&gt; [NTree a] -&gt; ShowS
+forall a. Show a =&gt; NTree a -&gt; String
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [NTree a] -&gt; ShowS
+$cshowList :: forall a. Show a =&gt; [NTree a] -&gt; ShowS
+show :: NTree a -&gt; String
+$cshow :: forall a. Show a =&gt; NTree a -&gt; String
+showsPrec :: Int -&gt; NTree a -&gt; ShowS
+$cshowsPrec :: forall a. Show a =&gt; Int -&gt; NTree a -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679169851"><span id="local-6989586621679169853"><span id="local-6989586621679169855"><span id="local-6989586621679169857"><span class="annot"><span class="annottext">ReadPrec [NTree a]
+ReadPrec (NTree a)
+Int -&gt; ReadS (NTree a)
+ReadS [NTree a]
+(Int -&gt; ReadS (NTree a))
+-&gt; ReadS [NTree a]
+-&gt; ReadPrec (NTree a)
+-&gt; ReadPrec [NTree a]
+-&gt; Read (NTree a)
+forall a. Read a =&gt; ReadPrec [NTree a]
+forall a. Read a =&gt; ReadPrec (NTree a)
+forall a. Read a =&gt; Int -&gt; ReadS (NTree a)
+forall a. Read a =&gt; ReadS [NTree a]
+forall a.
+(Int -&gt; ReadS a)
+-&gt; ReadS [a] -&gt; ReadPrec a -&gt; ReadPrec [a] -&gt; Read a
+readListPrec :: ReadPrec [NTree a]
+$creadListPrec :: forall a. Read a =&gt; ReadPrec [NTree a]
+readPrec :: ReadPrec (NTree a)
+$creadPrec :: forall a. Read a =&gt; ReadPrec (NTree a)
+readList :: ReadS [NTree a]
+$creadList :: forall a. Read a =&gt; ReadS [NTree a]
+readsPrec :: Int -&gt; ReadS (NTree a)
+$creadsPrec :: forall a. Read a =&gt; Int -&gt; ReadS (NTree a)
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Read</span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Typeable</span></span><span class="hs-special">)</span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span class="hs-comment">-- | shortcut for a sequence of n-ary trees</span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="hs-keyword">type</span><span> </span><span id="NTrees"><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTrees"><span class="hs-identifier hs-var">NTrees</span></a></span></span><span>   </span><span id="local-6989586621679169849"><span class="annot"><a href="#local-6989586621679169849"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679169849"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-64"></span><span>
+</span><span id="line-65"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-66"></span><span>
+</span><span id="line-67"></span><span id="local-6989586621679169848"><span class="hs-keyword">instance</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">NFData</span></span><span> </span><span class="annot"><a href="#local-6989586621679169848"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NFData</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679169848"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-68"></span><span>    </span><span id="local-6989586621679169845"><span class="annot"><span class="annottext">rnf :: NTree a -&gt; ()
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">rnf</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span id="local-6989586621679169843"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169843"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679169842"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679169842"><span class="hs-identifier hs-var">cl</span></a></span></span><span class="hs-special">)</span><span>                    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; ()
+forall a. NFData a =&gt; a -&gt; ()
+</span><span class="hs-identifier hs-var">rnf</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169843"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">() -&gt; () -&gt; ()
+</span><span class="hs-operator hs-var">`seq`</span></span><span> </span><span class="annot"><span class="annottext">NTrees a -&gt; ()
+forall a. NFData a =&gt; a -&gt; ()
+</span><span class="hs-identifier hs-var">rnf</span></span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679169842"><span class="hs-identifier hs-var">cl</span></a></span><span>
+</span><span id="line-69"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><span class="hs-pragma hs-type">rnf</span></span><span> </span><span class="hs-pragma">#-}</span></span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span id="local-6989586621679169841"><span class="hs-keyword">instance</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Control.FlatSeq.html#WNFData"><span class="hs-identifier hs-type">WNFData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679169841"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Control.FlatSeq.html#WNFData"><span class="hs-identifier hs-type">WNFData</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679169841"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-72"></span><span>    </span><span id="local-6989586621679169837"><span class="annot"><span class="annottext">rwnf :: NTree a -&gt; ()
+</span><a href="Control.FlatSeq.html#rwnf"><span class="hs-identifier hs-var hs-var hs-var hs-var">rwnf</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span id="local-6989586621679169835"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169835"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679169834"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679169834"><span class="hs-identifier hs-var">cl</span></a></span></span><span class="hs-special">)</span><span>                   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; ()
+forall a. WNFData a =&gt; a -&gt; ()
+</span><a href="Control.FlatSeq.html#rwnf"><span class="hs-identifier hs-var">rwnf</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169835"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">() -&gt; () -&gt; ()
+</span><span class="hs-operator hs-var">`seq`</span></span><span> </span><span class="annot"><span class="annottext">NTrees a -&gt; ()
+forall a. WNFData a =&gt; a -&gt; ()
+</span><a href="Control.FlatSeq.html#rwnf"><span class="hs-identifier hs-var">rwnf</span></a></span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679169834"><span class="hs-identifier hs-var">cl</span></a></span><span>
+</span><span id="line-73"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.FlatSeq.html#rwnf"><span class="hs-pragma hs-type">rwnf</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span>    </span><span class="hs-comment">-- | Evaluate a tree 2 steps deep, the top node and all children are evaluated with rwnf</span><span>
+</span><span id="line-76"></span><span>    </span><span id="local-6989586621679169833"><span class="annot"><span class="annottext">rwnf2 :: NTree a -&gt; ()
+</span><a href="Control.FlatSeq.html#rwnf2"><span class="hs-identifier hs-var hs-var hs-var hs-var">rwnf2</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span id="local-6989586621679169831"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169831"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679169830"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679169830"><span class="hs-identifier hs-var">cl</span></a></span></span><span class="hs-special">)</span><span>                  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; ()
+forall a. WNFData a =&gt; a -&gt; ()
+</span><a href="Control.FlatSeq.html#rwnf"><span class="hs-identifier hs-var">rwnf</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169831"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">() -&gt; () -&gt; ()
+</span><span class="hs-operator hs-var">`seq`</span></span><span> </span><span class="annot"><span class="annottext">(NTree a -&gt; ()) -&gt; NTrees a -&gt; ()
+forall a. (a -&gt; ()) -&gt; [a] -&gt; ()
+</span><a href="Control.FlatSeq.html#rlnf"><span class="hs-identifier hs-var">rlnf</span></a></span><span> </span><span class="annot"><span class="annottext">NTree a -&gt; ()
+forall a. WNFData a =&gt; a -&gt; ()
+</span><a href="Control.FlatSeq.html#rwnf"><span class="hs-identifier hs-var">rwnf</span></a></span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679169830"><span class="hs-identifier hs-var">cl</span></a></span><span>
+</span><span id="line-77"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Control.FlatSeq.html#rwnf2"><span class="hs-pragma hs-type">rwnf2</span></a></span><span> </span><span class="hs-pragma">#-}</span></span><span>
+</span><span id="line-78"></span><span>
+</span><span id="line-79"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span id="local-6989586621679169829"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679169825"><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Binary</span></span><span> </span><span class="annot"><a href="#local-6989586621679169829"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Binary</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679169829"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-82"></span><span>    </span><span id="local-6989586621679169823"><span class="annot"><span class="annottext">put :: NTree a -&gt; Put
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">put</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span id="local-6989586621679169821"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169821"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679169820"><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679169820"><span class="hs-identifier hs-var">cs</span></a></span></span><span class="hs-special">)</span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Put
+forall t. Binary t =&gt; t -&gt; Put
+</span><span class="hs-identifier hs-var">put</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169821"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Put -&gt; Put -&gt; Put
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">[NTree a] -&gt; Put
+forall t. Binary t =&gt; t -&gt; Put
+</span><span class="hs-identifier hs-var">put</span></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679169820"><span class="hs-identifier hs-var">cs</span></a></span><span>
+</span><span id="line-83"></span><span>    </span><span id="local-6989586621679169819"><span class="annot"><span class="annottext">get :: Get (NTree a)
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">get</span></span></span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-84"></span><span>                          </span><span id="local-6989586621679169817"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169817"><span class="hs-identifier hs-var">n</span></a></span></span><span>  </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Get a
+forall t. Binary t =&gt; Get t
+</span><span class="hs-identifier hs-var">get</span></span><span>
+</span><span id="line-85"></span><span>                          </span><span id="local-6989586621679169816"><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679169816"><span class="hs-identifier hs-var">cs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Get [NTree a]
+forall t. Binary t =&gt; Get t
+</span><span class="hs-identifier hs-var">get</span></span><span>
+</span><span id="line-86"></span><span>                          </span><span class="annot"><span class="annottext">NTree a -&gt; Get (NTree a)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; [NTree a] -&gt; NTree a
+forall a. a -&gt; NTrees a -&gt; NTree a
+</span><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-var">NTree</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169817"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679169816"><span class="hs-identifier hs-var">cs</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-87"></span><span>
+</span><span id="line-88"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span class="hs-comment">-- | NTree implements class Functor</span><span>
+</span><span id="line-91"></span><span>
+</span><span id="line-92"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679169813"><span class="annot"><span class="hs-identifier hs-type">Functor</span></span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-93"></span><span>    </span><span id="local-6989586621679169811"><span class="annot"><span class="annottext">fmap :: (a -&gt; b) -&gt; NTree a -&gt; NTree b
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">fmap</span></span></span><span> </span><span id="local-6989586621679169810"><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679169810"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span id="local-6989586621679169809"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169809"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679169808"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679169808"><span class="hs-identifier hs-var">cl</span></a></span></span><span class="hs-special">)</span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">b -&gt; NTrees b -&gt; NTree b
+forall a. a -&gt; NTrees a -&gt; NTree a
+</span><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-var">NTree</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679169810"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169809"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(NTree a -&gt; NTree b) -&gt; NTrees a -&gt; NTrees b
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a -&gt; b) -&gt; NTree a -&gt; NTree b
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679169810"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679169808"><span class="hs-identifier hs-var">cl</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-94"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><span class="hs-pragma hs-type">fmap</span></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-95"></span><span>
+</span><span id="line-96"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-97"></span><span>
+</span><span id="line-98"></span><span class="hs-comment">-- | NTree implements class Foldable</span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679169775"><span id="local-6989586621679169777"><span id="local-6989586621679169779"><span id="local-6989586621679169781"><span id="local-6989586621679169783"><span id="local-6989586621679169785"><span id="local-6989586621679169787"><span id="local-6989586621679169789"><span id="local-6989586621679169791"><span id="local-6989586621679169793"><span id="local-6989586621679169795"><span id="local-6989586621679169797"><span id="local-6989586621679169799"><span id="local-6989586621679169801"><span id="local-6989586621679169803"><span id="local-6989586621679169806"><span class="annot"><span class="hs-identifier hs-type">Foldable</span></span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-101"></span><span>    </span><span id="local-6989586621679169773"><span class="annot"><span class="annottext">foldMap :: (a -&gt; m) -&gt; NTree a -&gt; m
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">foldMap</span></span></span><span> </span><span id="local-6989586621679169771"><span class="annot"><span class="annottext">a -&gt; m
+</span><a href="#local-6989586621679169771"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span id="local-6989586621679169770"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169770"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679169769"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679169769"><span class="hs-identifier hs-var">cl</span></a></span></span><span class="hs-special">)</span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; m
+</span><a href="#local-6989586621679169771"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169770"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">m -&gt; m -&gt; m
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">[m] -&gt; m
+forall a. Monoid a =&gt; [a] -&gt; a
+</span><span class="hs-identifier hs-var">mconcat</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(NTree a -&gt; m) -&gt; NTrees a -&gt; [m]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a -&gt; m) -&gt; NTree a -&gt; m
+forall (t :: * -&gt; *) m a.
+(Foldable t, Monoid m) =&gt;
+(a -&gt; m) -&gt; t a -&gt; m
+</span><span class="hs-identifier hs-var">foldMap</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; m
+</span><a href="#local-6989586621679169771"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679169769"><span class="hs-identifier hs-var">cl</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-102"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><span class="hs-pragma hs-type">foldMap</span></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-103"></span><span>
+</span><span id="line-104"></span><span>
+</span><span id="line-105"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-106"></span><span>
+</span><span id="line-107"></span><span class="hs-comment">-- | NTree implements class Taversable</span><span>
+</span><span id="line-108"></span><span>
+</span><span id="line-109"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679169760"><span id="local-6989586621679169762"><span id="local-6989586621679169764"><span class="annot"><span class="hs-identifier hs-type">Traversable</span></span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-110"></span><span>    </span><span id="local-6989586621679169758"><span class="annot"><span class="annottext">traverse :: (a -&gt; f b) -&gt; NTree a -&gt; f (NTree b)
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">traverse</span></span></span><span> </span><span id="local-6989586621679169756"><span class="annot"><span class="annottext">a -&gt; f b
+</span><a href="#local-6989586621679169756"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span id="local-6989586621679169755"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169755"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679169754"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679169754"><span class="hs-identifier hs-var">cl</span></a></span></span><span class="hs-special">)</span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">b -&gt; NTrees b -&gt; NTree b
+forall a. a -&gt; NTrees a -&gt; NTree a
+</span><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-var">NTree</span></a></span><span> </span><span class="annot"><span class="annottext">(b -&gt; NTrees b -&gt; NTree b) -&gt; f b -&gt; f (NTrees b -&gt; NTree b)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; f b
+</span><a href="#local-6989586621679169756"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169755"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">f (NTrees b -&gt; NTree b) -&gt; f (NTrees b) -&gt; f (NTree b)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">[f (NTree b)] -&gt; f (NTrees b)
+forall (t :: * -&gt; *) (f :: * -&gt; *) a.
+(Traversable t, Applicative f) =&gt;
+t (f a) -&gt; f (t a)
+</span><span class="hs-identifier hs-var">sequenceA</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(NTree a -&gt; f (NTree b)) -&gt; NTrees a -&gt; [f (NTree b)]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a -&gt; f b) -&gt; NTree a -&gt; f (NTree b)
+forall (t :: * -&gt; *) (f :: * -&gt; *) a b.
+(Traversable t, Applicative f) =&gt;
+(a -&gt; f b) -&gt; t a -&gt; f (t b)
+</span><span class="hs-identifier hs-var">traverse</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; f b
+</span><a href="#local-6989586621679169756"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679169754"><span class="hs-identifier hs-var">cl</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-111"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><span class="hs-pragma hs-type">traverse</span></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-112"></span><span>
+</span><span id="line-113"></span><span class="hs-comment">-- ------------------------------------------------------------</span><span>
+</span><span id="line-114"></span><span>
+</span><span id="line-115"></span><span class="hs-comment">-- | Implementation of &quot;Data.Tree.Class&quot; interface for rose trees</span><span>
+</span><span id="line-116"></span><span>
+</span><span id="line-117"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679169728"><span id="local-6989586621679169730"><span id="local-6989586621679169732"><span id="local-6989586621679169734"><span id="local-6989586621679169737"><span id="local-6989586621679169739"><span id="local-6989586621679169745"><span id="local-6989586621679169747"><span id="local-6989586621679169749"><span class="annot"><a href="Data.Tree.Class.html#Tree"><span class="hs-identifier hs-type">Tree</span></a></span><span> </span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span></span></span></span></span></span></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-118"></span><span>    </span><span id="local-6989586621679169726"><span class="annot"><span class="annottext">mkTree :: a -&gt; [NTree a] -&gt; NTree a
+</span><a href="Data.Tree.Class.html#mkTree"><span class="hs-identifier hs-var hs-var hs-var hs-var">mkTree</span></a></span></span><span> </span><span id="local-6989586621679169724"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169724"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679169723"><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679169723"><span class="hs-identifier hs-var">cl</span></a></span></span><span>                         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; [NTree a] -&gt; NTree a
+forall a. a -&gt; NTrees a -&gt; NTree a
+</span><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-var">NTree</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169724"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679169723"><span class="hs-identifier hs-var">cl</span></a></span><span>
+</span><span id="line-119"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.Class.html#mkTree"><span class="hs-pragma hs-type">mkTree</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-120"></span><span>
+</span><span id="line-121"></span><span>    </span><span id="local-6989586621679169722"><span class="annot"><span class="annottext">getNode :: NTree a -&gt; a
+</span><a href="Data.Tree.Class.html#getNode"><span class="hs-identifier hs-var hs-var hs-var hs-var">getNode</span></a></span></span><span>           </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span id="local-6989586621679169720"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169720"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169720"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-122"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.Class.html#getNode"><span class="hs-pragma hs-type">getNode</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-123"></span><span>    </span><span id="local-6989586621679169719"><span class="annot"><span class="annottext">getChildren :: NTree a -&gt; [NTree a]
+</span><a href="Data.Tree.Class.html#getChildren"><span class="hs-identifier hs-var hs-var hs-var hs-var">getChildren</span></a></span></span><span>       </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679169717"><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679169717"><span class="hs-identifier hs-var">cl</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679169717"><span class="hs-identifier hs-var">cl</span></a></span><span>
+</span><span id="line-124"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.Class.html#getChildren"><span class="hs-pragma hs-type">getChildren</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-125"></span><span>
+</span><span id="line-126"></span><span>    </span><span id="local-6989586621679169716"><span class="annot"><span class="annottext">changeNode :: (a -&gt; a) -&gt; NTree a -&gt; NTree a
+</span><a href="Data.Tree.Class.html#changeNode"><span class="hs-identifier hs-var hs-var hs-var hs-var">changeNode</span></a></span></span><span>     </span><span id="local-6989586621679169714"><span class="annot"><span class="annottext">a -&gt; a
+</span><a href="#local-6989586621679169714"><span class="hs-identifier hs-var">cf</span></a></span></span><span> </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span id="local-6989586621679169713"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169713"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679169712"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679169712"><span class="hs-identifier hs-var">cl</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; NTrees a -&gt; NTree a
+forall a. a -&gt; NTrees a -&gt; NTree a
+</span><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-var">NTree</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; a
+</span><a href="#local-6989586621679169714"><span class="hs-identifier hs-var">cf</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169713"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679169712"><span class="hs-identifier hs-var">cl</span></a></span><span>
+</span><span id="line-127"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.Class.html#changeNode"><span class="hs-pragma hs-type">changeNode</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-128"></span><span>    </span><span id="local-6989586621679169711"><span class="annot"><span class="annottext">changeChildren :: ([NTree a] -&gt; [NTree a]) -&gt; NTree a -&gt; NTree a
+</span><a href="Data.Tree.Class.html#changeChildren"><span class="hs-identifier hs-var hs-var hs-var hs-var">changeChildren</span></a></span></span><span> </span><span id="local-6989586621679169709"><span class="annot"><span class="annottext">[NTree a] -&gt; [NTree a]
+</span><a href="#local-6989586621679169709"><span class="hs-identifier hs-var">cf</span></a></span></span><span> </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span id="local-6989586621679169708"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169708"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679169707"><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679169707"><span class="hs-identifier hs-var">cl</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; [NTree a] -&gt; NTree a
+forall a. a -&gt; NTrees a -&gt; NTree a
+</span><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-var">NTree</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169708"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[NTree a] -&gt; [NTree a]
+</span><a href="#local-6989586621679169709"><span class="hs-identifier hs-var">cf</span></a></span><span> </span><span class="annot"><span class="annottext">[NTree a]
+</span><a href="#local-6989586621679169707"><span class="hs-identifier hs-var">cl</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-129"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.Class.html#changeChildren"><span class="hs-pragma hs-type">changeChildren</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-130"></span><span>
+</span><span id="line-131"></span><span>    </span><span id="local-6989586621679169706"><span class="annot"><span class="annottext">foldTree :: (a -&gt; [b] -&gt; b) -&gt; NTree a -&gt; b
+</span><a href="Data.Tree.Class.html#foldTree"><span class="hs-identifier hs-var hs-var hs-var hs-var">foldTree</span></a></span></span><span>        </span><span id="local-6989586621679169704"><span class="annot"><span class="annottext">a -&gt; [b] -&gt; b
+</span><a href="#local-6989586621679169704"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span class="annot"><a href="Data.Tree.NTree.TypeDefs.html#NTree"><span class="hs-identifier hs-type">NTree</span></a></span><span> </span><span id="local-6989586621679169703"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169703"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679169702"><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679169702"><span class="hs-identifier hs-var">cs</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; [b] -&gt; b
+</span><a href="#local-6989586621679169704"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679169703"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(NTree a -&gt; b) -&gt; NTrees a -&gt; [b]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a -&gt; [b] -&gt; b) -&gt; NTree a -&gt; b
+forall (t :: * -&gt; *) a b. Tree t =&gt; (a -&gt; [b] -&gt; b) -&gt; t a -&gt; b
+</span><a href="Data.Tree.Class.html#foldTree"><span class="hs-identifier hs-var">foldTree</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; [b] -&gt; b
+</span><a href="#local-6989586621679169704"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">NTrees a
+</span><a href="#local-6989586621679169702"><span class="hs-identifier hs-var">cs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-132"></span><span>    </span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Tree.Class.html#foldTree"><span class="hs-pragma hs-type">foldTree</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-133"></span><span>
+</span><span id="line-134"></span><span class="hs-comment">-- eof ------------------------------------------------------------</span><span>
+</span><span id="line-135"></span></pre></body></html>
