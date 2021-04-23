@@ -18,7 +18,6 @@ import Control.Lens
 import Control.Monad
 
 import Data.Functor (($>))
-import Data.Monoid  (Last (..))
 
 import Common.Animation.Effects (addWhiteBkg)
 import Common.HexColour         (FromRGBA8, rgba)
@@ -45,7 +44,7 @@ showMathChunks :: [MathChunk] -> Scene s [Object s SVG]
 showMathChunks expr = waitOn $ oNewGroup expr >>= mapM (fork . \x -> oShowWith x oFadeIn $> x)
 
 getFillColour :: SVG -> PixelRGBA8
-getFillColour = maybe [rgba|000|] fromColorRef . getLast . view fillColor
+getFillColour = maybe [rgba|000|] fromColorRef . view fillColor
   where fromColorRef ~(ColorRef p) = p
 
 moveVertical :: Double -> Object s a -> Scene s ()
