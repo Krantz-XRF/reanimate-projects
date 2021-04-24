@@ -66,7 +66,8 @@ newtype CodeChunk = CodeChunk { unwrapCodeChunk :: T.Text }
 
 instance GroupRender CodeChunk where
   renderGroup = centerAsGroup
-    . fmap (withFillColorPixel [rgba|000|] . withStrokeWidth 0 . withFillOpacity 1)
+    . fmap ( withFillColorPixel [rgba|000|] . withFillOpacity 1
+           . withStrokeColorPixel [rgba|000|] . withStrokeWidth 0 )
     . latexCfgChunksTrans texCfg code . fmap unwrapCodeChunk
     where
       texCfg = TexConfig
@@ -87,7 +88,8 @@ newtype MathChunk = MathChunk { unwrapMathChunk :: T.Text }
 
 instance GroupRender MathChunk where
   renderGroup = centerAsGroup
-    . fmap (withFillColorPixel [rgba|000|] . withStrokeWidth 0 . withFillOpacity 1)
+    . fmap ( withFillColorPixel [rgba|000|] . withFillOpacity 1
+           . withStrokeColorPixel [rgba|000|] . withStrokeWidth 0 )
     . mathChunks . fmap (replaceAll replacements . pad . unwrapMathChunk)
     where
       pad x = " " <> x <> " "
@@ -128,6 +130,7 @@ newtype TeX = TeX { unwrapTeXCode :: T.Text }
 
 instance Renderable TeX where
   toSVG = withFillColorPixel [rgba|000|]
+        . withStrokeColorPixel [rgba|000|]
         . withStrokeWidth 0
         . withFillOpacity 1
         . ctexWithHeaders

@@ -136,6 +136,15 @@ collectOld = Compose . mapMaybe \case
 -- |Group alignment, given a base, align the second parameter according to the base.
 type GroupAlignment t t' s a b = t (Object s a) -> t' (Object s b) -> Scene s ()
 
+readHeight :: [Object s a] -> Scene s Double
+readHeight xs = do
+  trans <- mapM (`oRead` oTranslateY) xs
+  base  <- mapM (`oRead` oBBMinY) xs
+  delta <- mapM (`oRead` oBBHeight) xs
+  let yMins = zipWith (+) trans base
+  let yMaxs = zipWith (+) yMins delta
+  pure (maximum yMaxs - minimum yMins)
+
 readCenterOf :: Traversable t
              => Getter (ObjectData a) Double
              -> Getter (ObjectData a) Double
@@ -210,14 +219,14 @@ allMargins :: Traversal (a, a, a, a) (b, b, b, b) a b
 allMargins f (x, y, z, w) = (,,,) <$> f x <*> f y <*> f z <*> f w
 
 -- |Set margin.
-withMargin :: (Traversable t, Traversable t') => Coord -> GroupAlignment t t' s a SVG
+withMargin :: (Traversable t, Traversable t') => Coord -> GroupAlignment t t' s a b
 withMargin d _ = mapM_ (`oModify` (oMargin . allMargins .~ d))
 
 -- |Scaled by a factor.
-scaled :: (Traversable t, Traversable t') => Double -> GroupAlignment t t' s a SVG
+scaled :: (Traversable t, Traversable t') => Double -> GroupAlignment t t' s a b
 scaled d _ xs = forM_ xs \x -> do
   oModify x (oTranslate %~ (d *^))
-  oModify x (oValue %~ scale d)
+  oModify x (oScale %~ (* d))
 
 -- |Apply some 'GroupAlignment's.
 applyAlignment :: (Traversable t, Traversable t')
@@ -255,11 +264,16 @@ transformObjectRaw = waitOn . fmap concat . mapM (fork . \case
     a ::=> b -> b <$ do
       p0 <- readGroupTrans a
       p  <- readGroupTrans b
+      h0 <- readHeight a
+      h  <- readHeight b
       ctx <- oRead (head a) oContext
       mapM_ (`oModify` (oContext .~ ctx)) b
       waitOn $ forM_ a $ \i ->
-        fork $ oTween i 1 $ \t ->
-          oTranslate %~ (+ t *^ (p - p0))
+        fork $ oTween i 1 $ \t x ->
+          let scaleRatio = (1 - t) + t * h / h0 in x
+          & oTranslate %~ (\r -> scaleRatio *^ (r - p0) + p0)
+          & oTranslate %~ (+ t *^ (p - p0))
+          & oScale %~ (* scaleRatio)
       mapM_ oHide a
       mapM_ oShow b
   )
