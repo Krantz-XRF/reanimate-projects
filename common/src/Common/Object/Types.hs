@@ -129,7 +129,8 @@ newtype TeX = TeX { unwrapTeXCode :: T.Text }
   deriving newtype (IsString)
 
 instance Renderable TeX where
-  toSVG = withFillColorPixel [rgba|000|]
+  toSVG = center
+        . withFillColorPixel [rgba|000|]
         . withStrokeColorPixel [rgba|000|]
         . withStrokeWidth 0
         . withFillOpacity 1

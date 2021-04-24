@@ -25,6 +25,7 @@ import Common.Linear            (Linear (lerp))
 import Common.Object.Effect
 import Common.Object.Transform
 import Common.Object.Types
+import Common.Prologue
 
 import Codec.Picture.Types  hiding (Traversal)
 import Data.Foldable
@@ -149,6 +150,7 @@ tweenColoursWith f = waitOn . mapM_ (fork . tweenColour 1 f)
 
 typeCheckAnim :: Animation
 typeCheckAnim = mapA addWhiteBkg $ scene do
+  prologue; wait 2
   -- main composition illustration
   ~tgt@[lp, d1, d3, d2, rp] <- showMathChunks ["(", "(.)", " . ", "(.)", ")"]
   tweenColours
@@ -228,11 +230,8 @@ typeCheckAnim = mapA addWhiteBkg $ scene do
   oBoxGrow 1 bxz
   transformObject [expr ::=> [exprNewPos]]
   mapM_ oShow expr; oHide exprNewPos
-  waitOn $ forM_ xz \i -> wait 0.5 >> fork do
-    oModify i (oValue %~ withStrokeWidth defaultStrokeWidth)
-    oShowWith i oDraw
-    fork $ oTween i 0.5 \t ->
-      oValue %~ withStrokeWidth (t * defaultStrokeWidth)
+  wait (-0.5)
+  waitOn $ forM_ xz \i -> wait 0.5 >> fork (oShowWith i oDraw)
   -- hide all boxes
   oFadeHideAll [bxy, byz, bsig2, bsig3, bxz]
   -- move left, remove color in title, and hide dot-signatures
