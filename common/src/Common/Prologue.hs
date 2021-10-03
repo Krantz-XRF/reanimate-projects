@@ -9,7 +9,7 @@ Portability : portable
 -}
 {-# LANGUAGE BlockArguments    #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Common.Prologue where
+module Common.Prologue (prologue) where
 
 import Control.Lens
 import Control.Monad
@@ -19,16 +19,21 @@ import Reanimate.Scene
 
 import Common.Object.Transform
 import Common.Object.Types
+import Common.SVG
+import Graphics.SvgTree
+
+normaliseTextPaths :: SVG -> SVG
+normaliseTextPaths = mapTree (fillRule ?~ FillEvenOdd) . mapSvgPaths counterclockwiseLR
 
 -- |Common prologue animation.
 prologue :: Scene s ()
 prologue = do
-  chi <- oNewCentered $ toSVG $ TeX "\\textbf{因真理·得自由·以幸福}"
+  chi <- oNewCentered $ normaliseTextPaths $ toSVG $ TeX "\\textbf{因真理·得自由·以幸福}"
   eng <- oNewCentered $ toSVG $ TeX "Freedom through Truth for Happiness"
   oModify chi (oTranslateY %~ (+ 0.5))
   oModify eng (oTranslateY %~ (- 0.5))
   oModify eng (oScale %~ (* 0.6))
-  oShowWith chi (oStagger oDraw)
-  oShowWith eng (oStagger oDraw)
+  oShowWith chi (oStagger $ adjustDuration 4 . mapA (adjustStrokeWidth (* 0.6)) . oDraw)
+  oShowWith eng (oStagger $ adjustDuration 2 . oDraw)
   wait 1
   waitOn $ forM_ [chi, eng] (fork . (`oHideWith` oFadeOut))
