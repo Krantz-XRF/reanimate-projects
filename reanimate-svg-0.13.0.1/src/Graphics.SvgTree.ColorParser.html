@@ -1,0 +1,463 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-2"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Graphics.SvgTree.ColorParser</span><span>
+</span><span id="line-3"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Graphics.SvgTree.ColorParser.html#colorParser"><span class="hs-identifier">colorParser</span></a></span><span>
+</span><span id="line-4"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.ColorParser.html#colorSerializer"><span class="hs-identifier">colorSerializer</span></a></span><span>
+</span><span id="line-5"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.ColorParser.html#textureParser"><span class="hs-identifier">textureParser</span></a></span><span>
+</span><span id="line-6"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.ColorParser.html#textureSerializer"><span class="hs-identifier">textureSerializer</span></a></span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.ColorParser.html#urlRef"><span class="hs-identifier">urlRef</span></a></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-9"></span><span>
+</span><span id="line-10"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Applicative</span></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(&lt;|&gt;)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Attoparsec.Text</span></span><span>         </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Parser</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">char</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">digit</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">inClass</span></span><span class="hs-special">,</span><span>
+</span><span id="line-12"></span><span>                                               </span><span class="annot"><span class="hs-identifier">letter</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">many1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">option</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">satisfy</span></span><span class="hs-special">,</span><span>
+</span><span id="line-13"></span><span>                                               </span><span class="annot"><span class="hs-identifier">scientific</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">skipSpace</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">string</span></span><span class="hs-special">,</span><span>
+</span><span id="line-14"></span><span>                                               </span><span class="annot"><span class="hs-identifier">takeWhile1</span></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Bits</span></span><span>                    </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">unsafeShiftL</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(.|.)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Codec.Picture</span></span><span>                </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">PixelRGBA8</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Functor</span></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span>                     </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">M</span></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Scientific</span></span><span>              </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">toRealFloat</span></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Word</span></span><span>                    </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Word8</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Graphics.SvgTree.NamedColors.html"><span class="hs-identifier">Graphics.SvgTree.NamedColors</span></a></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Graphics.SvgTree.Types.html"><span class="hs-identifier">Graphics.SvgTree.Types</span></a></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Text.Printf</span></span><span>                  </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">printf</span></span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="annot"><a href="Graphics.SvgTree.ColorParser.html#commaWsp"><span class="hs-identifier hs-type">commaWsp</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span id="commaWsp"><span class="annot"><span class="annottext">commaWsp :: Parser ()
+</span><a href="Graphics.SvgTree.ColorParser.html#commaWsp"><span class="hs-identifier hs-var hs-var">commaWsp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser () -&gt; Parser ()
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">() -&gt; Parser () -&gt; Parser ()
+forall (f :: * -&gt; *) a. Alternative f =&gt; a -&gt; f a -&gt; f a
+</span><span class="hs-identifier hs-var">option</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Parser Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;,&quot;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text -&gt; () -&gt; Parser ()
+forall (f :: * -&gt; *) a b. Functor f =&gt; f a -&gt; b -&gt; f b
+</span><span class="hs-operator hs-var">$&gt;</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span>                     </span><span class="annot"><span class="annottext">Parser () -&gt; Parser () -&gt; Parser ()
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="annot"><a href="Graphics.SvgTree.ColorParser.html#num"><span class="hs-identifier hs-type">num</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-32"></span><span id="num"><span class="annot"><span class="annottext">num :: Parser Double
+</span><a href="Graphics.SvgTree.ColorParser.html#num"><span class="hs-identifier hs-var hs-var">num</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+forall a b. (Real a, Fractional b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">realToFrac</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double) -&gt; Parser Double -&gt; Parser Double
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser Double -&gt; Parser Double
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Double
+</span><a href="#local-6989586621679487611"><span class="hs-identifier hs-var">plusMinus</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Double -&gt; Parser () -&gt; Parser Double
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span class="annot"><a href="#local-6989586621679487610"><span class="hs-identifier hs-type">doubleNumber</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-34"></span><span>        </span><span id="local-6989586621679487610"><span class="annot"><span class="annottext">doubleNumber :: Parser Double
+</span><a href="#local-6989586621679487610"><span class="hs-identifier hs-var hs-var">doubleNumber</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Scientific -&gt; Double
+forall a. RealFloat a =&gt; Scientific -&gt; a
+</span><span class="hs-identifier hs-var">toRealFloat</span></span><span> </span><span class="annot"><span class="annottext">(Scientific -&gt; Double) -&gt; Parser Text Scientific -&gt; Parser Double
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Scientific
+</span><span class="hs-identifier hs-var">scientific</span></span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span>        </span><span id="local-6989586621679487611"><span class="annot"><span class="annottext">plusMinus :: Parser Double
+</span><a href="#local-6989586621679487611"><span class="hs-identifier hs-var hs-var">plusMinus</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">negate</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double) -&gt; Parser Text -&gt; Parser Text (Double -&gt; Double)
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;-&quot;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text (Double -&gt; Double) -&gt; Parser Double -&gt; Parser Double
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Double
+</span><a href="#local-6989586621679487610"><span class="hs-identifier hs-var">doubleNumber</span></a></span><span>
+</span><span id="line-37"></span><span>                 </span><span class="annot"><span class="annottext">Parser Double -&gt; Parser Double -&gt; Parser Double
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;+&quot;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text -&gt; Parser Double -&gt; Parser Double
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Double
+</span><a href="#local-6989586621679487610"><span class="hs-identifier hs-var">doubleNumber</span></a></span><span>
+</span><span id="line-38"></span><span>                 </span><span class="annot"><span class="annottext">Parser Double -&gt; Parser Double -&gt; Parser Double
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Double
+</span><a href="#local-6989586621679487610"><span class="hs-identifier hs-var">doubleNumber</span></a></span><span>
+</span><span id="line-39"></span><span>
+</span><span id="line-40"></span><span class="annot"><a href="Graphics.SvgTree.ColorParser.html#colorSerializer"><span class="hs-identifier hs-type">colorSerializer</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PixelRGBA8</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-41"></span><span id="colorSerializer"><span class="annot"><span class="annottext">colorSerializer :: PixelRGBA8 -&gt; String
+</span><a href="Graphics.SvgTree.ColorParser.html#colorSerializer"><span class="hs-identifier hs-var hs-var">colorSerializer</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">PixelRGBA8</span></span><span> </span><span id="local-6989586621679487607"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487607"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span id="local-6989586621679487606"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487606"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span id="local-6989586621679487605"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487605"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; String
+forall r. PrintfType r =&gt; String -&gt; r
+</span><span class="hs-identifier hs-var">printf</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;#%02X%02X%02X&quot;</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487607"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487606"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487605"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="annot"><a href="Graphics.SvgTree.ColorParser.html#colorParser"><span class="hs-identifier hs-type">colorParser</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">PixelRGBA8</span></span><span>
+</span><span id="line-44"></span><span id="colorParser"><span class="annot"><span class="annottext">colorParser :: Parser PixelRGBA8
+</span><a href="Graphics.SvgTree.ColorParser.html#colorParser"><span class="hs-identifier hs-var hs-var">colorParser</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser PixelRGBA8
+</span><a href="#local-6989586621679487604"><span class="hs-identifier hs-var">rgbColor</span></a></span><span>
+</span><span id="line-45"></span><span>           </span><span class="annot"><span class="annottext">Parser PixelRGBA8 -&gt; Parser PixelRGBA8 -&gt; Parser PixelRGBA8
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Parser Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;#&quot;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text -&gt; Parser PixelRGBA8 -&gt; Parser PixelRGBA8
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser PixelRGBA8
+</span><a href="#local-6989586621679487603"><span class="hs-identifier hs-var">color</span></a></span><span> </span><span class="annot"><span class="annottext">Parser PixelRGBA8 -&gt; Parser PixelRGBA8 -&gt; Parser PixelRGBA8
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser PixelRGBA8
+</span><a href="#local-6989586621679487602"><span class="hs-identifier hs-var">colorReduced</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-46"></span><span>           </span><span class="annot"><span class="annottext">Parser PixelRGBA8 -&gt; Parser PixelRGBA8 -&gt; Parser PixelRGBA8
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser PixelRGBA8
+</span><a href="#local-6989586621679487601"><span class="hs-identifier hs-var">namedColor</span></a></span><span>
+</span><span id="line-47"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-48"></span><span>    </span><span id="local-6989586621679487600"><span class="annot"><span class="annottext">charRange :: Char -&gt; Char -&gt; Parser Text b
+</span><a href="#local-6989586621679487600"><span class="hs-identifier hs-var hs-var">charRange</span></a></span></span><span> </span><span id="local-6989586621679487599"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487599"><span class="hs-identifier hs-var">c1</span></a></span></span><span> </span><span id="local-6989586621679487598"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487598"><span class="hs-identifier hs-var">c2</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-49"></span><span>        </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679487597"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487597"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int -&gt; b
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; b) -&gt; Int -&gt; b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Int
+forall a. Enum a =&gt; a -&gt; Int
+</span><span class="hs-identifier hs-var">fromEnum</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487597"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Int
+forall a. Enum a =&gt; a -&gt; Int
+</span><span class="hs-identifier hs-var">fromEnum</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487599"><span class="hs-identifier hs-var">c1</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; b) -&gt; Parser Text Char -&gt; Parser Text b
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Bool) -&gt; Parser Text Char
+</span><span class="hs-identifier hs-var">satisfy</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679487595"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487595"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487599"><span class="hs-identifier hs-var">c1</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487595"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487595"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487598"><span class="hs-identifier hs-var">c2</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-50"></span><span>    </span><span id="local-6989586621679487592"><span class="annot"><span class="annottext">black :: PixelRGBA8
+</span><a href="#local-6989586621679487592"><span class="hs-identifier hs-var hs-var">black</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; PixelRGBA8
+</span><span class="hs-identifier hs-var">PixelRGBA8</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">255</span></span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span>    </span><span class="annot"><a href="#local-6989586621679487591"><span class="hs-identifier hs-type">hexChar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span>
+</span><span id="line-53"></span><span>    </span><span id="local-6989586621679487591"><span class="annot"><span class="annottext">hexChar :: Parser Pixel8
+</span><a href="#local-6989586621679487591"><span class="hs-identifier hs-var hs-var">hexChar</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Parser Pixel8
+forall b. Num b =&gt; Char -&gt; Char -&gt; Parser Text b
+</span><a href="#local-6989586621679487600"><span class="hs-identifier hs-var">charRange</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'0'</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'9'</span></span><span>
+</span><span id="line-54"></span><span>           </span><span class="annot"><span class="annottext">Parser Pixel8 -&gt; Parser Pixel8 -&gt; Parser Pixel8
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Pixel8 -&gt; Pixel8 -&gt; Pixel8
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">10</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Pixel8 -&gt; Pixel8) -&gt; Parser Pixel8 -&gt; Parser Pixel8
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Parser Pixel8
+forall b. Num b =&gt; Char -&gt; Char -&gt; Parser Text b
+</span><a href="#local-6989586621679487600"><span class="hs-identifier hs-var">charRange</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'a'</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'f'</span></span><span class="hs-special">)</span><span>
+</span><span id="line-55"></span><span>           </span><span class="annot"><span class="annottext">Parser Pixel8 -&gt; Parser Pixel8 -&gt; Parser Pixel8
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Pixel8 -&gt; Pixel8 -&gt; Pixel8
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">10</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Pixel8 -&gt; Pixel8) -&gt; Parser Pixel8 -&gt; Parser Pixel8
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Parser Pixel8
+forall b. Num b =&gt; Char -&gt; Char -&gt; Parser Text b
+</span><a href="#local-6989586621679487600"><span class="hs-identifier hs-var">charRange</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'A'</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'F'</span></span><span class="hs-special">)</span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span>    </span><span id="local-6989586621679487601"><span class="annot"><span class="annottext">namedColor :: Parser PixelRGBA8
+</span><a href="#local-6989586621679487601"><span class="hs-identifier hs-var hs-var">namedColor</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-58"></span><span>      </span><span id="local-6989586621679487589"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679487589"><span class="hs-identifier hs-var">str</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Bool) -&gt; Parser Text
+</span><span class="hs-identifier hs-var">takeWhile1</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Char -&gt; Bool
+</span><span class="hs-identifier hs-var">inClass</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;a-z&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-59"></span><span>      </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; Parser PixelRGBA8
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(PixelRGBA8 -&gt; Parser PixelRGBA8)
+-&gt; PixelRGBA8 -&gt; Parser PixelRGBA8
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; Text -&gt; Map Text PixelRGBA8 -&gt; PixelRGBA8
+forall k a. Ord k =&gt; a -&gt; k -&gt; Map k a -&gt; a
+</span><span class="hs-identifier hs-var">M.findWithDefault</span></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679487592"><span class="hs-identifier hs-var">black</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679487589"><span class="hs-identifier hs-var">str</span></a></span><span> </span><span class="annot"><span class="annottext">Map Text PixelRGBA8
+</span><a href="Graphics.SvgTree.NamedColors.html#svgNamedColors"><span class="hs-identifier hs-var">svgNamedColors</span></a></span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span>    </span><span id="local-6989586621679487586"><span class="annot"><span class="annottext">percentToWord :: a -&gt; b
+</span><a href="#local-6989586621679487586"><span class="hs-identifier hs-var hs-var">percentToWord</span></a></span></span><span> </span><span id="local-6989586621679487585"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679487585"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; b
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">floor</span></span><span> </span><span class="annot"><span class="annottext">(a -&gt; b) -&gt; a -&gt; b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679487585"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><span class="hs-number">255</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-number">100</span></span><span class="hs-special">)</span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span>    </span><span id="local-6989586621679487581"><span class="annot"><span class="annottext">numPercent :: Parser Pixel8
+</span><a href="#local-6989586621679487581"><span class="hs-identifier hs-var hs-var">numPercent</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Pixel8
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><a href="#local-6989586621679487586"><span class="hs-identifier hs-var">percentToWord</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Pixel8) -&gt; Parser Double -&gt; Parser Pixel8
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Double
+</span><a href="Graphics.SvgTree.ColorParser.html#num"><span class="hs-identifier hs-var">num</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Parser Pixel8 -&gt; Parser Text -&gt; Parser Pixel8
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;%&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-64"></span><span>              </span><span class="annot"><span class="annottext">Parser Pixel8 -&gt; Parser Pixel8 -&gt; Parser Pixel8
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Pixel8
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">floor</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Pixel8) -&gt; Parser Double -&gt; Parser Pixel8
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Double
+</span><a href="Graphics.SvgTree.ColorParser.html#num"><span class="hs-identifier hs-var">num</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-65"></span><span>
+</span><span id="line-66"></span><span>    </span><span id="local-6989586621679487580"><span class="annot"><span class="annottext">hexByte :: Parser Pixel8
+</span><a href="#local-6989586621679487580"><span class="hs-identifier hs-var hs-var">hexByte</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679487579"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487579"><span class="hs-identifier hs-var">h1</span></a></span></span><span> </span><span id="local-6989586621679487578"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487578"><span class="hs-identifier hs-var">h2</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487579"><span class="hs-identifier hs-var">h1</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8 -&gt; Int -&gt; Pixel8
+forall a. Bits a =&gt; a -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">`unsafeShiftL`</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">Pixel8 -&gt; Pixel8 -&gt; Pixel8
+forall a. Bits a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">.|.</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487578"><span class="hs-identifier hs-var">h2</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-67"></span><span>           </span><span class="annot"><span class="annottext">(Pixel8 -&gt; Pixel8 -&gt; Pixel8)
+-&gt; Parser Pixel8 -&gt; Parser Text (Pixel8 -&gt; Pixel8)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Pixel8
+</span><a href="#local-6989586621679487591"><span class="hs-identifier hs-var">hexChar</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text (Pixel8 -&gt; Pixel8) -&gt; Parser Pixel8 -&gt; Parser Pixel8
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Pixel8
+</span><a href="#local-6989586621679487591"><span class="hs-identifier hs-var">hexChar</span></a></span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span>    </span><span id="local-6989586621679487603"><span class="annot"><span class="annottext">color :: Parser PixelRGBA8
+</span><a href="#local-6989586621679487603"><span class="hs-identifier hs-var hs-var">color</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679487577"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487577"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span id="local-6989586621679487576"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487576"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span id="local-6989586621679487575"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487575"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; PixelRGBA8
+</span><span class="hs-identifier hs-var">PixelRGBA8</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487577"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487576"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487575"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">255</span></span><span class="hs-special">)</span><span>
+</span><span id="line-70"></span><span>         </span><span class="annot"><span class="annottext">(Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; PixelRGBA8)
+-&gt; Parser Pixel8 -&gt; Parser Text (Pixel8 -&gt; Pixel8 -&gt; PixelRGBA8)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Pixel8
+</span><a href="#local-6989586621679487580"><span class="hs-identifier hs-var">hexByte</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text (Pixel8 -&gt; Pixel8 -&gt; PixelRGBA8)
+-&gt; Parser Pixel8 -&gt; Parser Text (Pixel8 -&gt; PixelRGBA8)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Pixel8
+</span><a href="#local-6989586621679487580"><span class="hs-identifier hs-var">hexByte</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text (Pixel8 -&gt; PixelRGBA8)
+-&gt; Parser Pixel8 -&gt; Parser PixelRGBA8
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Pixel8
+</span><a href="#local-6989586621679487580"><span class="hs-identifier hs-var">hexByte</span></a></span><span>
+</span><span id="line-71"></span><span>    </span><span id="local-6989586621679487604"><span class="annot"><span class="annottext">rgbColor :: Parser PixelRGBA8
+</span><a href="#local-6989586621679487604"><span class="hs-identifier hs-var hs-var">rgbColor</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679487574"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487574"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span id="local-6989586621679487573"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487573"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span id="local-6989586621679487572"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487572"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; PixelRGBA8
+</span><span class="hs-identifier hs-var">PixelRGBA8</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487574"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487573"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487572"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">255</span></span><span class="hs-special">)</span><span>
+</span><span id="line-72"></span><span>            </span><span class="annot"><span class="annottext">(Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; PixelRGBA8)
+-&gt; Parser Pixel8 -&gt; Parser Text (Pixel8 -&gt; Pixel8 -&gt; PixelRGBA8)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Parser Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;rgb(&quot;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text -&gt; Parser Pixel8 -&gt; Parser Pixel8
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Pixel8
+</span><a href="#local-6989586621679487581"><span class="hs-identifier hs-var">numPercent</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-73"></span><span>            </span><span class="annot"><span class="annottext">Parser Text (Pixel8 -&gt; Pixel8 -&gt; PixelRGBA8)
+-&gt; Parser Pixel8 -&gt; Parser Text (Pixel8 -&gt; PixelRGBA8)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser ()
+</span><a href="Graphics.SvgTree.ColorParser.html#commaWsp"><span class="hs-identifier hs-var">commaWsp</span></a></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser Pixel8 -&gt; Parser Pixel8
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Pixel8
+</span><a href="#local-6989586621679487581"><span class="hs-identifier hs-var">numPercent</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-74"></span><span>            </span><span class="annot"><span class="annottext">Parser Text (Pixel8 -&gt; PixelRGBA8)
+-&gt; Parser Pixel8 -&gt; Parser PixelRGBA8
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser ()
+</span><a href="Graphics.SvgTree.ColorParser.html#commaWsp"><span class="hs-identifier hs-var">commaWsp</span></a></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser Pixel8 -&gt; Parser Pixel8
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Pixel8
+</span><a href="#local-6989586621679487581"><span class="hs-identifier hs-var">numPercent</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Pixel8 -&gt; Parser () -&gt; Parser Pixel8
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser Pixel8 -&gt; Parser Text -&gt; Parser Pixel8
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;)&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span>    </span><span id="local-6989586621679487602"><span class="annot"><span class="annottext">colorReduced :: Parser PixelRGBA8
+</span><a href="#local-6989586621679487602"><span class="hs-identifier hs-var hs-var">colorReduced</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-77"></span><span>        </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679487571"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487571"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span id="local-6989586621679487570"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487570"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span id="local-6989586621679487569"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487569"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; PixelRGBA8
+</span><span class="hs-identifier hs-var">PixelRGBA8</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487571"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8 -&gt; Pixel8 -&gt; Pixel8
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">17</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487570"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8 -&gt; Pixel8 -&gt; Pixel8
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">17</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679487569"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8 -&gt; Pixel8 -&gt; Pixel8
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">17</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">255</span></span><span class="hs-special">)</span><span>
+</span><span id="line-78"></span><span>        </span><span class="annot"><span class="annottext">(Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; PixelRGBA8)
+-&gt; Parser Pixel8 -&gt; Parser Text (Pixel8 -&gt; Pixel8 -&gt; PixelRGBA8)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Pixel8
+</span><a href="#local-6989586621679487591"><span class="hs-identifier hs-var">hexChar</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text (Pixel8 -&gt; Pixel8 -&gt; PixelRGBA8)
+-&gt; Parser Pixel8 -&gt; Parser Text (Pixel8 -&gt; PixelRGBA8)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Pixel8
+</span><a href="#local-6989586621679487591"><span class="hs-identifier hs-var">hexChar</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text (Pixel8 -&gt; PixelRGBA8)
+-&gt; Parser Pixel8 -&gt; Parser PixelRGBA8
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Pixel8
+</span><a href="#local-6989586621679487591"><span class="hs-identifier hs-var">hexChar</span></a></span><span>
+</span><span id="line-79"></span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span class="annot"><a href="Graphics.SvgTree.ColorParser.html#textureSerializer"><span class="hs-identifier hs-type">textureSerializer</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Graphics.SvgTree.Types.Basic.html#Texture"><span class="hs-identifier hs-type">Texture</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-82"></span><span id="textureSerializer"><span class="annot"><span class="annottext">textureSerializer :: Texture -&gt; String
+</span><a href="Graphics.SvgTree.ColorParser.html#textureSerializer"><span class="hs-identifier hs-var hs-var">textureSerializer</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.Types.Basic.html#ColorRef"><span class="hs-identifier hs-type">ColorRef</span></a></span><span> </span><span id="local-6989586621679487567"><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679487567"><span class="hs-identifier hs-var">px</span></a></span></span><span class="hs-special">)</span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; String
+</span><a href="Graphics.SvgTree.ColorParser.html#colorSerializer"><span class="hs-identifier hs-var">colorSerializer</span></a></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679487567"><span class="hs-identifier hs-var">px</span></a></span><span>
+</span><span id="line-83"></span><span class="annot"><a href="Graphics.SvgTree.ColorParser.html#textureSerializer"><span class="hs-identifier hs-var">textureSerializer</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.Types.Basic.html#TextureRef"><span class="hs-identifier hs-type">TextureRef</span></a></span><span> </span><span id="local-6989586621679487565"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679487565"><span class="hs-identifier hs-var">str</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall r. PrintfType r =&gt; String -&gt; r
+</span><span class="hs-identifier hs-var">printf</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;url(#%s)&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679487565"><span class="hs-identifier hs-var">str</span></a></span><span>
+</span><span id="line-84"></span><span class="annot"><a href="Graphics.SvgTree.ColorParser.html#textureSerializer"><span class="hs-identifier hs-var">textureSerializer</span></a></span><span> </span><span class="annot"><span class="annottext">Texture
+</span><a href="Graphics.SvgTree.Types.Basic.html#FillNone"><span class="hs-identifier hs-var">FillNone</span></a></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;none&quot;</span></span><span>
+</span><span id="line-85"></span><span>
+</span><span id="line-86"></span><span class="annot"><a href="Graphics.SvgTree.ColorParser.html#urlRef"><span class="hs-identifier hs-type">urlRef</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-87"></span><span id="urlRef"><span class="annot"><span class="annottext">urlRef :: Parser String
+</span><a href="Graphics.SvgTree.ColorParser.html#urlRef"><span class="hs-identifier hs-var hs-var">urlRef</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;url(&quot;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text -&gt; Parser () -&gt; Parser ()
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser Text Char -&gt; Parser Text Char
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span>
+</span><span id="line-88"></span><span>       </span><span class="annot"><span class="annottext">Char -&gt; Parser Text Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'#'</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Char -&gt; Parser String -&gt; Parser String
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Char -&gt; Parser String
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f [a]
+</span><span class="hs-identifier hs-var">many1</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser Text Char
+</span><span class="hs-identifier hs-var">letter</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Char -&gt; Parser Text Char -&gt; Parser Text Char
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Char
+</span><span class="hs-identifier hs-var">digit</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Char -&gt; Parser Text Char -&gt; Parser Text Char
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Text Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'_'</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Char -&gt; Parser Text Char -&gt; Parser Text Char
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Text Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'.'</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Char -&gt; Parser Text Char -&gt; Parser Text Char
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Text Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'-'</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Char -&gt; Parser Text Char -&gt; Parser Text Char
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Text Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">':'</span></span><span class="hs-special">)</span><span>
+</span><span id="line-89"></span><span>       </span><span class="annot"><span class="annottext">Parser String -&gt; Parser () -&gt; Parser String
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser String -&gt; Parser Text Char -&gt; Parser String
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Text Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">')'</span></span><span> </span><span class="annot"><span class="annottext">Parser String -&gt; Parser () -&gt; Parser String
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span>
+</span><span id="line-90"></span><span>
+</span><span id="line-91"></span><span>
+</span><span id="line-92"></span><span class="annot"><a href="Graphics.SvgTree.ColorParser.html#textureParser"><span class="hs-identifier hs-type">textureParser</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="Graphics.SvgTree.Types.Basic.html#Texture"><span class="hs-identifier hs-type">Texture</span></a></span><span>
+</span><span id="line-93"></span><span id="textureParser"><span class="annot"><span class="annottext">textureParser :: Parser Texture
+</span><a href="Graphics.SvgTree.ColorParser.html#textureParser"><span class="hs-identifier hs-var hs-var">textureParser</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-94"></span><span>  </span><span class="annot"><span class="annottext">Parser Texture
+</span><a href="#local-6989586621679487563"><span class="hs-identifier hs-var">none</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Texture -&gt; Parser Texture -&gt; Parser Texture
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Texture
+</span><a href="Graphics.SvgTree.Types.Basic.html#TextureRef"><span class="hs-identifier hs-var">TextureRef</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Texture) -&gt; Parser String -&gt; Parser Texture
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser String
+</span><a href="Graphics.SvgTree.ColorParser.html#urlRef"><span class="hs-identifier hs-var">urlRef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-95"></span><span>       </span><span class="annot"><span class="annottext">Parser Texture -&gt; Parser Texture -&gt; Parser Texture
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; Texture
+</span><a href="Graphics.SvgTree.Types.Basic.html#ColorRef"><span class="hs-identifier hs-var">ColorRef</span></a></span><span> </span><span class="annot"><span class="annottext">(PixelRGBA8 -&gt; Texture) -&gt; Parser PixelRGBA8 -&gt; Parser Texture
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser PixelRGBA8
+</span><a href="Graphics.SvgTree.ColorParser.html#colorParser"><span class="hs-identifier hs-var">colorParser</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-96"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-97"></span><span>    </span><span id="local-6989586621679487563"><span class="annot"><span class="annottext">none :: Parser Texture
+</span><a href="#local-6989586621679487563"><span class="hs-identifier hs-var hs-var">none</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Texture
+</span><a href="Graphics.SvgTree.Types.Basic.html#FillNone"><span class="hs-identifier hs-var">FillNone</span></a></span><span> </span><span class="annot"><span class="annottext">Texture -&gt; Parser Text -&gt; Parser Texture
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;none&quot;</span></span><span>
+</span><span id="line-98"></span></pre></body></html>

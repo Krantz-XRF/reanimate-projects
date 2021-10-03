@@ -1,0 +1,458 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE CPP               #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-3"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Skylighting.Format.ANSI</span><span> </span><span class="hs-special">(</span><span>
+</span><span id="line-4"></span><span>         </span><span class="annot"><a href="Skylighting.Format.ANSI.html#formatANSI"><span class="hs-identifier">formatANSI</span></a></span><span>
+</span><span id="line-5"></span><span>       </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-6"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">mplus</span></span><span class="hs-special">)</span><span>
+</span><span id="line-7"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Map</span></span><span>
+</span><span id="line-8"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">fromMaybe</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">isNothing</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">maybeToList</span></span><span class="hs-special">)</span><span>
+</span><span id="line-9"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-10"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Text</span></span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Skylighting.Types.html"><span class="hs-identifier">Skylighting.Types</span></a></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">System.Console.ANSI.Codes</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">ANSI</span></span><span class="hs-cpp">
+#if !MIN_VERSION_base(4,11,0)
+</span><span class="hs-keyword">import</span><span> </span><span class="hs-identifier">Data.Semigroup</span><span class="hs-cpp">
+#endif
+</span><span>
+</span><span id="line-17"></span><span class="annot"><a href="Skylighting.Format.ANSI.html#formatANSI"><span class="hs-identifier hs-type">formatANSI</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Skylighting.Types.html#FormatOptions"><span class="hs-identifier hs-type">FormatOptions</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Skylighting.Types.html#Style"><span class="hs-identifier hs-type">Style</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Skylighting.Types.html#SourceLine"><span class="hs-identifier hs-type">SourceLine</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-18"></span><span id="formatANSI"><span class="annot"><span class="annottext">formatANSI :: FormatOptions -&gt; Style -&gt; [SourceLine] -&gt; Text
+</span><a href="Skylighting.Format.ANSI.html#formatANSI"><span class="hs-identifier hs-var hs-var">formatANSI</span></a></span></span><span> </span><span id="local-6989586621679140581"><span class="annot"><span class="annottext">FormatOptions
+</span><a href="#local-6989586621679140581"><span class="hs-identifier hs-var">opts</span></a></span></span><span> </span><span id="local-6989586621679140580"><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140580"><span class="hs-identifier hs-var">sty</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140579"><span class="hs-identifier hs-var">beforeText</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span>                        </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; ([SourceLine] -&gt; Text) -&gt; [SourceLine] -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140577"><span class="hs-identifier hs-var">afterText</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span>                        </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; ([SourceLine] -&gt; Text) -&gt; [SourceLine] -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; [Text] -&gt; Text
+</span><span class="hs-identifier hs-var">Text.intercalate</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Text
+</span><span class="hs-identifier hs-var">Text.singleton</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\n'</span></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span>                        </span><span class="annot"><span class="annottext">([Text] -&gt; Text)
+-&gt; ([SourceLine] -&gt; [Text]) -&gt; [SourceLine] -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(LineNo -&gt; SourceLine -&gt; Text)
+-&gt; [LineNo] -&gt; [SourceLine] -&gt; [Text]
+forall a b c. (a -&gt; b -&gt; c) -&gt; [a] -&gt; [b] -&gt; [c]
+</span><span class="hs-identifier hs-var">zipWith</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FormatOptions -&gt; Style -&gt; LineNo -&gt; SourceLine -&gt; Text
+</span><a href="Skylighting.Format.ANSI.html#sourceLineToANSI"><span class="hs-identifier hs-var">sourceLineToANSI</span></a></span><span> </span><span class="annot"><span class="annottext">FormatOptions
+</span><a href="#local-6989586621679140581"><span class="hs-identifier hs-var">opts</span></a></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140580"><span class="hs-identifier hs-var">sty</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">LineNo
+</span><a href="#local-6989586621679140572"><span class="hs-identifier hs-var">startNum</span></a></span><span class="hs-glyph">..</span><span class="hs-special">]</span><span>
+</span><span id="line-22"></span><span>    </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679140579"><span class="annot"><span class="annottext">beforeText :: Text
+</span><a href="#local-6989586621679140579"><span class="hs-identifier hs-var hs-var">beforeText</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="Skylighting.Format.ANSI.html#ansiResetText"><span class="hs-identifier hs-var">ansiResetText</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">ANSIColorLevel
+-&gt; Maybe Color -&gt; Maybe Color -&gt; Bool -&gt; Bool -&gt; Bool -&gt; Text
+</span><a href="Skylighting.Format.ANSI.html#ansiStyleText"><span class="hs-identifier hs-var">ansiStyleText</span></a></span><span> </span><span class="annot"><span class="annottext">ANSIColorLevel
+</span><a href="#local-6989586621679140569"><span class="hs-identifier hs-var">clv</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Style -&gt; Maybe Color
+</span><a href="Skylighting.Types.html#defaultColor"><span class="hs-identifier hs-var hs-var">defaultColor</span></a></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140580"><span class="hs-identifier hs-var">sty</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Style -&gt; Maybe Color
+</span><a href="Skylighting.Types.html#backgroundColor"><span class="hs-identifier hs-var hs-var">backgroundColor</span></a></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140580"><span class="hs-identifier hs-var">sty</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-23"></span><span>          </span><span id="local-6989586621679140577"><span class="annot"><span class="annottext">afterText :: Text
+</span><a href="#local-6989586621679140577"><span class="hs-identifier hs-var hs-var">afterText</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="Skylighting.Format.ANSI.html#ansiResetText"><span class="hs-identifier hs-var">ansiResetText</span></a></span><span>
+</span><span id="line-24"></span><span>          </span><span id="local-6989586621679140572"><span class="annot"><span class="annottext">startNum :: LineNo
+</span><a href="#local-6989586621679140572"><span class="hs-identifier hs-var hs-var">startNum</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; LineNo
+</span><a href="Skylighting.Types.html#LineNo"><span class="hs-identifier hs-var">LineNo</span></a></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; LineNo) -&gt; Int -&gt; LineNo
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">FormatOptions -&gt; Int
+</span><a href="Skylighting.Types.html#startNumber"><span class="hs-identifier hs-var hs-var">startNumber</span></a></span><span> </span><span class="annot"><span class="annottext">FormatOptions
+</span><a href="#local-6989586621679140581"><span class="hs-identifier hs-var">opts</span></a></span><span>
+</span><span id="line-25"></span><span>          </span><span id="local-6989586621679140569"><span class="annot"><span class="annottext">clv :: ANSIColorLevel
+</span><a href="#local-6989586621679140569"><span class="hs-identifier hs-var hs-var">clv</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FormatOptions -&gt; ANSIColorLevel
+</span><a href="Skylighting.Types.html#ansiColorLevel"><span class="hs-identifier hs-var hs-var">ansiColorLevel</span></a></span><span> </span><span class="annot"><span class="annottext">FormatOptions
+</span><a href="#local-6989586621679140581"><span class="hs-identifier hs-var">opts</span></a></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="annot"><a href="Skylighting.Format.ANSI.html#sourceLineToANSI"><span class="hs-identifier hs-type">sourceLineToANSI</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Skylighting.Types.html#FormatOptions"><span class="hs-identifier hs-type">FormatOptions</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Skylighting.Types.html#Style"><span class="hs-identifier hs-type">Style</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Skylighting.Types.html#LineNo"><span class="hs-identifier hs-type">LineNo</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Skylighting.Types.html#SourceLine"><span class="hs-identifier hs-type">SourceLine</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-28"></span><span id="sourceLineToANSI"><span class="annot"><span class="annottext">sourceLineToANSI :: FormatOptions -&gt; Style -&gt; LineNo -&gt; SourceLine -&gt; Text
+</span><a href="Skylighting.Format.ANSI.html#sourceLineToANSI"><span class="hs-identifier hs-var hs-var">sourceLineToANSI</span></a></span></span><span> </span><span id="local-6989586621679140563"><span class="annot"><span class="annottext">FormatOptions
+</span><a href="#local-6989586621679140563"><span class="hs-identifier hs-var">opts</span></a></span></span><span> </span><span id="local-6989586621679140562"><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140562"><span class="hs-identifier hs-var">sty</span></a></span></span><span> </span><span id="local-6989586621679140561"><span class="annot"><span class="annottext">LineNo
+</span><a href="#local-6989586621679140561"><span class="hs-identifier hs-var">lno</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><a href="#local-6989586621679140560"><span class="hs-identifier hs-var">prependLineNoText</span></a></span><span>
+</span><span id="line-29"></span><span>                                 </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; (SourceLine -&gt; Text) -&gt; SourceLine -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Text
+forall a. Monoid a =&gt; [a] -&gt; a
+</span><span class="hs-identifier hs-var">mconcat</span></span><span>
+</span><span id="line-30"></span><span>                                 </span><span class="annot"><span class="annottext">([Text] -&gt; Text) -&gt; (SourceLine -&gt; [Text]) -&gt; SourceLine -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Token -&gt; Text) -&gt; SourceLine -&gt; [Text]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ANSIColorLevel -&gt; Style -&gt; Token -&gt; Text
+</span><a href="Skylighting.Format.ANSI.html#tokenToANSI"><span class="hs-identifier hs-var">tokenToANSI</span></a></span><span> </span><span class="annot"><span class="annottext">ANSIColorLevel
+</span><a href="#local-6989586621679140558"><span class="hs-identifier hs-var">clv</span></a></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140562"><span class="hs-identifier hs-var">sty</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span>    </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679140560"><span class="annot"><span class="annottext">prependLineNoText :: Text -&gt; Text
+</span><a href="#local-6989586621679140560"><span class="hs-identifier hs-var hs-var">prependLineNoText</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">FormatOptions -&gt; Bool
+</span><a href="Skylighting.Types.html#numberLines"><span class="hs-identifier hs-var hs-var">numberLines</span></a></span><span> </span><span class="annot"><span class="annottext">FormatOptions
+</span><a href="#local-6989586621679140563"><span class="hs-identifier hs-var">opts</span></a></span><span>
+</span><span id="line-32"></span><span>                                 </span><span class="hs-keyword">then</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140556"><span class="hs-identifier hs-var">lineNoText</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span>                                 </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-34"></span><span>          </span><span id="local-6989586621679140556"><span class="annot"><span class="annottext">lineNoText :: Text
+</span><a href="#local-6989586621679140556"><span class="hs-identifier hs-var hs-var">lineNoText</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ANSIColorLevel
+-&gt; Maybe Color -&gt; Maybe Color -&gt; Bool -&gt; Bool -&gt; Bool -&gt; Text
+</span><a href="Skylighting.Format.ANSI.html#ansiStyleText"><span class="hs-identifier hs-var">ansiStyleText</span></a></span><span> </span><span class="annot"><span class="annottext">ANSIColorLevel
+</span><a href="#local-6989586621679140558"><span class="hs-identifier hs-var">clv</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140554"><span class="hs-identifier hs-var">lineNoFgc</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140553"><span class="hs-identifier hs-var">lineNoBgc</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-35"></span><span>                         </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">Text.pack</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; String) -&gt; Int -&gt; String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">LineNo -&gt; Int
+</span><a href="Skylighting.Types.html#lineNo"><span class="hs-identifier hs-var hs-var">lineNo</span></a></span><span> </span><span class="annot"><span class="annottext">LineNo
+</span><a href="#local-6989586621679140561"><span class="hs-identifier hs-var">lno</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-36"></span><span>                         </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">ANSIColorLevel
+-&gt; Maybe Color -&gt; Maybe Color -&gt; Bool -&gt; Bool -&gt; Bool -&gt; Text
+</span><a href="Skylighting.Format.ANSI.html#ansiStyleText"><span class="hs-identifier hs-var">ansiStyleText</span></a></span><span> </span><span class="annot"><span class="annottext">ANSIColorLevel
+</span><a href="#local-6989586621679140558"><span class="hs-identifier hs-var">clv</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Style -&gt; Maybe Color
+</span><a href="Skylighting.Types.html#defaultColor"><span class="hs-identifier hs-var hs-var">defaultColor</span></a></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140562"><span class="hs-identifier hs-var">sty</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Style -&gt; Maybe Color
+</span><a href="Skylighting.Types.html#backgroundColor"><span class="hs-identifier hs-var hs-var">backgroundColor</span></a></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140562"><span class="hs-identifier hs-var">sty</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-37"></span><span>                         </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\t&quot;</span></span><span>
+</span><span id="line-38"></span><span>          </span><span id="local-6989586621679140554"><span class="annot"><span class="annottext">lineNoFgc :: Maybe Color
+</span><a href="#local-6989586621679140554"><span class="hs-identifier hs-var hs-var">lineNoFgc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Style -&gt; Maybe Color
+</span><a href="Skylighting.Types.html#lineNumberColor"><span class="hs-identifier hs-var hs-var">lineNumberColor</span></a></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140562"><span class="hs-identifier hs-var">sty</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Color -&gt; Maybe Color -&gt; Maybe Color
+forall (m :: * -&gt; *) a. MonadPlus m =&gt; m a -&gt; m a -&gt; m a
+</span><span class="hs-operator hs-var">`mplus`</span></span><span> </span><span class="annot"><span class="annottext">Style -&gt; Maybe Color
+</span><a href="Skylighting.Types.html#defaultColor"><span class="hs-identifier hs-var hs-var">defaultColor</span></a></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140562"><span class="hs-identifier hs-var">sty</span></a></span><span>
+</span><span id="line-39"></span><span>          </span><span id="local-6989586621679140553"><span class="annot"><span class="annottext">lineNoBgc :: Maybe Color
+</span><a href="#local-6989586621679140553"><span class="hs-identifier hs-var hs-var">lineNoBgc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Style -&gt; Maybe Color
+</span><a href="Skylighting.Types.html#lineNumberBackgroundColor"><span class="hs-identifier hs-var hs-var">lineNumberBackgroundColor</span></a></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140562"><span class="hs-identifier hs-var">sty</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Color -&gt; Maybe Color -&gt; Maybe Color
+forall (m :: * -&gt; *) a. MonadPlus m =&gt; m a -&gt; m a -&gt; m a
+</span><span class="hs-operator hs-var">`mplus`</span></span><span> </span><span class="annot"><span class="annottext">Style -&gt; Maybe Color
+</span><a href="Skylighting.Types.html#backgroundColor"><span class="hs-identifier hs-var hs-var">backgroundColor</span></a></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140562"><span class="hs-identifier hs-var">sty</span></a></span><span>
+</span><span id="line-40"></span><span>          </span><span id="local-6989586621679140558"><span class="annot"><span class="annottext">clv :: ANSIColorLevel
+</span><a href="#local-6989586621679140558"><span class="hs-identifier hs-var hs-var">clv</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FormatOptions -&gt; ANSIColorLevel
+</span><a href="Skylighting.Types.html#ansiColorLevel"><span class="hs-identifier hs-var hs-var">ansiColorLevel</span></a></span><span> </span><span class="annot"><span class="annottext">FormatOptions
+</span><a href="#local-6989586621679140563"><span class="hs-identifier hs-var">opts</span></a></span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="annot"><a href="Skylighting.Format.ANSI.html#tokenToANSI"><span class="hs-identifier hs-type">tokenToANSI</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Skylighting.Types.html#ANSIColorLevel"><span class="hs-identifier hs-type">ANSIColorLevel</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Skylighting.Types.html#Style"><span class="hs-identifier hs-type">Style</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Skylighting.Types.html#Token"><span class="hs-identifier hs-type">Token</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-43"></span><span id="tokenToANSI"><span class="annot"><span class="annottext">tokenToANSI :: ANSIColorLevel -&gt; Style -&gt; Token -&gt; Text
+</span><a href="Skylighting.Format.ANSI.html#tokenToANSI"><span class="hs-identifier hs-var hs-var">tokenToANSI</span></a></span></span><span> </span><span id="local-6989586621679140547"><span class="annot"><span class="annottext">ANSIColorLevel
+</span><a href="#local-6989586621679140547"><span class="hs-identifier hs-var">clv</span></a></span></span><span> </span><span id="local-6989586621679140546"><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140546"><span class="hs-identifier hs-var">sty</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679140545"><span class="annot"><span class="annottext">TokenType
+</span><a href="#local-6989586621679140545"><span class="hs-identifier hs-var">tokTy</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679140544"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140544"><span class="hs-identifier hs-var">tokText</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ANSIColorLevel
+-&gt; Maybe Color -&gt; Maybe Color -&gt; Bool -&gt; Bool -&gt; Bool -&gt; Text
+</span><a href="Skylighting.Format.ANSI.html#ansiStyleText"><span class="hs-identifier hs-var">ansiStyleText</span></a></span><span> </span><span class="annot"><span class="annottext">ANSIColorLevel
+</span><a href="#local-6989586621679140547"><span class="hs-identifier hs-var">clv</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140543"><span class="hs-identifier hs-var">tokFgc</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140542"><span class="hs-identifier hs-var">tokBgc</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679140541"><span class="hs-identifier hs-var">tokB</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679140540"><span class="hs-identifier hs-var">tokI</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679140539"><span class="hs-identifier hs-var">tokU</span></a></span><span>
+</span><span id="line-44"></span><span>                                         </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140544"><span class="hs-identifier hs-var">tokText</span></a></span><span>
+</span><span id="line-45"></span><span>                                         </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">ANSIColorLevel
+-&gt; Maybe Color -&gt; Maybe Color -&gt; Bool -&gt; Bool -&gt; Bool -&gt; Text
+</span><a href="Skylighting.Format.ANSI.html#ansiStyleText"><span class="hs-identifier hs-var">ansiStyleText</span></a></span><span> </span><span class="annot"><span class="annottext">ANSIColorLevel
+</span><a href="#local-6989586621679140547"><span class="hs-identifier hs-var">clv</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Style -&gt; Maybe Color
+</span><a href="Skylighting.Types.html#defaultColor"><span class="hs-identifier hs-var hs-var">defaultColor</span></a></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140546"><span class="hs-identifier hs-var">sty</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Style -&gt; Maybe Color
+</span><a href="Skylighting.Types.html#backgroundColor"><span class="hs-identifier hs-var hs-var">backgroundColor</span></a></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140546"><span class="hs-identifier hs-var">sty</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-46"></span><span>    </span><span class="hs-keyword">where</span><span> </span><span class="annot"><a href="Skylighting.Types.html#TokenStyle"><span class="hs-identifier hs-type">TokenStyle</span></a></span><span> </span><span id="local-6989586621679140537"><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140537"><span class="hs-identifier hs-var">tokFgcRaw</span></a></span></span><span> </span><span id="local-6989586621679140536"><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140536"><span class="hs-identifier hs-var">tokBgcRaw</span></a></span></span><span> </span><span id="local-6989586621679140541"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679140541"><span class="hs-identifier hs-var">tokB</span></a></span></span><span> </span><span id="local-6989586621679140540"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679140540"><span class="hs-identifier hs-var">tokI</span></a></span></span><span> </span><span id="local-6989586621679140539"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679140539"><span class="hs-identifier hs-var">tokU</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TokenStyle -&gt; Maybe TokenStyle -&gt; TokenStyle
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">TokenStyle
+</span><a href="Skylighting.Types.html#defStyle"><span class="hs-identifier hs-var">defStyle</span></a></span><span> </span><span class="annot"><span class="annottext">(Maybe TokenStyle -&gt; TokenStyle)
+-&gt; (Map TokenType TokenStyle -&gt; Maybe TokenStyle)
+-&gt; Map TokenType TokenStyle
+-&gt; TokenStyle
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">TokenType -&gt; Map TokenType TokenStyle -&gt; Maybe TokenStyle
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Map.lookup</span></span><span> </span><span class="annot"><span class="annottext">TokenType
+</span><a href="#local-6989586621679140545"><span class="hs-identifier hs-var">tokTy</span></a></span><span> </span><span class="annot"><span class="annottext">(Map TokenType TokenStyle -&gt; TokenStyle)
+-&gt; Map TokenType TokenStyle -&gt; TokenStyle
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Style -&gt; Map TokenType TokenStyle
+</span><a href="Skylighting.Types.html#tokenStyles"><span class="hs-identifier hs-var hs-var">tokenStyles</span></a></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140546"><span class="hs-identifier hs-var">sty</span></a></span><span>
+</span><span id="line-47"></span><span>          </span><span id="local-6989586621679140543"><span class="annot"><span class="annottext">tokFgc :: Maybe Color
+</span><a href="#local-6989586621679140543"><span class="hs-identifier hs-var hs-var">tokFgc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140537"><span class="hs-identifier hs-var">tokFgcRaw</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Color -&gt; Maybe Color -&gt; Maybe Color
+forall (m :: * -&gt; *) a. MonadPlus m =&gt; m a -&gt; m a -&gt; m a
+</span><span class="hs-operator hs-var">`mplus`</span></span><span> </span><span class="annot"><span class="annottext">Style -&gt; Maybe Color
+</span><a href="Skylighting.Types.html#defaultColor"><span class="hs-identifier hs-var hs-var">defaultColor</span></a></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140546"><span class="hs-identifier hs-var">sty</span></a></span><span>
+</span><span id="line-48"></span><span>          </span><span id="local-6989586621679140542"><span class="annot"><span class="annottext">tokBgc :: Maybe Color
+</span><a href="#local-6989586621679140542"><span class="hs-identifier hs-var hs-var">tokBgc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140536"><span class="hs-identifier hs-var">tokBgcRaw</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Color -&gt; Maybe Color -&gt; Maybe Color
+forall (m :: * -&gt; *) a. MonadPlus m =&gt; m a -&gt; m a -&gt; m a
+</span><span class="hs-operator hs-var">`mplus`</span></span><span> </span><span class="annot"><span class="annottext">Style -&gt; Maybe Color
+</span><a href="Skylighting.Types.html#backgroundColor"><span class="hs-identifier hs-var hs-var">backgroundColor</span></a></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679140546"><span class="hs-identifier hs-var">sty</span></a></span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span class="annot"><a href="Skylighting.Format.ANSI.html#ansiStyleText"><span class="hs-identifier hs-type">ansiStyleText</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Skylighting.Types.html#ANSIColorLevel"><span class="hs-identifier hs-type">ANSIColorLevel</span></a></span><span> </span><span class="hs-comment">-- ^ color support level</span><span>
+</span><span id="line-51"></span><span>            </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Skylighting.Types.html#Color"><span class="hs-identifier hs-type">Color</span></a></span><span> </span><span class="hs-comment">-- ^ foreground</span><span>
+</span><span id="line-52"></span><span>            </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Skylighting.Types.html#Color"><span class="hs-identifier hs-type">Color</span></a></span><span> </span><span class="hs-comment">-- ^ background</span><span>
+</span><span id="line-53"></span><span>            </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-comment">-- ^ bold</span><span>
+</span><span id="line-54"></span><span>            </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-comment">-- ^ italic</span><span>
+</span><span id="line-55"></span><span>            </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-comment">-- ^ underlined</span><span>
+</span><span id="line-56"></span><span>            </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-57"></span><span id="ansiStyleText"><span class="annot"><span class="annottext">ansiStyleText :: ANSIColorLevel
+-&gt; Maybe Color -&gt; Maybe Color -&gt; Bool -&gt; Bool -&gt; Bool -&gt; Text
+</span><a href="Skylighting.Format.ANSI.html#ansiStyleText"><span class="hs-identifier hs-var hs-var">ansiStyleText</span></a></span></span><span> </span><span id="local-6989586621679140532"><span class="annot"><span class="annottext">ANSIColorLevel
+</span><a href="#local-6989586621679140532"><span class="hs-identifier hs-var">clv</span></a></span></span><span> </span><span id="local-6989586621679140531"><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140531"><span class="hs-identifier hs-var">fgc</span></a></span></span><span> </span><span id="local-6989586621679140530"><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140530"><span class="hs-identifier hs-var">bgc</span></a></span></span><span> </span><span id="local-6989586621679140529"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679140529"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span id="local-6989586621679140528"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679140528"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span id="local-6989586621679140527"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679140527"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140526"><span class="hs-identifier hs-var">optReset</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140525"><span class="hs-identifier hs-var">sgrTextFg</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140524"><span class="hs-identifier hs-var">sgrTextBg</span></a></span><span>
+</span><span id="line-58"></span><span>                                    </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">Text.pack</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Text) -&gt; ([SGR] -&gt; String) -&gt; [SGR] -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[SGR] -&gt; String
+</span><span class="hs-identifier hs-var">ANSI.setSGRCode</span></span><span> </span><span class="annot"><span class="annottext">([SGR] -&gt; Text) -&gt; [SGR] -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[[SGR]] -&gt; [SGR]
+forall (t :: * -&gt; *) a. Foldable t =&gt; t [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">concat</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">[SGR]
+</span><a href="#local-6989586621679140521"><span class="hs-identifier hs-var">sgrCodeFg</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-59"></span><span>                                                                              </span><span class="annot"><span class="annottext">[SGR]
+</span><a href="#local-6989586621679140520"><span class="hs-identifier hs-var">sgrCodeBg</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-60"></span><span>                                                                              </span><span class="annot"><span class="annottext">[SGR]
+</span><a href="#local-6989586621679140519"><span class="hs-identifier hs-var">sgrCodeBold</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-61"></span><span>                                                                              </span><span class="annot"><span class="annottext">[SGR]
+</span><a href="#local-6989586621679140518"><span class="hs-identifier hs-var">sgrCodeItal</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-62"></span><span>                                                                              </span><span class="annot"><span class="annottext">[SGR]
+</span><a href="#local-6989586621679140517"><span class="hs-identifier hs-var">sgrCodeUndl</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-63"></span><span>    </span><span class="hs-comment">-- FIXME: the @ansi-terminal@ library should do the 256-color parts more cleanly someday</span><span>
+</span><span id="line-64"></span><span>    </span><span class="hs-keyword">where</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679140521"><span class="annot"><span class="annottext">[SGR]
+</span><a href="#local-6989586621679140521"><span class="hs-identifier hs-var">sgrCodeFg</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679140525"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140525"><span class="hs-identifier hs-var">sgrTextFg</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">ANSIColorLevel
+</span><a href="#local-6989586621679140532"><span class="hs-identifier hs-var">clv</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-65"></span><span>            </span><span class="annot"><span class="annottext">ANSIColorLevel
+</span><a href="Skylighting.Types.html#ANSITrueColor"><span class="hs-identifier hs-var">ANSITrueColor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe SGR -&gt; [SGR]
+forall a. Maybe a -&gt; [a]
+</span><span class="hs-identifier hs-var">maybeToList</span></span><span> </span><span class="annot"><span class="annottext">(Maybe SGR -&gt; [SGR]) -&gt; Maybe SGR -&gt; [SGR]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Color -&gt; SGR) -&gt; Maybe Color -&gt; Maybe SGR
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ConsoleLayer -&gt; Colour Float -&gt; SGR
+</span><span class="hs-identifier hs-var">ANSI.SetRGBColor</span></span><span> </span><span class="annot"><span class="annottext">ConsoleLayer
+</span><span class="hs-identifier hs-var">ANSI.Foreground</span></span><span> </span><span class="annot"><span class="annottext">(Colour Float -&gt; SGR) -&gt; (Color -&gt; Colour Float) -&gt; Color -&gt; SGR
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Color -&gt; Colour Float
+forall a. FromColor a =&gt; Color -&gt; a
+</span><a href="Skylighting.Types.html#fromColor"><span class="hs-identifier hs-var">fromColor</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140531"><span class="hs-identifier hs-var">fgc</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-66"></span><span>            </span><span class="annot"><span class="annottext">ANSIColorLevel
+</span><a href="Skylighting.Types.html#ANSI256Color"><span class="hs-identifier hs-var">ANSI256Color</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Maybe Text -&gt; Text
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Text -&gt; Text) -&gt; Maybe Text -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Color -&gt; Text) -&gt; Maybe Color -&gt; Maybe Text
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679140511"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679140511"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">Text.pack</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Text) -&gt; String -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Int] -&gt; String -&gt; String
+</span><span class="hs-identifier hs-var">ANSI.csi</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">38</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">5</span></span><span class="hs-special">,</span><span>
+</span><span id="line-67"></span><span>              </span><span class="annot"><span class="annottext">Word8 -&gt; Int
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">(Word8 -&gt; Int)
+-&gt; (Xterm256ColorCode -&gt; Word8) -&gt; Xterm256ColorCode -&gt; Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Xterm256ColorCode -&gt; Word8
+</span><a href="Skylighting.Types.html#getXterm256ColorCode"><span class="hs-identifier hs-var hs-var">getXterm256ColorCode</span></a></span><span> </span><span class="annot"><span class="annottext">(Xterm256ColorCode -&gt; Int) -&gt; Xterm256ColorCode -&gt; Int
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Color -&gt; Xterm256ColorCode
+forall a. FromColor a =&gt; Color -&gt; a
+</span><a href="Skylighting.Types.html#fromColor"><span class="hs-identifier hs-var">fromColor</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679140511"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;m&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140531"><span class="hs-identifier hs-var">fgc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-68"></span><span>            </span><span class="annot"><span class="annottext">ANSIColorLevel
+</span><a href="Skylighting.Types.html#ANSI16Color"><span class="hs-identifier hs-var">ANSI16Color</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe SGR -&gt; [SGR]
+forall a. Maybe a -&gt; [a]
+</span><span class="hs-identifier hs-var">maybeToList</span></span><span> </span><span class="annot"><span class="annottext">(Maybe SGR -&gt; [SGR]) -&gt; Maybe SGR -&gt; [SGR]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Color -&gt; SGR) -&gt; Maybe Color -&gt; Maybe SGR
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(ColorIntensity -&gt; Color -&gt; SGR) -&gt; (ColorIntensity, Color) -&gt; SGR
+forall a b c. (a -&gt; b -&gt; c) -&gt; (a, b) -&gt; c
+</span><span class="hs-identifier hs-var">uncurry</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ConsoleLayer -&gt; ColorIntensity -&gt; Color -&gt; SGR
+</span><span class="hs-identifier hs-var">ANSI.SetColor</span></span><span> </span><span class="annot"><span class="annottext">ConsoleLayer
+</span><span class="hs-identifier hs-var">ANSI.Foreground</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">((ColorIntensity, Color) -&gt; SGR)
+-&gt; (Color -&gt; (ColorIntensity, Color)) -&gt; Color -&gt; SGR
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Color -&gt; (ColorIntensity, Color)
+forall a. FromColor a =&gt; Color -&gt; a
+</span><a href="Skylighting.Types.html#fromColor"><span class="hs-identifier hs-var">fromColor</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140531"><span class="hs-identifier hs-var">fgc</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-69"></span><span>          </span><span class="hs-special">(</span><span id="local-6989586621679140520"><span class="annot"><span class="annottext">[SGR]
+</span><a href="#local-6989586621679140520"><span class="hs-identifier hs-var">sgrCodeBg</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679140524"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140524"><span class="hs-identifier hs-var">sgrTextBg</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">ANSIColorLevel
+</span><a href="#local-6989586621679140532"><span class="hs-identifier hs-var">clv</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-70"></span><span>            </span><span class="annot"><span class="annottext">ANSIColorLevel
+</span><a href="Skylighting.Types.html#ANSITrueColor"><span class="hs-identifier hs-var">ANSITrueColor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe SGR -&gt; [SGR]
+forall a. Maybe a -&gt; [a]
+</span><span class="hs-identifier hs-var">maybeToList</span></span><span> </span><span class="annot"><span class="annottext">(Maybe SGR -&gt; [SGR]) -&gt; Maybe SGR -&gt; [SGR]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Color -&gt; SGR) -&gt; Maybe Color -&gt; Maybe SGR
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ConsoleLayer -&gt; Colour Float -&gt; SGR
+</span><span class="hs-identifier hs-var">ANSI.SetRGBColor</span></span><span> </span><span class="annot"><span class="annottext">ConsoleLayer
+</span><span class="hs-identifier hs-var">ANSI.Background</span></span><span> </span><span class="annot"><span class="annottext">(Colour Float -&gt; SGR) -&gt; (Color -&gt; Colour Float) -&gt; Color -&gt; SGR
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Color -&gt; Colour Float
+forall a. FromColor a =&gt; Color -&gt; a
+</span><a href="Skylighting.Types.html#fromColor"><span class="hs-identifier hs-var">fromColor</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140530"><span class="hs-identifier hs-var">bgc</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-71"></span><span>            </span><span class="annot"><span class="annottext">ANSIColorLevel
+</span><a href="Skylighting.Types.html#ANSI256Color"><span class="hs-identifier hs-var">ANSI256Color</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Maybe Text -&gt; Text
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Text -&gt; Text) -&gt; Maybe Text -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Color -&gt; Text) -&gt; Maybe Color -&gt; Maybe Text
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679140504"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679140504"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">Text.pack</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Text) -&gt; String -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Int] -&gt; String -&gt; String
+</span><span class="hs-identifier hs-var">ANSI.csi</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">48</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">5</span></span><span class="hs-special">,</span><span>
+</span><span id="line-72"></span><span>              </span><span class="annot"><span class="annottext">Word8 -&gt; Int
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">(Word8 -&gt; Int)
+-&gt; (Xterm256ColorCode -&gt; Word8) -&gt; Xterm256ColorCode -&gt; Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Xterm256ColorCode -&gt; Word8
+</span><a href="Skylighting.Types.html#getXterm256ColorCode"><span class="hs-identifier hs-var hs-var">getXterm256ColorCode</span></a></span><span> </span><span class="annot"><span class="annottext">(Xterm256ColorCode -&gt; Int) -&gt; Xterm256ColorCode -&gt; Int
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Color -&gt; Xterm256ColorCode
+forall a. FromColor a =&gt; Color -&gt; a
+</span><a href="Skylighting.Types.html#fromColor"><span class="hs-identifier hs-var">fromColor</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679140504"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;m&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140530"><span class="hs-identifier hs-var">bgc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-73"></span><span>            </span><span class="annot"><span class="annottext">ANSIColorLevel
+</span><a href="Skylighting.Types.html#ANSI16Color"><span class="hs-identifier hs-var">ANSI16Color</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe SGR -&gt; [SGR]
+forall a. Maybe a -&gt; [a]
+</span><span class="hs-identifier hs-var">maybeToList</span></span><span> </span><span class="annot"><span class="annottext">(Maybe SGR -&gt; [SGR]) -&gt; Maybe SGR -&gt; [SGR]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Color -&gt; SGR) -&gt; Maybe Color -&gt; Maybe SGR
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(ColorIntensity -&gt; Color -&gt; SGR) -&gt; (ColorIntensity, Color) -&gt; SGR
+forall a b c. (a -&gt; b -&gt; c) -&gt; (a, b) -&gt; c
+</span><span class="hs-identifier hs-var">uncurry</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ConsoleLayer -&gt; ColorIntensity -&gt; Color -&gt; SGR
+</span><span class="hs-identifier hs-var">ANSI.SetColor</span></span><span> </span><span class="annot"><span class="annottext">ConsoleLayer
+</span><span class="hs-identifier hs-var">ANSI.Background</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">((ColorIntensity, Color) -&gt; SGR)
+-&gt; (Color -&gt; (ColorIntensity, Color)) -&gt; Color -&gt; SGR
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Color -&gt; (ColorIntensity, Color)
+forall a. FromColor a =&gt; Color -&gt; a
+</span><a href="Skylighting.Types.html#fromColor"><span class="hs-identifier hs-var">fromColor</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140530"><span class="hs-identifier hs-var">bgc</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-74"></span><span>          </span><span id="local-6989586621679140526"><span class="annot"><span class="annottext">optReset :: Text
+</span><a href="#local-6989586621679140526"><span class="hs-identifier hs-var hs-var">optReset</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Maybe Color -&gt; Bool
+forall a. Maybe a -&gt; Bool
+</span><span class="hs-identifier hs-var">isNothing</span></span><span> </span><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140531"><span class="hs-identifier hs-var">fgc</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">Maybe Color -&gt; Bool
+forall a. Maybe a -&gt; Bool
+</span><span class="hs-identifier hs-var">isNothing</span></span><span> </span><span class="annot"><span class="annottext">Maybe Color
+</span><a href="#local-6989586621679140530"><span class="hs-identifier hs-var">bgc</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="Skylighting.Format.ANSI.html#ansiResetText"><span class="hs-identifier hs-var">ansiResetText</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-75"></span><span>          </span><span id="local-6989586621679140519"><span class="annot"><span class="annottext">sgrCodeBold :: [SGR]
+</span><a href="#local-6989586621679140519"><span class="hs-identifier hs-var hs-var">sgrCodeBold</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">ConsoleIntensity -&gt; SGR
+</span><span class="hs-identifier hs-var">ANSI.SetConsoleIntensity</span></span><span> </span><span class="annot"><span class="annottext">(ConsoleIntensity -&gt; SGR) -&gt; ConsoleIntensity -&gt; SGR
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679140529"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">ConsoleIntensity
+</span><span class="hs-identifier hs-var">ANSI.BoldIntensity</span></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">ConsoleIntensity
+</span><span class="hs-identifier hs-var">ANSI.NormalIntensity</span></span><span class="hs-special">]</span><span>
+</span><span id="line-76"></span><span>          </span><span id="local-6989586621679140518"><span class="annot"><span class="annottext">sgrCodeItal :: [SGR]
+</span><a href="#local-6989586621679140518"><span class="hs-identifier hs-var hs-var">sgrCodeItal</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Bool -&gt; SGR
+</span><span class="hs-identifier hs-var">ANSI.SetItalicized</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679140528"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-comment">-- FIXME: Not very widely supported in terminals</span><span>
+</span><span id="line-77"></span><span>          </span><span id="local-6989586621679140517"><span class="annot"><span class="annottext">sgrCodeUndl :: [SGR]
+</span><a href="#local-6989586621679140517"><span class="hs-identifier hs-var hs-var">sgrCodeUndl</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Underlining -&gt; SGR
+</span><span class="hs-identifier hs-var">ANSI.SetUnderlining</span></span><span> </span><span class="annot"><span class="annottext">(Underlining -&gt; SGR) -&gt; Underlining -&gt; SGR
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679140527"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Underlining
+</span><span class="hs-identifier hs-var">ANSI.SingleUnderline</span></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Underlining
+</span><span class="hs-identifier hs-var">ANSI.NoUnderline</span></span><span class="hs-special">]</span><span>
+</span><span id="line-78"></span><span>
+</span><span id="line-79"></span><span class="annot"><a href="Skylighting.Format.ANSI.html#ansiResetText"><span class="hs-identifier hs-type">ansiResetText</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-80"></span><span id="ansiResetText"><span class="annot"><span class="annottext">ansiResetText :: Text
+</span><a href="Skylighting.Format.ANSI.html#ansiResetText"><span class="hs-identifier hs-var hs-var">ansiResetText</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">Text.pack</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Text) -&gt; String -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[SGR] -&gt; String
+</span><span class="hs-identifier hs-var">ANSI.setSGRCode</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">SGR
+</span><span class="hs-identifier hs-var">ANSI.Reset</span></span><span class="hs-special">]</span><span>
+</span><span id="line-81"></span></pre></body></html>

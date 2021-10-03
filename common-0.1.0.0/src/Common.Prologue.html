@@ -1,0 +1,172 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Module      : Common.Prologue
+Description : Common prologue animations.
+Copyright   : (c) Xie Ruifeng, 2020
+License     : AGPL-3
+Maintainer  : krantz.xrf@outlook.com
+Stability   : experimental
+Portability : portable
+-}</span><span>
+</span><span id="line-10"></span><span class="hs-pragma">{-# LANGUAGE BlockArguments    #-}</span><span>
+</span><span id="line-11"></span><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Common.Prologue</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Prologue.html#prologue"><span class="hs-identifier">prologue</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate</span></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate.Scene</span></span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Common.Object.Transform.html"><span class="hs-identifier">Common.Object.Transform</span></a></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Common.Object.Types.html"><span class="hs-identifier">Common.Object.Types</span></a></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Common.SVG.html"><span class="hs-identifier">Common.SVG</span></a></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree</span></span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="annot"><a href="Common.Prologue.html#normaliseTextPaths"><span class="hs-identifier hs-type">normaliseTextPaths</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span>
+</span><span id="line-26"></span><span id="normaliseTextPaths"><span class="annot"><span class="annottext">normaliseTextPaths :: SVG -&gt; SVG
+</span><a href="Common.Prologue.html#normaliseTextPaths"><span class="hs-identifier hs-var hs-var">normaliseTextPaths</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">mapTree</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Maybe FillRule -&gt; Identity (Maybe FillRule))
+-&gt; SVG -&gt; Identity SVG
+forall c. HasDrawAttributes c =&gt; Lens' c (Maybe FillRule)
+</span><span class="hs-identifier hs-var">fillRule</span></span><span> </span><span class="annot"><span class="annottext">((Maybe FillRule -&gt; Identity (Maybe FillRule))
+ -&gt; SVG -&gt; Identity SVG)
+-&gt; FillRule -&gt; SVG -&gt; SVG
+forall s t a b. ASetter s t a (Maybe b) -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">?~</span></span><span> </span><span class="annot"><span class="annottext">FillRule
+</span><span class="hs-identifier hs-var">FillEvenOdd</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">([PathCommand] -&gt; [PathCommand]) -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">mapSvgPaths</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; [PathCommand]
+</span><a href="Common.SVG.html#counterclockwiseLR"><span class="hs-identifier hs-var">counterclockwiseLR</span></a></span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- |Common prologue animation.</span><span>
+</span><span id="line-29"></span><span id="local-6989586621679234269"><span class="annot"><a href="Common.Prologue.html#prologue"><span class="hs-identifier hs-type">prologue</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Scene</span></span><span> </span><span class="annot"><a href="#local-6989586621679234269"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span><span>
+</span><span id="line-30"></span><span id="prologue"><span class="annot"><span class="annottext">prologue :: Scene s ()
+</span><a href="Common.Prologue.html#prologue"><span class="hs-identifier hs-var hs-var">prologue</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-31"></span><span>  </span><span id="local-6989586621679234268"><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679234268"><span class="hs-identifier hs-var">chi</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; Scene s (Object s SVG)
+forall s. SVG -&gt; Scene s (Object s SVG)
+</span><a href="Common.Object.Transform.html#oNewCentered"><span class="hs-identifier hs-var">oNewCentered</span></a></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; Scene s (Object s SVG)) -&gt; SVG -&gt; Scene s (Object s SVG)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="Common.Prologue.html#normaliseTextPaths"><span class="hs-identifier hs-var">normaliseTextPaths</span></a></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">TeX -&gt; SVG
+forall a. Renderable a =&gt; a -&gt; SVG
+</span><span class="hs-identifier hs-var">toSVG</span></span><span> </span><span class="annot"><span class="annottext">(TeX -&gt; SVG) -&gt; TeX -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; TeX
+</span><a href="Common.Object.Types.html#TeX"><span class="hs-identifier hs-var">TeX</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\textbf{&#22240;&#30495;&#29702;&#183;&#24471;&#33258;&#30001;&#183;&#20197;&#24184;&#31119;}&quot;</span></span><span>
+</span><span id="line-32"></span><span>  </span><span id="local-6989586621679234264"><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679234264"><span class="hs-identifier hs-var">eng</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; Scene s (Object s SVG)
+forall s. SVG -&gt; Scene s (Object s SVG)
+</span><a href="Common.Object.Transform.html#oNewCentered"><span class="hs-identifier hs-var">oNewCentered</span></a></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; Scene s (Object s SVG)) -&gt; SVG -&gt; Scene s (Object s SVG)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">TeX -&gt; SVG
+forall a. Renderable a =&gt; a -&gt; SVG
+</span><span class="hs-identifier hs-var">toSVG</span></span><span> </span><span class="annot"><span class="annottext">(TeX -&gt; SVG) -&gt; TeX -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; TeX
+</span><a href="Common.Object.Types.html#TeX"><span class="hs-identifier hs-var">TeX</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;Freedom through Truth for Happiness&quot;</span></span><span>
+</span><span id="line-33"></span><span>  </span><span class="annot"><span class="annottext">Object s SVG -&gt; (ObjectData SVG -&gt; ObjectData SVG) -&gt; Scene s ()
+forall s a.
+Object s a -&gt; (ObjectData a -&gt; ObjectData a) -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oModify</span></span><span> </span><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679234268"><span class="hs-identifier hs-var">chi</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Double -&gt; Identity Double)
+-&gt; ObjectData SVG -&gt; Identity (ObjectData SVG)
+forall a. Lens' (ObjectData a) Double
+</span><span class="hs-identifier hs-var">oTranslateY</span></span><span> </span><span class="annot"><span class="annottext">((Double -&gt; Identity Double)
+ -&gt; ObjectData SVG -&gt; Identity (ObjectData SVG))
+-&gt; (Double -&gt; Double) -&gt; ObjectData SVG -&gt; ObjectData SVG
+forall s t a b. ASetter s t a b -&gt; (a -&gt; b) -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">%~</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.5</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span>  </span><span class="annot"><span class="annottext">Object s SVG -&gt; (ObjectData SVG -&gt; ObjectData SVG) -&gt; Scene s ()
+forall s a.
+Object s a -&gt; (ObjectData a -&gt; ObjectData a) -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oModify</span></span><span> </span><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679234264"><span class="hs-identifier hs-var">eng</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Double -&gt; Identity Double)
+-&gt; ObjectData SVG -&gt; Identity (ObjectData SVG)
+forall a. Lens' (ObjectData a) Double
+</span><span class="hs-identifier hs-var">oTranslateY</span></span><span> </span><span class="annot"><span class="annottext">((Double -&gt; Identity Double)
+ -&gt; ObjectData SVG -&gt; Identity (ObjectData SVG))
+-&gt; (Double -&gt; Double) -&gt; ObjectData SVG -&gt; ObjectData SVG
+forall s t a b. ASetter s t a b -&gt; (a -&gt; b) -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">%~</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><span class="hs-number">0.5</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-35"></span><span>  </span><span class="annot"><span class="annottext">Object s SVG -&gt; (ObjectData SVG -&gt; ObjectData SVG) -&gt; Scene s ()
+forall s a.
+Object s a -&gt; (ObjectData a -&gt; ObjectData a) -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oModify</span></span><span> </span><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679234264"><span class="hs-identifier hs-var">eng</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Double -&gt; Identity Double)
+-&gt; ObjectData SVG -&gt; Identity (ObjectData SVG)
+forall a. Lens' (ObjectData a) Double
+</span><span class="hs-identifier hs-var">oScale</span></span><span> </span><span class="annot"><span class="annottext">((Double -&gt; Identity Double)
+ -&gt; ObjectData SVG -&gt; Identity (ObjectData SVG))
+-&gt; (Double -&gt; Double) -&gt; ObjectData SVG -&gt; ObjectData SVG
+forall s t a b. ASetter s t a b -&gt; (a -&gt; b) -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">%~</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.6</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-36"></span><span>  </span><span class="annot"><span class="annottext">Object s SVG -&gt; (SVG -&gt; Animation) -&gt; Scene s ()
+forall s a. Object s a -&gt; (SVG -&gt; Animation) -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oShowWith</span></span><span> </span><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679234268"><span class="hs-identifier hs-var">chi</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(SVG -&gt; Animation) -&gt; SVG -&gt; Animation
+</span><span class="hs-identifier hs-var">oStagger</span></span><span> </span><span class="annot"><span class="annottext">((SVG -&gt; Animation) -&gt; SVG -&gt; Animation)
+-&gt; (SVG -&gt; Animation) -&gt; SVG -&gt; Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double) -&gt; Animation -&gt; Animation
+</span><span class="hs-identifier hs-var">adjustDuration</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">(Animation -&gt; Animation) -&gt; (SVG -&gt; Animation) -&gt; SVG -&gt; Animation
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; Animation -&gt; Animation
+</span><span class="hs-identifier hs-var">mapA</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Double -&gt; Double) -&gt; SVG -&gt; SVG
+</span><a href="Common.SVG.html#adjustStrokeWidth"><span class="hs-identifier hs-var">adjustStrokeWidth</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.6</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Animation -&gt; Animation) -&gt; (SVG -&gt; Animation) -&gt; SVG -&gt; Animation
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; Animation
+</span><span class="hs-identifier hs-var">oDraw</span></span><span class="hs-special">)</span><span>
+</span><span id="line-37"></span><span>  </span><span class="annot"><span class="annottext">Object s SVG -&gt; (SVG -&gt; Animation) -&gt; Scene s ()
+forall s a. Object s a -&gt; (SVG -&gt; Animation) -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oShowWith</span></span><span> </span><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679234264"><span class="hs-identifier hs-var">eng</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(SVG -&gt; Animation) -&gt; SVG -&gt; Animation
+</span><span class="hs-identifier hs-var">oStagger</span></span><span> </span><span class="annot"><span class="annottext">((SVG -&gt; Animation) -&gt; SVG -&gt; Animation)
+-&gt; (SVG -&gt; Animation) -&gt; SVG -&gt; Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double) -&gt; Animation -&gt; Animation
+</span><span class="hs-identifier hs-var">adjustDuration</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">(Animation -&gt; Animation) -&gt; (SVG -&gt; Animation) -&gt; SVG -&gt; Animation
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; Animation
+</span><span class="hs-identifier hs-var">oDraw</span></span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span>  </span><span class="annot"><span class="annottext">Double -&gt; Scene s ()
+forall s. Double -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">wait</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-39"></span><span>  </span><span class="annot"><span class="annottext">Scene s () -&gt; Scene s ()
+forall s a. Scene s a -&gt; Scene s a
+</span><span class="hs-identifier hs-var">waitOn</span></span><span> </span><span class="annot"><span class="annottext">(Scene s () -&gt; Scene s ()) -&gt; Scene s () -&gt; Scene s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Object s SVG] -&gt; (Object s SVG -&gt; Scene s ()) -&gt; Scene s ()
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Foldable t, Monad m) =&gt;
+t a -&gt; (a -&gt; m b) -&gt; m ()
+</span><span class="hs-identifier hs-var">forM_</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679234268"><span class="hs-identifier hs-var">chi</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679234264"><span class="hs-identifier hs-var">eng</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Scene s () -&gt; Scene s ()
+forall s a. Scene s a -&gt; Scene s a
+</span><span class="hs-identifier hs-var">fork</span></span><span> </span><span class="annot"><span class="annottext">(Scene s () -&gt; Scene s ())
+-&gt; (Object s SVG -&gt; Scene s ()) -&gt; Object s SVG -&gt; Scene s ()
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Object s SVG -&gt; (SVG -&gt; Animation) -&gt; Scene s ()
+forall s a. Object s a -&gt; (SVG -&gt; Animation) -&gt; Scene s ()
+</span><span class="hs-operator hs-var">`oHideWith`</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; Animation
+</span><span class="hs-identifier hs-var">oFadeOut</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span></pre></body></html>

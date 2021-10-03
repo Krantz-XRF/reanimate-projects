@@ -1,0 +1,608 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+  Bounding-boxes can be immensely useful for aligning objects
+  but they are not part of the SVG specification and cannot be
+  computed for all SVG nodes. In particular, you'll get bad results
+  when asking for the bounding boxes of Text nodes (because fonts
+  are difficult), clipped nodes, and filtered nodes.
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Svg.BoundingBox</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Svg.BoundingBox.html#boundingBox"><span class="hs-identifier">boundingBox</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.BoundingBox.html#svgHeight"><span class="hs-identifier">svgHeight</span></a></span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.BoundingBox.html#svgWidth"><span class="hs-identifier">svgWidth</span></a></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Arrow</span></span><span>             </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(***)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>              </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(^.)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span>                 </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">foldl'</span></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>                </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">mapMaybe</span></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Vector.Unboxed</span></span><span>       </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">V</span></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Linear.html"><span class="hs-identifier">Geom2D.CubicBezier.Linear</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Bezier</span></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree</span></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Linear.V2</span></span><span>                 </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">V2</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">V2</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Linear.Vector</span></span><span>             </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Additive</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">zero</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Constants.html"><span class="hs-identifier">Reanimate.Constants</span></a></span><span>       </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Constants.html#defaultDPI"><span class="hs-identifier">defaultDPI</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Svg.LineCommand.html"><span class="hs-identifier">Reanimate.Svg.LineCommand</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Svg.LineCommand.html#LineCommand"><span class="hs-identifier">LineCommand</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.LineCommand.html#toLineCommands"><span class="hs-identifier">toLineCommands</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Reanimate.Transform.html"><span class="hs-identifier">Reanimate.Transform</span></a></span><span>       </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Transform</span></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- | Return bounding box of SVG tree.</span><span>
+</span><span id="line-28"></span><span class="hs-comment">--  The four numbers returned are (minimal X-coordinate, minimal Y-coordinate, width, height)</span><span>
+</span><span id="line-29"></span><span class="hs-comment">--</span><span>
+</span><span id="line-30"></span><span class="hs-comment">--  Note: Bounding boxes are computed on a best-effort basis and will not work</span><span>
+</span><span id="line-31"></span><span class="hs-comment">--        in all cases. The only supported SVG nodes are: path, circle, polyline,</span><span>
+</span><span id="line-32"></span><span class="hs-comment">--        ellipse, line, rectangle, image. All other nodes return (0,0,0,0).</span><span>
+</span><span id="line-33"></span><span class="annot"><a href="Reanimate.Svg.BoundingBox.html#boundingBox"><span class="hs-identifier hs-type">boundingBox</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span id="boundingBox"><span class="annot"><span class="annottext">boundingBox :: Tree -&gt; (Double, Double, Double, Double)
+</span><a href="Reanimate.Svg.BoundingBox.html#boundingBox"><span class="hs-identifier hs-var hs-var">boundingBox</span></a></span></span><span> </span><span id="local-6989586621679541710"><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679541710"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-35"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Tree -&gt; [RPoint]
+</span><a href="Reanimate.Svg.BoundingBox.html#svgBoundingPoints"><span class="hs-identifier hs-var">svgBoundingPoints</span></a></span><span> </span><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679541710"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-36"></span><span>      </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span>
+</span><span id="line-37"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span id="local-6989586621679541708"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541708"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679541707"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541707"><span class="hs-identifier hs-var">y</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679541706"><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679541706"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-38"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679541705"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541705"><span class="hs-identifier hs-var">minx</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679541704"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541704"><span class="hs-identifier hs-var">miny</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679541703"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541703"><span class="hs-identifier hs-var">maxx</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679541702"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541702"><span class="hs-identifier hs-var">maxy</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((Double, Double, Double, Double)
+ -&gt; RPoint -&gt; (Double, Double, Double, Double))
+-&gt; (Double, Double, Double, Double)
+-&gt; [RPoint]
+-&gt; (Double, Double, Double, Double)
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl'</span></span><span> </span><span class="annot"><span class="annottext">(Double, Double, Double, Double)
+-&gt; RPoint -&gt; (Double, Double, Double, Double)
+forall d. Ord d =&gt; (d, d, d, d) -&gt; V2 d -&gt; (d, d, d, d)
+</span><a href="#local-6989586621679541701"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541708"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541707"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541708"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541707"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679541706"><span class="hs-identifier hs-var">rest</span></a></span><span>
+</span><span id="line-39"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541705"><span class="hs-identifier hs-var">minx</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541704"><span class="hs-identifier hs-var">miny</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541703"><span class="hs-identifier hs-var">maxx</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541705"><span class="hs-identifier hs-var">minx</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541702"><span class="hs-identifier hs-var">maxy</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541704"><span class="hs-identifier hs-var">miny</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-41"></span><span>    </span><span id="local-6989586621679541701"><span class="annot"><span class="annottext">worker :: (d, d, d, d) -&gt; V2 d -&gt; (d, d, d, d)
+</span><a href="#local-6989586621679541701"><span class="hs-identifier hs-var hs-var">worker</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679541700"><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679541700"><span class="hs-identifier hs-var">minx</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679541699"><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679541699"><span class="hs-identifier hs-var">miny</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679541698"><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679541698"><span class="hs-identifier hs-var">maxx</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679541697"><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679541697"><span class="hs-identifier hs-var">maxy</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span id="local-6989586621679541696"><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679541696"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679541695"><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679541695"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-42"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">d -&gt; d -&gt; d
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">min</span></span><span> </span><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679541700"><span class="hs-identifier hs-var">minx</span></a></span><span> </span><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679541696"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">d -&gt; d -&gt; d
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">min</span></span><span> </span><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679541699"><span class="hs-identifier hs-var">miny</span></a></span><span> </span><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679541695"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">d -&gt; d -&gt; d
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679541698"><span class="hs-identifier hs-var">maxx</span></a></span><span> </span><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679541696"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">d -&gt; d -&gt; d
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679541697"><span class="hs-identifier hs-var">maxy</span></a></span><span> </span><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679541695"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- | Height of SVG node in local units (not pixels). Computed on best-effort basis</span><span>
+</span><span id="line-45"></span><span class="hs-comment">--   and will not give accurate results for all SVG nodes.</span><span>
+</span><span id="line-46"></span><span class="annot"><a href="Reanimate.Svg.BoundingBox.html#svgHeight"><span class="hs-identifier hs-type">svgHeight</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-47"></span><span id="svgHeight"><span class="annot"><span class="annottext">svgHeight :: Tree -&gt; Double
+</span><a href="Reanimate.Svg.BoundingBox.html#svgHeight"><span class="hs-identifier hs-var hs-var">svgHeight</span></a></span></span><span> </span><span id="local-6989586621679541692"><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679541692"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541691"><span class="hs-identifier hs-var">h</span></a></span><span>
+</span><span id="line-48"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-49"></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679541690"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541690"><span class="hs-identifier hs-var">_x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679541689"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541689"><span class="hs-identifier hs-var">_y</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679541688"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541688"><span class="hs-identifier hs-var">_w</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679541691"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541691"><span class="hs-identifier hs-var">h</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Tree -&gt; (Double, Double, Double, Double)
+</span><a href="Reanimate.Svg.BoundingBox.html#boundingBox"><span class="hs-identifier hs-var">boundingBox</span></a></span><span> </span><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679541692"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span class="hs-comment">-- | Width of SVG node in local units (not pixels). Computed on best-effort basis</span><span>
+</span><span id="line-52"></span><span class="hs-comment">--   and will not give accurate results for all SVG nodes.</span><span>
+</span><span id="line-53"></span><span class="annot"><a href="Reanimate.Svg.BoundingBox.html#svgWidth"><span class="hs-identifier hs-type">svgWidth</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-54"></span><span id="svgWidth"><span class="annot"><span class="annottext">svgWidth :: Tree -&gt; Double
+</span><a href="Reanimate.Svg.BoundingBox.html#svgWidth"><span class="hs-identifier hs-var hs-var">svgWidth</span></a></span></span><span> </span><span id="local-6989586621679541687"><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679541687"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541686"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-55"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-56"></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679541685"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541685"><span class="hs-identifier hs-var">_x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679541684"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541684"><span class="hs-identifier hs-var">_y</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679541686"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541686"><span class="hs-identifier hs-var">w</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679541683"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541683"><span class="hs-identifier hs-var">_h</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Tree -&gt; (Double, Double, Double, Double)
+</span><a href="Reanimate.Svg.BoundingBox.html#boundingBox"><span class="hs-identifier hs-var">boundingBox</span></a></span><span> </span><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679541687"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span class="hs-comment">-- | Sampling of points in a line path.</span><span>
+</span><span id="line-59"></span><span class="annot"><a href="Reanimate.Svg.BoundingBox.html#linePoints"><span class="hs-identifier hs-type">linePoints</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Reanimate.Svg.LineCommand.html#LineCommand"><span class="hs-identifier hs-type">LineCommand</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">RPoint</span></span><span class="hs-special">]</span><span>
+</span><span id="line-60"></span><span id="linePoints"><span class="annot"><span class="annottext">linePoints :: [LineCommand] -&gt; [RPoint]
+</span><a href="Reanimate.Svg.BoundingBox.html#linePoints"><span class="hs-identifier hs-var hs-var">linePoints</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RPoint -&gt; [LineCommand] -&gt; [RPoint]
+</span><a href="#local-6989586621679541681"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+forall (f :: * -&gt; *) a. (Additive f, Num a) =&gt; f a
+</span><span class="hs-identifier hs-var">zero</span></span><span>
+</span><span id="line-61"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-62"></span><span>    </span><span id="local-6989586621679541681"><span class="annot"><span class="annottext">worker :: RPoint -&gt; [LineCommand] -&gt; [RPoint]
+</span><a href="#local-6989586621679541681"><span class="hs-identifier hs-var hs-var">worker</span></a></span></span><span> </span><span id="local-6989586621679541680"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679541680"><span class="hs-identifier hs-var">_from</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-63"></span><span>    </span><span class="annot"><a href="#local-6989586621679541681"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span id="local-6989586621679541679"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679541679"><span class="hs-identifier hs-var">from</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679541678"><span class="annot"><span class="annottext">LineCommand
+</span><a href="#local-6989586621679541678"><span class="hs-identifier hs-var">x</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679541677"><span class="annot"><span class="annottext">[LineCommand]
+</span><a href="#local-6989586621679541677"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-64"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">LineCommand
+</span><a href="#local-6989586621679541678"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-65"></span><span>        </span><span class="annot"><a href="Reanimate.Svg.LineCommand.html#LineMove"><span class="hs-identifier hs-type">LineMove</span></a></span><span> </span><span id="local-6989586621679541675"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679541675"><span class="hs-identifier hs-var">to</span></a></span></span><span>     </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">RPoint -&gt; [LineCommand] -&gt; [RPoint]
+</span><a href="#local-6989586621679541681"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679541675"><span class="hs-identifier hs-var">to</span></a></span><span> </span><span class="annot"><span class="annottext">[LineCommand]
+</span><a href="#local-6989586621679541677"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-66"></span><span>        </span><span class="hs-comment">-- LineDraw to     -&gt; from:to:worker to xs</span><span>
+</span><span id="line-67"></span><span>        </span><span class="annot"><a href="Reanimate.Svg.LineCommand.html#LineBezier"><span class="hs-identifier hs-type">LineBezier</span></a></span><span> </span><span class="hs-special">[</span><span id="local-6989586621679541673"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679541673"><span class="hs-identifier hs-var">p</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-68"></span><span>          </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679541673"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint -&gt; [RPoint] -&gt; [RPoint]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">RPoint -&gt; [LineCommand] -&gt; [RPoint]
+</span><a href="#local-6989586621679541681"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679541673"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">[LineCommand]
+</span><a href="#local-6989586621679541677"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-69"></span><span>        </span><span class="annot"><a href="Reanimate.Svg.LineCommand.html#LineBezier"><span class="hs-identifier hs-type">LineBezier</span></a></span><span> </span><span id="local-6989586621679541672"><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679541672"><span class="hs-identifier hs-var">ctrl</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-comment">-- approximation</span><span>
+</span><span id="line-70"></span><span>          </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679541671"><span class="annot"><span class="annottext">bezier :: AnyBezier Double
+</span><a href="#local-6989586621679541671"><span class="hs-identifier hs-var hs-var">bezier</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Vector RPoint -&gt; AnyBezier Double
+forall a. Vector (V2 a) -&gt; AnyBezier a
+</span><a href="Geom2D.CubicBezier.Linear.html#AnyBezier"><span class="hs-identifier hs-var">Bezier.AnyBezier</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[RPoint] -&gt; Vector RPoint
+forall a. Unbox a =&gt; [a] -&gt; Vector a
+</span><span class="hs-identifier hs-var">V.fromList</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679541679"><span class="hs-identifier hs-var">from</span></a></span><span class="annot"><span class="annottext">RPoint -&gt; [RPoint] -&gt; [RPoint]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679541672"><span class="hs-identifier hs-var">ctrl</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-71"></span><span>          </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">AnyBezier Double -&gt; Double -&gt; RPoint
+forall (b :: * -&gt; *) a.
+(GenericBezier b, Unbox a, Fractional a) =&gt;
+b a -&gt; a -&gt; V2 a
+</span><a href="Geom2D.CubicBezier.Linear.html#evalBezier"><span class="hs-identifier hs-var">Bezier.evalBezier</span></a></span><span> </span><span class="annot"><span class="annottext">AnyBezier Double
+</span><a href="#local-6989586621679541671"><span class="hs-identifier hs-var">bezier</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">recip</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541666"><span class="hs-identifier hs-var">chunks</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541664"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679541664"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541664"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541666"><span class="hs-identifier hs-var">chunks</span></a></span><span class="hs-special">]</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[RPoint] -&gt; [RPoint] -&gt; [RPoint]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span>
+</span><span id="line-72"></span><span>          </span><span class="annot"><span class="annottext">RPoint -&gt; [LineCommand] -&gt; [RPoint]
+</span><a href="#local-6989586621679541681"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[RPoint] -&gt; RPoint
+forall a. [a] -&gt; a
+</span><span class="hs-identifier hs-var">last</span></span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679541672"><span class="hs-identifier hs-var">ctrl</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[LineCommand]
+</span><a href="#local-6989586621679541677"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-73"></span><span>        </span><span class="annot"><a href="Reanimate.Svg.LineCommand.html#LineEnd"><span class="hs-identifier hs-type">LineEnd</span></a></span><span> </span><span id="local-6989586621679541661"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679541661"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679541661"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint -&gt; [RPoint] -&gt; [RPoint]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">RPoint -&gt; [LineCommand] -&gt; [RPoint]
+</span><a href="#local-6989586621679541681"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679541661"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">[LineCommand]
+</span><a href="#local-6989586621679541677"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-74"></span><span>    </span><span id="local-6989586621679541666"><span class="annot"><span class="annottext">chunks :: Double
+</span><a href="#local-6989586621679541666"><span class="hs-identifier hs-var hs-var">chunks</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">10</span></span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span class="annot"><a href="Reanimate.Svg.BoundingBox.html#svgBoundingPoints"><span class="hs-identifier hs-type">svgBoundingPoints</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">RPoint</span></span><span class="hs-special">]</span><span>
+</span><span id="line-77"></span><span id="svgBoundingPoints"><span class="annot"><span class="annottext">svgBoundingPoints :: Tree -&gt; [RPoint]
+</span><a href="Reanimate.Svg.BoundingBox.html#svgBoundingPoints"><span class="hs-identifier hs-var hs-var">svgBoundingPoints</span></a></span></span><span> </span><span id="local-6989586621679541660"><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679541660"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(RPoint -&gt; RPoint) -&gt; [RPoint] -&gt; [RPoint]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Matrix Double -&gt; RPoint -&gt; RPoint
+</span><a href="Reanimate.Transform.html#transformPoint"><span class="hs-identifier hs-var">Transform.transformPoint</span></a></span><span> </span><span class="annot"><span class="annottext">Matrix Double
+</span><a href="#local-6989586621679541658"><span class="hs-identifier hs-var">m</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([RPoint] -&gt; [RPoint]) -&gt; [RPoint] -&gt; [RPoint]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-78"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679541660"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-79"></span><span>      </span><span class="annot"><span class="annottext">Tree
+</span><span class="hs-identifier hs-var">None</span></span><span>            </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-80"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">UseTree</span></span><span class="hs-special">{</span><span class="hs-special">}</span><span>       </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-81"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">GroupTree</span></span><span> </span><span id="local-6989586621679541654"><span class="annot"><span class="annottext">Group
+</span><a href="#local-6989586621679541654"><span class="hs-identifier hs-var">g</span></a></span></span><span>     </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; [RPoint]) -&gt; [Tree] -&gt; [RPoint]
+forall (t :: * -&gt; *) a b. Foldable t =&gt; (a -&gt; [b]) -&gt; t a -&gt; [b]
+</span><span class="hs-identifier hs-var">concatMap</span></span><span> </span><span class="annot"><span class="annottext">Tree -&gt; [RPoint]
+</span><a href="Reanimate.Svg.BoundingBox.html#svgBoundingPoints"><span class="hs-identifier hs-var">svgBoundingPoints</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Group
+</span><a href="#local-6989586621679541654"><span class="hs-identifier hs-var">g</span></a></span><span class="annot"><span class="annottext">Group -&gt; Getting [Tree] Group [Tree] -&gt; [Tree]
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting [Tree] Group [Tree]
+Lens' Group [Tree]
+</span><span class="hs-identifier hs-var">groupChildren</span></span><span class="hs-special">)</span><span>
+</span><span id="line-82"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">SymbolTree</span></span><span> </span><span id="local-6989586621679541650"><span class="annot"><span class="annottext">Group
+</span><a href="#local-6989586621679541650"><span class="hs-identifier hs-var">g</span></a></span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; [RPoint]) -&gt; [Tree] -&gt; [RPoint]
+forall (t :: * -&gt; *) a b. Foldable t =&gt; (a -&gt; [b]) -&gt; t a -&gt; [b]
+</span><span class="hs-identifier hs-var">concatMap</span></span><span> </span><span class="annot"><span class="annottext">Tree -&gt; [RPoint]
+</span><a href="Reanimate.Svg.BoundingBox.html#svgBoundingPoints"><span class="hs-identifier hs-var">svgBoundingPoints</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Group
+</span><a href="#local-6989586621679541650"><span class="hs-identifier hs-var">g</span></a></span><span class="annot"><span class="annottext">Group -&gt; Getting [Tree] Group [Tree] -&gt; [Tree]
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting [Tree] Group [Tree]
+Lens' Group [Tree]
+</span><span class="hs-identifier hs-var">groupChildren</span></span><span class="hs-special">)</span><span>
+</span><span id="line-83"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">FilterTree</span></span><span class="hs-special">{</span><span class="hs-special">}</span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-84"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">DefinitionTree</span></span><span class="hs-special">{</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-85"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">PathTree</span></span><span> </span><span id="local-6989586621679541646"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679541646"><span class="hs-identifier hs-var">p</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[LineCommand] -&gt; [RPoint]
+</span><a href="Reanimate.Svg.BoundingBox.html#linePoints"><span class="hs-identifier hs-var">linePoints</span></a></span><span> </span><span class="annot"><span class="annottext">([LineCommand] -&gt; [RPoint]) -&gt; [LineCommand] -&gt; [RPoint]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; [LineCommand]
+</span><a href="Reanimate.Svg.LineCommand.html#toLineCommands"><span class="hs-identifier hs-var">toLineCommands</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679541646"><span class="hs-identifier hs-var">p</span></a></span><span class="annot"><span class="annottext">Path -&gt; Getting [PathCommand] Path [PathCommand] -&gt; [PathCommand]
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting [PathCommand] Path [PathCommand]
+Lens' Path [PathCommand]
+</span><span class="hs-identifier hs-var">pathDefinition</span></span><span class="hs-special">)</span><span>
+</span><span id="line-86"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">CircleTree</span></span><span> </span><span id="local-6989586621679541643"><span class="annot"><span class="annottext">Circle
+</span><a href="#local-6989586621679541643"><span class="hs-identifier hs-var">c</span></a></span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Circle -&gt; [RPoint]
+</span><a href="#local-6989586621679541642"><span class="hs-identifier hs-var">circleBoundingPoints</span></a></span><span> </span><span class="annot"><span class="annottext">Circle
+</span><a href="#local-6989586621679541643"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-87"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">PolyLineTree</span></span><span> </span><span id="local-6989586621679541640"><span class="annot"><span class="annottext">PolyLine
+</span><a href="#local-6989586621679541640"><span class="hs-identifier hs-var">pl</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">PolyLine
+</span><a href="#local-6989586621679541640"><span class="hs-identifier hs-var">pl</span></a></span><span> </span><span class="annot"><span class="annottext">PolyLine -&gt; Getting [RPoint] PolyLine [RPoint] -&gt; [RPoint]
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span> </span><span class="annot"><span class="annottext">Getting [RPoint] PolyLine [RPoint]
+Lens' PolyLine [RPoint]
+</span><span class="hs-identifier hs-var">polyLinePoints</span></span><span>
+</span><span id="line-88"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">EllipseTree</span></span><span> </span><span id="local-6989586621679541637"><span class="annot"><span class="annottext">Ellipse
+</span><a href="#local-6989586621679541637"><span class="hs-identifier hs-var">e</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Ellipse -&gt; [RPoint]
+</span><a href="#local-6989586621679541636"><span class="hs-identifier hs-var">ellipseBoundingPoints</span></a></span><span> </span><span class="annot"><span class="annottext">Ellipse
+</span><a href="#local-6989586621679541637"><span class="hs-identifier hs-var">e</span></a></span><span>
+</span><span id="line-89"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">LineTree</span></span><span> </span><span id="local-6989586621679541634"><span class="annot"><span class="annottext">Line
+</span><a href="#local-6989586621679541634"><span class="hs-identifier hs-var">line</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">((Number, Number) -&gt; RPoint) -&gt; [(Number, Number)] -&gt; [RPoint]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">(Number, Number) -&gt; RPoint
+</span><a href="#local-6989586621679541633"><span class="hs-identifier hs-var">pointToRPoint</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Line
+</span><a href="#local-6989586621679541634"><span class="hs-identifier hs-var">line</span></a></span><span class="annot"><span class="annottext">Line
+-&gt; Getting (Number, Number) Line (Number, Number)
+-&gt; (Number, Number)
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting (Number, Number) Line (Number, Number)
+Lens' Line (Number, Number)
+</span><span class="hs-identifier hs-var">linePoint1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Line
+</span><a href="#local-6989586621679541634"><span class="hs-identifier hs-var">line</span></a></span><span class="annot"><span class="annottext">Line
+-&gt; Getting (Number, Number) Line (Number, Number)
+-&gt; (Number, Number)
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting (Number, Number) Line (Number, Number)
+Lens' Line (Number, Number)
+</span><span class="hs-identifier hs-var">linePoint2</span></span><span class="hs-special">]</span><span>
+</span><span id="line-90"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">RectangleTree</span></span><span> </span><span id="local-6989586621679541629"><span class="annot"><span class="annottext">Rectangle
+</span><a href="#local-6989586621679541629"><span class="hs-identifier hs-var">rect</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-91"></span><span>        </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">(Number, Number) -&gt; RPoint
+</span><a href="#local-6989586621679541633"><span class="hs-identifier hs-var">pointToRPoint</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Rectangle
+</span><a href="#local-6989586621679541629"><span class="hs-identifier hs-var">rect</span></a></span><span class="annot"><span class="annottext">Rectangle
+-&gt; Getting (Number, Number) Rectangle (Number, Number)
+-&gt; (Number, Number)
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting (Number, Number) Rectangle (Number, Number)
+Lens' Rectangle (Number, Number)
+</span><span class="hs-identifier hs-var">rectUpperLeftCorner</span></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-92"></span><span>          </span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span id="local-6989586621679541627"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541627"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679541626"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541626"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; RPoint
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541627"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541626"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint -&gt; [RPoint] -&gt; [RPoint]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span>
+</span><span id="line-93"></span><span>            </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">(Maybe Number -&gt; Maybe Number)
+-&gt; (Maybe Number, Maybe Number) -&gt; (Maybe Number, Maybe Number)
+forall (a :: * -&gt; * -&gt; *) b' c'.
+Arrow a =&gt;
+a b' c' -&gt; a (b', b') (c', c')
+</span><a href="#local-6989586621679541625"><span class="hs-identifier hs-var">mapTuple</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Number -&gt; Number) -&gt; Maybe Number -&gt; Maybe Number
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">((Number -&gt; Number) -&gt; Maybe Number -&gt; Maybe Number)
+-&gt; (Number -&gt; Number) -&gt; Maybe Number -&gt; Maybe Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Dpi -&gt; Number -&gt; Number
+</span><span class="hs-identifier hs-var">toUserUnit</span></span><span> </span><span class="annot"><span class="annottext">Dpi
+</span><a href="Reanimate.Constants.html#defaultDPI"><span class="hs-identifier hs-var">defaultDPI</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Rectangle
+</span><a href="#local-6989586621679541629"><span class="hs-identifier hs-var">rect</span></a></span><span class="annot"><span class="annottext">Rectangle
+-&gt; Getting (Maybe Number) Rectangle (Maybe Number) -&gt; Maybe Number
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting (Maybe Number) Rectangle (Maybe Number)
+Lens' Rectangle (Maybe Number)
+</span><span class="hs-identifier hs-var">rectWidth</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Rectangle
+</span><a href="#local-6989586621679541629"><span class="hs-identifier hs-var">rect</span></a></span><span class="annot"><span class="annottext">Rectangle
+-&gt; Getting (Maybe Number) Rectangle (Maybe Number) -&gt; Maybe Number
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting (Maybe Number) Rectangle (Maybe Number)
+Lens' Rectangle (Maybe Number)
+</span><span class="hs-identifier hs-var">rectHeight</span></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-94"></span><span>              </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Num</span></span><span> </span><span id="local-6989586621679541620"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541620"><span class="hs-identifier hs-var">w</span></a></span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Num</span></span><span> </span><span id="local-6989586621679541619"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541619"><span class="hs-identifier hs-var">h</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; RPoint
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541627"><span class="hs-identifier hs-var">x</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541620"><span class="hs-identifier hs-var">w</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541626"><span class="hs-identifier hs-var">y</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541619"><span class="hs-identifier hs-var">h</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-95"></span><span>              </span><span class="annot"><span class="annottext">(Maybe Number, Maybe Number)
+</span><span class="hs-identifier">_</span></span><span>                            </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-96"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">TextTree</span></span><span class="hs-special">{</span><span class="hs-special">}</span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-97"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">ImageTree</span></span><span> </span><span id="local-6989586621679541615"><span class="annot"><span class="annottext">Image
+</span><a href="#local-6989586621679541615"><span class="hs-identifier hs-var">img</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-98"></span><span>        </span><span class="hs-keyword">case</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Image
+</span><a href="#local-6989586621679541615"><span class="hs-identifier hs-var">img</span></a></span><span class="annot"><span class="annottext">Image
+-&gt; Getting (Number, Number) Image (Number, Number)
+-&gt; (Number, Number)
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting (Number, Number) Image (Number, Number)
+Lens' Image (Number, Number)
+</span><span class="hs-identifier hs-var">imageCornerUpperLeft</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Image
+</span><a href="#local-6989586621679541615"><span class="hs-identifier hs-var">img</span></a></span><span class="annot"><span class="annottext">Image -&gt; Getting Number Image Number -&gt; Number
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting Number Image Number
+Lens' Image Number
+</span><span class="hs-identifier hs-var">imageWidth</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Image
+</span><a href="#local-6989586621679541615"><span class="hs-identifier hs-var">img</span></a></span><span class="annot"><span class="annottext">Image -&gt; Getting Number Image Number -&gt; Number
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting Number Image Number
+Lens' Image Number
+</span><span class="hs-identifier hs-var">imageHeight</span></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-99"></span><span>          </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Num</span></span><span> </span><span id="local-6989586621679541611"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541611"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Num</span></span><span> </span><span id="local-6989586621679541610"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541610"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Num</span></span><span> </span><span id="local-6989586621679541609"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541609"><span class="hs-identifier hs-var">w</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Num</span></span><span> </span><span id="local-6989586621679541608"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541608"><span class="hs-identifier hs-var">h</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-100"></span><span>            </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; RPoint
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541611"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541610"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; RPoint
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541611"><span class="hs-identifier hs-var">x</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541609"><span class="hs-identifier hs-var">w</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541610"><span class="hs-identifier hs-var">y</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541608"><span class="hs-identifier hs-var">h</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-101"></span><span>          </span><span class="annot"><span class="annottext">((Number, Number), Number, Number)
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-102"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">MeshGradientTree</span></span><span class="hs-special">{</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-103"></span><span>      </span><span class="annot"><span class="annottext">Tree
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-104"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-105"></span><span>    </span><span id="local-6989586621679541658"><span class="annot"><span class="annottext">m :: Matrix Double
+</span><a href="#local-6989586621679541658"><span class="hs-identifier hs-var hs-var">m</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe [Transformation] -&gt; Matrix Double
+</span><a href="Reanimate.Transform.html#mkMatrix"><span class="hs-identifier hs-var">Transform.mkMatrix</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679541660"><span class="hs-identifier hs-var">t</span></a></span><span class="annot"><span class="annottext">Tree
+-&gt; Getting (Maybe [Transformation]) Tree (Maybe [Transformation])
+-&gt; Maybe [Transformation]
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting (Maybe [Transformation]) Tree (Maybe [Transformation])
+forall c. HasDrawAttributes c =&gt; Lens' c (Maybe [Transformation])
+</span><span class="hs-identifier hs-var">transform</span></span><span class="hs-special">)</span><span>
+</span><span id="line-106"></span><span>    </span><span id="local-6989586621679541625"><span class="annot"><span class="annottext">mapTuple :: a b' c' -&gt; a (b', b') (c', c')
+</span><a href="#local-6989586621679541625"><span class="hs-identifier hs-var hs-var">mapTuple</span></a></span></span><span> </span><span id="local-6989586621679541604"><span class="annot"><span class="annottext">a b' c'
+</span><a href="#local-6989586621679541604"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a b' c'
+</span><a href="#local-6989586621679541604"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a b' c' -&gt; a b' c' -&gt; a (b', b') (c', c')
+forall (a :: * -&gt; * -&gt; *) b c b' c'.
+Arrow a =&gt;
+a b c -&gt; a b' c' -&gt; a (b, b') (c, c')
+</span><span class="hs-operator hs-var">***</span></span><span> </span><span class="annot"><span class="annottext">a b' c'
+</span><a href="#local-6989586621679541604"><span class="hs-identifier hs-var">f</span></a></span><span>
+</span><span id="line-107"></span><span>    </span><span id="local-6989586621679541633"><span class="annot"><span class="annottext">pointToRPoint :: (Number, Number) -&gt; RPoint
+</span><a href="#local-6989586621679541633"><span class="hs-identifier hs-var hs-var">pointToRPoint</span></a></span></span><span> </span><span id="local-6989586621679541603"><span class="annot"><span class="annottext">(Number, Number)
+</span><a href="#local-6989586621679541603"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-108"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">(Number -&gt; Number) -&gt; (Number, Number) -&gt; (Number, Number)
+forall (a :: * -&gt; * -&gt; *) b' c'.
+Arrow a =&gt;
+a b' c' -&gt; a (b', b') (c', c')
+</span><a href="#local-6989586621679541625"><span class="hs-identifier hs-var">mapTuple</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Dpi -&gt; Number -&gt; Number
+</span><span class="hs-identifier hs-var">toUserUnit</span></span><span> </span><span class="annot"><span class="annottext">Dpi
+</span><a href="Reanimate.Constants.html#defaultDPI"><span class="hs-identifier hs-var">defaultDPI</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Number, Number)
+</span><a href="#local-6989586621679541603"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-109"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Num</span></span><span> </span><span id="local-6989586621679541602"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541602"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Num</span></span><span> </span><span id="local-6989586621679541601"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541601"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; RPoint
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541602"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541601"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-110"></span><span>        </span><span class="annot"><span class="annottext">(Number, Number)
+</span><span class="hs-identifier">_</span></span><span>              </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; RPoint
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;Reanimate.Svg.svgBoundingPoints: Unrecognized number format.&quot;</span></span><span>
+</span><span id="line-111"></span><span>
+</span><span id="line-112"></span><span>    </span><span id="local-6989586621679541642"><span class="annot"><span class="annottext">circleBoundingPoints :: Circle -&gt; [RPoint]
+</span><a href="#local-6989586621679541642"><span class="hs-identifier hs-var hs-var">circleBoundingPoints</span></a></span></span><span> </span><span id="local-6989586621679541599"><span class="annot"><span class="annottext">Circle
+</span><a href="#local-6989586621679541599"><span class="hs-identifier hs-var">circ</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-113"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679541598"><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679541598"><span class="hs-identifier hs-var">xnum</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679541597"><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679541597"><span class="hs-identifier hs-var">ynum</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Circle
+</span><a href="#local-6989586621679541599"><span class="hs-identifier hs-var">circ</span></a></span><span> </span><span class="annot"><span class="annottext">Circle
+-&gt; Getting (Number, Number) Circle (Number, Number)
+-&gt; (Number, Number)
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span> </span><span class="annot"><span class="annottext">Getting (Number, Number) Circle (Number, Number)
+Lens' Circle (Number, Number)
+</span><span class="hs-identifier hs-var">circleCenter</span></span><span>
+</span><span id="line-114"></span><span>          </span><span id="local-6989586621679541595"><span class="annot"><span class="annottext">rnum :: Number
+</span><a href="#local-6989586621679541595"><span class="hs-identifier hs-var hs-var">rnum</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Circle
+</span><a href="#local-6989586621679541599"><span class="hs-identifier hs-var">circ</span></a></span><span> </span><span class="annot"><span class="annottext">Circle -&gt; Getting Number Circle Number -&gt; Number
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span> </span><span class="annot"><span class="annottext">Getting Number Circle Number
+Lens' Circle Number
+</span><span class="hs-identifier hs-var">circleRadius</span></span><span>
+</span><span id="line-115"></span><span>      </span><span class="hs-keyword">in</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">(Number -&gt; Maybe Double) -&gt; [Number] -&gt; [Double]
+forall a b. (a -&gt; Maybe b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">mapMaybe</span></span><span> </span><span class="annot"><span class="annottext">Number -&gt; Maybe Double
+</span><a href="#local-6989586621679541593"><span class="hs-identifier hs-var">unpackNumber</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679541598"><span class="hs-identifier hs-var">xnum</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679541597"><span class="hs-identifier hs-var">ynum</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679541595"><span class="hs-identifier hs-var">rnum</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-116"></span><span>        </span><span class="hs-special">[</span><span id="local-6989586621679541592"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541592"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679541591"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541591"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679541590"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541590"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; RPoint
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541592"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541590"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">cos</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541588"><span class="hs-identifier hs-var">angle</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541591"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541590"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sin</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541588"><span class="hs-identifier hs-var">angle</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679541588"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541588"><span class="hs-identifier hs-var">angle</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+forall a. Floating a =&gt; a
+</span><span class="hs-identifier hs-var">pi</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">10</span></span><span> </span><span class="hs-glyph">..</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+forall a. Floating a =&gt; a
+</span><span class="hs-identifier hs-var">pi</span></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-117"></span><span>        </span><span class="annot"><span class="annottext">[Double]
+</span><span class="hs-identifier">_</span></span><span>         </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-118"></span><span>
+</span><span id="line-119"></span><span>    </span><span id="local-6989586621679541636"><span class="annot"><span class="annottext">ellipseBoundingPoints :: Ellipse -&gt; [RPoint]
+</span><a href="#local-6989586621679541636"><span class="hs-identifier hs-var hs-var">ellipseBoundingPoints</span></a></span></span><span> </span><span id="local-6989586621679541584"><span class="annot"><span class="annottext">Ellipse
+</span><a href="#local-6989586621679541584"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-120"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679541583"><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679541583"><span class="hs-identifier hs-var">xnum</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679541582"><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679541582"><span class="hs-identifier hs-var">ynum</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Ellipse
+</span><a href="#local-6989586621679541584"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="annot"><span class="annottext">Ellipse
+-&gt; Getting (Number, Number) Ellipse (Number, Number)
+-&gt; (Number, Number)
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span> </span><span class="annot"><span class="annottext">Getting (Number, Number) Ellipse (Number, Number)
+Lens' Ellipse (Number, Number)
+</span><span class="hs-identifier hs-var">ellipseCenter</span></span><span>
+</span><span id="line-121"></span><span>          </span><span id="local-6989586621679541580"><span class="annot"><span class="annottext">xrnum :: Number
+</span><a href="#local-6989586621679541580"><span class="hs-identifier hs-var hs-var">xrnum</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Ellipse
+</span><a href="#local-6989586621679541584"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="annot"><span class="annottext">Ellipse -&gt; Getting Number Ellipse Number -&gt; Number
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span> </span><span class="annot"><span class="annottext">Getting Number Ellipse Number
+Lens' Ellipse Number
+</span><span class="hs-identifier hs-var">ellipseXRadius</span></span><span>
+</span><span id="line-122"></span><span>          </span><span id="local-6989586621679541578"><span class="annot"><span class="annottext">yrnum :: Number
+</span><a href="#local-6989586621679541578"><span class="hs-identifier hs-var hs-var">yrnum</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Ellipse
+</span><a href="#local-6989586621679541584"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="annot"><span class="annottext">Ellipse -&gt; Getting Number Ellipse Number -&gt; Number
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span> </span><span class="annot"><span class="annottext">Getting Number Ellipse Number
+Lens' Ellipse Number
+</span><span class="hs-identifier hs-var">ellipseYRadius</span></span><span>
+</span><span id="line-123"></span><span>      </span><span class="hs-keyword">in</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">(Number -&gt; Maybe Double) -&gt; [Number] -&gt; [Double]
+forall a b. (a -&gt; Maybe b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">mapMaybe</span></span><span> </span><span class="annot"><span class="annottext">Number -&gt; Maybe Double
+</span><a href="#local-6989586621679541593"><span class="hs-identifier hs-var">unpackNumber</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679541583"><span class="hs-identifier hs-var">xnum</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679541582"><span class="hs-identifier hs-var">ynum</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679541580"><span class="hs-identifier hs-var">xrnum</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679541578"><span class="hs-identifier hs-var">yrnum</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-124"></span><span>        </span><span class="hs-special">[</span><span id="local-6989586621679541576"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541576"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679541575"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541575"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679541574"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541574"><span class="hs-identifier hs-var">xr</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679541573"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541573"><span class="hs-identifier hs-var">yr</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; RPoint
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541576"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541574"><span class="hs-identifier hs-var">xr</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">cos</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541572"><span class="hs-identifier hs-var">angle</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541575"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541573"><span class="hs-identifier hs-var">yr</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sin</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541572"><span class="hs-identifier hs-var">angle</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679541572"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541572"><span class="hs-identifier hs-var">angle</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+forall a. Floating a =&gt; a
+</span><span class="hs-identifier hs-var">pi</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">10</span></span><span> </span><span class="hs-glyph">..</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+forall a. Floating a =&gt; a
+</span><span class="hs-identifier hs-var">pi</span></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-125"></span><span>        </span><span class="annot"><span class="annottext">[Double]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span>    </span><span id="local-6989586621679541593"><span class="annot"><span class="annottext">unpackNumber :: Number -&gt; Maybe Double
+</span><a href="#local-6989586621679541593"><span class="hs-identifier hs-var hs-var">unpackNumber</span></a></span></span><span> </span><span id="local-6989586621679541571"><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679541571"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-128"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Dpi -&gt; Number -&gt; Number
+</span><span class="hs-identifier hs-var">toUserUnit</span></span><span> </span><span class="annot"><span class="annottext">Dpi
+</span><a href="Reanimate.Constants.html#defaultDPI"><span class="hs-identifier hs-var">defaultDPI</span></a></span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679541571"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-129"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Num</span></span><span> </span><span id="local-6989586621679541570"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541570"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Maybe Double
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679541570"><span class="hs-identifier hs-var">d</span></a></span><span>
+</span><span id="line-130"></span><span>        </span><span class="annot"><span class="annottext">Number
+</span><span class="hs-identifier">_</span></span><span>     </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Double
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-131"></span></pre></body></html>

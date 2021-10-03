@@ -1,0 +1,76 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# OPTIONS -Wall #-}</span><span>
+</span><span id="line-2"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Shelly.Directory</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-3"></span><span>
+</span><span id="line-4"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">System.IO.Error</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">modifyIOError</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">ioeSetLocation</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">ioeGetLocation</span></span><span class="hs-special">)</span><span>
+</span><span id="line-5"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">System.Directory</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">FP</span></span><span class="hs-cpp">
+
+#ifdef mingw32_HOST_OS
+</span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="hs-identifier">System.Win32</span><span> </span><span class="hs-keyword">as</span><span> </span><span class="hs-identifier">Win32</span><span class="hs-cpp">
+#else
+</span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">System.Posix</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Posix</span></span><span class="hs-cpp">
+#endif
+</span><span>
+</span><span id="line-13"></span><span class="annot"><a href="Shelly.Directory.html#createFileLink"><span class="hs-identifier hs-type">createFileLink</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span id="createFileLink"><span class="annot"><span class="annottext">createFileLink :: String -&gt; String -&gt; IO ()
+</span><a href="Shelly.Directory.html#createFileLink"><span class="hs-identifier hs-var hs-var">createFileLink</span></a></span></span><span> </span><span id="local-6989586621679078252"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679078252"><span class="hs-identifier hs-var">target</span></a></span></span><span> </span><span id="local-6989586621679078251"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679078251"><span class="hs-identifier hs-var">link</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">IOError -&gt; String -&gt; IOError
+</span><a href="Shelly.Directory.html#ioeAddLocation"><span class="hs-operator hs-var">`ioeAddLocation`</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;createFileLink&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(IOError -&gt; IOError) -&gt; IO () -&gt; IO ()
+forall a. (IOError -&gt; IOError) -&gt; IO a -&gt; IO a
+</span><span class="hs-operator hs-var">`modifyIOError`</span></span><span> </span><span class="hs-keyword">do</span><span class="hs-cpp">
+#ifdef mingw32_HOST_OS
+</span><span>    </span><span class="hs-identifier">Win32.createSymbolicLink</span><span> </span><span class="hs-identifier">False</span><span> </span><span class="hs-identifier">target</span><span> </span><span class="hs-identifier">link</span><span class="hs-cpp">
+#else
+</span><span>    </span><span class="annot"><span class="annottext">String -&gt; String -&gt; IO ()
+</span><span class="hs-identifier hs-var">Posix.createSymbolicLink</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679078252"><span class="hs-identifier hs-var">target</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679078251"><span class="hs-identifier hs-var">link</span></a></span><span class="hs-cpp">
+#endif
+</span><span>
+</span><span id="line-22"></span><span class="annot"><a href="Shelly.Directory.html#getSymbolicLinkTarget"><span class="hs-identifier hs-type">getSymbolicLinkTarget</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-23"></span><span id="getSymbolicLinkTarget"><span class="annot"><span class="annottext">getSymbolicLinkTarget :: String -&gt; IO String
+</span><a href="Shelly.Directory.html#getSymbolicLinkTarget"><span class="hs-identifier hs-var hs-var">getSymbolicLinkTarget</span></a></span></span><span> </span><span id="local-6989586621679078247"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679078247"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-24"></span><span>  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">IOError -&gt; String -&gt; IOError
+</span><a href="Shelly.Directory.html#ioeAddLocation"><span class="hs-operator hs-var">`ioeAddLocation`</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;getSymbolicLinkTarget&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(IOError -&gt; IOError) -&gt; IO String -&gt; IO String
+forall a. (IOError -&gt; IOError) -&gt; IO a -&gt; IO a
+</span><span class="hs-operator hs-var">`modifyIOError`</span></span><span> </span><span class="hs-keyword">do</span><span class="hs-cpp">
+#ifdef mingw32_HOST_OS
+</span><span>    </span><span class="hs-identifier">Win32.readSymbolicLink</span><span> </span><span class="hs-identifier">path</span><span class="hs-cpp">
+#else
+</span><span>    </span><span class="annot"><span class="annottext">String -&gt; IO String
+</span><span class="hs-identifier hs-var">Posix.readSymbolicLink</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679078247"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-cpp">
+#endif
+</span><span>
+</span><span id="line-31"></span><span class="annot"><a href="Shelly.Directory.html#ioeAddLocation"><span class="hs-identifier hs-type">ioeAddLocation</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IOError</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IOError</span></span><span>
+</span><span id="line-32"></span><span id="ioeAddLocation"><span class="annot"><span class="annottext">ioeAddLocation :: IOError -&gt; String -&gt; IOError
+</span><a href="Shelly.Directory.html#ioeAddLocation"><span class="hs-identifier hs-var hs-var">ioeAddLocation</span></a></span></span><span> </span><span id="local-6989586621679078245"><span class="annot"><span class="annottext">IOError
+</span><a href="#local-6989586621679078245"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span id="local-6989586621679078244"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679078244"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-33"></span><span>  </span><span class="annot"><span class="annottext">IOError -&gt; String -&gt; IOError
+</span><span class="hs-identifier hs-var">ioeSetLocation</span></span><span> </span><span class="annot"><span class="annottext">IOError
+</span><a href="#local-6989586621679078245"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679078243"><span class="hs-identifier hs-var">newLoc</span></a></span><span>
+</span><span id="line-34"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-35"></span><span>    </span><span id="local-6989586621679078243"><span class="annot"><span class="annottext">newLoc :: String
+</span><a href="#local-6989586621679078243"><span class="hs-identifier hs-var hs-var">newLoc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679078244"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">String -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">Prelude.null</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679078241"><span class="hs-identifier hs-var">oldLoc</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;:&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679078241"><span class="hs-identifier hs-var">oldLoc</span></a></span><span>
+</span><span id="line-36"></span><span>    </span><span id="local-6989586621679078241"><span class="annot"><span class="annottext">oldLoc :: String
+</span><a href="#local-6989586621679078241"><span class="hs-identifier hs-var hs-var">oldLoc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IOError -&gt; String
+</span><span class="hs-identifier hs-var">ioeGetLocation</span></span><span> </span><span class="annot"><span class="annottext">IOError
+</span><a href="#local-6989586621679078245"><span class="hs-identifier hs-var">e</span></a></span><span>
+</span><span id="line-37"></span></pre></body></html>

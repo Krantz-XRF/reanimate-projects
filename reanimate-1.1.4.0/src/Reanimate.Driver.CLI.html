@@ -1,0 +1,939 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Driver.CLI</span><span>
+</span><span id="line-2"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#getDriverOptions"><span class="hs-identifier">getDriverOptions</span></a></span><span>
+</span><span id="line-3"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Options"><span class="hs-identifier">Options</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-4"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Command"><span class="hs-identifier">Command</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-5"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Preset"><span class="hs-identifier">Preset</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-6"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Render.html#Format"><span class="hs-identifier">Format</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Raster"><span class="hs-identifier">Raster</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#showFormat"><span class="hs-identifier">showFormat</span></a></span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#showRaster"><span class="hs-identifier">showRaster</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Char</span></span><span>           </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">toLower</span></span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Options.Applicative</span></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Prelude</span></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Render.html"><span class="hs-identifier">Reanimate.Render</span></a></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Parameters.html#FPS"><span class="hs-identifier">FPS</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Render.html#Format"><span class="hs-identifier">Format</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Height"><span class="hs-identifier">Height</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Raster"><span class="hs-identifier">Raster</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Width"><span class="hs-identifier">Width</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">newtype</span><span> </span><span id="Options"><span class="annot"><a href="Reanimate.Driver.CLI.html#Options"><span class="hs-identifier hs-var">Options</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Options"><span class="annot"><a href="Reanimate.Driver.CLI.html#Options"><span class="hs-identifier hs-var">Options</span></a></span></span><span>
+</span><span id="line-18"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="optsCommand"><span class="annot"><span class="annottext">Options -&gt; Command
+</span><a href="Reanimate.Driver.CLI.html#optsCommand"><span class="hs-identifier hs-var hs-var">optsCommand</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Command"><span class="hs-identifier hs-type">Command</span></a></span><span>
+</span><span id="line-19"></span><span>  </span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679543506"><span id="local-6989586621679543508"><span id="local-6989586621679543510"><span class="annot"><span class="annottext">Int -&gt; Options -&gt; ShowS
+[Options] -&gt; ShowS
+Options -&gt; String
+(Int -&gt; Options -&gt; ShowS)
+-&gt; (Options -&gt; String) -&gt; ([Options] -&gt; ShowS) -&gt; Show Options
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Options] -&gt; ShowS
+$cshowList :: [Options] -&gt; ShowS
+show :: Options -&gt; String
+$cshow :: Options -&gt; String
+showsPrec :: Int -&gt; Options -&gt; ShowS
+$cshowsPrec :: Int -&gt; Options -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">data</span><span> </span><span id="Command"><span class="annot"><a href="Reanimate.Driver.CLI.html#Command"><span class="hs-identifier hs-var">Command</span></a></span></span><span>
+</span><span id="line-22"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="Raw"><span class="annot"><a href="Reanimate.Driver.CLI.html#Raw"><span class="hs-identifier hs-var">Raw</span></a></span></span><span>
+</span><span id="line-23"></span><span>    </span><span class="hs-special">{</span><span> </span><span id="rawOutputFolder"><span class="annot"><span class="annottext">Command -&gt; String
+</span><a href="Reanimate.Driver.CLI.html#rawOutputFolder"><span class="hs-identifier hs-var hs-var">rawOutputFolder</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span>
+</span><span id="line-24"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="rawFrameOffset"><span class="annot"><span class="annottext">Command -&gt; Int
+</span><a href="Reanimate.Driver.CLI.html#rawFrameOffset"><span class="hs-identifier hs-var hs-var">rawFrameOffset</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-25"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="rawPrettyPrint"><span class="annot"><span class="annottext">Command -&gt; Bool
+</span><a href="Reanimate.Driver.CLI.html#rawPrettyPrint"><span class="hs-identifier hs-var hs-var">rawPrettyPrint</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-26"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-27"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Test"><span class="annot"><a href="Reanimate.Driver.CLI.html#Test"><span class="hs-identifier hs-var">Test</span></a></span></span><span>
+</span><span id="line-28"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Check"><span class="annot"><a href="Reanimate.Driver.CLI.html#Check"><span class="hs-identifier hs-var">Check</span></a></span></span><span>
+</span><span id="line-29"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="View"><span class="annot"><a href="Reanimate.Driver.CLI.html#View"><span class="hs-identifier hs-var">View</span></a></span></span><span>
+</span><span id="line-30"></span><span>    </span><span class="hs-special">{</span><span> </span><span id="viewDetach"><span class="annot"><span class="annottext">Command -&gt; Bool
+</span><a href="Reanimate.Driver.CLI.html#viewDetach"><span class="hs-identifier hs-var hs-var">viewDetach</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-31"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-32"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Render"><span class="annot"><a href="Reanimate.Driver.CLI.html#Render"><span class="hs-identifier hs-var">Render</span></a></span></span><span>
+</span><span id="line-33"></span><span>    </span><span class="hs-special">{</span><span> </span><span id="renderTarget"><span class="annot"><span class="annottext">Command -&gt; Maybe String
+</span><a href="Reanimate.Driver.CLI.html#renderTarget"><span class="hs-identifier hs-var hs-var">renderTarget</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-34"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="renderFPS"><span class="annot"><span class="annottext">Command -&gt; Maybe Int
+</span><a href="Reanimate.Driver.CLI.html#renderFPS"><span class="hs-identifier hs-var hs-var">renderFPS</span></a></span></span><span>     </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#FPS"><span class="hs-identifier hs-type">FPS</span></a></span><span>
+</span><span id="line-35"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="renderWidth"><span class="annot"><span class="annottext">Command -&gt; Maybe Int
+</span><a href="Reanimate.Driver.CLI.html#renderWidth"><span class="hs-identifier hs-var hs-var">renderWidth</span></a></span></span><span>   </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Width"><span class="hs-identifier hs-type">Width</span></a></span><span>
+</span><span id="line-36"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="renderHeight"><span class="annot"><span class="annottext">Command -&gt; Maybe Int
+</span><a href="Reanimate.Driver.CLI.html#renderHeight"><span class="hs-identifier hs-var hs-var">renderHeight</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Height"><span class="hs-identifier hs-type">Height</span></a></span><span>
+</span><span id="line-37"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="renderCompile"><span class="annot"><span class="annottext">Command -&gt; Bool
+</span><a href="Reanimate.Driver.CLI.html#renderCompile"><span class="hs-identifier hs-var hs-var">renderCompile</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-38"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="renderFormat"><span class="annot"><span class="annottext">Command -&gt; Maybe Format
+</span><a href="Reanimate.Driver.CLI.html#renderFormat"><span class="hs-identifier hs-var hs-var">renderFormat</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Reanimate.Render.html#Format"><span class="hs-identifier hs-type">Format</span></a></span><span>
+</span><span id="line-39"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="renderPreset"><span class="annot"><span class="annottext">Command -&gt; Maybe Preset
+</span><a href="Reanimate.Driver.CLI.html#renderPreset"><span class="hs-identifier hs-var hs-var">renderPreset</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Preset"><span class="hs-identifier hs-type">Preset</span></a></span><span>
+</span><span id="line-40"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="renderRaster"><span class="annot"><span class="annottext">Command -&gt; Raster
+</span><a href="Reanimate.Driver.CLI.html#renderRaster"><span class="hs-identifier hs-var hs-var">renderRaster</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Raster"><span class="hs-identifier hs-type">Raster</span></a></span><span>
+</span><span id="line-41"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="renderPartial"><span class="annot"><span class="annottext">Command -&gt; Bool
+</span><a href="Reanimate.Driver.CLI.html#renderPartial"><span class="hs-identifier hs-var hs-var">renderPartial</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-42"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="renderHash"><span class="annot"><span class="annottext">Command -&gt; Bool
+</span><a href="Reanimate.Driver.CLI.html#renderHash"><span class="hs-identifier hs-var hs-var">renderHash</span></a></span></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-43"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-44"></span><span>   </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679543479"><span id="local-6989586621679543481"><span id="local-6989586621679543483"><span class="annot"><span class="annottext">Int -&gt; Command -&gt; ShowS
+[Command] -&gt; ShowS
+Command -&gt; String
+(Int -&gt; Command -&gt; ShowS)
+-&gt; (Command -&gt; String) -&gt; ([Command] -&gt; ShowS) -&gt; Show Command
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Command] -&gt; ShowS
+$cshowList :: [Command] -&gt; ShowS
+show :: Command -&gt; String
+$cshow :: Command -&gt; String
+showsPrec :: Int -&gt; Command -&gt; ShowS
+$cshowsPrec :: Int -&gt; Command -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span class="hs-keyword">data</span><span> </span><span id="Preset"><span class="annot"><a href="Reanimate.Driver.CLI.html#Preset"><span class="hs-identifier hs-var">Preset</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Youtube"><span class="annot"><a href="Reanimate.Driver.CLI.html#Youtube"><span class="hs-identifier hs-var">Youtube</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="ExampleGif"><span class="annot"><a href="Reanimate.Driver.CLI.html#ExampleGif"><span class="hs-identifier hs-var">ExampleGif</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="Quick"><span class="annot"><a href="Reanimate.Driver.CLI.html#Quick"><span class="hs-identifier hs-var">Quick</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="MediumQ"><span class="annot"><a href="Reanimate.Driver.CLI.html#MediumQ"><span class="hs-identifier hs-var">MediumQ</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="HighQ"><span class="annot"><a href="Reanimate.Driver.CLI.html#HighQ"><span class="hs-identifier hs-var">HighQ</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="LowFPS"><span class="annot"><a href="Reanimate.Driver.CLI.html#LowFPS"><span class="hs-identifier hs-var">LowFPS</span></a></span></span><span>
+</span><span id="line-47"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679543467"><span id="local-6989586621679543469"><span id="local-6989586621679543471"><span class="annot"><span class="annottext">Int -&gt; Preset -&gt; ShowS
+[Preset] -&gt; ShowS
+Preset -&gt; String
+(Int -&gt; Preset -&gt; ShowS)
+-&gt; (Preset -&gt; String) -&gt; ([Preset] -&gt; ShowS) -&gt; Show Preset
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Preset] -&gt; ShowS
+$cshowList :: [Preset] -&gt; ShowS
+show :: Preset -&gt; String
+$cshow :: Preset -&gt; String
+showsPrec :: Int -&gt; Preset -&gt; ShowS
+$cshowsPrec :: Int -&gt; Preset -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-48"></span><span>
+</span><span id="line-49"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#readRaster"><span class="hs-identifier hs-type">readRaster</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Raster"><span class="hs-identifier hs-type">Raster</span></a></span><span>
+</span><span id="line-50"></span><span id="readRaster"><span class="annot"><span class="annottext">readRaster :: String -&gt; Maybe Raster
+</span><a href="Reanimate.Driver.CLI.html#readRaster"><span class="hs-identifier hs-var hs-var">readRaster</span></a></span></span><span> </span><span id="local-6989586621679543465"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543465"><span class="hs-identifier hs-var">raster</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-51"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Char) -&gt; ShowS
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char
+</span><span class="hs-identifier hs-var">toLower</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543465"><span class="hs-identifier hs-var">raster</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-52"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;none&quot;</span></span><span>        </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Raster -&gt; Maybe Raster
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterNone"><span class="hs-identifier hs-var">RasterNone</span></a></span><span>
+</span><span id="line-53"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;auto&quot;</span></span><span>        </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Raster -&gt; Maybe Raster
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterAuto"><span class="hs-identifier hs-var">RasterAuto</span></a></span><span>
+</span><span id="line-54"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;inkscape&quot;</span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Raster -&gt; Maybe Raster
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterInkscape"><span class="hs-identifier hs-var">RasterInkscape</span></a></span><span>
+</span><span id="line-55"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;rsvg&quot;</span></span><span>        </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Raster -&gt; Maybe Raster
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterRSvg"><span class="hs-identifier hs-var">RasterRSvg</span></a></span><span>
+</span><span id="line-56"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;imagemagick&quot;</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Raster -&gt; Maybe Raster
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterMagick"><span class="hs-identifier hs-var">RasterMagick</span></a></span><span>
+</span><span id="line-57"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-identifier">_</span></span><span>             </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Raster
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#showRaster"><span class="hs-identifier hs-type">showRaster</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Raster"><span class="hs-identifier hs-type">Raster</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-60"></span><span id="showRaster"><span class="annot"><span class="annottext">showRaster :: Raster -&gt; String
+</span><a href="Reanimate.Driver.CLI.html#showRaster"><span class="hs-identifier hs-var hs-var">showRaster</span></a></span></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterNone"><span class="hs-identifier hs-var">RasterNone</span></a></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;none&quot;</span></span><span>
+</span><span id="line-61"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#showRaster"><span class="hs-identifier hs-var">showRaster</span></a></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterAuto"><span class="hs-identifier hs-var">RasterAuto</span></a></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;auto&quot;</span></span><span>
+</span><span id="line-62"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#showRaster"><span class="hs-identifier hs-var">showRaster</span></a></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterInkscape"><span class="hs-identifier hs-var">RasterInkscape</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;inkscape&quot;</span></span><span>
+</span><span id="line-63"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#showRaster"><span class="hs-identifier hs-var">showRaster</span></a></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterRSvg"><span class="hs-identifier hs-var">RasterRSvg</span></a></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;rsvg&quot;</span></span><span>
+</span><span id="line-64"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#showRaster"><span class="hs-identifier hs-var">showRaster</span></a></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterMagick"><span class="hs-identifier hs-var">RasterMagick</span></a></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;imagemagick&quot;</span></span><span>
+</span><span id="line-65"></span><span>
+</span><span id="line-66"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#readFormat"><span class="hs-identifier hs-type">readFormat</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Reanimate.Render.html#Format"><span class="hs-identifier hs-type">Format</span></a></span><span>
+</span><span id="line-67"></span><span id="readFormat"><span class="annot"><span class="annottext">readFormat :: String -&gt; Maybe Format
+</span><a href="Reanimate.Driver.CLI.html#readFormat"><span class="hs-identifier hs-var hs-var">readFormat</span></a></span></span><span> </span><span id="local-6989586621679543458"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543458"><span class="hs-identifier hs-var">fmt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-68"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Char) -&gt; ShowS
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char
+</span><span class="hs-identifier hs-var">toLower</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543458"><span class="hs-identifier hs-var">fmt</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-69"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;mp4&quot;</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Format -&gt; Maybe Format
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderMp4"><span class="hs-identifier hs-var">RenderMp4</span></a></span><span>
+</span><span id="line-70"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;gif&quot;</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Format -&gt; Maybe Format
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderGif"><span class="hs-identifier hs-var">RenderGif</span></a></span><span>
+</span><span id="line-71"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;webm&quot;</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Format -&gt; Maybe Format
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderWebm"><span class="hs-identifier hs-var">RenderWebm</span></a></span><span>
+</span><span id="line-72"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-identifier">_</span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Format
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-73"></span><span>
+</span><span id="line-74"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#showFormat"><span class="hs-identifier hs-type">showFormat</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Render.html#Format"><span class="hs-identifier hs-type">Format</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-75"></span><span id="showFormat"><span class="annot"><span class="annottext">showFormat :: Format -&gt; String
+</span><a href="Reanimate.Driver.CLI.html#showFormat"><span class="hs-identifier hs-var hs-var">showFormat</span></a></span></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderMp4"><span class="hs-identifier hs-var">RenderMp4</span></a></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;mp4&quot;</span></span><span>
+</span><span id="line-76"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#showFormat"><span class="hs-identifier hs-var">showFormat</span></a></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderGif"><span class="hs-identifier hs-var">RenderGif</span></a></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;gif&quot;</span></span><span>
+</span><span id="line-77"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#showFormat"><span class="hs-identifier hs-var">showFormat</span></a></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderWebm"><span class="hs-identifier hs-var">RenderWebm</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;webm&quot;</span></span><span>
+</span><span id="line-78"></span><span>
+</span><span id="line-79"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#readPreset"><span class="hs-identifier hs-type">readPreset</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Preset"><span class="hs-identifier hs-type">Preset</span></a></span><span>
+</span><span id="line-80"></span><span id="readPreset"><span class="annot"><span class="annottext">readPreset :: String -&gt; Maybe Preset
+</span><a href="Reanimate.Driver.CLI.html#readPreset"><span class="hs-identifier hs-var hs-var">readPreset</span></a></span></span><span> </span><span id="local-6989586621679543453"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543453"><span class="hs-identifier hs-var">preset</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-81"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Char) -&gt; ShowS
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char
+</span><span class="hs-identifier hs-var">toLower</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543453"><span class="hs-identifier hs-var">preset</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-82"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;youtube&quot;</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Preset -&gt; Maybe Preset
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#Youtube"><span class="hs-identifier hs-var">Youtube</span></a></span><span>
+</span><span id="line-83"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;gif&quot;</span></span><span>     </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Preset -&gt; Maybe Preset
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#ExampleGif"><span class="hs-identifier hs-var">ExampleGif</span></a></span><span>
+</span><span id="line-84"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;quick&quot;</span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Preset -&gt; Maybe Preset
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#Quick"><span class="hs-identifier hs-var">Quick</span></a></span><span>
+</span><span id="line-85"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;medium&quot;</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Preset -&gt; Maybe Preset
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#MediumQ"><span class="hs-identifier hs-var">MediumQ</span></a></span><span>
+</span><span id="line-86"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;high&quot;</span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Preset -&gt; Maybe Preset
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#HighQ"><span class="hs-identifier hs-var">HighQ</span></a></span><span>
+</span><span id="line-87"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;lowfps&quot;</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Preset -&gt; Maybe Preset
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#LowFPS"><span class="hs-identifier hs-var">LowFPS</span></a></span><span>
+</span><span id="line-88"></span><span>    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-identifier">_</span></span><span>         </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Preset
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#showPreset"><span class="hs-identifier hs-type">showPreset</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Preset"><span class="hs-identifier hs-type">Preset</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-91"></span><span id="showPreset"><span class="annot"><span class="annottext">showPreset :: Preset -&gt; String
+</span><a href="Reanimate.Driver.CLI.html#showPreset"><span class="hs-identifier hs-var hs-var">showPreset</span></a></span></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#Youtube"><span class="hs-identifier hs-var">Youtube</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;youtube&quot;</span></span><span>
+</span><span id="line-92"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#showPreset"><span class="hs-identifier hs-var">showPreset</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#ExampleGif"><span class="hs-identifier hs-var">ExampleGif</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;gif&quot;</span></span><span>
+</span><span id="line-93"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#showPreset"><span class="hs-identifier hs-var">showPreset</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#Quick"><span class="hs-identifier hs-var">Quick</span></a></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;quick&quot;</span></span><span>
+</span><span id="line-94"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#showPreset"><span class="hs-identifier hs-var">showPreset</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#MediumQ"><span class="hs-identifier hs-var">MediumQ</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;medium&quot;</span></span><span>
+</span><span id="line-95"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#showPreset"><span class="hs-identifier hs-var">showPreset</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#HighQ"><span class="hs-identifier hs-var">HighQ</span></a></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;high&quot;</span></span><span>
+</span><span id="line-96"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#showPreset"><span class="hs-identifier hs-var">showPreset</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#LowFPS"><span class="hs-identifier hs-var">LowFPS</span></a></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;lowfps&quot;</span></span><span>
+</span><span id="line-97"></span><span>
+</span><span id="line-98"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#options"><span class="hs-identifier hs-type">options</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Options"><span class="hs-identifier hs-type">Options</span></a></span><span>
+</span><span id="line-99"></span><span id="options"><span class="annot"><span class="annottext">options :: Parser Options
+</span><a href="Reanimate.Driver.CLI.html#options"><span class="hs-identifier hs-var hs-var">options</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Command -&gt; Options
+</span><a href="Reanimate.Driver.CLI.html#Options"><span class="hs-identifier hs-var">Options</span></a></span><span> </span><span class="annot"><span class="annottext">(Command -&gt; Options) -&gt; Parser Command -&gt; Parser Options
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Command
+</span><a href="Reanimate.Driver.CLI.html#commandP"><span class="hs-identifier hs-var">commandP</span></a></span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#commandP"><span class="hs-identifier hs-type">commandP</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Command"><span class="hs-identifier hs-type">Command</span></a></span><span>
+</span><span id="line-102"></span><span id="commandP"><span class="annot"><span class="annottext">commandP :: Parser Command
+</span><a href="Reanimate.Driver.CLI.html#commandP"><span class="hs-identifier hs-var hs-var">commandP</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Mod CommandFields Command -&gt; Parser Command
+forall a. Mod CommandFields a -&gt; Parser a
+</span><span class="hs-identifier hs-var">subparser</span></span><span class="hs-special">(</span><span>
+</span><span id="line-103"></span><span>     </span><span class="annot"><span class="annottext">String -&gt; ParserInfo Command -&gt; Mod CommandFields Command
+forall a. String -&gt; ParserInfo a -&gt; Mod CommandFields a
+</span><span class="hs-identifier hs-var">command</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;test&quot;</span></span><span> </span><span class="annot"><span class="annottext">ParserInfo Command
+</span><a href="Reanimate.Driver.CLI.html#testCommand"><span class="hs-identifier hs-var">testCommand</span></a></span><span>
+</span><span id="line-104"></span><span>  </span><span class="annot"><span class="annottext">Mod CommandFields Command
+-&gt; Mod CommandFields Command -&gt; Mod CommandFields Command
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod CommandFields Command
+forall a. String -&gt; Mod CommandFields a
+</span><span class="hs-identifier hs-var">commandGroup</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Internal commands&quot;</span></span><span>
+</span><span id="line-105"></span><span>  </span><span class="annot"><span class="annottext">Mod CommandFields Command
+-&gt; Mod CommandFields Command -&gt; Mod CommandFields Command
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Mod CommandFields Command
+forall (f :: * -&gt; *) a. Mod f a
+</span><span class="hs-identifier hs-var">internal</span></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-106"></span><span>  </span><span class="annot"><span class="annottext">Parser Command -&gt; Parser Command -&gt; Parser Command
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Mod CommandFields Command -&gt; Parser Command
+forall a. Mod CommandFields a -&gt; Parser a
+</span><span class="hs-identifier hs-var">hsubparser</span></span><span>
+</span><span id="line-107"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">String -&gt; ParserInfo Command -&gt; Mod CommandFields Command
+forall a. String -&gt; ParserInfo a -&gt; Mod CommandFields a
+</span><span class="hs-identifier hs-var">command</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;check&quot;</span></span><span> </span><span class="annot"><span class="annottext">ParserInfo Command
+</span><a href="Reanimate.Driver.CLI.html#checkCommand"><span class="hs-identifier hs-var">checkCommand</span></a></span><span>
+</span><span id="line-108"></span><span>    </span><span class="annot"><span class="annottext">Mod CommandFields Command
+-&gt; Mod CommandFields Command -&gt; Mod CommandFields Command
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ParserInfo Command -&gt; Mod CommandFields Command
+forall a. String -&gt; ParserInfo a -&gt; Mod CommandFields a
+</span><span class="hs-identifier hs-var">command</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;view&quot;</span></span><span> </span><span class="annot"><span class="annottext">ParserInfo Command
+</span><a href="Reanimate.Driver.CLI.html#viewCommand"><span class="hs-identifier hs-var">viewCommand</span></a></span><span>
+</span><span id="line-109"></span><span>    </span><span class="annot"><span class="annottext">Mod CommandFields Command
+-&gt; Mod CommandFields Command -&gt; Mod CommandFields Command
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ParserInfo Command -&gt; Mod CommandFields Command
+forall a. String -&gt; ParserInfo a -&gt; Mod CommandFields a
+</span><span class="hs-identifier hs-var">command</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;render&quot;</span></span><span> </span><span class="annot"><span class="annottext">ParserInfo Command
+</span><a href="Reanimate.Driver.CLI.html#renderCommand"><span class="hs-identifier hs-var">renderCommand</span></a></span><span>
+</span><span id="line-110"></span><span>    </span><span class="annot"><span class="annottext">Mod CommandFields Command
+-&gt; Mod CommandFields Command -&gt; Mod CommandFields Command
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ParserInfo Command -&gt; Mod CommandFields Command
+forall a. String -&gt; ParserInfo a -&gt; Mod CommandFields a
+</span><span class="hs-identifier hs-var">command</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;raw&quot;</span></span><span> </span><span class="annot"><span class="annottext">ParserInfo Command
+</span><a href="Reanimate.Driver.CLI.html#rawCommand"><span class="hs-identifier hs-var">rawCommand</span></a></span><span>
+</span><span id="line-111"></span><span>    </span><span class="hs-special">)</span><span>
+</span><span id="line-112"></span><span>  </span><span class="annot"><span class="annottext">Parser Command -&gt; Parser Command -&gt; Parser Command
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">ParserInfo Command -&gt; Parser Command
+forall a. ParserInfo a -&gt; Parser a
+</span><span class="hs-identifier hs-var hs-var">infoParser</span></span><span> </span><span class="annot"><span class="annottext">ParserInfo Command
+</span><a href="Reanimate.Driver.CLI.html#viewCommand"><span class="hs-identifier hs-var">viewCommand</span></a></span><span>
+</span><span id="line-113"></span><span>
+</span><span id="line-114"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#rawCommand"><span class="hs-identifier hs-type">rawCommand</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ParserInfo</span></span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Command"><span class="hs-identifier hs-type">Command</span></a></span><span>
+</span><span id="line-115"></span><span id="rawCommand"><span class="annot"><span class="annottext">rawCommand :: ParserInfo Command
+</span><a href="Reanimate.Driver.CLI.html#rawCommand"><span class="hs-identifier hs-var hs-var">rawCommand</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser Command -&gt; InfoMod Command -&gt; ParserInfo Command
+forall a. Parser a -&gt; InfoMod a -&gt; ParserInfo a
+</span><span class="hs-identifier hs-var">info</span></span><span> </span><span class="annot"><span class="annottext">Parser Command
+</span><a href="#local-6989586621679543435"><span class="hs-identifier hs-var">parse</span></a></span><span>
+</span><span id="line-116"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; InfoMod Command
+forall a. String -&gt; InfoMod a
+</span><span class="hs-identifier hs-var">progDesc</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Output raw SVGs for animation at 60 fps. Used internally by viewer.&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-117"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-118"></span><span>    </span><span id="local-6989586621679543435"><span class="annot"><span class="annottext">parse :: Parser Command
+</span><a href="#local-6989586621679543435"><span class="hs-identifier hs-var hs-var">parse</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Int -&gt; Bool -&gt; Command
+</span><a href="Reanimate.Driver.CLI.html#Raw"><span class="hs-identifier hs-var">Raw</span></a></span><span>
+</span><span id="line-119"></span><span>      </span><span class="annot"><span class="annottext">(String -&gt; Int -&gt; Bool -&gt; Command)
+-&gt; Parser String -&gt; Parser (Int -&gt; Bool -&gt; Command)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Mod OptionFields String -&gt; Parser String
+forall s. IsString s =&gt; Mod OptionFields s -&gt; Parser s
+</span><span class="hs-identifier hs-var">strOption</span></span><span>
+</span><span id="line-120"></span><span>        </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields String
+forall (f :: * -&gt; *) a. HasName f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">long</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;output&quot;</span></span><span> </span><span class="annot"><span class="annottext">Mod OptionFields String
+-&gt; Mod OptionFields String -&gt; Mod OptionFields String
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span>
+</span><span id="line-121"></span><span>          </span><span class="annot"><span class="annottext">Char -&gt; Mod OptionFields String
+forall (f :: * -&gt; *) a. HasName f =&gt; Char -&gt; Mod f a
+</span><span class="hs-identifier hs-var">short</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'o'</span></span><span> </span><span class="annot"><span class="annottext">Mod OptionFields String
+-&gt; Mod OptionFields String -&gt; Mod OptionFields String
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span>
+</span><span id="line-122"></span><span>          </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields String
+forall (f :: * -&gt; *) a. HasMetavar f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">metavar</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;PATH&quot;</span></span><span> </span><span class="annot"><span class="annottext">Mod OptionFields String
+-&gt; Mod OptionFields String -&gt; Mod OptionFields String
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span>
+</span><span id="line-123"></span><span>          </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields String
+forall (f :: * -&gt; *) a. String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">help</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Output folder&quot;</span></span><span> </span><span class="annot"><span class="annottext">Mod OptionFields String
+-&gt; Mod OptionFields String -&gt; Mod OptionFields String
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span>
+</span><span id="line-124"></span><span>          </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields String
+forall (f :: * -&gt; *) a. HasValue f =&gt; a -&gt; Mod f a
+</span><span class="hs-identifier hs-var">value</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;.&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-125"></span><span>      </span><span class="annot"><span class="annottext">Parser (Int -&gt; Bool -&gt; Command)
+-&gt; Parser Int -&gt; Parser (Bool -&gt; Command)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">ReadM Int -&gt; Mod OptionFields Int -&gt; Parser Int
+forall a. ReadM a -&gt; Mod OptionFields a -&gt; Parser a
+</span><span class="hs-identifier hs-var">option</span></span><span> </span><span class="annot"><span class="annottext">ReadM Int
+forall a. Read a =&gt; ReadM a
+</span><span class="hs-identifier hs-var">auto</span></span><span>
+</span><span id="line-126"></span><span>        </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Int
+forall (f :: * -&gt; *) a. HasName f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">long</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;offset&quot;</span></span><span> </span><span class="annot"><span class="annottext">Mod OptionFields Int
+-&gt; Mod OptionFields Int -&gt; Mod OptionFields Int
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span>
+</span><span id="line-127"></span><span>          </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Int
+forall (f :: * -&gt; *) a. HasMetavar f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">metavar</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;NUMBER&quot;</span></span><span> </span><span class="annot"><span class="annottext">Mod OptionFields Int
+-&gt; Mod OptionFields Int -&gt; Mod OptionFields Int
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span>
+</span><span id="line-128"></span><span>          </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Int
+forall (f :: * -&gt; *) a. String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">help</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Frame offset&quot;</span></span><span> </span><span class="annot"><span class="annottext">Mod OptionFields Int
+-&gt; Mod OptionFields Int -&gt; Mod OptionFields Int
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span>
+</span><span id="line-129"></span><span>          </span><span class="annot"><span class="annottext">Int -&gt; Mod OptionFields Int
+forall (f :: * -&gt; *) a. HasValue f =&gt; a -&gt; Mod f a
+</span><span class="hs-identifier hs-var">value</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span>
+</span><span id="line-130"></span><span>      </span><span class="annot"><span class="annottext">Parser (Bool -&gt; Command) -&gt; Parser Bool -&gt; Parser Command
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Mod FlagFields Bool -&gt; Parser Bool
+</span><span class="hs-identifier hs-var">switch</span></span><span>
+</span><span id="line-131"></span><span>        </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod FlagFields Bool
+forall (f :: * -&gt; *) a. HasName f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">long</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;pretty-print&quot;</span></span><span> </span><span class="annot"><span class="annottext">Mod FlagFields Bool -&gt; Mod FlagFields Bool -&gt; Mod FlagFields Bool
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span>
+</span><span id="line-132"></span><span>          </span><span class="annot"><span class="annottext">Char -&gt; Mod FlagFields Bool
+forall (f :: * -&gt; *) a. HasName f =&gt; Char -&gt; Mod f a
+</span><span class="hs-identifier hs-var">short</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'p'</span></span><span> </span><span class="annot"><span class="annottext">Mod FlagFields Bool -&gt; Mod FlagFields Bool -&gt; Mod FlagFields Bool
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span>
+</span><span id="line-133"></span><span>          </span><span class="annot"><span class="annottext">String -&gt; Mod FlagFields Bool
+forall (f :: * -&gt; *) a. String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">help</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Pretty print svg&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-134"></span><span>
+</span><span id="line-135"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#testCommand"><span class="hs-identifier hs-type">testCommand</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ParserInfo</span></span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Command"><span class="hs-identifier hs-type">Command</span></a></span><span>
+</span><span id="line-136"></span><span id="testCommand"><span class="annot"><span class="annottext">testCommand :: ParserInfo Command
+</span><a href="Reanimate.Driver.CLI.html#testCommand"><span class="hs-identifier hs-var hs-var">testCommand</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser Command -&gt; InfoMod Command -&gt; ParserInfo Command
+forall a. Parser a -&gt; InfoMod a -&gt; ParserInfo a
+</span><span class="hs-identifier hs-var">info</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser Command
+</span><a href="#local-6989586621679543424"><span class="hs-identifier hs-var">parse</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Command -&gt; Parser (Command -&gt; Command) -&gt; Parser Command
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f (a -&gt; b) -&gt; f b
+</span><span class="hs-operator hs-var">&lt;**&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser (Command -&gt; Command)
+forall a. Parser (a -&gt; a)
+</span><span class="hs-identifier hs-var">helper</span></span><span class="hs-special">)</span><span>
+</span><span id="line-137"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; InfoMod Command
+forall a. String -&gt; InfoMod a
+</span><span class="hs-identifier hs-var">progDesc</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Generate 10 frames spread out evenly across the animation. Used \
+              \internally by the test-suite.&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-139"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-140"></span><span>    </span><span id="local-6989586621679543424"><span class="annot"><span class="annottext">parse :: Parser Command
+</span><a href="#local-6989586621679543424"><span class="hs-identifier hs-var hs-var">parse</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Command -&gt; Parser Command
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">Command
+</span><a href="Reanimate.Driver.CLI.html#Test"><span class="hs-identifier hs-var">Test</span></a></span><span>
+</span><span id="line-141"></span><span>
+</span><span id="line-142"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#checkCommand"><span class="hs-identifier hs-type">checkCommand</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ParserInfo</span></span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Command"><span class="hs-identifier hs-type">Command</span></a></span><span>
+</span><span id="line-143"></span><span id="checkCommand"><span class="annot"><span class="annottext">checkCommand :: ParserInfo Command
+</span><a href="Reanimate.Driver.CLI.html#checkCommand"><span class="hs-identifier hs-var hs-var">checkCommand</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser Command -&gt; InfoMod Command -&gt; ParserInfo Command
+forall a. Parser a -&gt; InfoMod a -&gt; ParserInfo a
+</span><span class="hs-identifier hs-var">info</span></span><span> </span><span class="annot"><span class="annottext">Parser Command
+</span><a href="#local-6989586621679543421"><span class="hs-identifier hs-var">parse</span></a></span><span>
+</span><span id="line-144"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; InfoMod Command
+forall a. String -&gt; InfoMod a
+</span><span class="hs-identifier hs-var">progDesc</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Run a system's diagnostic and report any missing external dependencies.&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-145"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-146"></span><span>    </span><span id="local-6989586621679543421"><span class="annot"><span class="annottext">parse :: Parser Command
+</span><a href="#local-6989586621679543421"><span class="hs-identifier hs-var hs-var">parse</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Command -&gt; Parser Command
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">Command
+</span><a href="Reanimate.Driver.CLI.html#Check"><span class="hs-identifier hs-var">Check</span></a></span><span>
+</span><span id="line-147"></span><span>
+</span><span id="line-148"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#viewCommand"><span class="hs-identifier hs-type">viewCommand</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ParserInfo</span></span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Command"><span class="hs-identifier hs-type">Command</span></a></span><span>
+</span><span id="line-149"></span><span id="viewCommand"><span class="annot"><span class="annottext">viewCommand :: ParserInfo Command
+</span><a href="Reanimate.Driver.CLI.html#viewCommand"><span class="hs-identifier hs-var hs-var">viewCommand</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser Command -&gt; InfoMod Command -&gt; ParserInfo Command
+forall a. Parser a -&gt; InfoMod a -&gt; ParserInfo a
+</span><span class="hs-identifier hs-var">info</span></span><span> </span><span class="annot"><span class="annottext">Parser Command
+</span><a href="#local-6989586621679543420"><span class="hs-identifier hs-var">parse</span></a></span><span>
+</span><span id="line-150"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; InfoMod Command
+forall a. String -&gt; InfoMod a
+</span><span class="hs-identifier hs-var">progDesc</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Play animation in browser window.&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-151"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-152"></span><span>    </span><span id="local-6989586621679543420"><span class="annot"><span class="annottext">parse :: Parser Command
+</span><a href="#local-6989586621679543420"><span class="hs-identifier hs-var hs-var">parse</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Command
+</span><a href="Reanimate.Driver.CLI.html#View"><span class="hs-identifier hs-var">View</span></a></span><span>
+</span><span id="line-153"></span><span>      </span><span class="annot"><span class="annottext">(Bool -&gt; Command) -&gt; Parser Bool -&gt; Parser Command
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Mod FlagFields Bool -&gt; Parser Bool
+</span><span class="hs-identifier hs-var">switch</span></span><span>
+</span><span id="line-154"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Mod FlagFields Bool
+forall (f :: * -&gt; *) a. HasName f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">long</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;detach&quot;</span></span><span> </span><span class="annot"><span class="annottext">Mod FlagFields Bool -&gt; Mod FlagFields Bool -&gt; Mod FlagFields Bool
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Mod FlagFields Bool
+forall (f :: * -&gt; *) a. HasName f =&gt; Char -&gt; Mod f a
+</span><span class="hs-identifier hs-var">short</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'d'</span></span><span class="hs-special">)</span><span>
+</span><span id="line-155"></span><span>
+</span><span id="line-156"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#renderCommand"><span class="hs-identifier hs-type">renderCommand</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ParserInfo</span></span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Command"><span class="hs-identifier hs-type">Command</span></a></span><span>
+</span><span id="line-157"></span><span id="renderCommand"><span class="annot"><span class="annottext">renderCommand :: ParserInfo Command
+</span><a href="Reanimate.Driver.CLI.html#renderCommand"><span class="hs-identifier hs-var hs-var">renderCommand</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser Command -&gt; InfoMod Command -&gt; ParserInfo Command
+forall a. Parser a -&gt; InfoMod a -&gt; ParserInfo a
+</span><span class="hs-identifier hs-var">info</span></span><span> </span><span class="annot"><span class="annottext">Parser Command
+</span><a href="#local-6989586621679543419"><span class="hs-identifier hs-var">parse</span></a></span><span>
+</span><span id="line-158"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; InfoMod Command
+forall a. String -&gt; InfoMod a
+</span><span class="hs-identifier hs-var">progDesc</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Render animation to file.&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-159"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-160"></span><span>    </span><span class="hs-comment">-- fromPreset :: (Maybe Preset -&gt; (Command -&gt; Command))</span><span>
+</span><span id="line-161"></span><span>    </span><span class="hs-comment">-- fromPreset Nothing = id</span><span>
+</span><span id="line-162"></span><span>    </span><span class="hs-comment">-- fromPreset (Just ExampleGif) = \cmd -&gt; cmd{renderFPS=24}</span><span>
+</span><span id="line-163"></span><span>    </span><span class="hs-comment">-- modParser :: Parser (Command -&gt; Command)</span><span>
+</span><span id="line-164"></span><span>    </span><span class="hs-comment">-- modParser = fmap fromPreset $</span><span>
+</span><span id="line-165"></span><span>    </span><span class="hs-comment">--   optional (option (maybeReader readPreset)</span><span>
+</span><span id="line-166"></span><span>    </span><span class="hs-comment">--       (long &quot;preset&quot; &lt;&gt; showDefaultWith showPreset</span><span>
+</span><span id="line-167"></span><span>    </span><span class="hs-comment">--       &lt;&gt; metavar &quot;TYPE&quot;</span><span>
+</span><span id="line-168"></span><span>    </span><span class="hs-comment">--       &lt;&gt; help &quot;Parameter presets: youtube, gif, quick&quot;))</span><span>
+</span><span id="line-169"></span><span>    </span><span id="local-6989586621679543419"><span class="annot"><span class="annottext">parse :: Parser Command
+</span><a href="#local-6989586621679543419"><span class="hs-identifier hs-var hs-var">parse</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe String
+-&gt; Maybe Int
+-&gt; Maybe Int
+-&gt; Maybe Int
+-&gt; Bool
+-&gt; Maybe Format
+-&gt; Maybe Preset
+-&gt; Raster
+-&gt; Bool
+-&gt; Bool
+-&gt; Command
+</span><a href="Reanimate.Driver.CLI.html#Render"><span class="hs-identifier hs-var">Render</span></a></span><span>
+</span><span id="line-170"></span><span>      </span><span class="annot"><span class="annottext">(Maybe String
+ -&gt; Maybe Int
+ -&gt; Maybe Int
+ -&gt; Maybe Int
+ -&gt; Bool
+ -&gt; Maybe Format
+ -&gt; Maybe Preset
+ -&gt; Raster
+ -&gt; Bool
+ -&gt; Bool
+ -&gt; Command)
+-&gt; Parser (Maybe String)
+-&gt; Parser
+     (Maybe Int
+      -&gt; Maybe Int
+      -&gt; Maybe Int
+      -&gt; Bool
+      -&gt; Maybe Format
+      -&gt; Maybe Preset
+      -&gt; Raster
+      -&gt; Bool
+      -&gt; Bool
+      -&gt; Command)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser String -&gt; Parser (Maybe String)
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f (Maybe a)
+</span><span class="hs-identifier hs-var">optional</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Mod OptionFields String -&gt; Parser String
+forall s. IsString s =&gt; Mod OptionFields s -&gt; Parser s
+</span><span class="hs-identifier hs-var">strOption</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields String
+forall (f :: * -&gt; *) a. HasName f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">long</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;target&quot;</span></span><span>
+</span><span id="line-171"></span><span>                    </span><span class="annot"><span class="annottext">Mod OptionFields String
+-&gt; Mod OptionFields String -&gt; Mod OptionFields String
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Mod OptionFields String
+forall (f :: * -&gt; *) a. HasName f =&gt; Char -&gt; Mod f a
+</span><span class="hs-identifier hs-var">short</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'o'</span></span><span>
+</span><span id="line-172"></span><span>                    </span><span class="annot"><span class="annottext">Mod OptionFields String
+-&gt; Mod OptionFields String -&gt; Mod OptionFields String
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields String
+forall (f :: * -&gt; *) a. HasMetavar f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">metavar</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;FILE&quot;</span></span><span>
+</span><span id="line-173"></span><span>                    </span><span class="annot"><span class="annottext">Mod OptionFields String
+-&gt; Mod OptionFields String -&gt; Mod OptionFields String
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields String
+forall (f :: * -&gt; *) a. String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">help</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Write output to FILE&quot;</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-174"></span><span>      </span><span class="annot"><span class="annottext">Parser
+  (Maybe Int
+   -&gt; Maybe Int
+   -&gt; Maybe Int
+   -&gt; Bool
+   -&gt; Maybe Format
+   -&gt; Maybe Preset
+   -&gt; Raster
+   -&gt; Bool
+   -&gt; Bool
+   -&gt; Command)
+-&gt; Parser (Maybe Int)
+-&gt; Parser
+     (Maybe Int
+      -&gt; Maybe Int
+      -&gt; Bool
+      -&gt; Maybe Format
+      -&gt; Maybe Preset
+      -&gt; Raster
+      -&gt; Bool
+      -&gt; Bool
+      -&gt; Command)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Int -&gt; Parser (Maybe Int)
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f (Maybe a)
+</span><span class="hs-identifier hs-var">optional</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ReadM Int -&gt; Mod OptionFields Int -&gt; Parser Int
+forall a. ReadM a -&gt; Mod OptionFields a -&gt; Parser a
+</span><span class="hs-identifier hs-var">option</span></span><span> </span><span class="annot"><span class="annottext">ReadM Int
+forall a. Read a =&gt; ReadM a
+</span><span class="hs-identifier hs-var">auto</span></span><span>
+</span><span id="line-175"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Int
+forall (f :: * -&gt; *) a. HasName f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">long</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;fps&quot;</span></span><span> </span><span class="annot"><span class="annottext">Mod OptionFields Int
+-&gt; Mod OptionFields Int -&gt; Mod OptionFields Int
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Int
+forall (f :: * -&gt; *) a. HasMetavar f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">metavar</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;FPS&quot;</span></span><span>
+</span><span id="line-176"></span><span>          </span><span class="annot"><span class="annottext">Mod OptionFields Int
+-&gt; Mod OptionFields Int -&gt; Mod OptionFields Int
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Int
+forall (f :: * -&gt; *) a. String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">help</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Set frames per second.&quot;</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-177"></span><span>      </span><span class="annot"><span class="annottext">Parser
+  (Maybe Int
+   -&gt; Maybe Int
+   -&gt; Bool
+   -&gt; Maybe Format
+   -&gt; Maybe Preset
+   -&gt; Raster
+   -&gt; Bool
+   -&gt; Bool
+   -&gt; Command)
+-&gt; Parser (Maybe Int)
+-&gt; Parser
+     (Maybe Int
+      -&gt; Bool
+      -&gt; Maybe Format
+      -&gt; Maybe Preset
+      -&gt; Raster
+      -&gt; Bool
+      -&gt; Bool
+      -&gt; Command)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Int -&gt; Parser (Maybe Int)
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f (Maybe a)
+</span><span class="hs-identifier hs-var">optional</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ReadM Int -&gt; Mod OptionFields Int -&gt; Parser Int
+forall a. ReadM a -&gt; Mod OptionFields a -&gt; Parser a
+</span><span class="hs-identifier hs-var">option</span></span><span> </span><span class="annot"><span class="annottext">ReadM Int
+forall a. Read a =&gt; ReadM a
+</span><span class="hs-identifier hs-var">auto</span></span><span>
+</span><span id="line-178"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Int
+forall (f :: * -&gt; *) a. HasName f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">long</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;width&quot;</span></span><span> </span><span class="annot"><span class="annottext">Mod OptionFields Int
+-&gt; Mod OptionFields Int -&gt; Mod OptionFields Int
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Mod OptionFields Int
+forall (f :: * -&gt; *) a. HasName f =&gt; Char -&gt; Mod f a
+</span><span class="hs-identifier hs-var">short</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'w'</span></span><span> </span><span class="annot"><span class="annottext">Mod OptionFields Int
+-&gt; Mod OptionFields Int -&gt; Mod OptionFields Int
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Int
+forall (f :: * -&gt; *) a. HasMetavar f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">metavar</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;PIXELS&quot;</span></span><span>
+</span><span id="line-179"></span><span>          </span><span class="annot"><span class="annottext">Mod OptionFields Int
+-&gt; Mod OptionFields Int -&gt; Mod OptionFields Int
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Int
+forall (f :: * -&gt; *) a. String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">help</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Set video width.&quot;</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-180"></span><span>      </span><span class="annot"><span class="annottext">Parser
+  (Maybe Int
+   -&gt; Bool
+   -&gt; Maybe Format
+   -&gt; Maybe Preset
+   -&gt; Raster
+   -&gt; Bool
+   -&gt; Bool
+   -&gt; Command)
+-&gt; Parser (Maybe Int)
+-&gt; Parser
+     (Bool
+      -&gt; Maybe Format
+      -&gt; Maybe Preset
+      -&gt; Raster
+      -&gt; Bool
+      -&gt; Bool
+      -&gt; Command)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Int -&gt; Parser (Maybe Int)
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f (Maybe a)
+</span><span class="hs-identifier hs-var">optional</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ReadM Int -&gt; Mod OptionFields Int -&gt; Parser Int
+forall a. ReadM a -&gt; Mod OptionFields a -&gt; Parser a
+</span><span class="hs-identifier hs-var">option</span></span><span> </span><span class="annot"><span class="annottext">ReadM Int
+forall a. Read a =&gt; ReadM a
+</span><span class="hs-identifier hs-var">auto</span></span><span>
+</span><span id="line-181"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Int
+forall (f :: * -&gt; *) a. HasName f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">long</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;height&quot;</span></span><span> </span><span class="annot"><span class="annottext">Mod OptionFields Int
+-&gt; Mod OptionFields Int -&gt; Mod OptionFields Int
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Mod OptionFields Int
+forall (f :: * -&gt; *) a. HasName f =&gt; Char -&gt; Mod f a
+</span><span class="hs-identifier hs-var">short</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'h'</span></span><span>
+</span><span id="line-182"></span><span>          </span><span class="annot"><span class="annottext">Mod OptionFields Int
+-&gt; Mod OptionFields Int -&gt; Mod OptionFields Int
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Int
+forall (f :: * -&gt; *) a. HasMetavar f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">metavar</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;PIXELS&quot;</span></span><span> </span><span class="annot"><span class="annottext">Mod OptionFields Int
+-&gt; Mod OptionFields Int -&gt; Mod OptionFields Int
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Int
+forall (f :: * -&gt; *) a. String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">help</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Set video height.&quot;</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-183"></span><span>      </span><span class="annot"><span class="annottext">Parser
+  (Bool
+   -&gt; Maybe Format
+   -&gt; Maybe Preset
+   -&gt; Raster
+   -&gt; Bool
+   -&gt; Bool
+   -&gt; Command)
+-&gt; Parser Bool
+-&gt; Parser
+     (Maybe Format -&gt; Maybe Preset -&gt; Raster -&gt; Bool -&gt; Bool -&gt; Command)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Mod FlagFields Bool -&gt; Parser Bool
+</span><span class="hs-identifier hs-var">switch</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Mod FlagFields Bool
+forall (f :: * -&gt; *) a. HasName f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">long</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;compile&quot;</span></span><span>
+</span><span id="line-184"></span><span>                  </span><span class="annot"><span class="annottext">Mod FlagFields Bool -&gt; Mod FlagFields Bool -&gt; Mod FlagFields Bool
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod FlagFields Bool
+forall (f :: * -&gt; *) a. String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">help</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Compile source code before rendering.&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-185"></span><span>      </span><span class="annot"><span class="annottext">Parser
+  (Maybe Format -&gt; Maybe Preset -&gt; Raster -&gt; Bool -&gt; Bool -&gt; Command)
+-&gt; Parser (Maybe Format)
+-&gt; Parser (Maybe Preset -&gt; Raster -&gt; Bool -&gt; Bool -&gt; Command)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Format -&gt; Parser (Maybe Format)
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f (Maybe a)
+</span><span class="hs-identifier hs-var">optional</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ReadM Format -&gt; Mod OptionFields Format -&gt; Parser Format
+forall a. ReadM a -&gt; Mod OptionFields a -&gt; Parser a
+</span><span class="hs-identifier hs-var">option</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(String -&gt; Maybe Format) -&gt; ReadM Format
+forall a. (String -&gt; Maybe a) -&gt; ReadM a
+</span><span class="hs-identifier hs-var">maybeReader</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Maybe Format
+</span><a href="Reanimate.Driver.CLI.html#readFormat"><span class="hs-identifier hs-var">readFormat</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-186"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Format
+forall (f :: * -&gt; *) a. HasName f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">long</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;format&quot;</span></span><span> </span><span class="annot"><span class="annottext">Mod OptionFields Format
+-&gt; Mod OptionFields Format -&gt; Mod OptionFields Format
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Format
+forall (f :: * -&gt; *) a. HasMetavar f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">metavar</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;FMT&quot;</span></span><span>
+</span><span id="line-187"></span><span>          </span><span class="annot"><span class="annottext">Mod OptionFields Format
+-&gt; Mod OptionFields Format -&gt; Mod OptionFields Format
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Format
+forall (f :: * -&gt; *) a. String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">help</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Video format: mp4, gif, webm&quot;</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-188"></span><span>      </span><span class="annot"><span class="annottext">Parser (Maybe Preset -&gt; Raster -&gt; Bool -&gt; Bool -&gt; Command)
+-&gt; Parser (Maybe Preset)
+-&gt; Parser (Raster -&gt; Bool -&gt; Bool -&gt; Command)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Preset -&gt; Parser (Maybe Preset)
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f (Maybe a)
+</span><span class="hs-identifier hs-var">optional</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ReadM Preset -&gt; Mod OptionFields Preset -&gt; Parser Preset
+forall a. ReadM a -&gt; Mod OptionFields a -&gt; Parser a
+</span><span class="hs-identifier hs-var">option</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(String -&gt; Maybe Preset) -&gt; ReadM Preset
+forall a. (String -&gt; Maybe a) -&gt; ReadM a
+</span><span class="hs-identifier hs-var">maybeReader</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Maybe Preset
+</span><a href="Reanimate.Driver.CLI.html#readPreset"><span class="hs-identifier hs-var">readPreset</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-189"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Preset
+forall (f :: * -&gt; *) a. HasName f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">long</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;preset&quot;</span></span><span> </span><span class="annot"><span class="annottext">Mod OptionFields Preset
+-&gt; Mod OptionFields Preset -&gt; Mod OptionFields Preset
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">(Preset -&gt; String) -&gt; Mod OptionFields Preset
+forall a (f :: * -&gt; *). (a -&gt; String) -&gt; Mod f a
+</span><span class="hs-identifier hs-var">showDefaultWith</span></span><span> </span><span class="annot"><span class="annottext">Preset -&gt; String
+</span><a href="Reanimate.Driver.CLI.html#showPreset"><span class="hs-identifier hs-var">showPreset</span></a></span><span>
+</span><span id="line-190"></span><span>          </span><span class="annot"><span class="annottext">Mod OptionFields Preset
+-&gt; Mod OptionFields Preset -&gt; Mod OptionFields Preset
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Preset
+forall (f :: * -&gt; *) a. HasMetavar f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">metavar</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;TYPE&quot;</span></span><span>
+</span><span id="line-191"></span><span>          </span><span class="annot"><span class="annottext">Mod OptionFields Preset
+-&gt; Mod OptionFields Preset -&gt; Mod OptionFields Preset
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Preset
+forall (f :: * -&gt; *) a. String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">help</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Parameter presets: youtube, gif, quick, medium, high&quot;</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-192"></span><span>      </span><span class="annot"><span class="annottext">Parser (Raster -&gt; Bool -&gt; Bool -&gt; Command)
+-&gt; Parser Raster -&gt; Parser (Bool -&gt; Bool -&gt; Command)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">ReadM Raster -&gt; Mod OptionFields Raster -&gt; Parser Raster
+forall a. ReadM a -&gt; Mod OptionFields a -&gt; Parser a
+</span><span class="hs-identifier hs-var">option</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(String -&gt; Maybe Raster) -&gt; ReadM Raster
+forall a. (String -&gt; Maybe a) -&gt; ReadM a
+</span><span class="hs-identifier hs-var">maybeReader</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Maybe Raster
+</span><a href="Reanimate.Driver.CLI.html#readRaster"><span class="hs-identifier hs-var">readRaster</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-193"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Raster
+forall (f :: * -&gt; *) a. HasName f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">long</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;raster&quot;</span></span><span> </span><span class="annot"><span class="annottext">Mod OptionFields Raster
+-&gt; Mod OptionFields Raster -&gt; Mod OptionFields Raster
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">(Raster -&gt; String) -&gt; Mod OptionFields Raster
+forall a (f :: * -&gt; *). (a -&gt; String) -&gt; Mod f a
+</span><span class="hs-identifier hs-var">showDefaultWith</span></span><span> </span><span class="annot"><span class="annottext">Raster -&gt; String
+</span><a href="Reanimate.Driver.CLI.html#showRaster"><span class="hs-identifier hs-var">showRaster</span></a></span><span>
+</span><span id="line-194"></span><span>          </span><span class="annot"><span class="annottext">Mod OptionFields Raster
+-&gt; Mod OptionFields Raster -&gt; Mod OptionFields Raster
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Raster
+forall (f :: * -&gt; *) a. HasMetavar f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">metavar</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;RASTER&quot;</span></span><span>
+</span><span id="line-195"></span><span>          </span><span class="annot"><span class="annottext">Mod OptionFields Raster
+-&gt; Mod OptionFields Raster -&gt; Mod OptionFields Raster
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Raster -&gt; Mod OptionFields Raster
+forall (f :: * -&gt; *) a. HasValue f =&gt; a -&gt; Mod f a
+</span><span class="hs-identifier hs-var">value</span></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterNone"><span class="hs-identifier hs-var">RasterNone</span></a></span><span>
+</span><span id="line-196"></span><span>          </span><span class="annot"><span class="annottext">Mod OptionFields Raster
+-&gt; Mod OptionFields Raster -&gt; Mod OptionFields Raster
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod OptionFields Raster
+forall (f :: * -&gt; *) a. String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">help</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Raster engine: none, auto, inkscape, rsvg, imagemagick&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-197"></span><span>      </span><span class="annot"><span class="annottext">Parser (Bool -&gt; Bool -&gt; Command)
+-&gt; Parser Bool -&gt; Parser (Bool -&gt; Command)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Mod FlagFields Bool -&gt; Parser Bool
+</span><span class="hs-identifier hs-var">switch</span></span><span>
+</span><span id="line-198"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Mod FlagFields Bool
+forall (f :: * -&gt; *) a. HasName f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">long</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;partial&quot;</span></span><span>
+</span><span id="line-199"></span><span>        </span><span class="annot"><span class="annottext">Mod FlagFields Bool -&gt; Mod FlagFields Bool -&gt; Mod FlagFields Bool
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod FlagFields Bool
+forall (f :: * -&gt; *) a. String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">help</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Produce partial animation even if frame generation was \
+                \interrupted by ctrl-c&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-201"></span><span>      </span><span class="annot"><span class="annottext">Parser (Bool -&gt; Command) -&gt; Parser Bool -&gt; Parser Command
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Mod FlagFields Bool -&gt; Parser Bool
+forall a. a -&gt; a -&gt; Mod FlagFields a -&gt; Parser a
+</span><span class="hs-identifier hs-var">flag</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-202"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Mod FlagFields Bool
+forall (f :: * -&gt; *) a. HasName f =&gt; String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">long</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;disable-hashing&quot;</span></span><span>
+</span><span id="line-203"></span><span>        </span><span class="annot"><span class="annottext">Mod FlagFields Bool -&gt; Mod FlagFields Bool -&gt; Mod FlagFields Bool
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Mod FlagFields Bool
+forall (f :: * -&gt; *) a. String -&gt; Mod f a
+</span><span class="hs-identifier hs-var">help</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Disable SVG dedup via hashing. This might improve performance \
+                \if all your frames are unique.&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-205"></span><span>
+</span><span id="line-206"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#opts"><span class="hs-identifier hs-type">opts</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ParserInfo</span></span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Options"><span class="hs-identifier hs-type">Options</span></a></span><span>
+</span><span id="line-207"></span><span id="opts"><span class="annot"><span class="annottext">opts :: ParserInfo Options
+</span><a href="Reanimate.Driver.CLI.html#opts"><span class="hs-identifier hs-var hs-var">opts</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser Options -&gt; InfoMod Options -&gt; ParserInfo Options
+forall a. Parser a -&gt; InfoMod a -&gt; ParserInfo a
+</span><span class="hs-identifier hs-var">info</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser Options
+</span><a href="Reanimate.Driver.CLI.html#options"><span class="hs-identifier hs-var">options</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Options -&gt; Parser (Options -&gt; Options) -&gt; Parser Options
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f (a -&gt; b) -&gt; f b
+</span><span class="hs-operator hs-var">&lt;**&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser (Options -&gt; Options)
+forall a. Parser (a -&gt; a)
+</span><span class="hs-identifier hs-var">helper</span></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-208"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">InfoMod Options
+forall a. InfoMod a
+</span><span class="hs-identifier hs-var">fullDesc</span></span><span>
+</span><span id="line-209"></span><span>  </span><span class="annot"><span class="annottext">InfoMod Options -&gt; InfoMod Options -&gt; InfoMod Options
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; InfoMod Options
+forall a. String -&gt; InfoMod a
+</span><span class="hs-identifier hs-var">progDesc</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;This program contains an animation which can either be viewed \
+              \in a web-browser or rendered to disk.&quot;</span></span><span>
+</span><span id="line-211"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-212"></span><span>
+</span><span id="line-213"></span><span class="annot"><a href="Reanimate.Driver.CLI.html#getDriverOptions"><span class="hs-identifier hs-type">getDriverOptions</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Options"><span class="hs-identifier hs-type">Options</span></a></span><span>
+</span><span id="line-214"></span><span id="getDriverOptions"><span class="annot"><span class="annottext">getDriverOptions :: IO Options
+</span><a href="Reanimate.Driver.CLI.html#getDriverOptions"><span class="hs-identifier hs-var hs-var">getDriverOptions</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ParserPrefs -&gt; ParserInfo Options -&gt; IO Options
+forall a. ParserPrefs -&gt; ParserInfo a -&gt; IO a
+</span><span class="hs-identifier hs-var">customExecParser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">PrefsMod -&gt; ParserPrefs
+</span><span class="hs-identifier hs-var">prefs</span></span><span> </span><span class="annot"><span class="annottext">PrefsMod
+</span><span class="hs-identifier hs-var">showHelpOnError</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">ParserInfo Options
+</span><a href="Reanimate.Driver.CLI.html#opts"><span class="hs-identifier hs-var">opts</span></a></span><span>
+</span><span id="line-215"></span></pre></body></html>

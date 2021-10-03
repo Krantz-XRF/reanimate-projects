@@ -1,0 +1,242 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{- |
+  Parameters define the global context of an animation. They are set once
+  before an animation is rendered and may not change during rendering.
+-}</span><span>
+</span><span id="line-5"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Parameters</span><span>
+</span><span id="line-6"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Raster"><span class="hs-identifier">Raster</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Width"><span class="hs-identifier">Width</span></a></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Height"><span class="hs-identifier">Height</span></a></span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#FPS"><span class="hs-identifier">FPS</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pRaster"><span class="hs-identifier">pRaster</span></a></span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pFPS"><span class="hs-identifier">pFPS</span></a></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pWidth"><span class="hs-identifier">pWidth</span></a></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pHeight"><span class="hs-identifier">pHeight</span></a></span><span>
+</span><span id="line-14"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pNoExternals"><span class="hs-identifier">pNoExternals</span></a></span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pRootDirectory"><span class="hs-identifier">pRootDirectory</span></a></span><span>
+</span><span id="line-16"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#setRaster"><span class="hs-identifier">setRaster</span></a></span><span>
+</span><span id="line-17"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#setFPS"><span class="hs-identifier">setFPS</span></a></span><span>
+</span><span id="line-18"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#setWidth"><span class="hs-identifier">setWidth</span></a></span><span>
+</span><span id="line-19"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#setHeight"><span class="hs-identifier">setHeight</span></a></span><span>
+</span><span id="line-20"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#setNoExternals"><span class="hs-identifier">setNoExternals</span></a></span><span>
+</span><span id="line-21"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#setRootDirectory"><span class="hs-identifier">setRootDirectory</span></a></span><span>
+</span><span id="line-22"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.IORef</span></span><span>       </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">IORef</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">newIORef</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">readIORef</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">writeIORef</span></span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO.Unsafe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">unsafePerformIO</span></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- | Width of animation in pixels.</span><span>
+</span><span id="line-28"></span><span class="hs-keyword">type</span><span> </span><span id="Width"><span class="annot"><a href="Reanimate.Parameters.html#Width"><span class="hs-identifier hs-var">Width</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-29"></span><span class="hs-comment">-- | Height of animation in pixels.</span><span>
+</span><span id="line-30"></span><span class="hs-keyword">type</span><span> </span><span id="Height"><span class="annot"><a href="Reanimate.Parameters.html#Height"><span class="hs-identifier hs-var">Height</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- | Framerate of animation in frames per second.</span><span>
+</span><span id="line-32"></span><span class="hs-keyword">type</span><span> </span><span id="FPS"><span class="annot"><a href="Reanimate.Parameters.html#FPS"><span class="hs-identifier hs-var">FPS</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span class="hs-comment">-- | Raster engines turn SVG images into pixels.</span><span>
+</span><span id="line-35"></span><span class="hs-keyword">data</span><span> </span><span id="Raster"><span class="annot"><a href="Reanimate.Parameters.html#Raster"><span class="hs-identifier hs-var">Raster</span></a></span></span><span>
+</span><span id="line-36"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="RasterNone"><span class="annot"><a href="Reanimate.Parameters.html#RasterNone"><span class="hs-identifier hs-var">RasterNone</span></a></span></span><span>     </span><span class="hs-comment">-- ^ Do not use any external raster engine. Rely on the browser or ffmpeg.</span><span>
+</span><span id="line-37"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="RasterAuto"><span class="annot"><a href="Reanimate.Parameters.html#RasterAuto"><span class="hs-identifier hs-var">RasterAuto</span></a></span></span><span>     </span><span class="hs-comment">-- ^ Scan for installed raster engines and pick the fastest one.</span><span>
+</span><span id="line-38"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="RasterInkscape"><span class="annot"><a href="Reanimate.Parameters.html#RasterInkscape"><span class="hs-identifier hs-var">RasterInkscape</span></a></span></span><span> </span><span class="hs-comment">-- ^ Use Inkscape to raster SVG images.</span><span>
+</span><span id="line-39"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="RasterRSvg"><span class="annot"><a href="Reanimate.Parameters.html#RasterRSvg"><span class="hs-identifier hs-var">RasterRSvg</span></a></span></span><span>     </span><span class="hs-comment">-- ^ Use rsvg-convert to raster SVG images.</span><span>
+</span><span id="line-40"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="RasterMagick"><span class="annot"><a href="Reanimate.Parameters.html#RasterMagick"><span class="hs-identifier hs-var">RasterMagick</span></a></span></span><span>   </span><span class="hs-comment">-- ^ Use imagemagick to raster SVG images.</span><span>
+</span><span id="line-41"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679541009"><span id="local-6989586621679541011"><span id="local-6989586621679541013"><span class="annot"><span class="annottext">Int -&gt; Raster -&gt; ShowS
+[Raster] -&gt; ShowS
+Raster -&gt; String
+(Int -&gt; Raster -&gt; ShowS)
+-&gt; (Raster -&gt; String) -&gt; ([Raster] -&gt; ShowS) -&gt; Show Raster
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Raster] -&gt; ShowS
+$cshowList :: [Raster] -&gt; ShowS
+show :: Raster -&gt; String
+$cshow :: Raster -&gt; String
+showsPrec :: Int -&gt; Raster -&gt; ShowS
+$cshowsPrec :: Int -&gt; Raster -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679541004"><span id="local-6989586621679541006"><span class="annot"><span class="annottext">Raster -&gt; Raster -&gt; Bool
+(Raster -&gt; Raster -&gt; Bool)
+-&gt; (Raster -&gt; Raster -&gt; Bool) -&gt; Eq Raster
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: Raster -&gt; Raster -&gt; Bool
+$c/= :: Raster -&gt; Raster -&gt; Bool
+== :: Raster -&gt; Raster -&gt; Bool
+$c== :: Raster -&gt; Raster -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pRasterRef"><span class="hs-pragma hs-type">pRasterRef</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-44"></span><span class="annot"><a href="Reanimate.Parameters.html#pRasterRef"><span class="hs-identifier hs-type">pRasterRef</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IORef</span></span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Raster"><span class="hs-identifier hs-type">Raster</span></a></span><span>
+</span><span id="line-45"></span><span id="pRasterRef"><span class="annot"><span class="annottext">pRasterRef :: IORef Raster
+</span><a href="Reanimate.Parameters.html#pRasterRef"><span class="hs-identifier hs-var hs-var">pRasterRef</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO (IORef Raster) -&gt; IORef Raster
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Raster -&gt; IO (IORef Raster)
+forall a. a -&gt; IO (IORef a)
+</span><span class="hs-identifier hs-var">newIORef</span></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterNone"><span class="hs-identifier hs-var">RasterNone</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-46"></span><span>
+</span><span id="line-47"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pRaster"><span class="hs-pragma hs-type">pRaster</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-48"></span><span class="hs-comment">-- | Selected raster engine.</span><span>
+</span><span id="line-49"></span><span class="annot"><a href="Reanimate.Parameters.html#pRaster"><span class="hs-identifier hs-type">pRaster</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Raster"><span class="hs-identifier hs-type">Raster</span></a></span><span>
+</span><span id="line-50"></span><span id="pRaster"><span class="annot"><span class="annottext">pRaster :: Raster
+</span><a href="Reanimate.Parameters.html#pRaster"><span class="hs-identifier hs-var hs-var">pRaster</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO Raster -&gt; Raster
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">IORef Raster -&gt; IO Raster
+forall a. IORef a -&gt; IO a
+</span><span class="hs-identifier hs-var">readIORef</span></span><span> </span><span class="annot"><span class="annottext">IORef Raster
+</span><a href="Reanimate.Parameters.html#pRasterRef"><span class="hs-identifier hs-var">pRasterRef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span class="hs-comment">-- | Set raster engine.</span><span>
+</span><span id="line-53"></span><span class="annot"><a href="Reanimate.Parameters.html#setRaster"><span class="hs-identifier hs-type">setRaster</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Raster"><span class="hs-identifier hs-type">Raster</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-54"></span><span id="setRaster"><span class="annot"><span class="annottext">setRaster :: Raster -&gt; IO ()
+</span><a href="Reanimate.Parameters.html#setRaster"><span class="hs-identifier hs-var hs-var">setRaster</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IORef Raster -&gt; Raster -&gt; IO ()
+forall a. IORef a -&gt; a -&gt; IO ()
+</span><span class="hs-identifier hs-var">writeIORef</span></span><span> </span><span class="annot"><span class="annottext">IORef Raster
+</span><a href="Reanimate.Parameters.html#pRasterRef"><span class="hs-identifier hs-var">pRasterRef</span></a></span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pFPSRef"><span class="hs-pragma hs-type">pFPSRef</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-57"></span><span class="annot"><a href="Reanimate.Parameters.html#pFPSRef"><span class="hs-identifier hs-type">pFPSRef</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IORef</span></span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#FPS"><span class="hs-identifier hs-type">FPS</span></a></span><span>
+</span><span id="line-58"></span><span id="pFPSRef"><span class="annot"><span class="annottext">pFPSRef :: IORef Int
+</span><a href="Reanimate.Parameters.html#pFPSRef"><span class="hs-identifier hs-var hs-var">pFPSRef</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO (IORef Int) -&gt; IORef Int
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; IO (IORef Int)
+forall a. a -&gt; IO (IORef a)
+</span><span class="hs-identifier hs-var">newIORef</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span>
+</span><span id="line-59"></span><span>
+</span><span id="line-60"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pFPS"><span class="hs-pragma hs-type">pFPS</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-61"></span><span class="hs-comment">-- | Selected framerate.</span><span>
+</span><span id="line-62"></span><span class="annot"><a href="Reanimate.Parameters.html#pFPS"><span class="hs-identifier hs-type">pFPS</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#FPS"><span class="hs-identifier hs-type">FPS</span></a></span><span>
+</span><span id="line-63"></span><span id="pFPS"><span class="annot"><span class="annottext">pFPS :: Int
+</span><a href="Reanimate.Parameters.html#pFPS"><span class="hs-identifier hs-var hs-var">pFPS</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO Int -&gt; Int
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">IORef Int -&gt; IO Int
+forall a. IORef a -&gt; IO a
+</span><span class="hs-identifier hs-var">readIORef</span></span><span> </span><span class="annot"><span class="annottext">IORef Int
+</span><a href="Reanimate.Parameters.html#pFPSRef"><span class="hs-identifier hs-var">pFPSRef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-64"></span><span>
+</span><span id="line-65"></span><span class="hs-comment">-- | Set desired framerate.</span><span>
+</span><span id="line-66"></span><span class="annot"><a href="Reanimate.Parameters.html#setFPS"><span class="hs-identifier hs-type">setFPS</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#FPS"><span class="hs-identifier hs-type">FPS</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-67"></span><span id="setFPS"><span class="annot"><span class="annottext">setFPS :: Int -&gt; IO ()
+</span><a href="Reanimate.Parameters.html#setFPS"><span class="hs-identifier hs-var hs-var">setFPS</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IORef Int -&gt; Int -&gt; IO ()
+forall a. IORef a -&gt; a -&gt; IO ()
+</span><span class="hs-identifier hs-var">writeIORef</span></span><span> </span><span class="annot"><span class="annottext">IORef Int
+</span><a href="Reanimate.Parameters.html#pFPSRef"><span class="hs-identifier hs-var">pFPSRef</span></a></span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pWidthRef"><span class="hs-pragma hs-type">pWidthRef</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-70"></span><span class="annot"><a href="Reanimate.Parameters.html#pWidthRef"><span class="hs-identifier hs-type">pWidthRef</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IORef</span></span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#FPS"><span class="hs-identifier hs-type">FPS</span></a></span><span>
+</span><span id="line-71"></span><span id="pWidthRef"><span class="annot"><span class="annottext">pWidthRef :: IORef Int
+</span><a href="Reanimate.Parameters.html#pWidthRef"><span class="hs-identifier hs-var hs-var">pWidthRef</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO (IORef Int) -&gt; IORef Int
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; IO (IORef Int)
+forall a. a -&gt; IO (IORef a)
+</span><span class="hs-identifier hs-var">newIORef</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span>
+</span><span id="line-72"></span><span>
+</span><span id="line-73"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pWidth"><span class="hs-pragma hs-type">pWidth</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-74"></span><span class="hs-comment">-- | Width of animation in pixel.</span><span>
+</span><span id="line-75"></span><span class="annot"><a href="Reanimate.Parameters.html#pWidth"><span class="hs-identifier hs-type">pWidth</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Width"><span class="hs-identifier hs-type">Width</span></a></span><span>
+</span><span id="line-76"></span><span id="pWidth"><span class="annot"><span class="annottext">pWidth :: Int
+</span><a href="Reanimate.Parameters.html#pWidth"><span class="hs-identifier hs-var hs-var">pWidth</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO Int -&gt; Int
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">IORef Int -&gt; IO Int
+forall a. IORef a -&gt; IO a
+</span><span class="hs-identifier hs-var">readIORef</span></span><span> </span><span class="annot"><span class="annottext">IORef Int
+</span><a href="Reanimate.Parameters.html#pWidthRef"><span class="hs-identifier hs-var">pWidthRef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span class="hs-comment">-- | Set desired width of animation in pixel.</span><span>
+</span><span id="line-79"></span><span class="annot"><a href="Reanimate.Parameters.html#setWidth"><span class="hs-identifier hs-type">setWidth</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Width"><span class="hs-identifier hs-type">Width</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-80"></span><span id="setWidth"><span class="annot"><span class="annottext">setWidth :: Int -&gt; IO ()
+</span><a href="Reanimate.Parameters.html#setWidth"><span class="hs-identifier hs-var hs-var">setWidth</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IORef Int -&gt; Int -&gt; IO ()
+forall a. IORef a -&gt; a -&gt; IO ()
+</span><span class="hs-identifier hs-var">writeIORef</span></span><span> </span><span class="annot"><span class="annottext">IORef Int
+</span><a href="Reanimate.Parameters.html#pWidthRef"><span class="hs-identifier hs-var">pWidthRef</span></a></span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pHeightRef"><span class="hs-pragma hs-type">pHeightRef</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-83"></span><span class="annot"><a href="Reanimate.Parameters.html#pHeightRef"><span class="hs-identifier hs-type">pHeightRef</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IORef</span></span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#FPS"><span class="hs-identifier hs-type">FPS</span></a></span><span>
+</span><span id="line-84"></span><span id="pHeightRef"><span class="annot"><span class="annottext">pHeightRef :: IORef Int
+</span><a href="Reanimate.Parameters.html#pHeightRef"><span class="hs-identifier hs-var hs-var">pHeightRef</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO (IORef Int) -&gt; IORef Int
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; IO (IORef Int)
+forall a. a -&gt; IO (IORef a)
+</span><span class="hs-identifier hs-var">newIORef</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span>
+</span><span id="line-85"></span><span>
+</span><span id="line-86"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pHeight"><span class="hs-pragma hs-type">pHeight</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-87"></span><span class="hs-comment">-- | Height of animation in pixel.</span><span>
+</span><span id="line-88"></span><span class="annot"><a href="Reanimate.Parameters.html#pHeight"><span class="hs-identifier hs-type">pHeight</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Height"><span class="hs-identifier hs-type">Height</span></a></span><span>
+</span><span id="line-89"></span><span id="pHeight"><span class="annot"><span class="annottext">pHeight :: Int
+</span><a href="Reanimate.Parameters.html#pHeight"><span class="hs-identifier hs-var hs-var">pHeight</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO Int -&gt; Int
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">IORef Int -&gt; IO Int
+forall a. IORef a -&gt; IO a
+</span><span class="hs-identifier hs-var">readIORef</span></span><span> </span><span class="annot"><span class="annottext">IORef Int
+</span><a href="Reanimate.Parameters.html#pHeightRef"><span class="hs-identifier hs-var">pHeightRef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-90"></span><span>
+</span><span id="line-91"></span><span class="hs-comment">-- | Set desired height of animation in pixel.</span><span>
+</span><span id="line-92"></span><span class="annot"><a href="Reanimate.Parameters.html#setHeight"><span class="hs-identifier hs-type">setHeight</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Height"><span class="hs-identifier hs-type">Height</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-93"></span><span id="setHeight"><span class="annot"><span class="annottext">setHeight :: Int -&gt; IO ()
+</span><a href="Reanimate.Parameters.html#setHeight"><span class="hs-identifier hs-var hs-var">setHeight</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IORef Int -&gt; Int -&gt; IO ()
+forall a. IORef a -&gt; a -&gt; IO ()
+</span><span class="hs-identifier hs-var">writeIORef</span></span><span> </span><span class="annot"><span class="annottext">IORef Int
+</span><a href="Reanimate.Parameters.html#pHeightRef"><span class="hs-identifier hs-var">pHeightRef</span></a></span><span>
+</span><span id="line-94"></span><span>
+</span><span id="line-95"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pNoExternalsRef"><span class="hs-pragma hs-type">pNoExternalsRef</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-96"></span><span class="annot"><a href="Reanimate.Parameters.html#pNoExternalsRef"><span class="hs-identifier hs-type">pNoExternalsRef</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IORef</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-97"></span><span id="pNoExternalsRef"><span class="annot"><span class="annottext">pNoExternalsRef :: IORef Bool
+</span><a href="Reanimate.Parameters.html#pNoExternalsRef"><span class="hs-identifier hs-var hs-var">pNoExternalsRef</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO (IORef Bool) -&gt; IORef Bool
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool -&gt; IO (IORef Bool)
+forall a. a -&gt; IO (IORef a)
+</span><span class="hs-identifier hs-var">newIORef</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span class="hs-special">)</span><span>
+</span><span id="line-98"></span><span>
+</span><span id="line-99"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pNoExternals"><span class="hs-pragma hs-type">pNoExternals</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-100"></span><span class="hs-comment">-- | This parameter determined whether or not external tools are allowed.</span><span>
+</span><span id="line-101"></span><span class="hs-comment">--   If this flag is True then tools such as 'Reanimate.LaTeX.latex' and</span><span>
+</span><span id="line-102"></span><span class="hs-comment">--   'Reanimate.Blender.blender' will not be invoked.</span><span>
+</span><span id="line-103"></span><span class="annot"><a href="Reanimate.Parameters.html#pNoExternals"><span class="hs-identifier hs-type">pNoExternals</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-104"></span><span id="pNoExternals"><span class="annot"><span class="annottext">pNoExternals :: Bool
+</span><a href="Reanimate.Parameters.html#pNoExternals"><span class="hs-identifier hs-var hs-var">pNoExternals</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO Bool -&gt; Bool
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">IORef Bool -&gt; IO Bool
+forall a. IORef a -&gt; IO a
+</span><span class="hs-identifier hs-var">readIORef</span></span><span> </span><span class="annot"><span class="annottext">IORef Bool
+</span><a href="Reanimate.Parameters.html#pNoExternalsRef"><span class="hs-identifier hs-var">pNoExternalsRef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-105"></span><span>
+</span><span id="line-106"></span><span class="hs-comment">-- | Set whether external tools are allowed.</span><span>
+</span><span id="line-107"></span><span class="annot"><a href="Reanimate.Parameters.html#setNoExternals"><span class="hs-identifier hs-type">setNoExternals</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-108"></span><span id="setNoExternals"><span class="annot"><span class="annottext">setNoExternals :: Bool -&gt; IO ()
+</span><a href="Reanimate.Parameters.html#setNoExternals"><span class="hs-identifier hs-var hs-var">setNoExternals</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IORef Bool -&gt; Bool -&gt; IO ()
+forall a. IORef a -&gt; a -&gt; IO ()
+</span><span class="hs-identifier hs-var">writeIORef</span></span><span> </span><span class="annot"><span class="annottext">IORef Bool
+</span><a href="Reanimate.Parameters.html#pNoExternalsRef"><span class="hs-identifier hs-var">pNoExternalsRef</span></a></span><span>
+</span><span id="line-109"></span><span>
+</span><span id="line-110"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pRootDirectoryRef"><span class="hs-pragma hs-type">pRootDirectoryRef</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-111"></span><span class="annot"><a href="Reanimate.Parameters.html#pRootDirectoryRef"><span class="hs-identifier hs-type">pRootDirectoryRef</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IORef</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span>
+</span><span id="line-112"></span><span id="pRootDirectoryRef"><span class="annot"><span class="annottext">pRootDirectoryRef :: IORef String
+</span><a href="Reanimate.Parameters.html#pRootDirectoryRef"><span class="hs-identifier hs-var hs-var">pRootDirectoryRef</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO (IORef String) -&gt; IORef String
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; IO (IORef String)
+forall a. a -&gt; IO (IORef a)
+</span><span class="hs-identifier hs-var">newIORef</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ShowS
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;root directory not set&quot;</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-113"></span><span>
+</span><span id="line-114"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pRootDirectory"><span class="hs-pragma hs-type">pRootDirectory</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-115"></span><span class="hs-comment">-- | Root directory of animation. Images and other data has to be placed</span><span>
+</span><span id="line-116"></span><span class="hs-comment">--   here if they are referenced in an SVG image.</span><span>
+</span><span id="line-117"></span><span class="annot"><a href="Reanimate.Parameters.html#pRootDirectory"><span class="hs-identifier hs-type">pRootDirectory</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span>
+</span><span id="line-118"></span><span id="pRootDirectory"><span class="annot"><span class="annottext">pRootDirectory :: String
+</span><a href="Reanimate.Parameters.html#pRootDirectory"><span class="hs-identifier hs-var hs-var">pRootDirectory</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO String -&gt; String
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">IORef String -&gt; IO String
+forall a. IORef a -&gt; IO a
+</span><span class="hs-identifier hs-var">readIORef</span></span><span> </span><span class="annot"><span class="annottext">IORef String
+</span><a href="Reanimate.Parameters.html#pRootDirectoryRef"><span class="hs-identifier hs-var">pRootDirectoryRef</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-119"></span><span>
+</span><span id="line-120"></span><span class="hs-comment">-- | Set the root animation directory.</span><span>
+</span><span id="line-121"></span><span class="annot"><a href="Reanimate.Parameters.html#setRootDirectory"><span class="hs-identifier hs-type">setRootDirectory</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-122"></span><span id="setRootDirectory"><span class="annot"><span class="annottext">setRootDirectory :: String -&gt; IO ()
+</span><a href="Reanimate.Parameters.html#setRootDirectory"><span class="hs-identifier hs-var hs-var">setRootDirectory</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IORef String -&gt; String -&gt; IO ()
+forall a. IORef a -&gt; a -&gt; IO ()
+</span><span class="hs-identifier hs-var">writeIORef</span></span><span> </span><span class="annot"><span class="annottext">IORef String
+</span><a href="Reanimate.Parameters.html#pRootDirectoryRef"><span class="hs-identifier hs-var">pRootDirectoryRef</span></a></span><span>
+</span><span id="line-123"></span></pre></body></html>

@@ -1,0 +1,367 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Cache</span><span>
+</span><span id="line-2"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Cache.html#cacheFile"><span class="hs-identifier">cacheFile</span></a></span><span> </span><span class="hs-comment">-- :: FilePath -&gt; (FilePath -&gt; IO ()) -&gt; IO FilePath</span><span>
+</span><span id="line-3"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Cache.html#cacheMem"><span class="hs-identifier">cacheMem</span></a></span><span>
+</span><span id="line-4"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Cache.html#cacheDisk"><span class="hs-identifier">cacheDisk</span></a></span><span>
+</span><span id="line-5"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Cache.html#cacheDiskSvg"><span class="hs-identifier">cacheDiskSvg</span></a></span><span>
+</span><span id="line-6"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Cache.html#cacheDiskKey"><span class="hs-identifier">cacheDiskKey</span></a></span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Cache.html#cacheDiskLines"><span class="hs-identifier">cacheDiskLines</span></a></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Cache.html#encodeInt"><span class="hs-identifier">encodeInt</span></a></span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-10"></span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Exception</span></span><span>   </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">evaluate</span></span><span class="hs-special">)</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>       </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">unless</span></span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Bits</span></span><span>           </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Bits</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">shiftR</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Hashable</span></span><span>       </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Hashable</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">hash</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.IORef</span></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">IORef</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">atomicModifyIORef</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">newIORef</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">readIORef</span></span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Map</span></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span>            </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Map</span></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>           </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>           </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.IO</span></span><span>        </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree</span></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Tree</span></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">pattern</span><span> </span><span class="annot"><span class="hs-identifier">None</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">unparse</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Animation.html"><span class="hs-identifier">Reanimate.Animation</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Animation.html#renderTree"><span class="hs-identifier">renderTree</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Misc.html"><span class="hs-identifier">Reanimate.Misc</span></a></span><span>      </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Misc.html#getReanimateCacheDirectory"><span class="hs-identifier">getReanimateCacheDirectory</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Misc.html#renameOrCopyFile"><span class="hs-identifier">renameOrCopyFile</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.Directory</span></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">doesFileExist</span></span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.FilePath</span></span><span>     </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(&lt;.&gt;)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(&lt;/&gt;)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO</span></span><span>           </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">hClose</span></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO.Temp</span></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">openTempFile</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">withSystemTempFile</span></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO.Unsafe</span></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">unsafePerformIO</span></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Text.XML.Light</span></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Content</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">parseXML</span></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- Memory cache and disk cache</span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="annot"><a href="Reanimate.Cache.html#cacheFile"><span class="hs-identifier hs-type">cacheFile</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span>
+</span><span id="line-34"></span><span id="cacheFile"><span class="annot"><span class="annottext">cacheFile :: FilePath -&gt; (FilePath -&gt; IO ()) -&gt; IO FilePath
+</span><a href="Reanimate.Cache.html#cacheFile"><span class="hs-identifier hs-var hs-var">cacheFile</span></a></span></span><span> </span><span id="local-6989586621679543839"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543839"><span class="hs-identifier hs-var">template</span></a></span></span><span> </span><span id="local-6989586621679543838"><span class="annot"><span class="annottext">FilePath -&gt; IO ()
+</span><a href="#local-6989586621679543838"><span class="hs-identifier hs-var">gen</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-35"></span><span>    </span><span id="local-6989586621679543837"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543837"><span class="hs-identifier hs-var">root</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO FilePath
+</span><a href="Reanimate.Misc.html#getReanimateCacheDirectory"><span class="hs-identifier hs-var">getReanimateCacheDirectory</span></a></span><span>
+</span><span id="line-36"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679543836"><span class="annot"><span class="annottext">path :: FilePath
+</span><a href="#local-6989586621679543836"><span class="hs-identifier hs-var hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543837"><span class="hs-identifier hs-var">root</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+</span><span class="hs-operator hs-var">&lt;/&gt;</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543839"><span class="hs-identifier hs-var">template</span></a></span><span>
+</span><span id="line-37"></span><span>    </span><span id="local-6989586621679543835"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679543835"><span class="hs-identifier hs-var">hit</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO Bool
+</span><span class="hs-identifier hs-var">doesFileExist</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543836"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-38"></span><span>    </span><span class="annot"><span class="annottext">Bool -&gt; IO () -&gt; IO ()
+forall (f :: * -&gt; *). Applicative f =&gt; Bool -&gt; f () -&gt; f ()
+</span><span class="hs-identifier hs-var">unless</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679543835"><span class="hs-identifier hs-var">hit</span></a></span><span> </span><span class="annot"><span class="annottext">(IO () -&gt; IO ()) -&gt; IO () -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; (FilePath -&gt; Handle -&gt; IO ()) -&gt; IO ()
+forall (m :: * -&gt; *) a.
+(MonadIO m, MonadMask m) =&gt;
+FilePath -&gt; (FilePath -&gt; Handle -&gt; m a) -&gt; m a
+</span><span class="hs-identifier hs-var">withSystemTempFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543839"><span class="hs-identifier hs-var">template</span></a></span><span> </span><span class="annot"><span class="annottext">((FilePath -&gt; Handle -&gt; IO ()) -&gt; IO ())
+-&gt; (FilePath -&gt; Handle -&gt; IO ()) -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679543834"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543834"><span class="hs-identifier hs-var">tmp</span></a></span></span><span> </span><span id="local-6989586621679543833"><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679543833"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-39"></span><span>      </span><span class="annot"><span class="annottext">Handle -&gt; IO ()
+</span><span class="hs-identifier hs-var">hClose</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679543833"><span class="hs-identifier hs-var">h</span></a></span><span>
+</span><span id="line-40"></span><span>      </span><span class="annot"><span class="annottext">FilePath -&gt; IO ()
+</span><a href="#local-6989586621679543838"><span class="hs-identifier hs-var">gen</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543834"><span class="hs-identifier hs-var">tmp</span></a></span><span>
+</span><span id="line-41"></span><span>      </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; IO ()
+</span><a href="Reanimate.Misc.html#renameOrCopyFile"><span class="hs-identifier hs-var">renameOrCopyFile</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543834"><span class="hs-identifier hs-var">tmp</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543836"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-42"></span><span>    </span><span class="annot"><span class="annottext">FilePath -&gt; IO FilePath
+forall a. a -&gt; IO a
+</span><span class="hs-identifier hs-var">evaluate</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543836"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span id="local-6989586621679543897"><span class="annot"><a href="Reanimate.Cache.html#cacheDisk"><span class="hs-identifier hs-type">cacheDisk</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679543897"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679543897"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><a href="#local-6989586621679543897"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><a href="#local-6989586621679543897"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-45"></span><span id="cacheDisk"><span class="annot"><span class="annottext">cacheDisk :: FilePath
+-&gt; (Text -&gt; Maybe a)
+-&gt; (a -&gt; Text)
+-&gt; (Text -&gt; IO a)
+-&gt; Text
+-&gt; IO a
+</span><a href="Reanimate.Cache.html#cacheDisk"><span class="hs-identifier hs-var hs-var">cacheDisk</span></a></span></span><span> </span><span id="local-6989586621679543831"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543831"><span class="hs-identifier hs-var">cacheType</span></a></span></span><span> </span><span id="local-6989586621679543830"><span class="annot"><span class="annottext">Text -&gt; Maybe a
+</span><a href="#local-6989586621679543830"><span class="hs-identifier hs-var">parse</span></a></span></span><span> </span><span id="local-6989586621679543829"><span class="annot"><span class="annottext">a -&gt; Text
+</span><a href="#local-6989586621679543829"><span class="hs-identifier hs-var">render</span></a></span></span><span> </span><span id="local-6989586621679543828"><span class="annot"><span class="annottext">Text -&gt; IO a
+</span><a href="#local-6989586621679543828"><span class="hs-identifier hs-var">gen</span></a></span></span><span> </span><span id="local-6989586621679543827"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679543827"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-46"></span><span>    </span><span id="local-6989586621679543826"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543826"><span class="hs-identifier hs-var">root</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO FilePath
+</span><a href="Reanimate.Misc.html#getReanimateCacheDirectory"><span class="hs-identifier hs-var">getReanimateCacheDirectory</span></a></span><span>
+</span><span id="line-47"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679543825"><span class="annot"><span class="annottext">path :: FilePath
+</span><a href="#local-6989586621679543825"><span class="hs-identifier hs-var hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543826"><span class="hs-identifier hs-var">root</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+</span><span class="hs-operator hs-var">&lt;/&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; FilePath
+</span><a href="Reanimate.Cache.html#encodeInt"><span class="hs-identifier hs-var">encodeInt</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Int
+forall a. Hashable a =&gt; a -&gt; Int
+</span><span class="hs-identifier hs-var">hash</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679543827"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+</span><span class="hs-operator hs-var">&lt;.&gt;</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543831"><span class="hs-identifier hs-var">cacheType</span></a></span><span>
+</span><span id="line-48"></span><span>    </span><span id="local-6989586621679543824"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679543824"><span class="hs-identifier hs-var">hit</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO Bool
+</span><span class="hs-identifier hs-var">doesFileExist</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543825"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-49"></span><span>    </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679543824"><span class="hs-identifier hs-var">hit</span></a></span><span>
+</span><span id="line-50"></span><span>      </span><span class="hs-keyword">then</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-51"></span><span>        </span><span id="local-6989586621679543823"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679543823"><span class="hs-identifier hs-var">inp</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO Text
+</span><span class="hs-identifier hs-var">T.readFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543825"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-52"></span><span>        </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Maybe a
+</span><a href="#local-6989586621679543830"><span class="hs-identifier hs-var">parse</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679543823"><span class="hs-identifier hs-var">inp</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-53"></span><span>          </span><span class="annot"><span class="annottext">Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; IO a
+</span><a href="#local-6989586621679543821"><span class="hs-identifier hs-var">genCache</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543826"><span class="hs-identifier hs-var">root</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543825"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-54"></span><span>          </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679543820"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679543820"><span class="hs-identifier hs-var">val</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">a -&gt; IO a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679543820"><span class="hs-identifier hs-var">val</span></a></span><span>
+</span><span id="line-55"></span><span>      </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; IO a
+</span><a href="#local-6989586621679543821"><span class="hs-identifier hs-var">genCache</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543826"><span class="hs-identifier hs-var">root</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543825"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-56"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-57"></span><span>    </span><span id="local-6989586621679543821"><span class="annot"><span class="annottext">genCache :: FilePath -&gt; FilePath -&gt; IO a
+</span><a href="#local-6989586621679543821"><span class="hs-identifier hs-var hs-var">genCache</span></a></span></span><span> </span><span id="local-6989586621679543819"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543819"><span class="hs-identifier hs-var">root</span></a></span></span><span> </span><span id="local-6989586621679543818"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543818"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-58"></span><span>      </span><span class="hs-special">(</span><span id="local-6989586621679543817"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543817"><span class="hs-identifier hs-var">tmpPath</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679543816"><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679543816"><span class="hs-identifier hs-var">tmpHandle</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; IO (FilePath, Handle)
+</span><span class="hs-identifier hs-var">openTempFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543819"><span class="hs-identifier hs-var">root</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; FilePath
+</span><a href="Reanimate.Cache.html#encodeInt"><span class="hs-identifier hs-var">encodeInt</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Int
+forall a. Hashable a =&gt; a -&gt; Int
+</span><span class="hs-identifier hs-var">hash</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679543827"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-59"></span><span>      </span><span id="local-6989586621679543815"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679543815"><span class="hs-identifier hs-var">new</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Text -&gt; IO a
+</span><a href="#local-6989586621679543828"><span class="hs-identifier hs-var">gen</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679543827"><span class="hs-identifier hs-var">key</span></a></span><span>
+</span><span id="line-60"></span><span>      </span><span class="annot"><span class="annottext">Handle -&gt; Text -&gt; IO ()
+</span><span class="hs-identifier hs-var">T.hPutStr</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679543816"><span class="hs-identifier hs-var">tmpHandle</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Text
+</span><a href="#local-6989586621679543829"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679543815"><span class="hs-identifier hs-var">new</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-61"></span><span>      </span><span class="annot"><span class="annottext">Handle -&gt; IO ()
+</span><span class="hs-identifier hs-var">hClose</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679543816"><span class="hs-identifier hs-var">tmpHandle</span></a></span><span>
+</span><span id="line-62"></span><span>      </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; IO ()
+</span><a href="Reanimate.Misc.html#renameOrCopyFile"><span class="hs-identifier hs-var">renameOrCopyFile</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543817"><span class="hs-identifier hs-var">tmpPath</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543818"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-63"></span><span>      </span><span class="annot"><span class="annottext">a -&gt; IO a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679543815"><span class="hs-identifier hs-var">new</span></a></span><span>
+</span><span id="line-64"></span><span>
+</span><span id="line-65"></span><span class="annot"><a href="Reanimate.Cache.html#cacheDiskKey"><span class="hs-identifier hs-type">cacheDiskKey</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-66"></span><span id="cacheDiskKey"><span class="annot"><span class="annottext">cacheDiskKey :: Text -&gt; IO Tree -&gt; IO Tree
+</span><a href="Reanimate.Cache.html#cacheDiskKey"><span class="hs-identifier hs-var hs-var">cacheDiskKey</span></a></span></span><span> </span><span id="local-6989586621679543813"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679543813"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span id="local-6989586621679543812"><span class="annot"><span class="annottext">IO Tree
+</span><a href="#local-6989586621679543812"><span class="hs-identifier hs-var">gen</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Text -&gt; IO Tree) -&gt; Text -&gt; IO Tree
+</span><a href="Reanimate.Cache.html#cacheDiskSvg"><span class="hs-identifier hs-var">cacheDiskSvg</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">IO Tree -&gt; Text -&gt; IO Tree
+forall a b. a -&gt; b -&gt; a
+</span><span class="hs-identifier hs-var">const</span></span><span> </span><span class="annot"><span class="annottext">IO Tree
+</span><a href="#local-6989586621679543812"><span class="hs-identifier hs-var">gen</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679543813"><span class="hs-identifier hs-var">key</span></a></span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span class="annot"><a href="Reanimate.Cache.html#cacheDiskSvg"><span class="hs-identifier hs-type">cacheDiskSvg</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span class="hs-special">)</span><span>
+</span><span id="line-69"></span><span id="cacheDiskSvg"><span class="annot"><span class="annottext">cacheDiskSvg :: (Text -&gt; IO Tree) -&gt; Text -&gt; IO Tree
+</span><a href="Reanimate.Cache.html#cacheDiskSvg"><span class="hs-identifier hs-var hs-var">cacheDiskSvg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FilePath
+-&gt; (Text -&gt; Maybe Tree)
+-&gt; (Tree -&gt; Text)
+-&gt; (Text -&gt; IO Tree)
+-&gt; Text
+-&gt; IO Tree
+forall a.
+FilePath
+-&gt; (Text -&gt; Maybe a)
+-&gt; (a -&gt; Text)
+-&gt; (Text -&gt; IO a)
+-&gt; Text
+-&gt; IO a
+</span><a href="Reanimate.Cache.html#cacheDisk"><span class="hs-identifier hs-var">cacheDisk</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;svg&quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Maybe Tree
+forall s. XmlSource s =&gt; s -&gt; Maybe Tree
+</span><a href="#local-6989586621679543810"><span class="hs-identifier hs-var">parse</span></a></span><span> </span><span class="annot"><span class="annottext">Tree -&gt; Text
+</span><a href="#local-6989586621679543809"><span class="hs-identifier hs-var">render</span></a></span><span>
+</span><span id="line-70"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-71"></span><span>    </span><span id="local-6989586621679543810"><span class="annot"><span class="annottext">parse :: s -&gt; Maybe Tree
+</span><a href="#local-6989586621679543810"><span class="hs-identifier hs-var hs-var">parse</span></a></span></span><span> </span><span id="local-6989586621679543808"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679543808"><span class="hs-identifier hs-var">txt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">s -&gt; [Content]
+forall s. XmlSource s =&gt; s -&gt; [Content]
+</span><span class="hs-identifier hs-var">parseXML</span></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679543808"><span class="hs-identifier hs-var">txt</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-72"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Elem</span></span><span> </span><span id="local-6989586621679543806"><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679543806"><span class="hs-identifier hs-var">t</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Tree -&gt; Maybe Tree
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Element -&gt; Tree
+</span><span class="hs-identifier hs-var">unparse</span></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679543806"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-73"></span><span>      </span><span class="annot"><span class="annottext">[Content]
+</span><span class="hs-identifier">_</span></span><span>        </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Tree
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-74"></span><span>    </span><span id="local-6989586621679543809"><span class="annot"><span class="annottext">render :: Tree -&gt; Text
+</span><a href="#local-6989586621679543809"><span class="hs-identifier hs-var hs-var">render</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="annottext">(FilePath -&gt; Text) -&gt; (Tree -&gt; FilePath) -&gt; Tree -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Tree -&gt; FilePath
+</span><a href="Reanimate.Animation.html#renderTree"><span class="hs-identifier hs-var">renderTree</span></a></span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span class="annot"><a href="Reanimate.Cache.html#cacheDiskLines"><span class="hs-identifier hs-type">cacheDiskLines</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-77"></span><span id="cacheDiskLines"><span class="annot"><span class="annottext">cacheDiskLines :: (Text -&gt; IO [Text]) -&gt; Text -&gt; IO [Text]
+</span><a href="Reanimate.Cache.html#cacheDiskLines"><span class="hs-identifier hs-var hs-var">cacheDiskLines</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FilePath
+-&gt; (Text -&gt; Maybe [Text])
+-&gt; ([Text] -&gt; Text)
+-&gt; (Text -&gt; IO [Text])
+-&gt; Text
+-&gt; IO [Text]
+forall a.
+FilePath
+-&gt; (Text -&gt; Maybe a)
+-&gt; (a -&gt; Text)
+-&gt; (Text -&gt; IO a)
+-&gt; Text
+-&gt; IO a
+</span><a href="Reanimate.Cache.html#cacheDisk"><span class="hs-identifier hs-var">cacheDisk</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;txt&quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Maybe [Text]
+</span><a href="#local-6989586621679543803"><span class="hs-identifier hs-var">parse</span></a></span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Text
+</span><a href="#local-6989586621679543802"><span class="hs-identifier hs-var">render</span></a></span><span>
+</span><span id="line-78"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-79"></span><span>    </span><span id="local-6989586621679543803"><span class="annot"><span class="annottext">parse :: Text -&gt; Maybe [Text]
+</span><a href="#local-6989586621679543803"><span class="hs-identifier hs-var hs-var">parse</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Maybe [Text]
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">([Text] -&gt; Maybe [Text])
+-&gt; (Text -&gt; [Text]) -&gt; Text -&gt; Maybe [Text]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; [Text]
+</span><span class="hs-identifier hs-var">T.lines</span></span><span>
+</span><span id="line-80"></span><span>    </span><span id="local-6989586621679543802"><span class="annot"><span class="annottext">render :: [Text] -&gt; Text
+</span><a href="#local-6989586621679543802"><span class="hs-identifier hs-var hs-var">render</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Text
+</span><span class="hs-identifier hs-var">T.unlines</span></span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span>
+</span><span id="line-83"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Cache.html#cache"><span class="hs-pragma hs-type">cache</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-84"></span><span class="annot"><a href="Reanimate.Cache.html#cache"><span class="hs-identifier hs-type">cache</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IORef</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Map</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span class="hs-special">)</span><span>
+</span><span id="line-85"></span><span id="cache"><span class="annot"><span class="annottext">cache :: IORef (Map Text Tree)
+</span><a href="Reanimate.Cache.html#cache"><span class="hs-identifier hs-var hs-var">cache</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO (IORef (Map Text Tree)) -&gt; IORef (Map Text Tree)
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map Text Tree -&gt; IO (IORef (Map Text Tree))
+forall a. a -&gt; IO (IORef a)
+</span><span class="hs-identifier hs-var">newIORef</span></span><span> </span><span class="annot"><span class="annottext">Map Text Tree
+forall k a. Map k a
+</span><span class="hs-identifier hs-var">Map.empty</span></span><span class="hs-special">)</span><span>
+</span><span id="line-86"></span><span>
+</span><span id="line-87"></span><span class="annot"><a href="Reanimate.Cache.html#cacheMem"><span class="hs-identifier hs-type">cacheMem</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span class="hs-special">)</span><span>
+</span><span id="line-88"></span><span id="cacheMem"><span class="annot"><span class="annottext">cacheMem :: (Text -&gt; IO Tree) -&gt; Text -&gt; IO Tree
+</span><a href="Reanimate.Cache.html#cacheMem"><span class="hs-identifier hs-var hs-var">cacheMem</span></a></span></span><span> </span><span id="local-6989586621679543797"><span class="annot"><span class="annottext">Text -&gt; IO Tree
+</span><a href="#local-6989586621679543797"><span class="hs-identifier hs-var">gen</span></a></span></span><span> </span><span id="local-6989586621679543796"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679543796"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-89"></span><span>  </span><span id="local-6989586621679543795"><span class="annot"><span class="annottext">Map Text Tree
+</span><a href="#local-6989586621679543795"><span class="hs-identifier hs-var">store</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IORef (Map Text Tree) -&gt; IO (Map Text Tree)
+forall a. IORef a -&gt; IO a
+</span><span class="hs-identifier hs-var">readIORef</span></span><span> </span><span class="annot"><span class="annottext">IORef (Map Text Tree)
+</span><a href="Reanimate.Cache.html#cache"><span class="hs-identifier hs-var">cache</span></a></span><span>
+</span><span id="line-90"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Map Text Tree -&gt; Maybe Tree
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Map.lookup</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679543796"><span class="hs-identifier hs-var">key</span></a></span><span> </span><span class="annot"><span class="annottext">Map Text Tree
+</span><a href="#local-6989586621679543795"><span class="hs-identifier hs-var">store</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-91"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679543793"><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679543793"><span class="hs-identifier hs-var">svg</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Tree -&gt; IO Tree
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679543793"><span class="hs-identifier hs-var">svg</span></a></span><span>
+</span><span id="line-92"></span><span>    </span><span class="annot"><span class="annottext">Maybe Tree
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-93"></span><span>      </span><span id="local-6989586621679543792"><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679543792"><span class="hs-identifier hs-var">svg</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Text -&gt; IO Tree
+</span><a href="#local-6989586621679543797"><span class="hs-identifier hs-var">gen</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679543796"><span class="hs-identifier hs-var">key</span></a></span><span>
+</span><span id="line-94"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679543792"><span class="hs-identifier hs-var">svg</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-95"></span><span>        </span><span class="hs-comment">-- None usually indicates that latex or another tool was misconfigured. In this case,</span><span>
+</span><span id="line-96"></span><span>        </span><span class="hs-comment">-- don't store the result.</span><span>
+</span><span id="line-97"></span><span>        </span><span class="annot"><span class="annottext">Tree
+</span><span class="hs-identifier hs-var">None</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Tree -&gt; IO Tree
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679543792"><span class="hs-identifier hs-var">svg</span></a></span><span>
+</span><span id="line-98"></span><span>        </span><span class="annot"><span class="annottext">Tree
+</span><span class="hs-identifier">_</span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">IORef (Map Text Tree)
+-&gt; (Map Text Tree -&gt; (Map Text Tree, Tree)) -&gt; IO Tree
+forall a b. IORef a -&gt; (a -&gt; (a, b)) -&gt; IO b
+</span><span class="hs-identifier hs-var">atomicModifyIORef</span></span><span> </span><span class="annot"><span class="annottext">IORef (Map Text Tree)
+</span><a href="Reanimate.Cache.html#cache"><span class="hs-identifier hs-var">cache</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679543791"><span class="annot"><span class="annottext">Map Text Tree
+</span><a href="#local-6989586621679543791"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Tree -&gt; Map Text Tree -&gt; Map Text Tree
+forall k a. Ord k =&gt; k -&gt; a -&gt; Map k a -&gt; Map k a
+</span><span class="hs-identifier hs-var">Map.insert</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679543796"><span class="hs-identifier hs-var">key</span></a></span><span> </span><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679543792"><span class="hs-identifier hs-var">svg</span></a></span><span> </span><span class="annot"><span class="annottext">Map Text Tree
+</span><a href="#local-6989586621679543791"><span class="hs-identifier hs-var">m</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679543792"><span class="hs-identifier hs-var">svg</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span class="annot"><a href="Reanimate.Cache.html#encodeInt"><span class="hs-identifier hs-type">encodeInt</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-101"></span><span id="encodeInt"><span class="annot"><span class="annottext">encodeInt :: Int -&gt; FilePath
+</span><a href="Reanimate.Cache.html#encodeInt"><span class="hs-identifier hs-var hs-var">encodeInt</span></a></span></span><span> </span><span id="local-6989586621679543789"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543789"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word -&gt; Int -&gt; FilePath
+</span><a href="#local-6989586621679543788"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Word
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543789"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">60</span></span><span>
+</span><span id="line-102"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-103"></span><span>    </span><span class="annot"><a href="#local-6989586621679543788"><span class="hs-identifier hs-type">worker</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-104"></span><span>    </span><span id="local-6989586621679543788"><span class="annot"><span class="annottext">worker :: Word -&gt; Int -&gt; FilePath
+</span><a href="#local-6989586621679543788"><span class="hs-identifier hs-var hs-var">worker</span></a></span></span><span> </span><span id="local-6989586621679543787"><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679543787"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span id="local-6989586621679543786"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543786"><span class="hs-identifier hs-var">sh</span></a></span></span><span>
+</span><span id="line-105"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543786"><span class="hs-identifier hs-var">sh</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-106"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-107"></span><span>        </span><span class="hs-keyword">case</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679543787"><span class="hs-identifier hs-var">key</span></a></span><span> </span><span class="annot"><span class="annottext">Word -&gt; Int -&gt; Word
+forall a. Bits a =&gt; a -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">`shiftR`</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543786"><span class="hs-identifier hs-var">sh</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Word -&gt; Word -&gt; Word
+forall a. Integral a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">`mod`</span></span><span> </span><span class="annot"><span class="annottext">Word
+</span><span class="hs-number">64</span></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-108"></span><span>          </span><span id="local-6989586621679543783"><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679543783"><span class="hs-identifier hs-var">idx</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543782"><span class="hs-identifier hs-var">alphabet</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; Int -&gt; Char
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="annot"><span class="annottext">Word -&gt; Int
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679543783"><span class="hs-identifier hs-var">idx</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; FilePath -&gt; FilePath
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Word -&gt; Int -&gt; FilePath
+</span><a href="#local-6989586621679543788"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679543787"><span class="hs-identifier hs-var">key</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543786"><span class="hs-identifier hs-var">sh</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">6</span></span><span class="hs-special">)</span><span>
+</span><span id="line-109"></span><span>    </span><span id="local-6989586621679543782"><span class="annot"><span class="annottext">alphabet :: FilePath
+</span><a href="#local-6989586621679543782"><span class="hs-identifier hs-var hs-var">alphabet</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+$&quot;</span></span><span>
+</span><span id="line-110"></span></pre></body></html>

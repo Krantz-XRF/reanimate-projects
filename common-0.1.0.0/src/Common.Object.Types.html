@@ -1,0 +1,1426 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span id="%24con2tag_KROWVdqed7YKloeEdvreJ1"></span><span class="hs-comment">{-|
+Module      : Common.Object.Types
+Description : Some useful object types.
+Copyright   : (c) Xie Ruifeng, 2020
+License     : AGPL-3
+Maintainer  : krantz.xrf@outlook.com
+Stability   : experimental
+Portability : portable
+-}</span><span>
+</span><span id="line-10"></span><span class="hs-pragma">{-# LANGUAGE ExistentialQuantification #-}</span><span>
+</span><span id="line-11"></span><span class="hs-pragma">{-# LANGUAGE OverloadedStrings         #-}</span><span>
+</span><span id="line-12"></span><span class="hs-pragma">{-# LANGUAGE QuasiQuotes               #-}</span><span>
+</span><span id="line-13"></span><span class="hs-pragma">{-# LANGUAGE TypeFamilies              #-}</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Common.Object.Types</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>         </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(.~)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(?~)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.State</span></span><span>  </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">MonadState</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">evalState</span></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Foldable</span></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Foldable</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">toList</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Function</span></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(&amp;)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Functor.Compose</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Compose</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Compose</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">GHC.Exts</span></span><span>             </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">IsList</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">IsString</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Common.HexColour.html"><span class="hs-identifier">Common.HexColour</span></a></span><span>              </span><span class="hs-special">(</span><span class="annot"><a href="Common.HexColour.html#rgba"><span class="hs-identifier">rgba</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Common.Object.SyntaxHighlight.html"><span class="hs-identifier">Common.Object.SyntaxHighlight</span></a></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Common.Object.Transform.html"><span class="hs-identifier">Common.Object.Transform</span></a></span><span>       </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Transform.html#GroupRender"><span class="hs-identifier">GroupRender</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree</span></span><span> </span><span class="hs-keyword">hiding</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Line</span></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate</span></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate.LaTeX</span></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate.Scene</span></span><span>  </span><span class="hs-keyword">hiding</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">rectHeight</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">rectWidth</span></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span class="hs-comment">-- |Center a group of objects.</span><span>
+</span><span id="line-35"></span><span id="local-6989586621679233910"><span class="annot"><a href="Common.Object.Types.html#centerAsGroup"><span class="hs-identifier hs-type">centerAsGroup</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Functor</span></span><span> </span><span class="annot"><a href="#local-6989586621679233910"><span class="hs-identifier hs-type">t</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Foldable</span></span><span> </span><span class="annot"><a href="#local-6989586621679233910"><span class="hs-identifier hs-type">t</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679233910"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679233910"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span></span><span>
+</span><span id="line-36"></span><span id="centerAsGroup"><span class="annot"><span class="annottext">centerAsGroup :: t SVG -&gt; t SVG
+</span><a href="Common.Object.Types.html#centerAsGroup"><span class="hs-identifier hs-var hs-var">centerAsGroup</span></a></span></span><span> </span><span id="local-6989586621679233716"><span class="annot"><span class="annottext">t SVG
+</span><a href="#local-6989586621679233716"><span class="hs-identifier hs-var">xs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679233715"><span class="annot"><span class="annottext">g :: SVG
+</span><a href="#local-6989586621679233715"><span class="hs-identifier hs-var hs-var">g</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[SVG] -&gt; SVG
+</span><span class="hs-identifier hs-var">mkGroup</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">t SVG -&gt; [SVG]
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; [a]
+</span><span class="hs-identifier hs-var">Data.Foldable.toList</span></span><span> </span><span class="annot"><span class="annottext">t SVG
+</span><a href="#local-6989586621679233716"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; t SVG -&gt; t SVG
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SVG -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">centerUsing</span></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233715"><span class="hs-identifier hs-var">g</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">t SVG
+</span><a href="#local-6989586621679233716"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-37"></span><span>
+</span><span id="line-38"></span><span class="hs-comment">-- * Any Renderable Object</span><span>
+</span><span id="line-39"></span><span>
+</span><span id="line-40"></span><span class="hs-comment">-- |Any 'Renderable' object.</span><span>
+</span><span id="line-41"></span><span class="hs-keyword">data</span><span> </span><span id="AnyRenderable"><span class="annot"><a href="Common.Object.Types.html#AnyRenderable"><span class="hs-identifier hs-var">AnyRenderable</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679233712"><span class="annot"><a href="#local-6989586621679233712"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-operator">.</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Renderable</span></span><span> </span><span class="annot"><a href="#local-6989586621679233712"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span id="AnyRenderable"><span class="annot"><a href="Common.Object.Types.html#AnyRenderable"><span class="hs-identifier hs-var">AnyRenderable</span></a></span></span><span> </span><span class="annot"><a href="#local-6989586621679233712"><span class="hs-identifier hs-type">a</span></a></span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Renderable</span></span><span> </span><span class="annot"><a href="Common.Object.Types.html#AnyRenderable"><span class="hs-identifier hs-type">AnyRenderable</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-44"></span><span>  </span><span id="local-6989586621679233708"><span class="annot"><span class="annottext">toSVG :: AnyRenderable -&gt; SVG
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">toSVG</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Types.html#AnyRenderable"><span class="hs-identifier hs-type">AnyRenderable</span></a></span><span> </span><span id="local-6989586621679233706"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233706"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; SVG
+forall a. Renderable a =&gt; a -&gt; SVG
+</span><span class="hs-identifier hs-var">toSVG</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233706"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span class="hs-comment">-- * Groups</span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span class="hs-comment">-- |A group of renderable objects, rendered using 'renderGroup'.</span><span>
+</span><span id="line-49"></span><span class="hs-keyword">newtype</span><span> </span><span id="ObjectGroup"><span class="annot"><a href="Common.Object.Types.html#ObjectGroup"><span class="hs-identifier hs-var">ObjectGroup</span></a></span></span><span> </span><span id="local-6989586621679233923"><span class="annot"><a href="#local-6989586621679233923"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="ObjectGroup"><span class="annot"><a href="Common.Object.Types.html#ObjectGroup"><span class="hs-identifier hs-var">ObjectGroup</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="unwrapObjectGroup"><span class="annot"><span class="annottext">ObjectGroup a -&gt; [a]
+</span><a href="Common.Object.Types.html#unwrapObjectGroup"><span class="hs-identifier hs-var hs-var">unwrapObjectGroup</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679233923"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-50"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233698"><span id="local-6989586621679233700"><span id="local-6989586621679233702"><span class="annot"><span class="annottext">Int -&gt; ObjectGroup a -&gt; ShowS
+[ObjectGroup a] -&gt; ShowS
+ObjectGroup a -&gt; String
+(Int -&gt; ObjectGroup a -&gt; ShowS)
+-&gt; (ObjectGroup a -&gt; String)
+-&gt; ([ObjectGroup a] -&gt; ShowS)
+-&gt; Show (ObjectGroup a)
+forall a. Show a =&gt; Int -&gt; ObjectGroup a -&gt; ShowS
+forall a. Show a =&gt; [ObjectGroup a] -&gt; ShowS
+forall a. Show a =&gt; ObjectGroup a -&gt; String
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [ObjectGroup a] -&gt; ShowS
+$cshowList :: forall a. Show a =&gt; [ObjectGroup a] -&gt; ShowS
+show :: ObjectGroup a -&gt; String
+$cshow :: forall a. Show a =&gt; ObjectGroup a -&gt; String
+showsPrec :: Int -&gt; ObjectGroup a -&gt; ShowS
+$cshowsPrec :: forall a. Show a =&gt; Int -&gt; ObjectGroup a -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233693"><span id="local-6989586621679233695"><span class="annot"><span class="annottext">ObjectGroup a -&gt; ObjectGroup a -&gt; Bool
+(ObjectGroup a -&gt; ObjectGroup a -&gt; Bool)
+-&gt; (ObjectGroup a -&gt; ObjectGroup a -&gt; Bool) -&gt; Eq (ObjectGroup a)
+forall a. Eq a =&gt; ObjectGroup a -&gt; ObjectGroup a -&gt; Bool
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: ObjectGroup a -&gt; ObjectGroup a -&gt; Bool
+$c/= :: forall a. Eq a =&gt; ObjectGroup a -&gt; ObjectGroup a -&gt; Bool
+== :: ObjectGroup a -&gt; ObjectGroup a -&gt; Bool
+$c== :: forall a. Eq a =&gt; ObjectGroup a -&gt; ObjectGroup a -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span id="local-6989586621679233691"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679233688"><span class="annot"><span class="hs-identifier hs-type">IsList</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Types.html#ObjectGroup"><span class="hs-identifier hs-type">ObjectGroup</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233691"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-53"></span><span>  </span><span class="hs-keyword">type</span><span> </span><span id="Item"><span class="annot"><span class="hs-identifier hs-var">Item</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Types.html#ObjectGroup"><span class="hs-identifier hs-type">ObjectGroup</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233691"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="#local-6989586621679233691"><span class="hs-identifier hs-type">a</span></a></span><span>
+</span><span id="line-54"></span><span>  </span><span id="local-6989586621679233685"><span class="annot"><span class="annottext">fromList :: [Item (ObjectGroup a)] -&gt; ObjectGroup a
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">fromList</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Item (ObjectGroup a)] -&gt; ObjectGroup a
+forall a. [a] -&gt; ObjectGroup a
+</span><a href="Common.Object.Types.html#ObjectGroup"><span class="hs-identifier hs-var">ObjectGroup</span></a></span><span>
+</span><span id="line-55"></span><span>  </span><span id="local-6989586621679233684"><span class="annot"><span class="annottext">toList :: ObjectGroup a -&gt; [Item (ObjectGroup a)]
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">toList</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ObjectGroup a -&gt; [Item (ObjectGroup a)]
+forall a. ObjectGroup a -&gt; [a]
+</span><a href="Common.Object.Types.html#unwrapObjectGroup"><span class="hs-identifier hs-var hs-var">unwrapObjectGroup</span></a></span></span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span id="local-6989586621679233683"><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Common.Object.Transform.html#GroupRender"><span class="hs-identifier hs-type">GroupRender</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233683"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Renderable</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Types.html#ObjectGroup"><span class="hs-identifier hs-type">ObjectGroup</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233683"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-58"></span><span>  </span><span id="local-6989586621679233681"><span class="annot"><span class="annottext">toSVG :: ObjectGroup a -&gt; SVG
+</span><a href="#local-6989586621679233681"><span class="hs-identifier hs-var hs-var hs-var hs-var">toSVG</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[SVG] -&gt; SVG
+</span><span class="hs-identifier hs-var">mkGroup</span></span><span> </span><span class="annot"><span class="annottext">([SVG] -&gt; SVG) -&gt; (ObjectGroup a -&gt; [SVG]) -&gt; ObjectGroup a -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[a] -&gt; [SVG]
+forall a (t :: * -&gt; *).
+(GroupRender a, Traversable t) =&gt;
+t a -&gt; t SVG
+</span><a href="Common.Object.Transform.html#renderGroup"><span class="hs-identifier hs-var">renderGroup</span></a></span><span> </span><span class="annot"><span class="annottext">([a] -&gt; [SVG]) -&gt; (ObjectGroup a -&gt; [a]) -&gt; ObjectGroup a -&gt; [SVG]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">ObjectGroup a -&gt; [a]
+forall a. ObjectGroup a -&gt; [a]
+</span><a href="Common.Object.Types.html#unwrapObjectGroup"><span class="hs-identifier hs-var hs-var">unwrapObjectGroup</span></a></span></span><span>
+</span><span id="line-59"></span><span>
+</span><span id="line-60"></span><span class="hs-comment">-- * Code Chunks</span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span class="hs-comment">-- |Code chunks typeset by XeLaTeX in type writer font.</span><span>
+</span><span id="line-63"></span><span class="hs-keyword">newtype</span><span> </span><span id="CodeChunk"><span class="annot"><a href="Common.Object.Types.html#CodeChunk"><span class="hs-identifier hs-var">CodeChunk</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="CodeChunk"><span class="annot"><a href="Common.Object.Types.html#CodeChunk"><span class="hs-identifier hs-var">CodeChunk</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="unwrapCodeChunk"><span class="annot"><span class="annottext">CodeChunk -&gt; Text
+</span><a href="Common.Object.Types.html#unwrapCodeChunk"><span class="hs-identifier hs-var hs-var">unwrapCodeChunk</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-64"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233671"><span id="local-6989586621679233673"><span id="local-6989586621679233675"><span class="annot"><span class="annottext">Int -&gt; CodeChunk -&gt; ShowS
+[CodeChunk] -&gt; ShowS
+CodeChunk -&gt; String
+(Int -&gt; CodeChunk -&gt; ShowS)
+-&gt; (CodeChunk -&gt; String)
+-&gt; ([CodeChunk] -&gt; ShowS)
+-&gt; Show CodeChunk
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [CodeChunk] -&gt; ShowS
+$cshowList :: [CodeChunk] -&gt; ShowS
+show :: CodeChunk -&gt; String
+$cshow :: CodeChunk -&gt; String
+showsPrec :: Int -&gt; CodeChunk -&gt; ShowS
+$cshowsPrec :: Int -&gt; CodeChunk -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233667"><span id="local-6989586621679233669"><span class="annot"><span class="annottext">CodeChunk -&gt; CodeChunk -&gt; Bool
+(CodeChunk -&gt; CodeChunk -&gt; Bool)
+-&gt; (CodeChunk -&gt; CodeChunk -&gt; Bool) -&gt; Eq CodeChunk
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: CodeChunk -&gt; CodeChunk -&gt; Bool
+$c/= :: CodeChunk -&gt; CodeChunk -&gt; Bool
+== :: CodeChunk -&gt; CodeChunk -&gt; Bool
+$c== :: CodeChunk -&gt; CodeChunk -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233652"><span id="local-6989586621679233654"><span id="local-6989586621679233656"><span id="local-6989586621679233658"><span id="local-6989586621679233660"><span id="local-6989586621679233662"><span id="local-6989586621679233664"><span class="annot"><span class="annottext">Eq CodeChunk
+Eq CodeChunk
+-&gt; (CodeChunk -&gt; CodeChunk -&gt; Ordering)
+-&gt; (CodeChunk -&gt; CodeChunk -&gt; Bool)
+-&gt; (CodeChunk -&gt; CodeChunk -&gt; Bool)
+-&gt; (CodeChunk -&gt; CodeChunk -&gt; Bool)
+-&gt; (CodeChunk -&gt; CodeChunk -&gt; Bool)
+-&gt; (CodeChunk -&gt; CodeChunk -&gt; CodeChunk)
+-&gt; (CodeChunk -&gt; CodeChunk -&gt; CodeChunk)
+-&gt; Ord CodeChunk
+CodeChunk -&gt; CodeChunk -&gt; Bool
+CodeChunk -&gt; CodeChunk -&gt; Ordering
+CodeChunk -&gt; CodeChunk -&gt; CodeChunk
+forall a.
+Eq a
+-&gt; (a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+min :: CodeChunk -&gt; CodeChunk -&gt; CodeChunk
+$cmin :: CodeChunk -&gt; CodeChunk -&gt; CodeChunk
+max :: CodeChunk -&gt; CodeChunk -&gt; CodeChunk
+$cmax :: CodeChunk -&gt; CodeChunk -&gt; CodeChunk
+&gt;= :: CodeChunk -&gt; CodeChunk -&gt; Bool
+$c&gt;= :: CodeChunk -&gt; CodeChunk -&gt; Bool
+&gt; :: CodeChunk -&gt; CodeChunk -&gt; Bool
+$c&gt; :: CodeChunk -&gt; CodeChunk -&gt; Bool
+&lt;= :: CodeChunk -&gt; CodeChunk -&gt; Bool
+$c&lt;= :: CodeChunk -&gt; CodeChunk -&gt; Bool
+&lt; :: CodeChunk -&gt; CodeChunk -&gt; Bool
+$c&lt; :: CodeChunk -&gt; CodeChunk -&gt; Bool
+compare :: CodeChunk -&gt; CodeChunk -&gt; Ordering
+$ccompare :: CodeChunk -&gt; CodeChunk -&gt; Ordering
+$cp1Ord :: Eq CodeChunk
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-65"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">newtype</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233649"><span class="annot"><span class="annottext">String -&gt; CodeChunk
+(String -&gt; CodeChunk) -&gt; IsString CodeChunk
+forall a. (String -&gt; a) -&gt; IsString a
+fromString :: String -&gt; CodeChunk
+$cfromString :: String -&gt; CodeChunk
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">IsString</span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-66"></span><span>
+</span><span id="line-67"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Common.Object.Transform.html#GroupRender"><span class="hs-identifier hs-type">GroupRender</span></a></span><span> </span><span class="annot"><a href="Common.Object.Types.html#CodeChunk"><span class="hs-identifier hs-type">CodeChunk</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-68"></span><span>  </span><span id="local-6989586621679233645"><span class="annot"><span class="annottext">renderGroup :: t CodeChunk -&gt; t SVG
+</span><a href="#local-6989586621679233645"><span class="hs-identifier hs-var hs-var hs-var hs-var">renderGroup</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t SVG -&gt; t SVG
+forall (t :: * -&gt; *). (Functor t, Foldable t) =&gt; t SVG -&gt; t SVG
+</span><a href="Common.Object.Types.html#centerAsGroup"><span class="hs-identifier hs-var">centerAsGroup</span></a></span><span>
+</span><span id="line-69"></span><span>    </span><span class="annot"><span class="annottext">(t SVG -&gt; t SVG) -&gt; (t CodeChunk -&gt; t SVG) -&gt; t CodeChunk -&gt; t SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; t SVG -&gt; t SVG
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withFillColorPixel</span></span><span> </span><span class="annot"><span class="">[rgba|000|]</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withFillOpacity</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-70"></span><span>           </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withStrokeColorPixel</span></span><span> </span><span class="annot"><span class="">[rgba|000|]</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withStrokeWidth</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-71"></span><span>    </span><span class="annot"><span class="annottext">(t SVG -&gt; t SVG) -&gt; (t CodeChunk -&gt; t SVG) -&gt; t CodeChunk -&gt; t SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">TexConfig -&gt; (Text -&gt; Text) -&gt; t Text -&gt; t SVG
+forall (t :: * -&gt; *).
+Traversable t =&gt;
+TexConfig -&gt; (Text -&gt; Text) -&gt; t Text -&gt; t SVG
+</span><span class="hs-identifier hs-var">latexCfgChunksTrans</span></span><span> </span><span class="annot"><span class="annottext">TexConfig
+</span><a href="#local-6989586621679233637"><span class="hs-identifier hs-var">texCfg</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><a href="#local-6989586621679233636"><span class="hs-identifier hs-var">code</span></a></span><span> </span><span class="annot"><span class="annottext">(t Text -&gt; t SVG)
+-&gt; (t CodeChunk -&gt; t Text) -&gt; t CodeChunk -&gt; t SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(CodeChunk -&gt; Text) -&gt; t CodeChunk -&gt; t Text
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">CodeChunk -&gt; Text
+</span><a href="Common.Object.Types.html#unwrapCodeChunk"><span class="hs-identifier hs-var hs-var">unwrapCodeChunk</span></a></span><span>
+</span><span id="line-72"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-73"></span><span>      </span><span id="local-6989586621679233637"><span class="annot"><span class="annottext">texCfg :: TexConfig
+</span><a href="#local-6989586621679233637"><span class="hs-identifier hs-var hs-var">texCfg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexConfig :: TexEngine -&gt; [Text] -&gt; [Text] -&gt; TexConfig
+</span><span class="hs-identifier hs-type">TexConfig</span></span><span>
+</span><span id="line-74"></span><span>        </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">texConfigEngine :: TexEngine
+</span><a href="#local-6989586621679233634"><span class="hs-identifier hs-var">texConfigEngine</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><span class="hs-identifier hs-var">XeLaTeX</span></span><span>
+</span><span id="line-75"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">texConfigHeaders :: [Text]
+</span><a href="#local-6989586621679233632"><span class="hs-identifier hs-var">texConfigHeaders</span></a></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-76"></span><span>          </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\usepackage{fontspec}&quot;</span></span><span>
+</span><span id="line-77"></span><span>          </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\setmonofont{JetBrains Mono}[Contextuals=Alternate]&quot;</span></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-78"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">texConfigPostScript :: [Text]
+</span><a href="#local-6989586621679233631"><span class="hs-identifier hs-var">texConfigPostScript</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-79"></span><span>        </span><span class="hs-special">}</span><span>
+</span><span id="line-80"></span><span>      </span><span id="local-6989586621679233636"><span class="annot"><span class="annottext">code :: Text -&gt; Text
+</span><a href="#local-6989586621679233636"><span class="hs-identifier hs-var hs-var">code</span></a></span></span><span> </span><span id="local-6989586621679233630"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679233630"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\texttt{&quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><a href="Common.Object.SyntaxHighlight.html#escapeLaTeX"><span class="hs-identifier hs-var">escapeLaTeX</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679233630"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;}&quot;</span></span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span class="hs-comment">-- * Math formulae.</span><span>
+</span><span id="line-83"></span><span>
+</span><span id="line-84"></span><span class="hs-comment">-- |LaTeX inline math formulae.</span><span>
+</span><span id="line-85"></span><span class="hs-keyword">newtype</span><span> </span><span id="MathChunk"><span class="annot"><a href="Common.Object.Types.html#MathChunk"><span class="hs-identifier hs-var">MathChunk</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="MathChunk"><span class="annot"><a href="Common.Object.Types.html#MathChunk"><span class="hs-identifier hs-var">MathChunk</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="unwrapMathChunk"><span class="annot"><span class="annottext">MathChunk -&gt; Text
+</span><a href="Common.Object.Types.html#unwrapMathChunk"><span class="hs-identifier hs-var hs-var">unwrapMathChunk</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-86"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233621"><span id="local-6989586621679233623"><span id="local-6989586621679233625"><span class="annot"><span class="annottext">Int -&gt; MathChunk -&gt; ShowS
+[MathChunk] -&gt; ShowS
+MathChunk -&gt; String
+(Int -&gt; MathChunk -&gt; ShowS)
+-&gt; (MathChunk -&gt; String)
+-&gt; ([MathChunk] -&gt; ShowS)
+-&gt; Show MathChunk
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [MathChunk] -&gt; ShowS
+$cshowList :: [MathChunk] -&gt; ShowS
+show :: MathChunk -&gt; String
+$cshow :: MathChunk -&gt; String
+showsPrec :: Int -&gt; MathChunk -&gt; ShowS
+$cshowsPrec :: Int -&gt; MathChunk -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233617"><span id="local-6989586621679233619"><span class="annot"><span class="annottext">MathChunk -&gt; MathChunk -&gt; Bool
+(MathChunk -&gt; MathChunk -&gt; Bool)
+-&gt; (MathChunk -&gt; MathChunk -&gt; Bool) -&gt; Eq MathChunk
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: MathChunk -&gt; MathChunk -&gt; Bool
+$c/= :: MathChunk -&gt; MathChunk -&gt; Bool
+== :: MathChunk -&gt; MathChunk -&gt; Bool
+$c== :: MathChunk -&gt; MathChunk -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233602"><span id="local-6989586621679233604"><span id="local-6989586621679233606"><span id="local-6989586621679233608"><span id="local-6989586621679233610"><span id="local-6989586621679233612"><span id="local-6989586621679233614"><span class="annot"><span class="annottext">Eq MathChunk
+Eq MathChunk
+-&gt; (MathChunk -&gt; MathChunk -&gt; Ordering)
+-&gt; (MathChunk -&gt; MathChunk -&gt; Bool)
+-&gt; (MathChunk -&gt; MathChunk -&gt; Bool)
+-&gt; (MathChunk -&gt; MathChunk -&gt; Bool)
+-&gt; (MathChunk -&gt; MathChunk -&gt; Bool)
+-&gt; (MathChunk -&gt; MathChunk -&gt; MathChunk)
+-&gt; (MathChunk -&gt; MathChunk -&gt; MathChunk)
+-&gt; Ord MathChunk
+MathChunk -&gt; MathChunk -&gt; Bool
+MathChunk -&gt; MathChunk -&gt; Ordering
+MathChunk -&gt; MathChunk -&gt; MathChunk
+forall a.
+Eq a
+-&gt; (a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+min :: MathChunk -&gt; MathChunk -&gt; MathChunk
+$cmin :: MathChunk -&gt; MathChunk -&gt; MathChunk
+max :: MathChunk -&gt; MathChunk -&gt; MathChunk
+$cmax :: MathChunk -&gt; MathChunk -&gt; MathChunk
+&gt;= :: MathChunk -&gt; MathChunk -&gt; Bool
+$c&gt;= :: MathChunk -&gt; MathChunk -&gt; Bool
+&gt; :: MathChunk -&gt; MathChunk -&gt; Bool
+$c&gt; :: MathChunk -&gt; MathChunk -&gt; Bool
+&lt;= :: MathChunk -&gt; MathChunk -&gt; Bool
+$c&lt;= :: MathChunk -&gt; MathChunk -&gt; Bool
+&lt; :: MathChunk -&gt; MathChunk -&gt; Bool
+$c&lt; :: MathChunk -&gt; MathChunk -&gt; Bool
+compare :: MathChunk -&gt; MathChunk -&gt; Ordering
+$ccompare :: MathChunk -&gt; MathChunk -&gt; Ordering
+$cp1Ord :: Eq MathChunk
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-87"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">newtype</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233600"><span class="annot"><span class="annottext">String -&gt; MathChunk
+(String -&gt; MathChunk) -&gt; IsString MathChunk
+forall a. (String -&gt; a) -&gt; IsString a
+fromString :: String -&gt; MathChunk
+$cfromString :: String -&gt; MathChunk
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">IsString</span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-88"></span><span>
+</span><span id="line-89"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Common.Object.Transform.html#GroupRender"><span class="hs-identifier hs-type">GroupRender</span></a></span><span> </span><span class="annot"><a href="Common.Object.Types.html#MathChunk"><span class="hs-identifier hs-type">MathChunk</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-90"></span><span>  </span><span id="local-6989586621679233598"><span class="annot"><span class="annottext">renderGroup :: t MathChunk -&gt; t SVG
+</span><a href="#local-6989586621679233598"><span class="hs-identifier hs-var hs-var hs-var hs-var">renderGroup</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t SVG -&gt; t SVG
+forall (t :: * -&gt; *). (Functor t, Foldable t) =&gt; t SVG -&gt; t SVG
+</span><a href="Common.Object.Types.html#centerAsGroup"><span class="hs-identifier hs-var">centerAsGroup</span></a></span><span>
+</span><span id="line-91"></span><span>    </span><span class="annot"><span class="annottext">(t SVG -&gt; t SVG) -&gt; (t MathChunk -&gt; t SVG) -&gt; t MathChunk -&gt; t SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; t SVG -&gt; t SVG
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withFillColorPixel</span></span><span> </span><span class="annot"><span class="">[rgba|000|]</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withFillOpacity</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-92"></span><span>           </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withStrokeColorPixel</span></span><span> </span><span class="annot"><span class="">[rgba|000|]</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withStrokeWidth</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-93"></span><span>    </span><span class="annot"><span class="annottext">(t SVG -&gt; t SVG) -&gt; (t MathChunk -&gt; t SVG) -&gt; t MathChunk -&gt; t SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">t Text -&gt; t SVG
+forall (t :: * -&gt; *). Traversable t =&gt; t Text -&gt; t SVG
+</span><span class="hs-identifier hs-var">mathChunks</span></span><span> </span><span class="annot"><span class="annottext">(t Text -&gt; t SVG)
+-&gt; (t MathChunk -&gt; t Text) -&gt; t MathChunk -&gt; t SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(MathChunk -&gt; Text) -&gt; t MathChunk -&gt; t Text
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[(Text, Text)] -&gt; Text -&gt; Text
+</span><a href="#local-6989586621679233596"><span class="hs-identifier hs-var">replaceAll</span></a></span><span> </span><span class="annot"><span class="annottext">[(Text, Text)]
+</span><a href="#local-6989586621679233595"><span class="hs-identifier hs-var">replacements</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; (MathChunk -&gt; Text) -&gt; MathChunk -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+forall a. (Semigroup a, IsString a) =&gt; a -&gt; a
+</span><a href="#local-6989586621679233594"><span class="hs-identifier hs-var">pad</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; (MathChunk -&gt; Text) -&gt; MathChunk -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">MathChunk -&gt; Text
+</span><a href="Common.Object.Types.html#unwrapMathChunk"><span class="hs-identifier hs-var hs-var">unwrapMathChunk</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-94"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-95"></span><span>      </span><span id="local-6989586621679233594"><span class="annot"><span class="annottext">pad :: a -&gt; a
+</span><a href="#local-6989586621679233594"><span class="hs-identifier hs-var hs-var">pad</span></a></span></span><span> </span><span id="local-6989586621679233593"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233593"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-string">&quot; &quot;</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233593"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-string">&quot; &quot;</span></span><span>
+</span><span id="line-96"></span><span>      </span><span id="local-6989586621679233592"><span class="annot"><span class="annottext">paren :: a -&gt; a
+</span><a href="#local-6989586621679233592"><span class="hs-identifier hs-var hs-var">paren</span></a></span></span><span> </span><span id="local-6989586621679233591"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233591"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-string">&quot;(&quot;</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233591"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-string">&quot;)&quot;</span></span><span>
+</span><span id="line-97"></span><span>      </span><span id="local-6989586621679233596"><span class="annot"><span class="annottext">replaceAll :: [(Text, Text)] -&gt; Text -&gt; Text
+</span><a href="#local-6989586621679233596"><span class="hs-identifier hs-var hs-var">replaceAll</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((Text -&gt; Text) -&gt; (Text -&gt; Text) -&gt; Text -&gt; Text)
+-&gt; (Text -&gt; Text) -&gt; [Text -&gt; Text] -&gt; Text -&gt; Text
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; (Text -&gt; Text) -&gt; Text -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">(.)</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="annot"><span class="annottext">([Text -&gt; Text] -&gt; Text -&gt; Text)
+-&gt; ([(Text, Text)] -&gt; [Text -&gt; Text])
+-&gt; [(Text, Text)]
+-&gt; Text
+-&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">((Text, Text) -&gt; Text -&gt; Text) -&gt; [(Text, Text)] -&gt; [Text -&gt; Text]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">(Text, Text) -&gt; Text -&gt; Text
+</span><a href="#local-6989586621679233588"><span class="hs-identifier hs-var">replace</span></a></span><span>
+</span><span id="line-98"></span><span>      </span><span id="local-6989586621679233588"><span class="annot"><span class="annottext">replace :: (Text, Text) -&gt; Text -&gt; Text
+</span><a href="#local-6989586621679233588"><span class="hs-identifier hs-var hs-var">replace</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233587"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679233587"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233586"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679233586"><span class="hs-identifier hs-var">t</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-99"></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text -&gt; Text
+</span><span class="hs-identifier hs-var">T.replace</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Text
+forall a. (Semigroup a, IsString a) =&gt; a -&gt; a
+</span><a href="#local-6989586621679233594"><span class="hs-identifier hs-var">pad</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679233587"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Text
+forall a. (Semigroup a, IsString a) =&gt; a -&gt; a
+</span><a href="#local-6989586621679233594"><span class="hs-identifier hs-var">pad</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679233586"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-100"></span><span>        </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; (Text -&gt; Text) -&gt; Text -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text -&gt; Text
+</span><span class="hs-identifier hs-var">T.replace</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Text
+forall a. (Semigroup a, IsString a) =&gt; a -&gt; a
+</span><a href="#local-6989586621679233592"><span class="hs-identifier hs-var">paren</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679233587"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Text
+forall a. (Semigroup a, IsString a) =&gt; a -&gt; a
+</span><a href="#local-6989586621679233592"><span class="hs-identifier hs-var">paren</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679233586"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-101"></span><span>      </span><span id="local-6989586621679233595"><span class="annot"><span class="annottext">replacements :: [(Text, Text)]
+</span><a href="#local-6989586621679233595"><span class="hs-identifier hs-var hs-var">replacements</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-102"></span><span>        </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;-&gt;&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\rightarrow&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-103"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&lt;-&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\leftarrow&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-104"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;=&gt;&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\Rightarrow&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-105"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&lt;==&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\Leftarrow&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-106"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&lt;=&gt;&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\Leftrightarrow&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-107"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&lt;=&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\le&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-108"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&gt;=&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\ge&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-109"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;/=&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\ne&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-110"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;.&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\circ&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-111"></span><span>        </span><span class="hs-special">]</span><span>
+</span><span id="line-112"></span><span>
+</span><span id="line-113"></span><span class="hs-comment">-- * Code Blocks.</span><span>
+</span><span id="line-114"></span><span>
+</span><span id="line-115"></span><span class="hs-comment">-- |Code blocks in some programming language. Highlighted by Skylighting.</span><span>
+</span><span id="line-116"></span><span class="hs-keyword">data</span><span> </span><span id="CodeBlock"><span class="annot"><a href="Common.Object.Types.html#CodeBlock"><span class="hs-identifier hs-var">CodeBlock</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="CodeBlock"><span class="annot"><a href="Common.Object.Types.html#CodeBlock"><span class="hs-identifier hs-var">CodeBlock</span></a></span></span><span>
+</span><span id="line-117"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="codeLanguage"><span class="annot"><span class="annottext">CodeBlock -&gt; Text
+</span><a href="Common.Object.Types.html#codeLanguage"><span class="hs-identifier hs-var hs-var">codeLanguage</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-118"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="codeText"><span class="annot"><span class="annottext">CodeBlock -&gt; Text
+</span><a href="Common.Object.Types.html#codeText"><span class="hs-identifier hs-var hs-var">codeText</span></a></span></span><span>     </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-119"></span><span>  </span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233576"><span id="local-6989586621679233578"><span id="local-6989586621679233580"><span class="annot"><span class="annottext">Int -&gt; CodeBlock -&gt; ShowS
+[CodeBlock] -&gt; ShowS
+CodeBlock -&gt; String
+(Int -&gt; CodeBlock -&gt; ShowS)
+-&gt; (CodeBlock -&gt; String)
+-&gt; ([CodeBlock] -&gt; ShowS)
+-&gt; Show CodeBlock
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [CodeBlock] -&gt; ShowS
+$cshowList :: [CodeBlock] -&gt; ShowS
+show :: CodeBlock -&gt; String
+$cshow :: CodeBlock -&gt; String
+showsPrec :: Int -&gt; CodeBlock -&gt; ShowS
+$cshowsPrec :: Int -&gt; CodeBlock -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233572"><span id="local-6989586621679233574"><span class="annot"><span class="annottext">CodeBlock -&gt; CodeBlock -&gt; Bool
+(CodeBlock -&gt; CodeBlock -&gt; Bool)
+-&gt; (CodeBlock -&gt; CodeBlock -&gt; Bool) -&gt; Eq CodeBlock
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: CodeBlock -&gt; CodeBlock -&gt; Bool
+$c/= :: CodeBlock -&gt; CodeBlock -&gt; Bool
+== :: CodeBlock -&gt; CodeBlock -&gt; Bool
+$c== :: CodeBlock -&gt; CodeBlock -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233557"><span id="local-6989586621679233559"><span id="local-6989586621679233561"><span id="local-6989586621679233563"><span id="local-6989586621679233565"><span id="local-6989586621679233567"><span id="local-6989586621679233569"><span class="annot"><span class="annottext">Eq CodeBlock
+Eq CodeBlock
+-&gt; (CodeBlock -&gt; CodeBlock -&gt; Ordering)
+-&gt; (CodeBlock -&gt; CodeBlock -&gt; Bool)
+-&gt; (CodeBlock -&gt; CodeBlock -&gt; Bool)
+-&gt; (CodeBlock -&gt; CodeBlock -&gt; Bool)
+-&gt; (CodeBlock -&gt; CodeBlock -&gt; Bool)
+-&gt; (CodeBlock -&gt; CodeBlock -&gt; CodeBlock)
+-&gt; (CodeBlock -&gt; CodeBlock -&gt; CodeBlock)
+-&gt; Ord CodeBlock
+CodeBlock -&gt; CodeBlock -&gt; Bool
+CodeBlock -&gt; CodeBlock -&gt; Ordering
+CodeBlock -&gt; CodeBlock -&gt; CodeBlock
+forall a.
+Eq a
+-&gt; (a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+min :: CodeBlock -&gt; CodeBlock -&gt; CodeBlock
+$cmin :: CodeBlock -&gt; CodeBlock -&gt; CodeBlock
+max :: CodeBlock -&gt; CodeBlock -&gt; CodeBlock
+$cmax :: CodeBlock -&gt; CodeBlock -&gt; CodeBlock
+&gt;= :: CodeBlock -&gt; CodeBlock -&gt; Bool
+$c&gt;= :: CodeBlock -&gt; CodeBlock -&gt; Bool
+&gt; :: CodeBlock -&gt; CodeBlock -&gt; Bool
+$c&gt; :: CodeBlock -&gt; CodeBlock -&gt; Bool
+&lt;= :: CodeBlock -&gt; CodeBlock -&gt; Bool
+$c&lt;= :: CodeBlock -&gt; CodeBlock -&gt; Bool
+&lt; :: CodeBlock -&gt; CodeBlock -&gt; Bool
+$c&lt; :: CodeBlock -&gt; CodeBlock -&gt; Bool
+compare :: CodeBlock -&gt; CodeBlock -&gt; Ordering
+$ccompare :: CodeBlock -&gt; CodeBlock -&gt; Ordering
+$cp1Ord :: Eq CodeBlock
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-120"></span><span>
+</span><span id="line-121"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Renderable</span></span><span> </span><span class="annot"><a href="Common.Object.Types.html#CodeBlock"><span class="hs-identifier hs-type">CodeBlock</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-122"></span><span>  </span><span id="local-6989586621679233555"><span class="annot"><span class="annottext">toSVG :: CodeBlock -&gt; SVG
+</span><a href="#local-6989586621679233555"><span class="hs-identifier hs-var hs-var hs-var hs-var">toSVG</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Types.html#CodeBlock"><span class="hs-identifier hs-type">CodeBlock</span></a></span><span> </span><span id="local-6989586621679233554"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679233554"><span class="hs-identifier hs-var">lang</span></a></span></span><span> </span><span id="local-6989586621679233553"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679233553"><span class="hs-identifier hs-var">txt</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[SVG] -&gt; SVG
+</span><span class="hs-identifier hs-var">mkGroup</span></span><span> </span><span class="annot"><span class="annottext">([SVG] -&gt; SVG) -&gt; [SVG] -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[[SVG]] -&gt; [SVG]
+forall (t :: * -&gt; *) a. Foldable t =&gt; t [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">concat</span></span><span> </span><span class="annot"><span class="annottext">([[SVG]] -&gt; [SVG]) -&gt; [[SVG]] -&gt; [SVG]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; [[SVG]]
+</span><a href="Common.Object.SyntaxHighlight.html#highlightIn"><span class="hs-identifier hs-var">highlightIn</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679233554"><span class="hs-identifier hs-var">lang</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679233553"><span class="hs-identifier hs-var">txt</span></a></span><span>
+</span><span id="line-123"></span><span>
+</span><span id="line-124"></span><span class="hs-comment">-- * TeX Codes</span><span>
+</span><span id="line-125"></span><span>
+</span><span id="line-126"></span><span class="hs-comment">-- |TeX codes.</span><span>
+</span><span id="line-127"></span><span class="hs-keyword">newtype</span><span> </span><span id="TeX"><span class="annot"><a href="Common.Object.Types.html#TeX"><span class="hs-identifier hs-var">TeX</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="TeX"><span class="annot"><a href="Common.Object.Types.html#TeX"><span class="hs-identifier hs-var">TeX</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="unwrapTeXCode"><span class="annot"><span class="annottext">TeX -&gt; Text
+</span><a href="Common.Object.Types.html#unwrapTeXCode"><span class="hs-identifier hs-var hs-var">unwrapTeXCode</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-128"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233543"><span id="local-6989586621679233545"><span id="local-6989586621679233547"><span class="annot"><span class="annottext">Int -&gt; TeX -&gt; ShowS
+[TeX] -&gt; ShowS
+TeX -&gt; String
+(Int -&gt; TeX -&gt; ShowS)
+-&gt; (TeX -&gt; String) -&gt; ([TeX] -&gt; ShowS) -&gt; Show TeX
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [TeX] -&gt; ShowS
+$cshowList :: [TeX] -&gt; ShowS
+show :: TeX -&gt; String
+$cshow :: TeX -&gt; String
+showsPrec :: Int -&gt; TeX -&gt; ShowS
+$cshowsPrec :: Int -&gt; TeX -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233539"><span id="local-6989586621679233541"><span class="annot"><span class="annottext">TeX -&gt; TeX -&gt; Bool
+(TeX -&gt; TeX -&gt; Bool) -&gt; (TeX -&gt; TeX -&gt; Bool) -&gt; Eq TeX
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: TeX -&gt; TeX -&gt; Bool
+$c/= :: TeX -&gt; TeX -&gt; Bool
+== :: TeX -&gt; TeX -&gt; Bool
+$c== :: TeX -&gt; TeX -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233524"><span id="local-6989586621679233526"><span id="local-6989586621679233528"><span id="local-6989586621679233530"><span id="local-6989586621679233532"><span id="local-6989586621679233534"><span id="local-6989586621679233536"><span class="annot"><span class="annottext">Eq TeX
+Eq TeX
+-&gt; (TeX -&gt; TeX -&gt; Ordering)
+-&gt; (TeX -&gt; TeX -&gt; Bool)
+-&gt; (TeX -&gt; TeX -&gt; Bool)
+-&gt; (TeX -&gt; TeX -&gt; Bool)
+-&gt; (TeX -&gt; TeX -&gt; Bool)
+-&gt; (TeX -&gt; TeX -&gt; TeX)
+-&gt; (TeX -&gt; TeX -&gt; TeX)
+-&gt; Ord TeX
+TeX -&gt; TeX -&gt; Bool
+TeX -&gt; TeX -&gt; Ordering
+TeX -&gt; TeX -&gt; TeX
+forall a.
+Eq a
+-&gt; (a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+min :: TeX -&gt; TeX -&gt; TeX
+$cmin :: TeX -&gt; TeX -&gt; TeX
+max :: TeX -&gt; TeX -&gt; TeX
+$cmax :: TeX -&gt; TeX -&gt; TeX
+&gt;= :: TeX -&gt; TeX -&gt; Bool
+$c&gt;= :: TeX -&gt; TeX -&gt; Bool
+&gt; :: TeX -&gt; TeX -&gt; Bool
+$c&gt; :: TeX -&gt; TeX -&gt; Bool
+&lt;= :: TeX -&gt; TeX -&gt; Bool
+$c&lt;= :: TeX -&gt; TeX -&gt; Bool
+&lt; :: TeX -&gt; TeX -&gt; Bool
+$c&lt; :: TeX -&gt; TeX -&gt; Bool
+compare :: TeX -&gt; TeX -&gt; Ordering
+$ccompare :: TeX -&gt; TeX -&gt; Ordering
+$cp1Ord :: Eq TeX
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-129"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">newtype</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233522"><span class="annot"><span class="annottext">String -&gt; TeX
+(String -&gt; TeX) -&gt; IsString TeX
+forall a. (String -&gt; a) -&gt; IsString a
+fromString :: String -&gt; TeX
+$cfromString :: String -&gt; TeX
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">IsString</span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-130"></span><span>
+</span><span id="line-131"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Renderable</span></span><span> </span><span class="annot"><a href="Common.Object.Types.html#TeX"><span class="hs-identifier hs-type">TeX</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-132"></span><span>  </span><span id="local-6989586621679233520"><span class="annot"><span class="annottext">toSVG :: TeX -&gt; SVG
+</span><a href="#local-6989586621679233520"><span class="hs-identifier hs-var hs-var hs-var hs-var">toSVG</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">center</span></span><span>
+</span><span id="line-133"></span><span>        </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (TeX -&gt; SVG) -&gt; TeX -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withFillColorPixel</span></span><span> </span><span class="annot"><span class="">[rgba|000|]</span></span><span>
+</span><span id="line-134"></span><span>        </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (TeX -&gt; SVG) -&gt; TeX -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withStrokeColorPixel</span></span><span> </span><span class="annot"><span class="">[rgba|000|]</span></span><span>
+</span><span id="line-135"></span><span>        </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (TeX -&gt; SVG) -&gt; TeX -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withStrokeWidth</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-136"></span><span>        </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (TeX -&gt; SVG) -&gt; TeX -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withFillOpacity</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-137"></span><span>        </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (TeX -&gt; SVG) -&gt; TeX -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Text -&gt; SVG
+</span><span class="hs-identifier hs-var">ctexWithHeaders</span></span><span>
+</span><span id="line-138"></span><span>          </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\setsansfont{Source Serif Pro}&quot;</span></span><span>
+</span><span id="line-139"></span><span>          </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\setsansfont{Source Sans 3}&quot;</span></span><span>
+</span><span id="line-140"></span><span>          </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\setCJKmainfont{Source Han Serif SC}&quot;</span></span><span>
+</span><span id="line-141"></span><span>          </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\setCJKsansfont{Source Han Sans SC}&quot;</span></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-142"></span><span>        </span><span class="annot"><span class="annottext">(Text -&gt; SVG) -&gt; (TeX -&gt; Text) -&gt; TeX -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">TeX -&gt; Text
+</span><a href="Common.Object.Types.html#unwrapTeXCode"><span class="hs-identifier hs-var hs-var">unwrapTeXCode</span></a></span><span>
+</span><span id="line-143"></span><span>
+</span><span id="line-144"></span><span class="hs-comment">-- * Paragraphs</span><span>
+</span><span id="line-145"></span><span>
+</span><span id="line-146"></span><span class="hs-comment">-- |Renderable object, treated as a line.</span><span>
+</span><span id="line-147"></span><span class="hs-keyword">data</span><span> </span><span id="Line"><span class="annot"><a href="Common.Object.Types.html#Line"><span class="hs-identifier hs-var">Line</span></a></span></span><span> </span><span id="local-6989586621679233818"><span class="annot"><a href="#local-6989586621679233818"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-148"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="LeftAligned"><span class="annot"><a href="Common.Object.Types.html#LeftAligned"><span class="hs-identifier hs-var">LeftAligned</span></a></span></span><span> </span><span class="annot"><a href="#local-6989586621679233818"><span class="hs-identifier hs-type">a</span></a></span><span>
+</span><span id="line-149"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Centered"><span class="annot"><a href="Common.Object.Types.html#Centered"><span class="hs-identifier hs-var">Centered</span></a></span></span><span> </span><span class="annot"><a href="#local-6989586621679233818"><span class="hs-identifier hs-type">a</span></a></span><span>
+</span><span id="line-150"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="RightAligned"><span class="annot"><a href="Common.Object.Types.html#RightAligned"><span class="hs-identifier hs-var">RightAligned</span></a></span></span><span> </span><span class="annot"><a href="#local-6989586621679233818"><span class="hs-identifier hs-type">a</span></a></span><span>
+</span><span id="line-151"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233509"><span id="local-6989586621679233511"><span id="local-6989586621679233513"><span class="annot"><span class="annottext">Int -&gt; Line a -&gt; ShowS
+[Line a] -&gt; ShowS
+Line a -&gt; String
+(Int -&gt; Line a -&gt; ShowS)
+-&gt; (Line a -&gt; String) -&gt; ([Line a] -&gt; ShowS) -&gt; Show (Line a)
+forall a. Show a =&gt; Int -&gt; Line a -&gt; ShowS
+forall a. Show a =&gt; [Line a] -&gt; ShowS
+forall a. Show a =&gt; Line a -&gt; String
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Line a] -&gt; ShowS
+$cshowList :: forall a. Show a =&gt; [Line a] -&gt; ShowS
+show :: Line a -&gt; String
+$cshow :: forall a. Show a =&gt; Line a -&gt; String
+showsPrec :: Int -&gt; Line a -&gt; ShowS
+$cshowsPrec :: forall a. Show a =&gt; Int -&gt; Line a -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233505"><span id="local-6989586621679233507"><span class="annot"><span class="annottext">Line a -&gt; Line a -&gt; Bool
+(Line a -&gt; Line a -&gt; Bool)
+-&gt; (Line a -&gt; Line a -&gt; Bool) -&gt; Eq (Line a)
+forall a. Eq a =&gt; Line a -&gt; Line a -&gt; Bool
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: Line a -&gt; Line a -&gt; Bool
+$c/= :: forall a. Eq a =&gt; Line a -&gt; Line a -&gt; Bool
+== :: Line a -&gt; Line a -&gt; Bool
+$c== :: forall a. Eq a =&gt; Line a -&gt; Line a -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233490"><span id="local-6989586621679233492"><span id="local-6989586621679233494"><span id="local-6989586621679233496"><span id="local-6989586621679233498"><span id="local-6989586621679233500"><span id="local-6989586621679233502"><span class="annot"><span class="annottext">Eq (Line a)
+Eq (Line a)
+-&gt; (Line a -&gt; Line a -&gt; Ordering)
+-&gt; (Line a -&gt; Line a -&gt; Bool)
+-&gt; (Line a -&gt; Line a -&gt; Bool)
+-&gt; (Line a -&gt; Line a -&gt; Bool)
+-&gt; (Line a -&gt; Line a -&gt; Bool)
+-&gt; (Line a -&gt; Line a -&gt; Line a)
+-&gt; (Line a -&gt; Line a -&gt; Line a)
+-&gt; Ord (Line a)
+Line a -&gt; Line a -&gt; Bool
+Line a -&gt; Line a -&gt; Ordering
+Line a -&gt; Line a -&gt; Line a
+forall a.
+Eq a
+-&gt; (a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+forall a. Ord a =&gt; Eq (Line a)
+forall a. Ord a =&gt; Line a -&gt; Line a -&gt; Bool
+forall a. Ord a =&gt; Line a -&gt; Line a -&gt; Ordering
+forall a. Ord a =&gt; Line a -&gt; Line a -&gt; Line a
+min :: Line a -&gt; Line a -&gt; Line a
+$cmin :: forall a. Ord a =&gt; Line a -&gt; Line a -&gt; Line a
+max :: Line a -&gt; Line a -&gt; Line a
+$cmax :: forall a. Ord a =&gt; Line a -&gt; Line a -&gt; Line a
+&gt;= :: Line a -&gt; Line a -&gt; Bool
+$c&gt;= :: forall a. Ord a =&gt; Line a -&gt; Line a -&gt; Bool
+&gt; :: Line a -&gt; Line a -&gt; Bool
+$c&gt; :: forall a. Ord a =&gt; Line a -&gt; Line a -&gt; Bool
+&lt;= :: Line a -&gt; Line a -&gt; Bool
+$c&lt;= :: forall a. Ord a =&gt; Line a -&gt; Line a -&gt; Bool
+&lt; :: Line a -&gt; Line a -&gt; Bool
+$c&lt; :: forall a. Ord a =&gt; Line a -&gt; Line a -&gt; Bool
+compare :: Line a -&gt; Line a -&gt; Ordering
+$ccompare :: forall a. Ord a =&gt; Line a -&gt; Line a -&gt; Ordering
+$cp1Ord :: forall a. Ord a =&gt; Eq (Line a)
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-152"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233486"><span id="local-6989586621679233488"><span class="annot"><span class="annottext">a -&gt; Line b -&gt; Line a
+(a -&gt; b) -&gt; Line a -&gt; Line b
+(forall a b. (a -&gt; b) -&gt; Line a -&gt; Line b)
+-&gt; (forall a b. a -&gt; Line b -&gt; Line a) -&gt; Functor Line
+forall a b. a -&gt; Line b -&gt; Line a
+forall a b. (a -&gt; b) -&gt; Line a -&gt; Line b
+forall (f :: * -&gt; *).
+(forall a b. (a -&gt; b) -&gt; f a -&gt; f b)
+-&gt; (forall a b. a -&gt; f b -&gt; f a) -&gt; Functor f
+&lt;$ :: a -&gt; Line b -&gt; Line a
+$c&lt;$ :: forall a b. a -&gt; Line b -&gt; Line a
+fmap :: (a -&gt; b) -&gt; Line a -&gt; Line b
+$cfmap :: forall a b. (a -&gt; b) -&gt; Line a -&gt; Line b
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Functor</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233475"><span id="local-6989586621679233477"><span id="local-6989586621679233479"><span id="local-6989586621679233481"><span class="annot"><span class="annottext">Functor Line
+Foldable Line
+Functor Line
+-&gt; Foldable Line
+-&gt; (forall (f :: * -&gt; *) a b.
+    Applicative f =&gt;
+    (a -&gt; f b) -&gt; Line a -&gt; f (Line b))
+-&gt; (forall (f :: * -&gt; *) a.
+    Applicative f =&gt;
+    Line (f a) -&gt; f (Line a))
+-&gt; (forall (m :: * -&gt; *) a b.
+    Monad m =&gt;
+    (a -&gt; m b) -&gt; Line a -&gt; m (Line b))
+-&gt; (forall (m :: * -&gt; *) a. Monad m =&gt; Line (m a) -&gt; m (Line a))
+-&gt; Traversable Line
+(a -&gt; f b) -&gt; Line a -&gt; f (Line b)
+forall (t :: * -&gt; *).
+Functor t
+-&gt; Foldable t
+-&gt; (forall (f :: * -&gt; *) a b.
+    Applicative f =&gt;
+    (a -&gt; f b) -&gt; t a -&gt; f (t b))
+-&gt; (forall (f :: * -&gt; *) a. Applicative f =&gt; t (f a) -&gt; f (t a))
+-&gt; (forall (m :: * -&gt; *) a b.
+    Monad m =&gt;
+    (a -&gt; m b) -&gt; t a -&gt; m (t b))
+-&gt; (forall (m :: * -&gt; *) a. Monad m =&gt; t (m a) -&gt; m (t a))
+-&gt; Traversable t
+forall (m :: * -&gt; *) a. Monad m =&gt; Line (m a) -&gt; m (Line a)
+forall (f :: * -&gt; *) a. Applicative f =&gt; Line (f a) -&gt; f (Line a)
+forall (m :: * -&gt; *) a b.
+Monad m =&gt;
+(a -&gt; m b) -&gt; Line a -&gt; m (Line b)
+forall (f :: * -&gt; *) a b.
+Applicative f =&gt;
+(a -&gt; f b) -&gt; Line a -&gt; f (Line b)
+sequence :: Line (m a) -&gt; m (Line a)
+$csequence :: forall (m :: * -&gt; *) a. Monad m =&gt; Line (m a) -&gt; m (Line a)
+mapM :: (a -&gt; m b) -&gt; Line a -&gt; m (Line b)
+$cmapM :: forall (m :: * -&gt; *) a b.
+Monad m =&gt;
+(a -&gt; m b) -&gt; Line a -&gt; m (Line b)
+sequenceA :: Line (f a) -&gt; f (Line a)
+$csequenceA :: forall (f :: * -&gt; *) a. Applicative f =&gt; Line (f a) -&gt; f (Line a)
+traverse :: (a -&gt; f b) -&gt; Line a -&gt; f (Line b)
+$ctraverse :: forall (f :: * -&gt; *) a b.
+Applicative f =&gt;
+(a -&gt; f b) -&gt; Line a -&gt; f (Line b)
+$cp2Traversable :: Foldable Line
+$cp1Traversable :: Functor Line
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Traversable</span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233440"><span id="local-6989586621679233442"><span id="local-6989586621679233444"><span id="local-6989586621679233446"><span id="local-6989586621679233448"><span id="local-6989586621679233450"><span id="local-6989586621679233452"><span id="local-6989586621679233454"><span id="local-6989586621679233456"><span id="local-6989586621679233458"><span id="local-6989586621679233460"><span id="local-6989586621679233462"><span id="local-6989586621679233464"><span id="local-6989586621679233466"><span id="local-6989586621679233468"><span id="local-6989586621679233470"><span id="local-6989586621679233472"><span class="annot"><span class="annottext">Line a -&gt; Bool
+(a -&gt; m) -&gt; Line a -&gt; m
+(a -&gt; b -&gt; b) -&gt; b -&gt; Line a -&gt; b
+(forall m. Monoid m =&gt; Line m -&gt; m)
+-&gt; (forall m a. Monoid m =&gt; (a -&gt; m) -&gt; Line a -&gt; m)
+-&gt; (forall m a. Monoid m =&gt; (a -&gt; m) -&gt; Line a -&gt; m)
+-&gt; (forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; Line a -&gt; b)
+-&gt; (forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; Line a -&gt; b)
+-&gt; (forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; Line a -&gt; b)
+-&gt; (forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; Line a -&gt; b)
+-&gt; (forall a. (a -&gt; a -&gt; a) -&gt; Line a -&gt; a)
+-&gt; (forall a. (a -&gt; a -&gt; a) -&gt; Line a -&gt; a)
+-&gt; (forall a. Line a -&gt; [a])
+-&gt; (forall a. Line a -&gt; Bool)
+-&gt; (forall a. Line a -&gt; Int)
+-&gt; (forall a. Eq a =&gt; a -&gt; Line a -&gt; Bool)
+-&gt; (forall a. Ord a =&gt; Line a -&gt; a)
+-&gt; (forall a. Ord a =&gt; Line a -&gt; a)
+-&gt; (forall a. Num a =&gt; Line a -&gt; a)
+-&gt; (forall a. Num a =&gt; Line a -&gt; a)
+-&gt; Foldable Line
+forall a. Eq a =&gt; a -&gt; Line a -&gt; Bool
+forall a. Num a =&gt; Line a -&gt; a
+forall a. Ord a =&gt; Line a -&gt; a
+forall m. Monoid m =&gt; Line m -&gt; m
+forall a. Line a -&gt; Bool
+forall a. Line a -&gt; Int
+forall a. Line a -&gt; [a]
+forall a. (a -&gt; a -&gt; a) -&gt; Line a -&gt; a
+forall m a. Monoid m =&gt; (a -&gt; m) -&gt; Line a -&gt; m
+forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; Line a -&gt; b
+forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; Line a -&gt; b
+forall (t :: * -&gt; *).
+(forall m. Monoid m =&gt; t m -&gt; m)
+-&gt; (forall m a. Monoid m =&gt; (a -&gt; m) -&gt; t a -&gt; m)
+-&gt; (forall m a. Monoid m =&gt; (a -&gt; m) -&gt; t a -&gt; m)
+-&gt; (forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; t a -&gt; b)
+-&gt; (forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; t a -&gt; b)
+-&gt; (forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b)
+-&gt; (forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b)
+-&gt; (forall a. (a -&gt; a -&gt; a) -&gt; t a -&gt; a)
+-&gt; (forall a. (a -&gt; a -&gt; a) -&gt; t a -&gt; a)
+-&gt; (forall a. t a -&gt; [a])
+-&gt; (forall a. t a -&gt; Bool)
+-&gt; (forall a. t a -&gt; Int)
+-&gt; (forall a. Eq a =&gt; a -&gt; t a -&gt; Bool)
+-&gt; (forall a. Ord a =&gt; t a -&gt; a)
+-&gt; (forall a. Ord a =&gt; t a -&gt; a)
+-&gt; (forall a. Num a =&gt; t a -&gt; a)
+-&gt; (forall a. Num a =&gt; t a -&gt; a)
+-&gt; Foldable t
+product :: Line a -&gt; a
+$cproduct :: forall a. Num a =&gt; Line a -&gt; a
+sum :: Line a -&gt; a
+$csum :: forall a. Num a =&gt; Line a -&gt; a
+minimum :: Line a -&gt; a
+$cminimum :: forall a. Ord a =&gt; Line a -&gt; a
+maximum :: Line a -&gt; a
+$cmaximum :: forall a. Ord a =&gt; Line a -&gt; a
+elem :: a -&gt; Line a -&gt; Bool
+$celem :: forall a. Eq a =&gt; a -&gt; Line a -&gt; Bool
+length :: Line a -&gt; Int
+$clength :: forall a. Line a -&gt; Int
+null :: Line a -&gt; Bool
+$cnull :: forall a. Line a -&gt; Bool
+toList :: Line a -&gt; [a]
+$ctoList :: forall a. Line a -&gt; [a]
+foldl1 :: (a -&gt; a -&gt; a) -&gt; Line a -&gt; a
+$cfoldl1 :: forall a. (a -&gt; a -&gt; a) -&gt; Line a -&gt; a
+foldr1 :: (a -&gt; a -&gt; a) -&gt; Line a -&gt; a
+$cfoldr1 :: forall a. (a -&gt; a -&gt; a) -&gt; Line a -&gt; a
+foldl' :: (b -&gt; a -&gt; b) -&gt; b -&gt; Line a -&gt; b
+$cfoldl' :: forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; Line a -&gt; b
+foldl :: (b -&gt; a -&gt; b) -&gt; b -&gt; Line a -&gt; b
+$cfoldl :: forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; Line a -&gt; b
+foldr' :: (a -&gt; b -&gt; b) -&gt; b -&gt; Line a -&gt; b
+$cfoldr' :: forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; Line a -&gt; b
+foldr :: (a -&gt; b -&gt; b) -&gt; b -&gt; Line a -&gt; b
+$cfoldr :: forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; Line a -&gt; b
+foldMap' :: (a -&gt; m) -&gt; Line a -&gt; m
+$cfoldMap' :: forall m a. Monoid m =&gt; (a -&gt; m) -&gt; Line a -&gt; m
+foldMap :: (a -&gt; m) -&gt; Line a -&gt; m
+$cfoldMap :: forall m a. Monoid m =&gt; (a -&gt; m) -&gt; Line a -&gt; m
+fold :: Line m -&gt; m
+$cfold :: forall m. Monoid m =&gt; Line m -&gt; m
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Foldable</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-153"></span><span>
+</span><span id="line-154"></span><span id="local-6989586621679233438"><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IsString</span></span><span> </span><span class="annot"><a href="#local-6989586621679233438"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IsString</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Types.html#Line"><span class="hs-identifier hs-type">Line</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233438"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-155"></span><span>  </span><span id="local-6989586621679233436"><span class="annot"><span class="annottext">fromString :: String -&gt; Line a
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">fromString</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Line a
+forall a. a -&gt; Line a
+</span><a href="Common.Object.Types.html#LeftAligned"><span class="hs-identifier hs-var">LeftAligned</span></a></span><span> </span><span class="annot"><span class="annottext">(a -&gt; Line a) -&gt; (String -&gt; a) -&gt; String -&gt; Line a
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; a
+forall a. IsString a =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">fromString</span></span></span><span>
+</span><span id="line-156"></span><span>
+</span><span id="line-157"></span><span class="hs-comment">-- |Lines typeset by XeLaTeX in normal font.</span><span>
+</span><span id="line-158"></span><span class="hs-keyword">type</span><span> </span><span id="TextLine"><span class="annot"><a href="Common.Object.Types.html#TextLine"><span class="hs-identifier hs-var">TextLine</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="Common.Object.Types.html#Line"><span class="hs-identifier hs-type">Line</span></a></span><span> </span><span class="annot"><a href="Common.Object.Types.html#TeX"><span class="hs-identifier hs-type">TeX</span></a></span><span>
+</span><span id="line-159"></span><span>
+</span><span id="line-160"></span><span class="hs-comment">-- |Lines wrapping any 'Renderable'.</span><span>
+</span><span id="line-161"></span><span class="hs-keyword">type</span><span> </span><span id="AnyLine"><span class="annot"><a href="Common.Object.Types.html#AnyLine"><span class="hs-identifier hs-var">AnyLine</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="Common.Object.Types.html#Line"><span class="hs-identifier hs-type">Line</span></a></span><span> </span><span class="annot"><a href="Common.Object.Types.html#AnyRenderable"><span class="hs-identifier hs-type">AnyRenderable</span></a></span><span>
+</span><span id="line-162"></span><span>
+</span><span id="line-163"></span><span id="local-6989586621679233786"><span class="annot"><a href="Common.Object.Types.html#layoutLines"><span class="hs-identifier hs-type">layoutLines</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversable</span></span><span> </span><span class="annot"><a href="#local-6989586621679233786"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679233786"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Types.html#Line"><span class="hs-identifier hs-type">Line</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679233786"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span></span><span>
+</span><span id="line-164"></span><span id="layoutLines"><span class="annot"><span class="annottext">layoutLines :: t (Line SVG) -&gt; t SVG
+</span><a href="Common.Object.Types.html#layoutLines"><span class="hs-identifier hs-var hs-var">layoutLines</span></a></span></span><span> </span><span id="local-6989586621679233432"><span class="annot"><span class="annottext">t (Line SVG)
+</span><a href="#local-6989586621679233432"><span class="hs-identifier hs-var">xs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t (Line SVG) -&gt; t SVG
+</span><a href="#local-6989586621679233431"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">t (Line SVG)
+</span><a href="#local-6989586621679233432"><span class="hs-identifier hs-var">xs</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-165"></span><span>  </span><span id="local-6989586621679233431"><span class="annot"><span class="annottext">go :: t (Line SVG) -&gt; t SVG
+</span><a href="#local-6989586621679233431"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(State Double (t SVG) -&gt; Double -&gt; t SVG)
+-&gt; Double -&gt; State Double (t SVG) -&gt; t SVG
+forall a b c. (a -&gt; b -&gt; c) -&gt; b -&gt; a -&gt; c
+</span><span class="hs-identifier hs-var">flip</span></span><span> </span><span class="annot"><span class="annottext">State Double (t SVG) -&gt; Double -&gt; t SVG
+forall s a. State s a -&gt; s -&gt; a
+</span><span class="hs-identifier hs-var">evalState</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">(State Double (t SVG) -&gt; t SVG)
+-&gt; (t (Line SVG) -&gt; State Double (t SVG)) -&gt; t (Line SVG) -&gt; t SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; StateT Double Identity SVG)
+-&gt; t SVG -&gt; State Double (t SVG)
+forall (t :: * -&gt; *) (f :: * -&gt; *) a b.
+(Traversable t, Applicative f) =&gt;
+(a -&gt; f b) -&gt; t a -&gt; f (t b)
+</span><span class="hs-identifier hs-var">traverse</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; StateT Double Identity SVG
+forall (m :: * -&gt; *). MonadState Double m =&gt; SVG -&gt; m SVG
+</span><a href="#local-6989586621679233428"><span class="hs-identifier hs-var">stackLine</span></a></span><span> </span><span class="annot"><span class="annottext">(t SVG -&gt; State Double (t SVG))
+-&gt; (t (Line SVG) -&gt; t SVG) -&gt; t (Line SVG) -&gt; State Double (t SVG)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Line SVG -&gt; SVG) -&gt; t (Line SVG) -&gt; t SVG
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">Line SVG -&gt; SVG
+</span><a href="#local-6989586621679233427"><span class="hs-identifier hs-var">alignLine</span></a></span><span>
+</span><span id="line-166"></span><span>  </span><span id="local-6989586621679233426"><span class="annot"><span class="annottext">w0 :: Double
+</span><a href="#local-6989586621679233426"><span class="hs-identifier hs-var hs-var">w0</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Compose t Line Double -&gt; Double
+forall (t :: * -&gt; *) a. (Foldable t, Ord a) =&gt; t a -&gt; a
+</span><span class="hs-identifier hs-var">maximum</span></span><span> </span><span class="annot"><span class="annottext">(Compose t Line Double -&gt; Double)
+-&gt; Compose t Line Double -&gt; Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; Double
+</span><span class="hs-identifier hs-var">svgWidth</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; Double) -&gt; Compose t Line SVG -&gt; Compose t Line Double
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">t (Line SVG) -&gt; Compose t Line SVG
+forall k k1 (f :: k -&gt; *) (g :: k1 -&gt; k) (a :: k1).
+f (g a) -&gt; Compose f g a
+</span><span class="hs-identifier hs-var">Compose</span></span><span> </span><span class="annot"><span class="annottext">t (Line SVG)
+</span><a href="#local-6989586621679233432"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-167"></span><span>  </span><span id="local-6989586621679233422"><span class="annot"><span class="annottext">xMax :: SVG -&gt; Double
+</span><a href="#local-6989586621679233422"><span class="hs-identifier hs-var hs-var">xMax</span></a></span></span><span> </span><span id="local-6989586621679233421"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233421"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233420"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233420"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233419"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233419"><span class="hs-identifier hs-var">w</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; (Double, Double, Double, Double)
+</span><span class="hs-identifier hs-var">boundingBox</span></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233421"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233420"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233419"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-168"></span><span>  </span><span id="local-6989586621679233416"><span class="annot"><span class="annottext">xMin :: SVG -&gt; Double
+</span><a href="#local-6989586621679233416"><span class="hs-identifier hs-var hs-var">xMin</span></a></span></span><span> </span><span id="local-6989586621679233415"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233415"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233414"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233414"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; (Double, Double, Double, Double)
+</span><span class="hs-identifier hs-var">boundingBox</span></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233415"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233414"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-169"></span><span>  </span><span id="local-6989586621679233413"><span class="annot"><span class="annottext">xCenter :: SVG -&gt; Double
+</span><a href="#local-6989586621679233413"><span class="hs-identifier hs-var hs-var">xCenter</span></a></span></span><span> </span><span id="local-6989586621679233412"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233412"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233411"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233411"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233410"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233410"><span class="hs-identifier hs-var">w</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; (Double, Double, Double, Double)
+</span><span class="hs-identifier hs-var">boundingBox</span></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233412"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233411"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233410"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span>
+</span><span id="line-170"></span><span>  </span><span id="local-6989586621679233427"><span class="annot"><span class="annottext">alignLine :: Line SVG -&gt; SVG
+</span><a href="#local-6989586621679233427"><span class="hs-identifier hs-var hs-var">alignLine</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Types.html#LeftAligned"><span class="hs-identifier hs-type">LeftAligned</span></a></span><span> </span><span id="local-6989586621679233408"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233408"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">translate</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; Double
+</span><a href="#local-6989586621679233416"><span class="hs-identifier hs-var">xMin</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233408"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233408"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-171"></span><span>  </span><span class="annot"><a href="#local-6989586621679233427"><span class="hs-identifier hs-var">alignLine</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Types.html#RightAligned"><span class="hs-identifier hs-type">RightAligned</span></a></span><span> </span><span id="local-6989586621679233406"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233406"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">translate</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233426"><span class="hs-identifier hs-var">w0</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; Double
+</span><a href="#local-6989586621679233422"><span class="hs-identifier hs-var">xMax</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233406"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233406"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-172"></span><span>  </span><span class="annot"><a href="#local-6989586621679233427"><span class="hs-identifier hs-var">alignLine</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Types.html#Centered"><span class="hs-identifier hs-type">Centered</span></a></span><span> </span><span id="local-6989586621679233405"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233405"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">translate</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233426"><span class="hs-identifier hs-var">w0</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; Double
+</span><a href="#local-6989586621679233413"><span class="hs-identifier hs-var">xCenter</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233405"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233405"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-173"></span><span>  </span><span id="local-6989586621679233428"><span class="annot"><span class="annottext">stackLine :: SVG -&gt; m SVG
+</span><a href="#local-6989586621679233428"><span class="hs-identifier hs-var hs-var">stackLine</span></a></span></span><span> </span><span id="local-6989586621679233404"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233404"><span class="hs-identifier hs-var">thisLine</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">m Double
+forall s (m :: * -&gt; *). MonadState s m =&gt; m s
+</span><span class="hs-identifier hs-var">get</span></span><span> </span><span class="annot"><span class="annottext">m Double -&gt; (Double -&gt; m SVG) -&gt; m SVG
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679233402"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233402"><span class="hs-identifier hs-var">h0</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-174"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233401"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233401"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233400"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233400"><span class="hs-identifier hs-var">h</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; (Double, Double, Double, Double)
+</span><span class="hs-identifier hs-var">boundingBox</span></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233404"><span class="hs-identifier hs-var">thisLine</span></a></span><span>
+</span><span id="line-175"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679233399"><span class="annot"><span class="annottext">y' :: Double
+</span><a href="#local-6989586621679233399"><span class="hs-identifier hs-var hs-var">y'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233402"><span class="hs-identifier hs-var">h0</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233400"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.5</span></span><span>
+</span><span id="line-176"></span><span>    </span><span class="annot"><span class="annottext">Double -&gt; m ()
+forall s (m :: * -&gt; *). MonadState s m =&gt; s -&gt; m ()
+</span><span class="hs-identifier hs-var">put</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233399"><span class="hs-identifier hs-var">y'</span></a></span><span>
+</span><span id="line-177"></span><span>    </span><span class="annot"><span class="annottext">SVG -&gt; m SVG
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">translate</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233399"><span class="hs-identifier hs-var">y'</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233401"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233404"><span class="hs-identifier hs-var">thisLine</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-178"></span><span>
+</span><span id="line-179"></span><span id="local-6989586621679233397"><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Renderable</span></span><span> </span><span class="annot"><a href="#local-6989586621679233397"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Common.Object.Transform.html#GroupRender"><span class="hs-identifier hs-type">GroupRender</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Types.html#Line"><span class="hs-identifier hs-type">Line</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233397"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-180"></span><span>  </span><span id="local-6989586621679233395"><span class="annot"><span class="annottext">renderGroup :: t (Line a) -&gt; t SVG
+</span><a href="#local-6989586621679233395"><span class="hs-identifier hs-var hs-var hs-var hs-var">renderGroup</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t SVG -&gt; t SVG
+forall (t :: * -&gt; *). (Functor t, Foldable t) =&gt; t SVG -&gt; t SVG
+</span><a href="Common.Object.Types.html#centerAsGroup"><span class="hs-identifier hs-var">centerAsGroup</span></a></span><span> </span><span class="annot"><span class="annottext">(t SVG -&gt; t SVG) -&gt; (t (Line a) -&gt; t SVG) -&gt; t (Line a) -&gt; t SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">t (Line SVG) -&gt; t SVG
+forall (t :: * -&gt; *). Traversable t =&gt; t (Line SVG) -&gt; t SVG
+</span><a href="Common.Object.Types.html#layoutLines"><span class="hs-identifier hs-var">layoutLines</span></a></span><span> </span><span class="annot"><span class="annottext">(t (Line SVG) -&gt; t SVG)
+-&gt; (t (Line a) -&gt; t (Line SVG)) -&gt; t (Line a) -&gt; t SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Line a -&gt; Line SVG) -&gt; t (Line a) -&gt; t (Line SVG)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a -&gt; SVG) -&gt; Line a -&gt; Line SVG
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; SVG
+forall a. Renderable a =&gt; a -&gt; SVG
+</span><span class="hs-identifier hs-var">toSVG</span></span><span class="hs-special">)</span></span><span>
+</span><span id="line-181"></span><span>
+</span><span id="line-182"></span><span class="hs-comment">-- * Text Bubbles.</span><span>
+</span><span id="line-183"></span><span>
+</span><span id="line-184"></span><span class="hs-comment">-- |Make a rounded rectangle.</span><span>
+</span><span id="line-185"></span><span class="annot"><a href="Common.Object.Types.html#roundedRect"><span class="hs-identifier hs-type">roundedRect</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span>
+</span><span id="line-186"></span><span id="roundedRect"><span class="annot"><span class="annottext">roundedRect :: Double -&gt; Double -&gt; Double -&gt; SVG
+</span><a href="Common.Object.Types.html#roundedRect"><span class="hs-identifier hs-var hs-var">roundedRect</span></a></span></span><span> </span><span id="local-6989586621679233393"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233393"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span id="local-6989586621679233392"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233392"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span id="local-6989586621679233391"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233391"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Rectangle -&gt; SVG
+</span><span class="hs-identifier hs-var">RectangleTree</span></span><span>
+</span><span id="line-187"></span><span>  </span><span class="annot"><span class="annottext">(Rectangle -&gt; SVG) -&gt; Rectangle -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Rectangle
+forall a. WithDefaultSvg a =&gt; a
+</span><span class="hs-identifier hs-var">defaultSvg</span></span><span>
+</span><span id="line-188"></span><span>  </span><span class="annot"><span class="annottext">Rectangle -&gt; (Rectangle -&gt; Rectangle) -&gt; Rectangle
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Number -&gt; Identity (Maybe Number))
+-&gt; Rectangle -&gt; Identity Rectangle
+Lens' Rectangle (Maybe Number)
+</span><span class="hs-identifier hs-var">rectWidth</span></span><span> </span><span class="annot"><span class="annottext">((Maybe Number -&gt; Identity (Maybe Number))
+ -&gt; Rectangle -&gt; Identity Rectangle)
+-&gt; Number -&gt; Rectangle -&gt; Rectangle
+forall s t a b. ASetter s t a (Maybe b) -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">?~</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Num</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233393"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-189"></span><span>  </span><span class="annot"><span class="annottext">Rectangle -&gt; (Rectangle -&gt; Rectangle) -&gt; Rectangle
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Number -&gt; Identity (Maybe Number))
+-&gt; Rectangle -&gt; Identity Rectangle
+Lens' Rectangle (Maybe Number)
+</span><span class="hs-identifier hs-var">rectHeight</span></span><span> </span><span class="annot"><span class="annottext">((Maybe Number -&gt; Identity (Maybe Number))
+ -&gt; Rectangle -&gt; Identity Rectangle)
+-&gt; Number -&gt; Rectangle -&gt; Rectangle
+forall s t a b. ASetter s t a (Maybe b) -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">?~</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Num</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233392"><span class="hs-identifier hs-var">h</span></a></span><span>
+</span><span id="line-190"></span><span>  </span><span class="annot"><span class="annottext">Rectangle -&gt; (Rectangle -&gt; Rectangle) -&gt; Rectangle
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">(Point -&gt; Identity Point) -&gt; Rectangle -&gt; Identity Rectangle
+Lens' Rectangle Point
+</span><span class="hs-identifier hs-var">rectUpperLeftCorner</span></span><span> </span><span class="annot"><span class="annottext">((Point -&gt; Identity Point) -&gt; Rectangle -&gt; Identity Rectangle)
+-&gt; Point -&gt; Rectangle -&gt; Rectangle
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Num</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233393"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Num</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233392"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span>
+</span><span id="line-191"></span><span>  </span><span class="annot"><span class="annottext">Rectangle -&gt; (Rectangle -&gt; Rectangle) -&gt; Rectangle
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">((Maybe Number, Maybe Number)
+ -&gt; Identity (Maybe Number, Maybe Number))
+-&gt; Rectangle -&gt; Identity Rectangle
+Lens' Rectangle (Maybe Number, Maybe Number)
+</span><span class="hs-identifier hs-var">rectCornerRadius</span></span><span> </span><span class="annot"><span class="annottext">(((Maybe Number, Maybe Number)
+  -&gt; Identity (Maybe Number, Maybe Number))
+ -&gt; Rectangle -&gt; Identity Rectangle)
+-&gt; (Maybe Number, Maybe Number) -&gt; Rectangle -&gt; Rectangle
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Number -&gt; Maybe Number
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(Number -&gt; Maybe Number) -&gt; Number -&gt; Maybe Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Num</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233391"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Number -&gt; Maybe Number
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(Number -&gt; Maybe Number) -&gt; Number -&gt; Maybe Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Num</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233391"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-192"></span><span>
+</span><span id="line-193"></span><span class="hs-comment">-- |Make a rounded square.</span><span>
+</span><span id="line-194"></span><span class="annot"><a href="Common.Object.Types.html#roundedSquare"><span class="hs-identifier hs-type">roundedSquare</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span>
+</span><span id="line-195"></span><span id="roundedSquare"><span class="annot"><span class="annottext">roundedSquare :: Double -&gt; Double -&gt; SVG
+</span><a href="Common.Object.Types.html#roundedSquare"><span class="hs-identifier hs-var hs-var">roundedSquare</span></a></span></span><span> </span><span id="local-6989586621679233382"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233382"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; SVG
+</span><a href="Common.Object.Types.html#roundedRect"><span class="hs-identifier hs-var">roundedRect</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233382"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233382"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-196"></span><span>
+</span><span id="line-197"></span><span class="hs-comment">-- |Text bubble (tips), basically lines surrounded by a rounded rectangle.</span><span>
+</span><span id="line-198"></span><span class="hs-keyword">newtype</span><span> </span><span id="Bubble"><span class="annot"><a href="Common.Object.Types.html#Bubble"><span class="hs-identifier hs-var">Bubble</span></a></span></span><span> </span><span id="local-6989586621679233763"><span class="annot"><a href="#local-6989586621679233763"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Bubble"><span class="annot"><a href="Common.Object.Types.html#Bubble"><span class="hs-identifier hs-var">Bubble</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="unwrapBubble"><span class="annot"><span class="annottext">Bubble a -&gt; [a]
+</span><a href="Common.Object.Types.html#unwrapBubble"><span class="hs-identifier hs-var hs-var">unwrapBubble</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679233763"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-199"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233374"><span id="local-6989586621679233376"><span id="local-6989586621679233378"><span class="annot"><span class="annottext">Int -&gt; Bubble a -&gt; ShowS
+[Bubble a] -&gt; ShowS
+Bubble a -&gt; String
+(Int -&gt; Bubble a -&gt; ShowS)
+-&gt; (Bubble a -&gt; String) -&gt; ([Bubble a] -&gt; ShowS) -&gt; Show (Bubble a)
+forall a. Show a =&gt; Int -&gt; Bubble a -&gt; ShowS
+forall a. Show a =&gt; [Bubble a] -&gt; ShowS
+forall a. Show a =&gt; Bubble a -&gt; String
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Bubble a] -&gt; ShowS
+$cshowList :: forall a. Show a =&gt; [Bubble a] -&gt; ShowS
+show :: Bubble a -&gt; String
+$cshow :: forall a. Show a =&gt; Bubble a -&gt; String
+showsPrec :: Int -&gt; Bubble a -&gt; ShowS
+$cshowsPrec :: forall a. Show a =&gt; Int -&gt; Bubble a -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233370"><span id="local-6989586621679233372"><span class="annot"><span class="annottext">Bubble a -&gt; Bubble a -&gt; Bool
+(Bubble a -&gt; Bubble a -&gt; Bool)
+-&gt; (Bubble a -&gt; Bubble a -&gt; Bool) -&gt; Eq (Bubble a)
+forall a. Eq a =&gt; Bubble a -&gt; Bubble a -&gt; Bool
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: Bubble a -&gt; Bubble a -&gt; Bool
+$c/= :: forall a. Eq a =&gt; Bubble a -&gt; Bubble a -&gt; Bool
+== :: Bubble a -&gt; Bubble a -&gt; Bool
+$c== :: forall a. Eq a =&gt; Bubble a -&gt; Bubble a -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-200"></span><span>
+</span><span id="line-201"></span><span id="local-6989586621679233369"><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Common.Object.Transform.html#GroupRender"><span class="hs-identifier hs-type">GroupRender</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233369"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Renderable</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Types.html#Bubble"><span class="hs-identifier hs-type">Bubble</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233369"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-202"></span><span>  </span><span id="local-6989586621679233367"><span class="annot"><span class="annottext">toSVG :: Bubble a -&gt; SVG
+</span><a href="#local-6989586621679233367"><span class="hs-identifier hs-var hs-var hs-var hs-var">toSVG</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">center</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (Bubble a -&gt; SVG) -&gt; Bubble a -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[SVG] -&gt; SVG
+</span><span class="hs-identifier hs-var">mkGroup</span></span><span> </span><span class="annot"><span class="annottext">([SVG] -&gt; SVG) -&gt; (Bubble a -&gt; [SVG]) -&gt; Bubble a -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[SVG] -&gt; [SVG]
+</span><a href="#local-6989586621679233366"><span class="hs-identifier hs-var">addRect</span></a></span><span> </span><span class="annot"><span class="annottext">([SVG] -&gt; [SVG]) -&gt; (Bubble a -&gt; [SVG]) -&gt; Bubble a -&gt; [SVG]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[a] -&gt; [SVG]
+forall a (t :: * -&gt; *).
+(GroupRender a, Traversable t) =&gt;
+t a -&gt; t SVG
+</span><a href="Common.Object.Transform.html#renderGroup"><span class="hs-identifier hs-var">renderGroup</span></a></span><span> </span><span class="annot"><span class="annottext">([a] -&gt; [SVG]) -&gt; (Bubble a -&gt; [a]) -&gt; Bubble a -&gt; [SVG]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Bubble a -&gt; [a]
+forall a. Bubble a -&gt; [a]
+</span><a href="Common.Object.Types.html#unwrapBubble"><span class="hs-identifier hs-var hs-var">unwrapBubble</span></a></span><span>
+</span><span id="line-203"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-204"></span><span>      </span><span id="local-6989586621679233366"><span class="annot"><span class="annottext">addRect :: [SVG] -&gt; [SVG]
+</span><a href="#local-6989586621679233366"><span class="hs-identifier hs-var hs-var">addRect</span></a></span></span><span> </span><span id="local-6989586621679233365"><span class="annot"><span class="annottext">[SVG]
+</span><a href="#local-6989586621679233365"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-205"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233364"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233364"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233363"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233363"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233362"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233362"><span class="hs-identifier hs-var">w</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233361"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233361"><span class="hs-identifier hs-var">h</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; (Double, Double, Double, Double)
+</span><span class="hs-identifier hs-var">boundingBox</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[SVG] -&gt; SVG
+</span><span class="hs-identifier hs-var">mkGroup</span></span><span> </span><span class="annot"><span class="annottext">[SVG]
+</span><a href="#local-6989586621679233365"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-206"></span><span>            </span><span class="hs-special">(</span><span id="local-6989586621679233360"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233360"><span class="hs-identifier hs-var">x'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233359"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233359"><span class="hs-identifier hs-var">y'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233358"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233358"><span class="hs-identifier hs-var">w'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233357"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233357"><span class="hs-identifier hs-var">h'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233364"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233362"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233363"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233361"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233362"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1.2</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233361"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1.2</span></span><span class="hs-special">)</span><span>
+</span><span id="line-207"></span><span>            </span><span id="local-6989586621679233356"><span class="annot"><span class="annottext">r :: SVG
+</span><a href="#local-6989586621679233356"><span class="hs-identifier hs-var hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withFillOpacity</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.08</span></span><span>
+</span><span id="line-208"></span><span>              </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withFillColorPixel</span></span><span> </span><span class="annot"><span class="">[rgba|000|]</span></span><span>
+</span><span id="line-209"></span><span>              </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; SVG
+</span><a href="Common.Object.Types.html#roundedRect"><span class="hs-identifier hs-var">roundedRect</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233358"><span class="hs-identifier hs-var">w'</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233357"><span class="hs-identifier hs-var">h'</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.36</span></span><span>
+</span><span id="line-210"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">translate</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233360"><span class="hs-identifier hs-var">x'</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233359"><span class="hs-identifier hs-var">y'</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233356"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; [SVG] -&gt; [SVG]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[SVG]
+</span><a href="#local-6989586621679233365"><span class="hs-identifier hs-var">s</span></a></span></span><span>
+</span><span id="line-211"></span><span>
+</span><span id="line-212"></span><span class="hs-comment">-- |Create a new text bubble, attached to an existing object.</span><span>
+</span><span id="line-213"></span><span class="annot"><a href="Common.Object.Types.html#oNewBubble"><span class="hs-identifier hs-type">oNewBubble</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679233741"><span class="annot"><a href="#local-6989586621679233741"><span class="hs-identifier hs-type">x</span></a></span></span><span> </span><span id="local-6989586621679233739"><span class="annot"><a href="#local-6989586621679233739"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span id="local-6989586621679233740"><span class="annot"><a href="#local-6989586621679233740"><span class="hs-identifier hs-type">s</span></a></span></span><span> </span><span class="hs-operator">.</span><span> </span><span class="annot"><a href="Common.Object.Transform.html#GroupRender"><span class="hs-identifier hs-type">GroupRender</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233741"><span class="hs-identifier hs-type">x</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span class="annot"><a href="#local-6989586621679233740"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233739"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679233741"><span class="hs-identifier hs-type">x</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Scene</span></span><span> </span><span class="annot"><a href="#local-6989586621679233740"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span class="annot"><a href="#local-6989586621679233740"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span class="hs-special">)</span><span>
+</span><span id="line-214"></span><span id="oNewBubble"><span class="annot"><span class="annottext">oNewBubble :: Object s a -&gt; [x] -&gt; Scene s (Object s SVG)
+</span><a href="Common.Object.Types.html#oNewBubble"><span class="hs-identifier hs-var hs-var">oNewBubble</span></a></span></span><span> </span><span id="local-6989586621679233354"><span class="annot"><span class="annottext">Object s a
+</span><a href="#local-6989586621679233354"><span class="hs-identifier hs-var">o</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">scale</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.3</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; ([x] -&gt; SVG) -&gt; [x] -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Bubble x -&gt; SVG
+forall a. Renderable a =&gt; a -&gt; SVG
+</span><span class="hs-identifier hs-var">toSVG</span></span><span> </span><span class="annot"><span class="annottext">(Bubble x -&gt; SVG) -&gt; ([x] -&gt; Bubble x) -&gt; [x] -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[x] -&gt; Bubble x
+forall a. [a] -&gt; Bubble a
+</span><a href="Common.Object.Types.html#Bubble"><span class="hs-identifier hs-var">Bubble</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span id="local-6989586621679233352"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233352"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-215"></span><span>  </span><span id="local-6989586621679233351"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233351"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Object s a
+-&gt; Getting Double (ObjectData a) Double -&gt; Scene s Double
+forall s a b. Object s a -&gt; Getting b (ObjectData a) b -&gt; Scene s b
+</span><span class="hs-identifier hs-var">oRead</span></span><span> </span><span class="annot"><span class="annottext">Object s a
+</span><a href="#local-6989586621679233354"><span class="hs-identifier hs-var">o</span></a></span><span> </span><span class="annot"><span class="annottext">Getting Double (ObjectData a) Double
+forall a. Lens' (ObjectData a) Double
+</span><span class="hs-identifier hs-var">oTranslateX</span></span><span>
+</span><span id="line-216"></span><span>  </span><span id="local-6989586621679233348"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233348"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Object s a
+-&gt; Getting Double (ObjectData a) Double -&gt; Scene s Double
+forall s a b. Object s a -&gt; Getting b (ObjectData a) b -&gt; Scene s b
+</span><span class="hs-identifier hs-var">oRead</span></span><span> </span><span class="annot"><span class="annottext">Object s a
+</span><a href="#local-6989586621679233354"><span class="hs-identifier hs-var">o</span></a></span><span> </span><span class="annot"><span class="annottext">Getting Double (ObjectData a) Double
+forall a. Lens' (ObjectData a) Double
+</span><span class="hs-identifier hs-var">oBottomY</span></span><span>
+</span><span id="line-217"></span><span>  </span><span id="local-6989586621679233346"><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679233346"><span class="hs-identifier hs-var">res</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; Scene s (Object s SVG)
+forall a s. Renderable a =&gt; a -&gt; Scene s (Object s a)
+</span><span class="hs-identifier hs-var">oNew</span></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233352"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-218"></span><span>  </span><span class="hs-comment">-- in NumInstance: tuples implement 'Num', 'Fractional', 'Floating', etc.</span><span>
+</span><span id="line-219"></span><span>  </span><span class="hs-comment">-- fromInteger/fromFractional simply duplicates the number to all fields.</span><span>
+</span><span id="line-220"></span><span>  </span><span class="annot"><span class="annottext">Object s SVG -&gt; (ObjectData SVG -&gt; ObjectData SVG) -&gt; Scene s ()
+forall s a.
+Object s a -&gt; (ObjectData a -&gt; ObjectData a) -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oModify</span></span><span> </span><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679233346"><span class="hs-identifier hs-var">res</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">((Double, Double, Double, Double)
+ -&gt; Identity (Double, Double, Double, Double))
+-&gt; ObjectData SVG -&gt; Identity (ObjectData SVG)
+forall a. Lens' (ObjectData a) (Double, Double, Double, Double)
+</span><span class="hs-identifier hs-var">oMargin</span></span><span> </span><span class="annot"><span class="annottext">(((Double, Double, Double, Double)
+  -&gt; Identity (Double, Double, Double, Double))
+ -&gt; ObjectData SVG -&gt; Identity (ObjectData SVG))
+-&gt; (Double, Double, Double, Double)
+-&gt; ObjectData SVG
+-&gt; ObjectData SVG
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">(Double, Double, Double, Double)
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span>
+</span><span id="line-221"></span><span>  </span><span class="annot"><span class="annottext">Object s SVG -&gt; (ObjectData SVG -&gt; ObjectData SVG) -&gt; Scene s ()
+forall s a.
+Object s a -&gt; (ObjectData a -&gt; ObjectData a) -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oModify</span></span><span> </span><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679233346"><span class="hs-identifier hs-var">res</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Double -&gt; Identity Double)
+-&gt; ObjectData SVG -&gt; Identity (ObjectData SVG)
+forall a. Lens' (ObjectData a) Double
+</span><span class="hs-identifier hs-var">oTranslateX</span></span><span> </span><span class="annot"><span class="annottext">((Double -&gt; Identity Double)
+ -&gt; ObjectData SVG -&gt; Identity (ObjectData SVG))
+-&gt; Double -&gt; ObjectData SVG -&gt; ObjectData SVG
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233351"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-222"></span><span>  </span><span class="annot"><span class="annottext">Object s SVG -&gt; (ObjectData SVG -&gt; ObjectData SVG) -&gt; Scene s ()
+forall s a.
+Object s a -&gt; (ObjectData a -&gt; ObjectData a) -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oModify</span></span><span> </span><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679233346"><span class="hs-identifier hs-var">res</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Double -&gt; Identity Double)
+-&gt; ObjectData SVG -&gt; Identity (ObjectData SVG)
+forall a. Lens' (ObjectData a) Double
+</span><span class="hs-identifier hs-var">oTopY</span></span><span> </span><span class="annot"><span class="annottext">((Double -&gt; Identity Double)
+ -&gt; ObjectData SVG -&gt; Identity (ObjectData SVG))
+-&gt; Double -&gt; ObjectData SVG -&gt; ObjectData SVG
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233348"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-223"></span><span>  </span><span class="annot"><span class="annottext">Object s SVG -&gt; Scene s (Object s SVG)
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679233346"><span class="hs-identifier hs-var">res</span></a></span><span>
+</span><span id="line-224"></span><span>
+</span><span id="line-225"></span><span class="hs-comment">-- |Pop out a new text bubble (for a given duration), attached to an existing object.</span><span>
+</span><span id="line-226"></span><span class="annot"><a href="Common.Object.Types.html#oPopBubble"><span class="hs-identifier hs-type">oPopBubble</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679233340"><span class="annot"><a href="#local-6989586621679233340"><span class="hs-identifier hs-type">x</span></a></span></span><span> </span><span id="local-6989586621679233339"><span class="annot"><a href="#local-6989586621679233339"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span id="local-6989586621679233338"><span class="annot"><a href="#local-6989586621679233338"><span class="hs-identifier hs-type">s</span></a></span></span><span> </span><span class="hs-operator">.</span><span> </span><span class="annot"><a href="Common.Object.Transform.html#GroupRender"><span class="hs-identifier hs-type">GroupRender</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233340"><span class="hs-identifier hs-type">x</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Duration</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span class="annot"><a href="#local-6989586621679233338"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233339"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679233340"><span class="hs-identifier hs-type">x</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Scene</span></span><span> </span><span class="annot"><a href="#local-6989586621679233338"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-227"></span><span id="oPopBubble"><span class="annot"><span class="annottext">oPopBubble :: Double -&gt; Object s a -&gt; [x] -&gt; Scene s ()
+</span><a href="Common.Object.Types.html#oPopBubble"><span class="hs-identifier hs-var hs-var">oPopBubble</span></a></span></span><span> </span><span id="local-6989586621679233336"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233336"><span class="hs-identifier hs-var">dt</span></a></span></span><span> </span><span id="local-6989586621679233335"><span class="annot"><span class="annottext">Object s a
+</span><a href="#local-6989586621679233335"><span class="hs-identifier hs-var">o</span></a></span></span><span> </span><span id="local-6989586621679233334"><span class="annot"><span class="annottext">[x]
+</span><a href="#local-6989586621679233334"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Scene s () -&gt; Scene s ()
+forall s a. Scene s a -&gt; Scene s a
+</span><span class="hs-identifier hs-var">spriteScope</span></span><span> </span><span class="annot"><span class="annottext">(Scene s () -&gt; Scene s ()) -&gt; Scene s () -&gt; Scene s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-228"></span><span>  </span><span id="local-6989586621679233332"><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679233332"><span class="hs-identifier hs-var">bub</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Object s a -&gt; [x] -&gt; Scene s (Object s SVG)
+forall x a s.
+GroupRender x =&gt;
+Object s a -&gt; [x] -&gt; Scene s (Object s SVG)
+</span><a href="Common.Object.Types.html#oNewBubble"><span class="hs-identifier hs-var">oNewBubble</span></a></span><span> </span><span class="annot"><span class="annottext">Object s a
+</span><a href="#local-6989586621679233335"><span class="hs-identifier hs-var">o</span></a></span><span> </span><span class="annot"><span class="annottext">[x]
+</span><a href="#local-6989586621679233334"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-229"></span><span>  </span><span class="annot"><span class="annottext">Object s SVG -&gt; (SVG -&gt; Animation) -&gt; Scene s ()
+forall s a. Object s a -&gt; (SVG -&gt; Animation) -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oShowWith</span></span><span> </span><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679233332"><span class="hs-identifier hs-var">bub</span></a></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; Animation
+</span><span class="hs-identifier hs-var">oFadeIn</span></span><span>
+</span><span id="line-230"></span><span>  </span><span class="annot"><span class="annottext">Double -&gt; Scene s ()
+forall s. Double -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">wait</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233336"><span class="hs-identifier hs-var">dt</span></a></span><span>
+</span><span id="line-231"></span><span>  </span><span class="annot"><span class="annottext">Object s SVG -&gt; (SVG -&gt; Animation) -&gt; Scene s ()
+forall s a. Object s a -&gt; (SVG -&gt; Animation) -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oHideWith</span></span><span> </span><span class="annot"><span class="annottext">Object s SVG
+</span><a href="#local-6989586621679233332"><span class="hs-identifier hs-var">bub</span></a></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; Animation
+</span><span class="hs-identifier hs-var">oFadeOut</span></span><span>
+</span><span id="line-232"></span><span>
+</span><span id="line-233"></span><span class="hs-comment">-- |'CodeBlock' in a 'Bubble'.</span><span>
+</span><span id="line-234"></span><span class="hs-keyword">type</span><span> </span><span id="CodeBubble"><span class="annot"><a href="Common.Object.Types.html#CodeBubble"><span class="hs-identifier hs-var">CodeBubble</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="Common.Object.Types.html#Bubble"><span class="hs-identifier hs-type">Bubble</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Types.html#Line"><span class="hs-identifier hs-type">Line</span></a></span><span> </span><span class="annot"><a href="Common.Object.Types.html#CodeBlock"><span class="hs-identifier hs-type">CodeBlock</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-235"></span><span>
+</span><span id="line-236"></span><span class="hs-comment">-- |Construct a 'CodeBubble'.</span><span>
+</span><span id="line-237"></span><span class="hs-keyword">pattern</span><span> </span><span class="annot"><a href="Common.Object.Types.html#CodeBubble"><span class="hs-identifier hs-type">CodeBubble</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Common.Object.Types.html#CodeBubble"><span class="hs-identifier hs-type">CodeBubble</span></a></span><span>
+</span><span id="line-238"></span><span class="hs-keyword">pattern</span><span> </span><span id="%24bCodeBubble"><span id="%24mCodeBubble"><span id="CodeBubble"><span class="annot"><span class="annottext">$bCodeBubble :: Text -&gt; Text -&gt; CodeBubble
+$mCodeBubble :: forall r. CodeBubble -&gt; (Text -&gt; Text -&gt; r) -&gt; (Void# -&gt; r) -&gt; r
+</span><a href="Common.Object.Types.html#%24bCodeBubble"><span class="hs-identifier hs-var hs-var hs-var">CodeBubble</span></a></span></span></span></span><span> </span><span class="annot"><a href="#local-6989586621679233323"><span class="hs-identifier hs-type">lang</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233322"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="Common.Object.Types.html#Bubble"><span class="hs-identifier hs-type">Bubble</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Common.Object.Types.html#LeftAligned"><span class="hs-identifier hs-type">LeftAligned</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Types.html#CodeBlock"><span class="hs-identifier hs-type">CodeBlock</span></a></span><span> </span><span id="local-6989586621679233323"><span class="annot"><a href="#local-6989586621679233323"><span class="hs-identifier hs-var">lang</span></a></span></span><span> </span><span id="local-6989586621679233322"><span class="annot"><a href="#local-6989586621679233322"><span class="hs-identifier hs-var">t</span></a></span></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-239"></span><span>
+</span><span id="line-240"></span><span class="hs-comment">-- |Construct a 'CodeBubble' in Haskell language.</span><span>
+</span><span id="line-241"></span><span class="hs-keyword">pattern</span><span> </span><span class="annot"><a href="Common.Object.Types.html#HaskellBubble"><span class="hs-identifier hs-type">HaskellBubble</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Common.Object.Types.html#CodeBubble"><span class="hs-identifier hs-type">CodeBubble</span></a></span><span>
+</span><span id="line-242"></span><span class="hs-keyword">pattern</span><span> </span><span id="%24bHaskellBubble"><span id="%24mHaskellBubble"><span id="HaskellBubble"><span class="annot"><span class="annottext">$bHaskellBubble :: Text -&gt; CodeBubble
+$mHaskellBubble :: forall r. CodeBubble -&gt; (Text -&gt; r) -&gt; (Void# -&gt; r) -&gt; r
+</span><a href="Common.Object.Types.html#%24bHaskellBubble"><span class="hs-identifier hs-var hs-var hs-var">HaskellBubble</span></a></span></span></span></span><span> </span><span class="annot"><a href="#local-6989586621679233318"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="Common.Object.Types.html#CodeBubble"><span class="hs-identifier hs-type">CodeBubble</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;haskell&quot;</span></span><span> </span><span id="local-6989586621679233318"><span class="annot"><a href="#local-6989586621679233318"><span class="hs-identifier hs-var">t</span></a></span></span><span>
+</span><span id="line-243"></span></pre></body></html>

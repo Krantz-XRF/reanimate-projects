@@ -1,0 +1,266 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-2"></span><span class="hs-comment">{-|
+  [Povray](http://povray.org/) is a scriptable raytracer. All povray functions
+  are cached and will reuse images when scripts stay the same.
+-}</span><span>
+</span><span id="line-6"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Povray</span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Povray.html#povray"><span class="hs-identifier">povray</span></a></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Povray.html#povrayQuick"><span class="hs-identifier">povrayQuick</span></a></span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Povray.html#povraySlow"><span class="hs-identifier">povraySlow</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Povray.html#povrayExtreme"><span class="hs-identifier">povrayExtreme</span></a></span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Povray.html#povray%27"><span class="hs-identifier">povray'</span></a></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Povray.html#povrayQuick%27"><span class="hs-identifier">povrayQuick'</span></a></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Povray.html#povraySlow%27"><span class="hs-identifier">povraySlow'</span></a></span><span>
+</span><span id="line-14"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Povray.html#povrayExtreme%27"><span class="hs-identifier">povrayExtreme'</span></a></span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Hashable</span></span><span>              </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Hashable</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">hash</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>                  </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>                  </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.IO</span></span><span>               </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree</span></span><span>           </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Tree</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Cache.html"><span class="hs-identifier">Reanimate.Cache</span></a></span><span>            </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Cache.html#cacheFile"><span class="hs-identifier">cacheFile</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Cache.html#encodeInt"><span class="hs-identifier">encodeInt</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Constants.html"><span class="hs-identifier">Reanimate.Constants</span></a></span><span>        </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Constants.html#screenHeight"><span class="hs-identifier">screenHeight</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Constants.html#screenWidth"><span class="hs-identifier">screenWidth</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Misc.html"><span class="hs-identifier">Reanimate.Misc</span></a></span><span>             </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Misc.html#requireExecutable"><span class="hs-identifier">requireExecutable</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Misc.html#runCmd"><span class="hs-identifier">runCmd</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Parameters.html"><span class="hs-identifier">Reanimate.Parameters</span></a></span><span>       </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Parameters.html#pNoExternals"><span class="hs-identifier">pNoExternals</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Raster.html"><span class="hs-identifier">Reanimate.Raster</span></a></span><span>           </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Raster.html#mkImage"><span class="hs-identifier">mkImage</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Svg.Constructors.html"><span class="hs-identifier">Reanimate.Svg.Constructors</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Svg.Constructors.html#mkText"><span class="hs-identifier">mkText</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.FilePath</span></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">replaceExtension</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(&lt;.&gt;)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO.Unsafe</span></span><span>           </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">unsafePerformIO</span></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="annot"><a href="Reanimate.Povray.html#povrayRaw"><span class="hs-identifier hs-type">povrayRaw</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-32"></span><span id="povrayRaw"><span class="annot"><span class="annottext">povrayRaw :: [String] -&gt; Text -&gt; Tree
+</span><a href="Reanimate.Povray.html#povrayRaw"><span class="hs-identifier hs-var hs-var">povrayRaw</span></a></span></span><span> </span><span id="local-6989586621679544360"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544360"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span id="local-6989586621679544359"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679544359"><span class="hs-identifier hs-var">script</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-33"></span><span>  </span><span class="annot"><span class="annottext">IO Tree -&gt; Tree
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO Tree -&gt; Tree) -&gt; IO Tree -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; Text -&gt; IO Tree
+</span><a href="Reanimate.Povray.html#mkPovrayImage"><span class="hs-identifier hs-var">mkPovrayImage</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544360"><span class="hs-identifier hs-var">args</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679544359"><span class="hs-identifier hs-var">script</span></a></span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="annot"><a href="Reanimate.Povray.html#povrayRaw%27"><span class="hs-identifier hs-type">povrayRaw'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span>
+</span><span id="line-36"></span><span id="povrayRaw%27"><span class="annot"><span class="annottext">povrayRaw' :: [String] -&gt; Text -&gt; String
+</span><a href="Reanimate.Povray.html#povrayRaw%27"><span class="hs-identifier hs-var hs-var">povrayRaw'</span></a></span></span><span> </span><span id="local-6989586621679544355"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544355"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span id="local-6989586621679544354"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679544354"><span class="hs-identifier hs-var">script</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-37"></span><span>  </span><span class="annot"><span class="annottext">IO String -&gt; String
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO String -&gt; String) -&gt; IO String -&gt; String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; Text -&gt; IO String
+</span><a href="Reanimate.Povray.html#mkPovrayImage%27"><span class="hs-identifier hs-var">mkPovrayImage'</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544355"><span class="hs-identifier hs-var">args</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679544354"><span class="hs-identifier hs-var">script</span></a></span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="hs-comment">-- | Run the povray raytracer with a default resolution of 320x180</span><span>
+</span><span id="line-40"></span><span class="hs-comment">--   and antialiasing enabled. The resulting image is scaled to fit</span><span>
+</span><span id="line-41"></span><span class="hs-comment">--   the screen exactly.</span><span>
+</span><span id="line-42"></span><span class="annot"><a href="Reanimate.Povray.html#povray"><span class="hs-identifier hs-type">povray</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-43"></span><span id="povray"><span class="annot"><span class="annottext">povray :: [String] -&gt; Text -&gt; Tree
+</span><a href="Reanimate.Povray.html#povray"><span class="hs-identifier hs-var hs-var">povray</span></a></span></span><span> </span><span id="local-6989586621679544352"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544352"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; Text -&gt; Tree
+</span><a href="Reanimate.Povray.html#povrayRaw"><span class="hs-identifier hs-var">povrayRaw</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+H180&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+W320&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+A&quot;</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; [String]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544352"><span class="hs-identifier hs-var">args</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-44"></span><span>
+</span><span id="line-45"></span><span class="hs-comment">-- | Run the povray raytracer with a default resolution of 320x180</span><span>
+</span><span id="line-46"></span><span class="hs-comment">--   and antialiasing enabled. The FilePath points to a PNG file</span><span>
+</span><span id="line-47"></span><span class="hs-comment">--   containing the resulting image.</span><span>
+</span><span id="line-48"></span><span class="annot"><a href="Reanimate.Povray.html#povray%27"><span class="hs-identifier hs-type">povray'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span>
+</span><span id="line-49"></span><span id="povray%27"><span class="annot"><span class="annottext">povray' :: [String] -&gt; Text -&gt; String
+</span><a href="Reanimate.Povray.html#povray%27"><span class="hs-identifier hs-var hs-var">povray'</span></a></span></span><span> </span><span id="local-6989586621679544351"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544351"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; Text -&gt; String
+</span><a href="Reanimate.Povray.html#povrayRaw%27"><span class="hs-identifier hs-var">povrayRaw'</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+H180&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+W320&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+A&quot;</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; [String]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544351"><span class="hs-identifier hs-var">args</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span class="hs-comment">-- | Run the povray raytracer with a default resolution of 320x180</span><span>
+</span><span id="line-52"></span><span class="hs-comment">--   but without antialiasing. The resulting image is scaled to fit</span><span>
+</span><span id="line-53"></span><span class="hs-comment">--   the screen exactly.</span><span>
+</span><span id="line-54"></span><span class="annot"><a href="Reanimate.Povray.html#povrayQuick"><span class="hs-identifier hs-type">povrayQuick</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-55"></span><span id="povrayQuick"><span class="annot"><span class="annottext">povrayQuick :: [String] -&gt; Text -&gt; Tree
+</span><a href="Reanimate.Povray.html#povrayQuick"><span class="hs-identifier hs-var hs-var">povrayQuick</span></a></span></span><span> </span><span id="local-6989586621679544350"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544350"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; Text -&gt; Tree
+</span><a href="Reanimate.Povray.html#povrayRaw"><span class="hs-identifier hs-var">povrayRaw</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+H180&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+W320&quot;</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; [String]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544350"><span class="hs-identifier hs-var">args</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span class="hs-comment">-- | Run the povray raytracer with a default resolution of 320x180</span><span>
+</span><span id="line-58"></span><span class="hs-comment">--   but without antialiasing. The FilePath points to a PNG file</span><span>
+</span><span id="line-59"></span><span class="hs-comment">--   containing the resulting image.</span><span>
+</span><span id="line-60"></span><span class="annot"><a href="Reanimate.Povray.html#povrayQuick%27"><span class="hs-identifier hs-type">povrayQuick'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span>
+</span><span id="line-61"></span><span id="povrayQuick%27"><span class="annot"><span class="annottext">povrayQuick' :: [String] -&gt; Text -&gt; String
+</span><a href="Reanimate.Povray.html#povrayQuick%27"><span class="hs-identifier hs-var hs-var">povrayQuick'</span></a></span></span><span> </span><span id="local-6989586621679544349"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544349"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; Text -&gt; String
+</span><a href="Reanimate.Povray.html#povrayRaw%27"><span class="hs-identifier hs-var">povrayRaw'</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+H180&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+W320&quot;</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; [String]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544349"><span class="hs-identifier hs-var">args</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="hs-comment">-- | Run the povray raytracer with a default resolution of 1440x2560</span><span>
+</span><span id="line-64"></span><span class="hs-comment">--   and antialiasing enabled. The FilePath points to a PNG file</span><span>
+</span><span id="line-65"></span><span class="hs-comment">--   containing the resulting image.</span><span>
+</span><span id="line-66"></span><span class="annot"><a href="Reanimate.Povray.html#povraySlow"><span class="hs-identifier hs-type">povraySlow</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-67"></span><span id="povraySlow"><span class="annot"><span class="annottext">povraySlow :: [String] -&gt; Text -&gt; Tree
+</span><a href="Reanimate.Povray.html#povraySlow"><span class="hs-identifier hs-var hs-var">povraySlow</span></a></span></span><span> </span><span id="local-6989586621679544348"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544348"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; Text -&gt; Tree
+</span><a href="Reanimate.Povray.html#povrayRaw"><span class="hs-identifier hs-var">povrayRaw</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+H1440&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+W2560&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+A&quot;</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; [String]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544348"><span class="hs-identifier hs-var">args</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span class="hs-comment">-- | Run the povray raytracer with a default resolution of 1440x2560</span><span>
+</span><span id="line-70"></span><span class="hs-comment">--   and antialiasing enabled. The FilePath points to a PNG file</span><span>
+</span><span id="line-71"></span><span class="hs-comment">--   containing the resulting image.</span><span>
+</span><span id="line-72"></span><span class="annot"><a href="Reanimate.Povray.html#povraySlow%27"><span class="hs-identifier hs-type">povraySlow'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span>
+</span><span id="line-73"></span><span id="povraySlow%27"><span class="annot"><span class="annottext">povraySlow' :: [String] -&gt; Text -&gt; String
+</span><a href="Reanimate.Povray.html#povraySlow%27"><span class="hs-identifier hs-var hs-var">povraySlow'</span></a></span></span><span> </span><span id="local-6989586621679544347"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544347"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; Text -&gt; String
+</span><a href="Reanimate.Povray.html#povrayRaw%27"><span class="hs-identifier hs-var">povrayRaw'</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+H1440&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+W2560&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+A&quot;</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; [String]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544347"><span class="hs-identifier hs-var">args</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span class="hs-comment">-- | Run the povray raytracer with a default resolution of 2160x3840</span><span>
+</span><span id="line-76"></span><span class="hs-comment">--   and antialiasing enabled. The FilePath points to a PNG file</span><span>
+</span><span id="line-77"></span><span class="hs-comment">--   containing the resulting image.</span><span>
+</span><span id="line-78"></span><span class="annot"><a href="Reanimate.Povray.html#povrayExtreme"><span class="hs-identifier hs-type">povrayExtreme</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-79"></span><span id="povrayExtreme"><span class="annot"><span class="annottext">povrayExtreme :: [String] -&gt; Text -&gt; Tree
+</span><a href="Reanimate.Povray.html#povrayExtreme"><span class="hs-identifier hs-var hs-var">povrayExtreme</span></a></span></span><span> </span><span id="local-6989586621679544346"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544346"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; Text -&gt; Tree
+</span><a href="Reanimate.Povray.html#povrayRaw"><span class="hs-identifier hs-var">povrayRaw</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+H2160&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+W3840&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+A&quot;</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; [String]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544346"><span class="hs-identifier hs-var">args</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span class="hs-comment">-- | Run the povray raytracer with a default resolution of 2160x3840</span><span>
+</span><span id="line-82"></span><span class="hs-comment">--   and antialiasing enabled. The FilePath points to a PNG file</span><span>
+</span><span id="line-83"></span><span class="hs-comment">--   containing the resulting image.</span><span>
+</span><span id="line-84"></span><span class="annot"><a href="Reanimate.Povray.html#povrayExtreme%27"><span class="hs-identifier hs-type">povrayExtreme'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span>
+</span><span id="line-85"></span><span id="povrayExtreme%27"><span class="annot"><span class="annottext">povrayExtreme' :: [String] -&gt; Text -&gt; String
+</span><a href="Reanimate.Povray.html#povrayExtreme%27"><span class="hs-identifier hs-var hs-var">povrayExtreme'</span></a></span></span><span> </span><span id="local-6989586621679544345"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544345"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; Text -&gt; String
+</span><a href="Reanimate.Povray.html#povrayRaw%27"><span class="hs-identifier hs-var">povrayRaw'</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+H2160&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+W3840&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+A&quot;</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; [String]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544345"><span class="hs-identifier hs-var">args</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-86"></span><span>
+</span><span id="line-87"></span><span class="annot"><a href="Reanimate.Povray.html#mkPovrayImage"><span class="hs-identifier hs-type">mkPovrayImage</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-88"></span><span id="mkPovrayImage"><span class="annot"><span class="annottext">mkPovrayImage :: [String] -&gt; Text -&gt; IO Tree
+</span><a href="Reanimate.Povray.html#mkPovrayImage"><span class="hs-identifier hs-var hs-var">mkPovrayImage</span></a></span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679544344"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679544344"><span class="hs-identifier hs-var">script</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="Reanimate.Parameters.html#pNoExternals"><span class="hs-identifier hs-var">pNoExternals</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Tree -&gt; IO Tree
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; IO Tree) -&gt; Tree -&gt; IO Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Tree
+</span><a href="Reanimate.Svg.Constructors.html#mkText"><span class="hs-identifier hs-var">mkText</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679544344"><span class="hs-identifier hs-var">script</span></a></span><span>
+</span><span id="line-89"></span><span class="annot"><a href="Reanimate.Povray.html#mkPovrayImage"><span class="hs-identifier hs-var">mkPovrayImage</span></a></span><span> </span><span id="local-6989586621679544343"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544343"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span id="local-6989586621679544342"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679544342"><span class="hs-identifier hs-var">script</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-90"></span><span>  </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; String -&gt; Tree
+</span><a href="Reanimate.Raster.html#mkImage"><span class="hs-identifier hs-var">mkImage</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+forall a. Fractional a =&gt; a
+</span><a href="Reanimate.Constants.html#screenWidth"><span class="hs-identifier hs-var">screenWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+forall a. Fractional a =&gt; a
+</span><a href="Reanimate.Constants.html#screenHeight"><span class="hs-identifier hs-var">screenHeight</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Tree) -&gt; IO String -&gt; IO Tree
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; Text -&gt; IO String
+</span><a href="Reanimate.Povray.html#mkPovrayImage%27"><span class="hs-identifier hs-var">mkPovrayImage'</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544343"><span class="hs-identifier hs-var">args</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679544342"><span class="hs-identifier hs-var">script</span></a></span><span>
+</span><span id="line-91"></span><span>
+</span><span id="line-92"></span><span class="annot"><a href="Reanimate.Povray.html#mkPovrayImage%27"><span class="hs-identifier hs-type">mkPovrayImage'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span>
+</span><span id="line-93"></span><span id="mkPovrayImage%27"><span class="annot"><span class="annottext">mkPovrayImage' :: [String] -&gt; Text -&gt; IO String
+</span><a href="Reanimate.Povray.html#mkPovrayImage%27"><span class="hs-identifier hs-var hs-var">mkPovrayImage'</span></a></span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="Reanimate.Parameters.html#pNoExternals"><span class="hs-identifier hs-var">pNoExternals</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO String
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;/povray/has/been/disabled&quot;</span></span><span>
+</span><span id="line-94"></span><span class="annot"><a href="Reanimate.Povray.html#mkPovrayImage%27"><span class="hs-identifier hs-var">mkPovrayImage'</span></a></span><span> </span><span id="local-6989586621679544340"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544340"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span id="local-6989586621679544339"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679544339"><span class="hs-identifier hs-var">script</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; (String -&gt; IO ()) -&gt; IO String
+</span><a href="Reanimate.Cache.html#cacheFile"><span class="hs-identifier hs-var">cacheFile</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679544338"><span class="hs-identifier hs-var">template</span></a></span><span> </span><span class="annot"><span class="annottext">((String -&gt; IO ()) -&gt; IO String) -&gt; (String -&gt; IO ()) -&gt; IO String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679544337"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679544337"><span class="hs-identifier hs-var">target</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-95"></span><span>    </span><span id="local-6989586621679544336"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679544336"><span class="hs-identifier hs-var">exec</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO String
+</span><a href="Reanimate.Misc.html#requireExecutable"><span class="hs-identifier hs-var">requireExecutable</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;povray&quot;</span></span><span>
+</span><span id="line-96"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679544335"><span class="annot"><span class="annottext">pov_file :: String
+</span><a href="#local-6989586621679544335"><span class="hs-identifier hs-var hs-var">pov_file</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+</span><span class="hs-identifier hs-var">replaceExtension</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679544337"><span class="hs-identifier hs-var">target</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;pov&quot;</span></span><span>
+</span><span id="line-97"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; Text -&gt; IO ()
+</span><span class="hs-identifier hs-var">T.writeFile</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679544335"><span class="hs-identifier hs-var">pov_file</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679544339"><span class="hs-identifier hs-var">script</span></a></span><span>
+</span><span id="line-98"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; IO ()
+</span><a href="Reanimate.Misc.html#runCmd"><span class="hs-identifier hs-var">runCmd</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679544336"><span class="hs-identifier hs-var">exec</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544340"><span class="hs-identifier hs-var">args</span></a></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; [String]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;-D&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+UA&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679544335"><span class="hs-identifier hs-var">pov_file</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;+o&quot;</span></span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679544337"><span class="hs-identifier hs-var">target</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-99"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-100"></span><span>    </span><span id="local-6989586621679544338"><span class="annot"><span class="annottext">template :: String
+</span><a href="#local-6989586621679544338"><span class="hs-identifier hs-var hs-var">template</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; String
+</span><a href="Reanimate.Cache.html#encodeInt"><span class="hs-identifier hs-var">encodeInt</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Int
+forall a. Hashable a =&gt; a -&gt; Int
+</span><span class="hs-identifier hs-var">hash</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679544333"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+</span><span class="hs-operator hs-var">&lt;.&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;png&quot;</span></span><span>
+</span><span id="line-101"></span><span>    </span><span id="local-6989586621679544333"><span class="annot"><span class="annottext">key :: Text
+</span><a href="#local-6989586621679544333"><span class="hs-identifier hs-var hs-var">key</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Text
+</span><span class="hs-identifier hs-var">T.concat</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679544339"><span class="hs-identifier hs-var">script</span></a></span><span class="annot"><span class="annottext">Text -&gt; [Text] -&gt; [Text]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">(String -&gt; Text) -&gt; [String] -&gt; [Text]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679544340"><span class="hs-identifier hs-var">args</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-102"></span></pre></body></html>

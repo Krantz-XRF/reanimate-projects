@@ -1,0 +1,419 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Module      : A2048.Motion
+Description : 2048 Game moves.
+Copyright   : (c) Xie Ruifeng, 2020
+License     : AGPL-3
+Maintainer  : krantz.xrf@outlook.com
+Stability   : experimental
+Portability : portable
+-}</span><span>
+</span><span id="line-10"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">A2048.Motion</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Reader.Class</span></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.State.Class</span></span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate</span></span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="A2048.Board.html"><span class="hs-identifier">A2048.Board</span></a></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="A2048.Config.html"><span class="hs-identifier">A2048.Config</span></a></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="A2048.Logic.html"><span class="hs-identifier">A2048.Logic</span></a></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="A2048.Tile.html"><span class="hs-identifier">A2048.Tile</span></a></span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-comment">-- |Perform a game move to a given 'Direction'.</span><span>
+</span><span id="line-25"></span><span id="local-6989586621679182941"><span class="annot"><a href="A2048.Motion.html#performMove"><span class="hs-identifier hs-type">performMove</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A2048.Board.html#Monad2048"><span class="hs-identifier hs-type">Monad2048</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679182941"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="A2048.Logic.html#Direction"><span class="hs-identifier hs-type">Direction</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679182941"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Animation</span></span></span><span>
+</span><span id="line-26"></span><span id="performMove"><span class="annot"><span class="annottext">performMove :: Direction -&gt; m Animation
+</span><a href="A2048.Motion.html#performMove"><span class="hs-identifier hs-var hs-var">performMove</span></a></span></span><span> </span><span id="local-6989586621679182939"><span class="annot"><span class="annottext">Direction
+</span><a href="#local-6989586621679182939"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-27"></span><span>  </span><span id="local-6989586621679182938"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679182938"><span class="hs-identifier hs-var">dt</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Getting Double Game2048Config Double -&gt; m Double
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting Double Game2048Config Double
+forall c. HasGame2048Config c =&gt; Lens' c Double
+</span><a href="A2048.Config.html#motionDuration"><span class="hs-identifier hs-var">motionDuration</span></a></span><span>
+</span><span id="line-28"></span><span>  </span><span id="local-6989586621679182935"><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679182935"><span class="hs-identifier hs-var">bkg</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Double -&gt; SVG -&gt; Animation
+</span><span class="hs-identifier hs-var">staticFrame</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679182938"><span class="hs-identifier hs-var">dt</span></a></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; Animation) -&gt; m SVG -&gt; m Animation
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">m SVG
+forall (m :: * -&gt; *). Monad2048 m =&gt; m SVG
+</span><a href="A2048.Board.html#boardSVG"><span class="hs-identifier hs-var">boardSVG</span></a></span><span>
+</span><span id="line-29"></span><span>  </span><span id="local-6989586621679182931"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182931"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Getting Int Game2048Config Int -&gt; m Int
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting Int Game2048Config Int
+forall c. HasGame2048Config c =&gt; Lens' c Int
+</span><a href="A2048.Config.html#boardWidth"><span class="hs-identifier hs-var">boardWidth</span></a></span><span>
+</span><span id="line-30"></span><span>  </span><span id="local-6989586621679182929"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182929"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Getting Int Game2048Config Int -&gt; m Int
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting Int Game2048Config Int
+forall c. HasGame2048Config c =&gt; Lens' c Int
+</span><a href="A2048.Config.html#boardHeight"><span class="hs-identifier hs-var">boardHeight</span></a></span><span>
+</span><span id="line-31"></span><span>  </span><span id="local-6989586621679182927"><span class="annot"><span class="annottext">[[GameEvent Int (Int, Int)]]
+</span><a href="#local-6989586621679182927"><span class="hs-identifier hs-var">es</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Direction -&gt; [[Int]] -&gt; [[GameEvent Int (Int, Int)]]
+</span><a href="A2048.Logic.html#events"><span class="hs-identifier hs-var">events</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182931"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182929"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">Direction
+</span><a href="#local-6989586621679182939"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">([[Int]] -&gt; [[GameEvent Int (Int, Int)]])
+-&gt; m [[Int]] -&gt; m [[GameEvent Int (Int, Int)]]
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">m [[Int]]
+forall s (m :: * -&gt; *). MonadState s m =&gt; m s
+</span><span class="hs-identifier hs-var">get</span></span><span>
+</span><span id="line-32"></span><span>  </span><span id="local-6989586621679182924"><span class="annot"><span class="annottext">[Animation]
+</span><a href="#local-6989586621679182924"><span class="hs-identifier hs-var">anim</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[m Animation] -&gt; m [Animation]
+forall (t :: * -&gt; *) (m :: * -&gt; *) a.
+(Traversable t, Monad m) =&gt;
+t (m a) -&gt; m (t a)
+</span><span class="hs-identifier hs-var">sequence</span></span><span>
+</span><span id="line-33"></span><span>    </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">(Int, Int) -&gt; GameEvent Int (Int, Int) -&gt; m Animation
+forall (m :: * -&gt; *).
+Monad2048 m =&gt;
+(Int, Int) -&gt; GameEvent Int (Int, Int) -&gt; m Animation
+</span><a href="A2048.Motion.html#eventAnim"><span class="hs-identifier hs-var">eventAnim</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182921"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182920"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">GameEvent Int (Int, Int)
+</span><a href="#local-6989586621679182919"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-34"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679182920"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182920"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679182918"><span class="annot"><span class="annottext">[GameEvent Int (Int, Int)]
+</span><a href="#local-6989586621679182918"><span class="hs-identifier hs-var">row</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Int]
+-&gt; [[GameEvent Int (Int, Int)]]
+-&gt; [(Int, [GameEvent Int (Int, Int)])]
+forall a b. [a] -&gt; [b] -&gt; [(a, b)]
+</span><span class="hs-identifier hs-var">zip</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">..</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[[GameEvent Int (Int, Int)]]
+</span><a href="#local-6989586621679182927"><span class="hs-identifier hs-var">es</span></a></span><span>
+</span><span id="line-35"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679182921"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182921"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679182919"><span class="annot"><span class="annottext">GameEvent Int (Int, Int)
+</span><a href="#local-6989586621679182919"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Int]
+-&gt; [GameEvent Int (Int, Int)] -&gt; [(Int, GameEvent Int (Int, Int))]
+forall a b. [a] -&gt; [b] -&gt; [(a, b)]
+</span><span class="hs-identifier hs-var">zip</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">..</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[GameEvent Int (Int, Int)]
+</span><a href="#local-6989586621679182918"><span class="hs-identifier hs-var">row</span></a></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-36"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679182917"><span class="annot"><span class="annottext">toTile :: GameEvent p p -&gt; p
+</span><a href="#local-6989586621679182917"><span class="hs-identifier hs-var hs-var">toTile</span></a></span></span><span> </span><span class="annot"><span class="annottext">GameEvent p p
+</span><a href="A2048.Logic.html#TileVanish"><span class="hs-identifier hs-var">TileVanish</span></a></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-37"></span><span>      </span><span class="annot"><a href="#local-6989586621679182917"><span class="hs-identifier hs-var">toTile</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A2048.Logic.html#TileMove"><span class="hs-identifier hs-type">TileMove</span></a></span><span> </span><span id="local-6989586621679182914"><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679182914"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679182914"><span class="hs-identifier hs-var">l</span></a></span><span>
+</span><span id="line-38"></span><span>      </span><span class="annot"><a href="#local-6989586621679182917"><span class="hs-identifier hs-var">toTile</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A2048.Logic.html#TileMerge"><span class="hs-identifier hs-type">TileMerge</span></a></span><span> </span><span id="local-6989586621679182912"><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679182912"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679182912"><span class="hs-identifier hs-var">l</span></a></span><span>
+</span><span id="line-39"></span><span>  </span><span class="annot"><span class="annottext">[[Int]] -&gt; m ()
+forall s (m :: * -&gt; *). MonadState s m =&gt; s -&gt; m ()
+</span><span class="hs-identifier hs-var">put</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">([GameEvent Int (Int, Int)] -&gt; [Int])
+-&gt; [[GameEvent Int (Int, Int)]] -&gt; [[Int]]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(GameEvent Int (Int, Int) -&gt; Int)
+-&gt; [GameEvent Int (Int, Int)] -&gt; [Int]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">GameEvent Int (Int, Int) -&gt; Int
+forall p p. Num p =&gt; GameEvent p p -&gt; p
+</span><a href="#local-6989586621679182917"><span class="hs-identifier hs-var">toTile</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[[GameEvent Int (Int, Int)]]
+</span><a href="#local-6989586621679182927"><span class="hs-identifier hs-var">es</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span><span>  </span><span class="annot"><span class="annottext">Animation -&gt; m Animation
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Animation -&gt; Animation -&gt; Animation)
+-&gt; Animation -&gt; [Animation] -&gt; Animation
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl</span></span><span> </span><span class="annot"><span class="annottext">Animation -&gt; Animation -&gt; Animation
+</span><span class="hs-identifier hs-var">parA</span></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679182935"><span class="hs-identifier hs-var">bkg</span></a></span><span> </span><span class="annot"><span class="annottext">[Animation]
+</span><a href="#local-6989586621679182924"><span class="hs-identifier hs-var">anim</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- |Move one tile to another position.</span><span>
+</span><span id="line-43"></span><span id="local-6989586621679182943"><span class="annot"><a href="A2048.Motion.html#moveTile"><span class="hs-identifier hs-type">moveTile</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A2048.Board.html#Monad2048"><span class="hs-identifier hs-type">Monad2048</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679182943"><span class="hs-identifier hs-type">m</span></a></span><span>
+</span><span id="line-44"></span><span>         </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>        </span><span class="hs-comment">-- ^Whether this tile should fade out.</span><span>
+</span><span id="line-45"></span><span>         </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>         </span><span class="hs-comment">-- ^Level of this tile.</span><span>
+</span><span id="line-46"></span><span>         </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span>  </span><span class="hs-comment">-- ^Departure.</span><span>
+</span><span id="line-47"></span><span>         </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span>  </span><span class="hs-comment">-- ^Destination.</span><span>
+</span><span id="line-48"></span><span>         </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679182943"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Animation</span></span></span><span>
+</span><span id="line-49"></span><span id="moveTile"><span class="annot"><span class="annottext">moveTile :: Bool -&gt; Int -&gt; (Int, Int) -&gt; (Int, Int) -&gt; m Animation
+</span><a href="A2048.Motion.html#moveTile"><span class="hs-identifier hs-var hs-var">moveTile</span></a></span></span><span> </span><span id="local-6989586621679182907"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679182907"><span class="hs-identifier hs-var">fade</span></a></span></span><span> </span><span id="local-6989586621679182906"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182906"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679182905"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182905"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679182904"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182904"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679182903"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182903"><span class="hs-identifier hs-var">x'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679182902"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182902"><span class="hs-identifier hs-var">y'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-50"></span><span>  </span><span id="local-6989586621679182901"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679182901"><span class="hs-identifier hs-var">dt</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Getting Double Game2048Config Double -&gt; m Double
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting Double Game2048Config Double
+forall c. HasGame2048Config c =&gt; Lens' c Double
+</span><a href="A2048.Config.html#motionDuration"><span class="hs-identifier hs-var">motionDuration</span></a></span><span>
+</span><span id="line-51"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679182900"><span class="annot"><span class="annottext">lerp :: a -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679182900"><span class="hs-identifier hs-var hs-var">lerp</span></a></span></span><span> </span><span id="local-6989586621679182899"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679182899"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span id="local-6989586621679182898"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679182898"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679182897"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679182897"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679182899"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; a
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679182898"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679182899"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; a
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679182897"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-52"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679182894"><span class="annot"><span class="annottext">p :: b -&gt; (b, b)
+</span><a href="#local-6989586621679182894"><span class="hs-identifier hs-var hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679182893"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679182893"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b -&gt; Int -&gt; Int -&gt; b
+forall a a a. (Integral a, Integral a, Num a) =&gt; a -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679182900"><span class="hs-identifier hs-var">lerp</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679182893"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182903"><span class="hs-identifier hs-var">x'</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182905"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">b -&gt; Int -&gt; Int -&gt; b
+forall a a a. (Integral a, Integral a, Num a) =&gt; a -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679182900"><span class="hs-identifier hs-var">lerp</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679182893"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182902"><span class="hs-identifier hs-var">y'</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182904"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-53"></span><span>  </span><span id="local-6989586621679182892"><span class="annot"><span class="annottext">Game2048Config
+</span><a href="#local-6989586621679182892"><span class="hs-identifier hs-var">cfg</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">m Game2048Config
+forall r (m :: * -&gt; *). MonadReader r m =&gt; m r
+</span><span class="hs-identifier hs-var">ask</span></span><span>
+</span><span id="line-54"></span><span>  </span><span id="local-6989586621679182890"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182890"><span class="hs-identifier hs-var">tl</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Int -&gt; m SVG
+forall c (m :: * -&gt; *).
+(HasGame2048Config c, MonadReader c m) =&gt;
+Int -&gt; m SVG
+</span><a href="A2048.Tile.html#tile"><span class="hs-identifier hs-var">tile</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182906"><span class="hs-identifier hs-var">l</span></a></span><span>
+</span><span id="line-55"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679182888"><span class="annot"><span class="annottext">f :: Double -&gt; SVG
+</span><a href="#local-6989586621679182888"><span class="hs-identifier hs-var hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679182887"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679182887"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double -&gt; SVG -&gt; SVG) -&gt; (Double, Double) -&gt; SVG -&gt; SVG
+forall a b c. (a -&gt; b -&gt; c) -&gt; (a, b) -&gt; c
+</span><span class="hs-identifier hs-var">uncurry</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Game2048Config -&gt; Double -&gt; Double -&gt; SVG -&gt; SVG
+</span><a href="A2048.Board.html#translateGrid"><span class="hs-identifier hs-var">translateGrid</span></a></span><span> </span><span class="annot"><span class="annottext">Game2048Config
+</span><a href="#local-6989586621679182892"><span class="hs-identifier hs-var">cfg</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; (Double, Double)
+forall b. Num b =&gt; b -&gt; (b, b)
+</span><a href="#local-6989586621679182894"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679182887"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182890"><span class="hs-identifier hs-var">tl</span></a></span><span>
+</span><span id="line-56"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679182884"><span class="annot"><span class="annottext">fadeOrNot :: Double -&gt; Double -&gt; SVG -&gt; SVG
+</span><a href="#local-6989586621679182884"><span class="hs-identifier hs-var hs-var">fadeOrNot</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679182907"><span class="hs-identifier hs-var">fade</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">fadeOutE</span></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; Double -&gt; Double -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">constE</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-57"></span><span>  </span><span class="annot"><span class="annottext">Animation -&gt; m Animation
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Animation -&gt; m Animation) -&gt; Animation -&gt; m Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Animation -&gt; Animation
+</span><span class="hs-identifier hs-var">setDuration</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679182901"><span class="hs-identifier hs-var">dt</span></a></span><span> </span><span class="annot"><span class="annottext">(Animation -&gt; Animation) -&gt; Animation -&gt; Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Signal -&gt; Animation -&gt; Animation
+</span><span class="hs-identifier hs-var">signalA</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Signal
+</span><span class="hs-identifier hs-var">curveS</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Animation -&gt; Animation) -&gt; Animation -&gt; Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double -&gt; SVG -&gt; SVG) -&gt; Animation -&gt; Animation
+</span><span class="hs-identifier hs-var">applyE</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; SVG -&gt; SVG
+</span><a href="#local-6989586621679182884"><span class="hs-identifier hs-var">fadeOrNot</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Double -&gt; SVG) -&gt; Animation
+</span><span class="hs-identifier hs-var">animate</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; SVG
+</span><a href="#local-6989586621679182888"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span class="hs-comment">-- |Emerge a tile from thin air at a given position.</span><span>
+</span><span id="line-60"></span><span id="local-6989586621679182945"><span class="annot"><a href="A2048.Motion.html#emergeTile"><span class="hs-identifier hs-type">emergeTile</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A2048.Board.html#Monad2048"><span class="hs-identifier hs-type">Monad2048</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679182945"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679182945"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Animation</span></span></span><span>
+</span><span id="line-61"></span><span id="emergeTile"><span class="annot"><span class="annottext">emergeTile :: Int -&gt; (Int, Int) -&gt; m Animation
+</span><a href="A2048.Motion.html#emergeTile"><span class="hs-identifier hs-var hs-var">emergeTile</span></a></span></span><span> </span><span id="local-6989586621679182874"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182874"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679182873"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182873"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679182872"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182872"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-62"></span><span>  </span><span id="local-6989586621679182871"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679182871"><span class="hs-identifier hs-var">dt</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Getting Double Game2048Config Double -&gt; m Double
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting Double Game2048Config Double
+forall c. HasGame2048Config c =&gt; Lens' c Double
+</span><a href="A2048.Config.html#motionDuration"><span class="hs-identifier hs-var">motionDuration</span></a></span><span>
+</span><span id="line-63"></span><span>  </span><span id="local-6989586621679182870"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182870"><span class="hs-identifier hs-var">tl</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Int -&gt; m SVG
+forall c (m :: * -&gt; *).
+(HasGame2048Config c, MonadReader c m) =&gt;
+Int -&gt; m SVG
+</span><a href="A2048.Tile.html#tile"><span class="hs-identifier hs-var">tile</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182874"><span class="hs-identifier hs-var">l</span></a></span><span>
+</span><span id="line-64"></span><span>  </span><span id="local-6989586621679182869"><span class="annot"><span class="annottext">Game2048Config
+</span><a href="#local-6989586621679182869"><span class="hs-identifier hs-var">cfg</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">m Game2048Config
+forall r (m :: * -&gt; *). MonadReader r m =&gt; m r
+</span><span class="hs-identifier hs-var">ask</span></span><span>
+</span><span id="line-65"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679182868"><span class="annot"><span class="annottext">trans :: SVG -&gt; SVG
+</span><a href="#local-6989586621679182868"><span class="hs-identifier hs-var hs-var">trans</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Game2048Config -&gt; Double -&gt; Double -&gt; SVG -&gt; SVG
+</span><a href="A2048.Board.html#translateGrid"><span class="hs-identifier hs-var">translateGrid</span></a></span><span> </span><span class="annot"><span class="annottext">Game2048Config
+</span><a href="#local-6989586621679182869"><span class="hs-identifier hs-var">cfg</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182873"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182872"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-66"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679182867"><span class="annot"><span class="annottext">func :: Double -&gt; SVG
+</span><a href="#local-6989586621679182867"><span class="hs-identifier hs-var hs-var">func</span></a></span></span><span> </span><span id="local-6989586621679182866"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679182866"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="#local-6989586621679182868"><span class="hs-identifier hs-var">trans</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">scale</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679182866"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182870"><span class="hs-identifier hs-var">tl</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-67"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679182864"><span class="annot"><span class="annottext">growAnim :: Animation
+</span><a href="#local-6989586621679182864"><span class="hs-identifier hs-var hs-var">growAnim</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Animation -&gt; Animation
+</span><span class="hs-identifier hs-var">setDuration</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679182871"><span class="hs-identifier hs-var">dt</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">4</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Signal -&gt; Animation -&gt; Animation
+</span><span class="hs-identifier hs-var">signalA</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Signal
+</span><span class="hs-identifier hs-var">fromToS</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1.2</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Double -&gt; SVG) -&gt; Animation
+</span><span class="hs-identifier hs-var">animate</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; SVG
+</span><a href="#local-6989586621679182867"><span class="hs-identifier hs-var">func</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-68"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679182861"><span class="annot"><span class="annottext">shrinkAnim :: Animation
+</span><a href="#local-6989586621679182861"><span class="hs-identifier hs-var hs-var">shrinkAnim</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Animation -&gt; Animation
+</span><span class="hs-identifier hs-var">setDuration</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679182871"><span class="hs-identifier hs-var">dt</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">4</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Signal -&gt; Animation -&gt; Animation
+</span><span class="hs-identifier hs-var">signalA</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Signal
+</span><span class="hs-identifier hs-var">fromToS</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1.2</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Double -&gt; SVG) -&gt; Animation
+</span><span class="hs-identifier hs-var">animate</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; SVG
+</span><a href="#local-6989586621679182867"><span class="hs-identifier hs-var">func</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-69"></span><span>  </span><span class="annot"><span class="annottext">Animation -&gt; m Animation
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679182864"><span class="hs-identifier hs-var">growAnim</span></a></span><span> </span><span class="annot"><span class="annottext">Animation -&gt; Animation -&gt; Animation
+</span><span class="hs-operator hs-var">`seqA`</span></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679182861"><span class="hs-identifier hs-var">shrinkAnim</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span class="hs-comment">-- |Emit an animation according to a game event.</span><span>
+</span><span id="line-72"></span><span id="local-6989586621679182980"><span class="annot"><a href="A2048.Motion.html#eventAnim"><span class="hs-identifier hs-type">eventAnim</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A2048.Board.html#Monad2048"><span class="hs-identifier hs-type">Monad2048</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679182980"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="A2048.Logic.html#GameEvent"><span class="hs-identifier hs-type">GameEvent</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679182980"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Animation</span></span></span><span>
+</span><span id="line-73"></span><span id="eventAnim"><span class="annot"><span class="annottext">eventAnim :: (Int, Int) -&gt; GameEvent Int (Int, Int) -&gt; m Animation
+</span><a href="A2048.Motion.html#eventAnim"><span class="hs-identifier hs-var hs-var">eventAnim</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679182859"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182859"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679182858"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182858"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">GameEvent Int (Int, Int)
+</span><a href="A2048.Logic.html#TileVanish"><span class="hs-identifier hs-var">TileVanish</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-74"></span><span>  </span><span id="local-6989586621679182857"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679182857"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Getting Bool Game2048Config Bool -&gt; m Bool
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting Bool Game2048Config Bool
+forall c. HasGame2048Config c =&gt; Lens' c Bool
+</span><a href="A2048.Config.html#motionFillPadding"><span class="hs-identifier hs-var">motionFillPadding</span></a></span><span>
+</span><span id="line-75"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679182857"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Int -&gt; (Int, Int) -&gt; m Animation
+forall (m :: * -&gt; *).
+Monad2048 m =&gt;
+Int -&gt; (Int, Int) -&gt; m Animation
+</span><a href="A2048.Motion.html#emergeTile"><span class="hs-identifier hs-var">emergeTile</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182859"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182858"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Integral a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">`rem`</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182859"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182858"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Animation -&gt; m Animation
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Animation
+</span><span class="hs-identifier hs-var">pause</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span>
+</span><span id="line-76"></span><span class="annot"><a href="A2048.Motion.html#eventAnim"><span class="hs-identifier hs-var">eventAnim</span></a></span><span> </span><span id="local-6989586621679182853"><span class="annot"><span class="annottext">(Int, Int)
+</span><a href="#local-6989586621679182853"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A2048.Logic.html#TileMove"><span class="hs-identifier hs-type">TileMove</span></a></span><span> </span><span id="local-6989586621679182852"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182852"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679182851"><span class="annot"><span class="annottext">(Int, Int)
+</span><a href="#local-6989586621679182851"><span class="hs-identifier hs-var">p'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Int -&gt; (Int, Int) -&gt; (Int, Int) -&gt; m Animation
+forall (m :: * -&gt; *).
+Monad2048 m =&gt;
+Bool -&gt; Int -&gt; (Int, Int) -&gt; (Int, Int) -&gt; m Animation
+</span><a href="A2048.Motion.html#moveTile"><span class="hs-identifier hs-var">moveTile</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182852"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">(Int, Int)
+</span><a href="#local-6989586621679182851"><span class="hs-identifier hs-var">p'</span></a></span><span> </span><span class="annot"><span class="annottext">(Int, Int)
+</span><a href="#local-6989586621679182853"><span class="hs-identifier hs-var">p</span></a></span><span>
+</span><span id="line-77"></span><span class="annot"><a href="A2048.Motion.html#eventAnim"><span class="hs-identifier hs-var">eventAnim</span></a></span><span> </span><span id="local-6989586621679182850"><span class="annot"><span class="annottext">(Int, Int)
+</span><a href="#local-6989586621679182850"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A2048.Logic.html#TileMerge"><span class="hs-identifier hs-type">TileMerge</span></a></span><span> </span><span id="local-6989586621679182849"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182849"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679182848"><span class="annot"><span class="annottext">(Int, Int)
+</span><a href="#local-6989586621679182848"><span class="hs-identifier hs-var">p1</span></a></span></span><span> </span><span id="local-6989586621679182847"><span class="annot"><span class="annottext">(Int, Int)
+</span><a href="#local-6989586621679182847"><span class="hs-identifier hs-var">p2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-78"></span><span>  </span><span id="local-6989586621679182846"><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679182846"><span class="hs-identifier hs-var">m1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Int -&gt; (Int, Int) -&gt; (Int, Int) -&gt; m Animation
+forall (m :: * -&gt; *).
+Monad2048 m =&gt;
+Bool -&gt; Int -&gt; (Int, Int) -&gt; (Int, Int) -&gt; m Animation
+</span><a href="A2048.Motion.html#moveTile"><span class="hs-identifier hs-var">moveTile</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Int
+forall a. Enum a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">pred</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182849"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Int, Int)
+</span><a href="#local-6989586621679182848"><span class="hs-identifier hs-var">p1</span></a></span><span> </span><span class="annot"><span class="annottext">(Int, Int)
+</span><a href="#local-6989586621679182850"><span class="hs-identifier hs-var">p</span></a></span><span>
+</span><span id="line-79"></span><span>  </span><span id="local-6989586621679182844"><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679182844"><span class="hs-identifier hs-var">m2</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Int -&gt; (Int, Int) -&gt; (Int, Int) -&gt; m Animation
+forall (m :: * -&gt; *).
+Monad2048 m =&gt;
+Bool -&gt; Int -&gt; (Int, Int) -&gt; (Int, Int) -&gt; m Animation
+</span><a href="A2048.Motion.html#moveTile"><span class="hs-identifier hs-var">moveTile</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Int
+forall a. Enum a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">pred</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182849"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Int, Int)
+</span><a href="#local-6989586621679182847"><span class="hs-identifier hs-var">p2</span></a></span><span> </span><span class="annot"><span class="annottext">(Int, Int)
+</span><a href="#local-6989586621679182850"><span class="hs-identifier hs-var">p</span></a></span><span>
+</span><span id="line-80"></span><span>  </span><span id="local-6989586621679182843"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679182843"><span class="hs-identifier hs-var">dt</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Getting Double Game2048Config Double -&gt; m Double
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting Double Game2048Config Double
+forall c. HasGame2048Config c =&gt; Lens' c Double
+</span><a href="A2048.Config.html#motionDuration"><span class="hs-identifier hs-var">motionDuration</span></a></span><span>
+</span><span id="line-81"></span><span>  </span><span id="local-6989586621679182842"><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679182842"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Int -&gt; (Int, Int) -&gt; m Animation
+forall (m :: * -&gt; *).
+Monad2048 m =&gt;
+Int -&gt; (Int, Int) -&gt; m Animation
+</span><a href="A2048.Motion.html#emergeTile"><span class="hs-identifier hs-var">emergeTile</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182849"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">(Int, Int)
+</span><a href="#local-6989586621679182850"><span class="hs-identifier hs-var">p</span></a></span><span>
+</span><span id="line-82"></span><span>  </span><span class="annot"><span class="annottext">Animation -&gt; m Animation
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679182846"><span class="hs-identifier hs-var">m1</span></a></span><span> </span><span class="annot"><span class="annottext">Animation -&gt; Animation -&gt; Animation
+</span><span class="hs-operator hs-var">`parA`</span></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679182844"><span class="hs-identifier hs-var">m2</span></a></span><span> </span><span class="annot"><span class="annottext">Animation -&gt; Animation -&gt; Animation
+</span><span class="hs-operator hs-var">`parA`</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Animation
+</span><span class="hs-identifier hs-var">pause</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679182843"><span class="hs-identifier hs-var">dt</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Animation -&gt; Animation -&gt; Animation
+</span><span class="hs-operator hs-var">`seqA`</span></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679182842"><span class="hs-identifier hs-var">e</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-83"></span></pre></body></html>

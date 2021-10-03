@@ -1,0 +1,449 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Copyright   : Written by David Himmelstrup
+License     : Unlicense
+Maintainer  : lemmih@gmail.com
+Stability   : experimental
+Portability : POSIX
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Svg.Unuse</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Svg.Unuse.html#replaceUses"><span class="hs-identifier">replaceUses</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.Unuse.html#unbox"><span class="hs-identifier">unbox</span></a></span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.Unuse.html#unboxFit"><span class="hs-identifier">unboxFit</span></a></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.Unuse.html#embedDocument"><span class="hs-identifier">embedDocument</span></a></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>               </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(%~)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(&amp;)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(.~)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(?~)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(^.)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span>                   </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Map</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>                 </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">fromMaybe</span></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree</span></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Constants.html"><span class="hs-identifier">Reanimate.Constants</span></a></span><span>        </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Constants.html#defaultDPI"><span class="hs-identifier">defaultDPI</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Constants.html#screenHeight"><span class="hs-identifier">screenHeight</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Constants.html#screenWidth"><span class="hs-identifier">screenWidth</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Svg.Constructors.html"><span class="hs-identifier">Reanimate.Svg.Constructors</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Svg.Constructors.html#flipYAxis"><span class="hs-identifier">flipYAxis</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.Constructors.html#mkGroup"><span class="hs-identifier">mkGroup</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.Constructors.html#scaleXY"><span class="hs-identifier">scaleXY</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.Constructors.html#translate"><span class="hs-identifier">translate</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-21"></span><span>                                             </span><span class="annot"><a href="Reanimate.Svg.Constructors.html#withFillOpacity"><span class="hs-identifier">withFillOpacity</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.Constructors.html#withStrokeWidth"><span class="hs-identifier">withStrokeWidth</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-comment">-- | Replace all @&lt;use&gt;@ nodes with their definition.</span><span>
+</span><span id="line-24"></span><span class="annot"><a href="Reanimate.Svg.Unuse.html#replaceUses"><span class="hs-identifier hs-type">replaceUses</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Document</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Document</span></span><span>
+</span><span id="line-25"></span><span id="replaceUses"><span class="annot"><span class="annottext">replaceUses :: Document -&gt; Document
+</span><a href="Reanimate.Svg.Unuse.html#replaceUses"><span class="hs-identifier hs-var hs-var">replaceUses</span></a></span></span><span> </span><span id="local-6989586621679542201"><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679542201"><span class="hs-identifier hs-var">doc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679542201"><span class="hs-identifier hs-var">doc</span></a></span><span> </span><span class="annot"><span class="annottext">Document -&gt; (Document -&gt; Document) -&gt; Document
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">([Tree] -&gt; Identity [Tree]) -&gt; Document -&gt; Identity Document
+Lens' Document [Tree]
+</span><span class="hs-identifier hs-var">documentElements</span></span><span> </span><span class="annot"><span class="annottext">(([Tree] -&gt; Identity [Tree]) -&gt; Document -&gt; Identity Document)
+-&gt; ([Tree] -&gt; [Tree]) -&gt; Document -&gt; Document
+forall s t a b. ASetter s t a b -&gt; (a -&gt; b) -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">%~</span></span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; [Tree] -&gt; [Tree]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+</span><span class="hs-identifier hs-var">mapTree</span></span><span> </span><span class="annot"><span class="annottext">Tree -&gt; Tree
+</span><a href="#local-6989586621679542198"><span class="hs-identifier hs-var">replace</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-27"></span><span>    </span><span id="local-6989586621679542197"><span class="annot"><span class="annottext">replaceDefinition :: Tree -&gt; Tree
+</span><a href="#local-6989586621679542197"><span class="hs-identifier hs-var hs-var">replaceDefinition</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">PathTree</span></span><span class="hs-special">{</span><span class="hs-special">}</span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Tree
+</span><span class="hs-identifier hs-var">None</span></span><span>
+</span><span id="line-28"></span><span>    </span><span class="annot"><a href="#local-6989586621679542197"><span class="hs-identifier hs-var">replaceDefinition</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">SymbolTree</span></span><span class="hs-special">{</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Tree
+</span><span class="hs-identifier hs-var">None</span></span><span>
+</span><span id="line-29"></span><span>    </span><span class="annot"><a href="#local-6989586621679542197"><span class="hs-identifier hs-var">replaceDefinition</span></a></span><span> </span><span id="local-6989586621679542193"><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679542193"><span class="hs-identifier hs-var">t</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679542193"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span>    </span><span id="local-6989586621679542198"><span class="annot"><span class="annottext">replace :: Tree -&gt; Tree
+</span><a href="#local-6989586621679542198"><span class="hs-identifier hs-var hs-var">replace</span></a></span></span><span> </span><span id="local-6989586621679542192"><span class="annot"><span class="annottext">t :: Tree
+</span><a href="#local-6989586621679542192"><span class="hs-identifier hs-var">t</span></a></span></span><span class="hs-glyph">@</span><span class="annot"><span class="hs-identifier hs-type">DefinitionTree</span></span><span class="hs-special">{</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+</span><span class="hs-identifier hs-var">mapTree</span></span><span> </span><span class="annot"><span class="annottext">Tree -&gt; Tree
+</span><a href="#local-6989586621679542197"><span class="hs-identifier hs-var">replaceDefinition</span></a></span><span> </span><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679542192"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-32"></span><span>    </span><span class="annot"><a href="#local-6989586621679542198"><span class="hs-identifier hs-var">replace</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">UseTree</span></span><span> </span><span class="annot"><span class="annottext">Use
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span class="hs-special">{</span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Tree
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;replaceUses: subtree in use?&quot;</span></span><span>
+</span><span id="line-33"></span><span>    </span><span class="annot"><a href="#local-6989586621679542198"><span class="hs-identifier hs-var">replace</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">UseTree</span></span><span> </span><span id="local-6989586621679542188"><span class="annot"><span class="annottext">Use
+</span><a href="#local-6989586621679542188"><span class="hs-identifier hs-var">use</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe Tree
+</span><span class="hs-identifier hs-var">Nothing</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-34"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Map [Char] Tree -&gt; Maybe Tree
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Map.lookup</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Use
+</span><a href="#local-6989586621679542188"><span class="hs-identifier hs-var">use</span></a></span><span class="annot"><span class="annottext">Use -&gt; Getting [Char] Use [Char] -&gt; [Char]
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting [Char] Use [Char]
+Lens' Use [Char]
+</span><span class="hs-identifier hs-var">useName</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Map [Char] Tree
+</span><a href="#local-6989586621679542185"><span class="hs-identifier hs-var">idMap</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-35"></span><span>        </span><span class="annot"><span class="annottext">Maybe Tree
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Tree
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">([Char] -&gt; Tree) -&gt; [Char] -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;Unknown id: &quot;</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; [Char] -&gt; [Char]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Use
+</span><a href="#local-6989586621679542188"><span class="hs-identifier hs-var">use</span></a></span><span class="annot"><span class="annottext">Use -&gt; Getting [Char] Use [Char] -&gt; [Char]
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting [Char] Use [Char]
+Lens' Use [Char]
+</span><span class="hs-identifier hs-var">useName</span></span><span class="hs-special">)</span><span>
+</span><span id="line-36"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">SymbolTree</span></span><span> </span><span id="local-6989586621679542184"><span class="annot"><span class="annottext">Group
+</span><a href="#local-6989586621679542184"><span class="hs-identifier hs-var">children</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+</span><span class="hs-identifier hs-var">mapTree</span></span><span> </span><span class="annot"><span class="annottext">Tree -&gt; Tree
+</span><a href="#local-6989586621679542198"><span class="hs-identifier hs-var">replace</span></a></span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-37"></span><span>          </span><span class="annot"><span class="annottext">Group -&gt; Tree
+</span><span class="hs-identifier hs-var">GroupTree</span></span><span> </span><span class="annot"><span class="annottext">Group
+</span><a href="#local-6989586621679542184"><span class="hs-identifier hs-var">children</span></a></span><span>
+</span><span id="line-38"></span><span>          </span><span class="annot"><span class="annottext">Tree -&gt; (Tree -&gt; Tree) -&gt; Tree
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">(Maybe [Transformation] -&gt; Identity (Maybe [Transformation]))
+-&gt; Tree -&gt; Identity Tree
+forall c. HasDrawAttributes c =&gt; Lens' c (Maybe [Transformation])
+</span><span class="hs-identifier hs-var">transform</span></span><span> </span><span class="annot"><span class="annottext">((Maybe [Transformation] -&gt; Identity (Maybe [Transformation]))
+ -&gt; Tree -&gt; Identity Tree)
+-&gt; [Transformation] -&gt; Tree -&gt; Tree
+forall s t a b. ASetter s t a (Maybe b) -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">?~</span></span><span>
+</span><span id="line-39"></span><span>              </span><span class="annot"><span class="annottext">[Transformation] -&gt; Maybe [Transformation] -&gt; [Transformation]
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Use
+</span><a href="#local-6989586621679542188"><span class="hs-identifier hs-var">use</span></a></span><span class="annot"><span class="annottext">Use
+-&gt; Getting (Maybe [Transformation]) Use (Maybe [Transformation])
+-&gt; Maybe [Transformation]
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting (Maybe [Transformation]) Use (Maybe [Transformation])
+forall c. HasDrawAttributes c =&gt; Lens' c (Maybe [Transformation])
+</span><span class="hs-identifier hs-var">transform</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Transformation] -&gt; [Transformation] -&gt; [Transformation]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span>
+</span><span id="line-40"></span><span>              </span><span class="hs-special">[</span><span class="annot"><span class="annottext">(Number, Number) -&gt; Transformation
+</span><a href="#local-6989586621679542181"><span class="hs-identifier hs-var">baseToTransformation</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Use
+</span><a href="#local-6989586621679542188"><span class="hs-identifier hs-var">use</span></a></span><span class="annot"><span class="annottext">Use
+-&gt; Getting (Number, Number) Use (Number, Number)
+-&gt; (Number, Number)
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting (Number, Number) Use (Number, Number)
+Lens' Use (Number, Number)
+</span><span class="hs-identifier hs-var">useBase</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-41"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679542179"><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679542179"><span class="hs-identifier hs-var">tree</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+</span><span class="hs-identifier hs-var">mapTree</span></span><span> </span><span class="annot"><span class="annottext">Tree -&gt; Tree
+</span><a href="#local-6989586621679542198"><span class="hs-identifier hs-var">replace</span></a></span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-42"></span><span>          </span><span class="annot"><span class="annottext">Group -&gt; Tree
+</span><span class="hs-identifier hs-var">GroupTree</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Group
+forall a. WithDefaultSvg a =&gt; a
+</span><span class="hs-identifier hs-var">defaultSvg</span></span><span> </span><span class="annot"><span class="annottext">Group -&gt; (Group -&gt; Group) -&gt; Group
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">([Tree] -&gt; Identity [Tree]) -&gt; Group -&gt; Identity Group
+Lens' Group [Tree]
+</span><span class="hs-identifier hs-var">groupChildren</span></span><span> </span><span class="annot"><span class="annottext">(([Tree] -&gt; Identity [Tree]) -&gt; Group -&gt; Identity Group)
+-&gt; [Tree] -&gt; Group -&gt; Group
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679542179"><span class="hs-identifier hs-var">tree</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-43"></span><span>          </span><span class="annot"><span class="annottext">Tree -&gt; (Tree -&gt; Tree) -&gt; Tree
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">(Maybe [Transformation] -&gt; Identity (Maybe [Transformation]))
+-&gt; Tree -&gt; Identity Tree
+forall c. HasDrawAttributes c =&gt; Lens' c (Maybe [Transformation])
+</span><span class="hs-identifier hs-var">transform</span></span><span> </span><span class="annot"><span class="annottext">((Maybe [Transformation] -&gt; Identity (Maybe [Transformation]))
+ -&gt; Tree -&gt; Identity Tree)
+-&gt; [Transformation] -&gt; Tree -&gt; Tree
+forall s t a b. ASetter s t a (Maybe b) -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">?~</span></span><span>
+</span><span id="line-44"></span><span>              </span><span class="annot"><span class="annottext">[Transformation] -&gt; Maybe [Transformation] -&gt; [Transformation]
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Use
+</span><a href="#local-6989586621679542188"><span class="hs-identifier hs-var">use</span></a></span><span class="annot"><span class="annottext">Use
+-&gt; Getting (Maybe [Transformation]) Use (Maybe [Transformation])
+-&gt; Maybe [Transformation]
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting (Maybe [Transformation]) Use (Maybe [Transformation])
+forall c. HasDrawAttributes c =&gt; Lens' c (Maybe [Transformation])
+</span><span class="hs-identifier hs-var">transform</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Transformation] -&gt; [Transformation] -&gt; [Transformation]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span>
+</span><span id="line-45"></span><span>              </span><span class="hs-special">[</span><span class="annot"><span class="annottext">(Number, Number) -&gt; Transformation
+</span><a href="#local-6989586621679542181"><span class="hs-identifier hs-var">baseToTransformation</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Use
+</span><a href="#local-6989586621679542188"><span class="hs-identifier hs-var">use</span></a></span><span class="annot"><span class="annottext">Use
+-&gt; Getting (Number, Number) Use (Number, Number)
+-&gt; (Number, Number)
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting (Number, Number) Use (Number, Number)
+Lens' Use (Number, Number)
+</span><span class="hs-identifier hs-var">useBase</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-46"></span><span>    </span><span class="annot"><a href="#local-6989586621679542198"><span class="hs-identifier hs-var">replace</span></a></span><span> </span><span id="local-6989586621679542176"><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679542176"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679542176"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-47"></span><span>    </span><span id="local-6989586621679542181"><span class="annot"><span class="annottext">baseToTransformation :: (Number, Number) -&gt; Transformation
+</span><a href="#local-6989586621679542181"><span class="hs-identifier hs-var hs-var">baseToTransformation</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679542175"><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679542175"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679542174"><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679542174"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-48"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Dpi -&gt; Number -&gt; Number
+</span><span class="hs-identifier hs-var">toUserUnit</span></span><span> </span><span class="annot"><span class="annottext">Dpi
+</span><a href="Reanimate.Constants.html#defaultDPI"><span class="hs-identifier hs-var">defaultDPI</span></a></span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679542175"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Dpi -&gt; Number -&gt; Number
+</span><span class="hs-identifier hs-var">toUserUnit</span></span><span> </span><span class="annot"><span class="annottext">Dpi
+</span><a href="Reanimate.Constants.html#defaultDPI"><span class="hs-identifier hs-var">defaultDPI</span></a></span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679542174"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-49"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Num</span></span><span> </span><span id="local-6989586621679542171"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542171"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Num</span></span><span> </span><span id="local-6989586621679542170"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542170"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Transformation
+</span><span class="hs-identifier hs-var">Translate</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542171"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542170"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-50"></span><span>        </span><span class="annot"><span class="annottext">(Number, Number)
+</span><span class="hs-identifier">_</span></span><span>              </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Transformation
+</span><span class="hs-identifier hs-var">TransformUnknown</span></span><span>
+</span><span id="line-51"></span><span>    </span><span id="local-6989586621679542167"><span class="annot"><span class="annottext">docTree :: Tree
+</span><a href="#local-6989586621679542167"><span class="hs-identifier hs-var hs-var">docTree</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Tree] -&gt; Tree
+</span><a href="Reanimate.Svg.Constructors.html#mkGroup"><span class="hs-identifier hs-var">mkGroup</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679542201"><span class="hs-identifier hs-var">doc</span></a></span><span class="annot"><span class="annottext">Document -&gt; Getting [Tree] Document [Tree] -&gt; [Tree]
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting [Tree] Document [Tree]
+Lens' Document [Tree]
+</span><span class="hs-identifier hs-var">documentElements</span></span><span class="hs-special">)</span><span>
+</span><span id="line-52"></span><span>    </span><span id="local-6989586621679542185"><span class="annot"><span class="annottext">idMap :: Map [Char] Tree
+</span><a href="#local-6989586621679542185"><span class="hs-identifier hs-var hs-var">idMap</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Map [Char] Tree -&gt; Tree -&gt; Map [Char] Tree)
+-&gt; Map [Char] Tree -&gt; Tree -&gt; Map [Char] Tree
+forall a. (a -&gt; Tree -&gt; a) -&gt; a -&gt; Tree -&gt; a
+</span><span class="hs-identifier hs-var">foldTree</span></span><span> </span><span class="annot"><span class="annottext">Map [Char] Tree -&gt; Tree -&gt; Map [Char] Tree
+forall a. HasDrawAttributes a =&gt; Map [Char] a -&gt; a -&gt; Map [Char] a
+</span><a href="#local-6989586621679542165"><span class="hs-identifier hs-var">updMap</span></a></span><span> </span><span class="annot"><span class="annottext">Map [Char] Tree
+forall k a. Map k a
+</span><span class="hs-identifier hs-var">Map.empty</span></span><span> </span><span class="annot"><span class="annottext">Tree
+</span><a href="#local-6989586621679542167"><span class="hs-identifier hs-var">docTree</span></a></span><span>
+</span><span id="line-53"></span><span>    </span><span id="local-6989586621679542165"><span class="annot"><span class="annottext">updMap :: Map [Char] a -&gt; a -&gt; Map [Char] a
+</span><a href="#local-6989586621679542165"><span class="hs-identifier hs-var hs-var">updMap</span></a></span></span><span> </span><span id="local-6989586621679542163"><span class="annot"><span class="annottext">Map [Char] a
+</span><a href="#local-6989586621679542163"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span id="local-6989586621679542162"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542162"><span class="hs-identifier hs-var">tree</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-54"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542162"><span class="hs-identifier hs-var">tree</span></a></span><span class="annot"><span class="annottext">a -&gt; Getting (Maybe [Char]) a (Maybe [Char]) -&gt; Maybe [Char]
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting (Maybe [Char]) a (Maybe [Char])
+forall c. HasDrawAttributes c =&gt; Lens' c (Maybe [Char])
+</span><span class="hs-identifier hs-var">attrId</span></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-55"></span><span>        </span><span class="annot"><span class="annottext">Maybe [Char]
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Map [Char] a
+</span><a href="#local-6989586621679542163"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-56"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679542160"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679542160"><span class="hs-identifier hs-var">tid</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; a -&gt; Map [Char] a -&gt; Map [Char] a
+forall k a. Ord k =&gt; k -&gt; a -&gt; Map k a -&gt; Map k a
+</span><span class="hs-identifier hs-var">Map.insert</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679542160"><span class="hs-identifier hs-var">tid</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542162"><span class="hs-identifier hs-var">tree</span></a></span><span> </span><span class="annot"><span class="annottext">Map [Char] a
+</span><a href="#local-6989586621679542163"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span class="hs-comment">-- FIXME: the viewbox is ignored. Can we use the viewbox as a mask?</span><span>
+</span><span id="line-59"></span><span class="hs-comment">-- | Transform out viewbox. Definitions and CSS rules are discarded.</span><span>
+</span><span id="line-60"></span><span class="annot"><a href="Reanimate.Svg.Unuse.html#unbox"><span class="hs-identifier hs-type">unbox</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Document</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-61"></span><span id="unbox"><span class="annot"><span class="annottext">unbox :: Document -&gt; Tree
+</span><a href="Reanimate.Svg.Unuse.html#unbox"><span class="hs-identifier hs-var hs-var">unbox</span></a></span></span><span> </span><span id="local-6989586621679542158"><span class="annot"><span class="annottext">doc :: Document
+</span><a href="#local-6989586621679542158"><span class="hs-identifier hs-var">doc</span></a></span></span><span class="hs-glyph">@</span><span class="annot"><span class="hs-identifier hs-type">Document</span></span><span class="hs-special">{</span><span class="annot"><span class="annottext">_documentViewBox :: Document -&gt; Maybe (Double, Double, Double, Double)
+</span><span class="hs-identifier hs-var">_documentViewBox</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679542155"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542155"><span class="hs-identifier hs-var">_minx</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679542154"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542154"><span class="hs-identifier hs-var">_miny</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679542153"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542153"><span class="hs-identifier hs-var">_width</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679542152"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542152"><span class="hs-identifier hs-var">_height</span></a></span></span><span class="hs-special">)</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-62"></span><span>  </span><span class="annot"><span class="annottext">Group -&gt; Tree
+</span><span class="hs-identifier hs-var">groupTree</span></span><span> </span><span class="annot"><span class="annottext">(Group -&gt; Tree) -&gt; Group -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Group
+forall a. WithDefaultSvg a =&gt; a
+</span><span class="hs-identifier hs-var">defaultSvg</span></span><span>
+</span><span id="line-63"></span><span>          </span><span class="annot"><span class="annottext">Group -&gt; (Group -&gt; Group) -&gt; Group
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">([Tree] -&gt; Identity [Tree]) -&gt; Group -&gt; Identity Group
+Lens' Group [Tree]
+</span><span class="hs-identifier hs-var">groupChildren</span></span><span> </span><span class="annot"><span class="annottext">(([Tree] -&gt; Identity [Tree]) -&gt; Group -&gt; Identity Group)
+-&gt; [Tree] -&gt; Group -&gt; Group
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679542158"><span class="hs-identifier hs-var">doc</span></a></span><span class="annot"><span class="annottext">Document -&gt; Getting [Tree] Document [Tree] -&gt; [Tree]
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting [Tree] Document [Tree]
+Lens' Document [Tree]
+</span><span class="hs-identifier hs-var">documentElements</span></span><span>
+</span><span id="line-64"></span><span class="annot"><a href="Reanimate.Svg.Unuse.html#unbox"><span class="hs-identifier hs-var">unbox</span></a></span><span> </span><span id="local-6989586621679542150"><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679542150"><span class="hs-identifier hs-var">doc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-65"></span><span>  </span><span class="annot"><span class="annottext">Group -&gt; Tree
+</span><span class="hs-identifier hs-var">groupTree</span></span><span> </span><span class="annot"><span class="annottext">(Group -&gt; Tree) -&gt; Group -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Group
+forall a. WithDefaultSvg a =&gt; a
+</span><span class="hs-identifier hs-var">defaultSvg</span></span><span>
+</span><span id="line-66"></span><span>    </span><span class="annot"><span class="annottext">Group -&gt; (Group -&gt; Group) -&gt; Group
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">([Tree] -&gt; Identity [Tree]) -&gt; Group -&gt; Identity Group
+Lens' Group [Tree]
+</span><span class="hs-identifier hs-var">groupChildren</span></span><span> </span><span class="annot"><span class="annottext">(([Tree] -&gt; Identity [Tree]) -&gt; Group -&gt; Identity Group)
+-&gt; [Tree] -&gt; Group -&gt; Group
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679542150"><span class="hs-identifier hs-var">doc</span></a></span><span class="annot"><span class="annottext">Document -&gt; Getting [Tree] Document [Tree] -&gt; [Tree]
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting [Tree] Document [Tree]
+Lens' Document [Tree]
+</span><span class="hs-identifier hs-var">documentElements</span></span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span class="hs-comment">-- | Transform out viewbox and fit image to screen size.</span><span>
+</span><span id="line-69"></span><span class="annot"><a href="Reanimate.Svg.Unuse.html#unboxFit"><span class="hs-identifier hs-type">unboxFit</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Document</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-70"></span><span id="unboxFit"><span class="annot"><span class="annottext">unboxFit :: Document -&gt; Tree
+</span><a href="Reanimate.Svg.Unuse.html#unboxFit"><span class="hs-identifier hs-var hs-var">unboxFit</span></a></span></span><span> </span><span id="local-6989586621679542149"><span class="annot"><span class="annottext">doc :: Document
+</span><a href="#local-6989586621679542149"><span class="hs-identifier hs-var">doc</span></a></span></span><span class="hs-glyph">@</span><span class="annot"><span class="hs-identifier hs-type">Document</span></span><span class="hs-special">{</span><span class="annot"><span class="annottext">_documentViewBox :: Document -&gt; Maybe (Double, Double, Double, Double)
+</span><span class="hs-identifier hs-var">_documentViewBox</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679542148"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542148"><span class="hs-identifier hs-var">minx</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679542147"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542147"><span class="hs-identifier hs-var">miny</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679542146"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542146"><span class="hs-identifier hs-var">width</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679542145"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542145"><span class="hs-identifier hs-var">height</span></a></span></span><span class="hs-special">)</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-71"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679542144"><span class="annot"><span class="annottext">widthScale :: Double
+</span><a href="#local-6989586621679542144"><span class="hs-identifier hs-var hs-var">widthScale</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+forall a. Fractional a =&gt; a
+</span><a href="Reanimate.Constants.html#screenWidth"><span class="hs-identifier hs-var">screenWidth</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542146"><span class="hs-identifier hs-var">width</span></a></span><span>
+</span><span id="line-72"></span><span>      </span><span id="local-6989586621679542142"><span class="annot"><span class="annottext">heightScale :: Double
+</span><a href="#local-6989586621679542142"><span class="hs-identifier hs-var hs-var">heightScale</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+forall a. Fractional a =&gt; a
+</span><a href="Reanimate.Constants.html#screenHeight"><span class="hs-identifier hs-var">screenHeight</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542145"><span class="hs-identifier hs-var">height</span></a></span><span>
+</span><span id="line-73"></span><span>      </span><span id="local-6989586621679542141"><span class="annot"><span class="annottext">scaler :: Double
+</span><a href="#local-6989586621679542141"><span class="hs-identifier hs-var hs-var">scaler</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">min</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542144"><span class="hs-identifier hs-var">widthScale</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542142"><span class="hs-identifier hs-var">heightScale</span></a></span><span>
+</span><span id="line-74"></span><span>  </span><span class="hs-keyword">in</span><span>
+</span><span id="line-75"></span><span>    </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Tree -&gt; Tree
+</span><a href="Reanimate.Svg.Constructors.html#scaleXY"><span class="hs-identifier hs-var">scaleXY</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542141"><span class="hs-identifier hs-var">scaler</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542141"><span class="hs-identifier hs-var">scaler</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-76"></span><span>    </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Tree -&gt; Tree
+</span><a href="Reanimate.Svg.Constructors.html#translate"><span class="hs-identifier hs-var">translate</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542148"><span class="hs-identifier hs-var">minx</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542146"><span class="hs-identifier hs-var">width</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542147"><span class="hs-identifier hs-var">miny</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679542145"><span class="hs-identifier hs-var">height</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-77"></span><span>    </span><span class="annot"><span class="annottext">Group -&gt; Tree
+</span><span class="hs-identifier hs-var">groupTree</span></span><span> </span><span class="annot"><span class="annottext">(Group -&gt; Tree) -&gt; Group -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Group
+forall a. WithDefaultSvg a =&gt; a
+</span><span class="hs-identifier hs-var">defaultSvg</span></span><span>
+</span><span id="line-78"></span><span>      </span><span class="annot"><span class="annottext">Group -&gt; (Group -&gt; Group) -&gt; Group
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">([Tree] -&gt; Identity [Tree]) -&gt; Group -&gt; Identity Group
+Lens' Group [Tree]
+</span><span class="hs-identifier hs-var">groupChildren</span></span><span> </span><span class="annot"><span class="annottext">(([Tree] -&gt; Identity [Tree]) -&gt; Group -&gt; Identity Group)
+-&gt; [Tree] -&gt; Group -&gt; Group
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679542149"><span class="hs-identifier hs-var">doc</span></a></span><span class="annot"><span class="annottext">Document -&gt; Getting [Tree] Document [Tree] -&gt; [Tree]
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting [Tree] Document [Tree]
+Lens' Document [Tree]
+</span><span class="hs-identifier hs-var">documentElements</span></span><span>
+</span><span id="line-79"></span><span class="annot"><a href="Reanimate.Svg.Unuse.html#unboxFit"><span class="hs-identifier hs-var">unboxFit</span></a></span><span> </span><span id="local-6989586621679542139"><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679542139"><span class="hs-identifier hs-var">doc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-80"></span><span>  </span><span class="annot"><span class="annottext">Group -&gt; Tree
+</span><span class="hs-identifier hs-var">groupTree</span></span><span> </span><span class="annot"><span class="annottext">(Group -&gt; Tree) -&gt; Group -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Group
+forall a. WithDefaultSvg a =&gt; a
+</span><span class="hs-identifier hs-var">defaultSvg</span></span><span>
+</span><span id="line-81"></span><span>    </span><span class="annot"><span class="annottext">Group -&gt; (Group -&gt; Group) -&gt; Group
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">([Tree] -&gt; Identity [Tree]) -&gt; Group -&gt; Identity Group
+Lens' Group [Tree]
+</span><span class="hs-identifier hs-var">groupChildren</span></span><span> </span><span class="annot"><span class="annottext">(([Tree] -&gt; Identity [Tree]) -&gt; Group -&gt; Identity Group)
+-&gt; [Tree] -&gt; Group -&gt; Group
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679542139"><span class="hs-identifier hs-var">doc</span></a></span><span class="annot"><span class="annottext">Document -&gt; Getting [Tree] Document [Tree] -&gt; [Tree]
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span class="annot"><span class="annottext">Getting [Tree] Document [Tree]
+Lens' Document [Tree]
+</span><span class="hs-identifier hs-var">documentElements</span></span><span>
+</span><span id="line-82"></span><span>
+</span><span id="line-83"></span><span>
+</span><span id="line-84"></span><span class="hs-comment">-- | Embed 'Document'. This keeps the entire document intact but makes</span><span>
+</span><span id="line-85"></span><span class="hs-comment">--   it more difficult to use, say, `Reanimate.Svg.pathify` on it.</span><span>
+</span><span id="line-86"></span><span class="annot"><a href="Reanimate.Svg.Unuse.html#embedDocument"><span class="hs-identifier hs-type">embedDocument</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Document</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-87"></span><span id="embedDocument"><span class="annot"><span class="annottext">embedDocument :: Document -&gt; Tree
+</span><a href="Reanimate.Svg.Unuse.html#embedDocument"><span class="hs-identifier hs-var hs-var">embedDocument</span></a></span></span><span> </span><span id="local-6989586621679542138"><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679542138"><span class="hs-identifier hs-var">doc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-88"></span><span>  </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Tree -&gt; Tree
+</span><a href="Reanimate.Svg.Constructors.html#translate"><span class="hs-identifier hs-var">translate</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Double
+forall a. Fractional a =&gt; a
+</span><a href="Reanimate.Constants.html#screenWidth"><span class="hs-identifier hs-var">screenWidth</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+forall a. Fractional a =&gt; a
+</span><a href="Reanimate.Constants.html#screenHeight"><span class="hs-identifier hs-var">screenHeight</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-89"></span><span>  </span><span class="annot"><span class="annottext">Double -&gt; Tree -&gt; Tree
+</span><a href="Reanimate.Svg.Constructors.html#withFillOpacity"><span class="hs-identifier hs-var">withFillOpacity</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-90"></span><span>  </span><span class="annot"><span class="annottext">Double -&gt; Tree -&gt; Tree
+</span><a href="Reanimate.Svg.Constructors.html#withStrokeWidth"><span class="hs-identifier hs-var">withStrokeWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-91"></span><span>  </span><span class="annot"><span class="annottext">Tree -&gt; Tree
+</span><a href="Reanimate.Svg.Constructors.html#flipYAxis"><span class="hs-identifier hs-var">flipYAxis</span></a></span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-92"></span><span>  </span><span class="annot"><span class="annottext">Document -&gt; Tree
+</span><span class="hs-identifier hs-var">svgTree</span></span><span> </span><span class="annot"><span class="annottext">(Document -&gt; Tree) -&gt; Document -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679542138"><span class="hs-identifier hs-var">doc</span></a></span><span> </span><span class="annot"><span class="annottext">Document -&gt; (Document -&gt; Document) -&gt; Document
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Number -&gt; Identity (Maybe Number))
+-&gt; Document -&gt; Identity Document
+Lens' Document (Maybe Number)
+</span><span class="hs-identifier hs-var">documentWidth</span></span><span> </span><span class="annot"><span class="annottext">((Maybe Number -&gt; Identity (Maybe Number))
+ -&gt; Document -&gt; Identity Document)
+-&gt; Maybe Number -&gt; Document -&gt; Document
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Maybe Number
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-93"></span><span>                </span><span class="annot"><span class="annottext">Document -&gt; (Document -&gt; Document) -&gt; Document
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Number -&gt; Identity (Maybe Number))
+-&gt; Document -&gt; Identity Document
+Lens' Document (Maybe Number)
+</span><span class="hs-identifier hs-var">documentHeight</span></span><span> </span><span class="annot"><span class="annottext">((Maybe Number -&gt; Identity (Maybe Number))
+ -&gt; Document -&gt; Identity Document)
+-&gt; Maybe Number -&gt; Document -&gt; Document
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Maybe Number
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-94"></span></pre></body></html>

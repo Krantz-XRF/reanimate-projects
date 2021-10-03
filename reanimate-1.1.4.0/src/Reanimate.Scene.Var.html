@@ -1,0 +1,778 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE LambdaCase      #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE RecordWildCards #-}</span><span>
+</span><span id="line-3"></span><span>
+</span><span id="line-4"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Scene.Var</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Monad.ST</span></span><span>     </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">ST</span></span><span class="hs-special">)</span><span>
+</span><span id="line-7"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span>             </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">M</span></span><span>
+</span><span id="line-8"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.STRef</span></span><span>           </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">STRef</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">modifySTRef</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">newSTRef</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">readSTRef</span></span><span class="hs-special">)</span><span>
+</span><span id="line-9"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Animation.html"><span class="hs-identifier">Reanimate.Animation</span></a></span><span>  </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Animation.html#Duration"><span class="hs-identifier">Duration</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier">Time</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-10"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Scene.Core.html"><span class="hs-identifier">Reanimate.Scene.Core</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier">Scene</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#liftST"><span class="hs-identifier">liftST</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#queryNow"><span class="hs-identifier">queryNow</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#wait"><span class="hs-identifier">wait</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-comment">-- | Time dependent variable.</span><span>
+</span><span id="line-13"></span><span class="hs-keyword">newtype</span><span> </span><span id="Var"><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-var">Var</span></a></span></span><span> </span><span id="local-6989586621679542983"><span class="annot"><a href="#local-6989586621679542983"><span class="hs-identifier hs-type">s</span></a></span></span><span> </span><span id="local-6989586621679542982"><span class="annot"><a href="#local-6989586621679542982"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Var"><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-var">Var</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">STRef</span></span><span> </span><span class="annot"><a href="#local-6989586621679542983"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542982"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-comment">-- Note: We must ensure that upon transforming an VarData,</span><span>
+</span><span id="line-16"></span><span class="hs-comment">--       1. evarDefault old == evarDefault new</span><span>
+</span><span id="line-17"></span><span class="hs-comment">--       2. isNothing (evarLastTime old) || isJust (evarLastTime new) i.e. once evarLastValue has a Just value,</span><span>
+</span><span id="line-18"></span><span class="hs-comment">--          it shouldn't be Nothing again.</span><span>
+</span><span id="line-19"></span><span class="hs-comment">--       3. isNothing (evarLastTime var) =&gt; M.null (evarTimeline var)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">data</span><span> </span><span id="VarData"><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-var">VarData</span></a></span></span><span> </span><span id="local-6989586621679542970"><span class="annot"><a href="#local-6989586621679542970"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="VarData"><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-var">VarData</span></a></span></span><span>
+</span><span id="line-21"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="evarDefault"><span class="annot"><span class="annottext">VarData a -&gt; a
+</span><a href="Reanimate.Scene.Var.html#evarDefault"><span class="hs-identifier hs-var hs-var">evarDefault</span></a></span></span><span>   </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679542970"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-22"></span><span>    </span><span id="evarTimeline"><span class="annot"><span class="annottext">VarData a -&gt; Timeline a
+</span><a href="Reanimate.Scene.Var.html#evarTimeline"><span class="hs-identifier hs-var hs-var">evarTimeline</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#Timeline"><span class="hs-identifier hs-type">Timeline</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542970"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-23"></span><span>    </span><span id="evarLastTime"><span class="annot"><span class="annottext">VarData a -&gt; Maybe Time
+</span><a href="Reanimate.Scene.Var.html#evarLastTime"><span class="hs-identifier hs-var hs-var">evarLastTime</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-24"></span><span>    </span><span id="evarLastValue"><span class="annot"><span class="annottext">VarData a -&gt; a
+</span><a href="Reanimate.Scene.Var.html#evarLastValue"><span class="hs-identifier hs-var hs-var">evarLastValue</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679542970"><span class="hs-identifier hs-type">a</span></a></span><span>
+</span><span id="line-25"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">data</span><span> </span><span id="Modifier"><span class="annot"><a href="Reanimate.Scene.Var.html#Modifier"><span class="hs-identifier hs-var">Modifier</span></a></span></span><span> </span><span id="local-6989586621679542921"><span class="annot"><a href="#local-6989586621679542921"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="StaticValue"><span class="annot"><a href="Reanimate.Scene.Var.html#StaticValue"><span class="hs-identifier hs-var">StaticValue</span></a></span></span><span> </span><span class="annot"><a href="#local-6989586621679542921"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="TweenValue"><span class="annot"><a href="Reanimate.Scene.Var.html#TweenValue"><span class="hs-identifier hs-var">TweenValue</span></a></span></span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Duration"><span class="hs-identifier hs-type">Duration</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679542921"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679542921"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span class="hs-keyword">type</span><span> </span><span id="Timeline"><span class="annot"><a href="Reanimate.Scene.Var.html#Timeline"><span class="hs-identifier hs-var">Timeline</span></a></span></span><span> </span><span id="local-6989586621679542879"><span class="annot"><a href="#local-6989586621679542879"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">M.Map</span></span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Var.html#Modifier"><span class="hs-identifier hs-type">Modifier</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542879"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- | Create a new variable with a default value.</span><span>
+</span><span id="line-32"></span><span class="hs-comment">--   Variables always have a defined value even if they are read at a timestamp that is</span><span>
+</span><span id="line-33"></span><span class="hs-comment">--   earlier than when the variable was created. For example:</span><span>
+</span><span id="line-34"></span><span class="hs-comment">--</span><span>
+</span><span id="line-35"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- do v \&lt;- 'Reanimate.Scene.fork' ('wait' 10 \&gt;\&gt; 'newVar' 0) -- Create a variable at timestamp '10'.</span><span>
+</span><span id="line-37"></span><span class="hs-comment">--    'readVar' v                       -- Read the variable at timestamp '0'.</span><span>
+</span><span id="line-38"></span><span class="hs-comment">--                                    -- The value of the variable will be '0'.</span><span>
+</span><span id="line-39"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-40"></span><span id="local-6989586621679542877"><span id="local-6989586621679542878"><span class="annot"><a href="Reanimate.Scene.Var.html#newVar"><span class="hs-identifier hs-type">newVar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679542878"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542877"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542877"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542878"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-41"></span><span id="newVar"><span class="annot"><span class="annottext">newVar :: a -&gt; Scene s (Var s a)
+</span><a href="Reanimate.Scene.Var.html#newVar"><span class="hs-identifier hs-var hs-var">newVar</span></a></span></span><span> </span><span id="local-6989586621679542875"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542875"><span class="hs-identifier hs-var">def</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">STRef s (VarData a) -&gt; Var s a
+forall s a. STRef s (VarData a) -&gt; Var s a
+</span><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-var">Var</span></a></span><span> </span><span class="annot"><span class="annottext">(STRef s (VarData a) -&gt; Var s a)
+-&gt; Scene s (STRef s (VarData a)) -&gt; Scene s (Var s a)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">ST s (STRef s (VarData a)) -&gt; Scene s (STRef s (VarData a))
+forall s a. ST s a -&gt; Scene s a
+</span><a href="Reanimate.Scene.Core.html#liftST"><span class="hs-identifier hs-var">liftST</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">VarData a -&gt; ST s (STRef s (VarData a))
+forall a s. a -&gt; ST s (STRef s a)
+</span><span class="hs-identifier hs-var">newSTRef</span></span><span> </span><span class="annot"><span class="annottext">(VarData a -&gt; ST s (STRef s (VarData a)))
+-&gt; VarData a -&gt; ST s (STRef s (VarData a))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; Timeline a -&gt; Maybe Time -&gt; a -&gt; VarData a
+forall a. a -&gt; Timeline a -&gt; Maybe Time -&gt; a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-var">VarData</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542875"><span class="hs-identifier hs-var">def</span></a></span><span> </span><span class="annot"><span class="annottext">Timeline a
+forall k a. Map k a
+</span><span class="hs-identifier hs-var">M.empty</span></span><span> </span><span class="annot"><span class="annottext">Maybe Time
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542875"><span class="hs-identifier hs-var">def</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="hs-comment">-- | Read the value of a variable at the current timestamp.</span><span>
+</span><span id="line-44"></span><span id="local-6989586621679542871"><span id="local-6989586621679542872"><span class="annot"><a href="Reanimate.Scene.Var.html#readVar"><span class="hs-identifier hs-type">readVar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542872"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542871"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542872"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542871"><span class="hs-identifier hs-type">a</span></a></span></span></span><span>
+</span><span id="line-45"></span><span id="readVar"><span class="annot"><span class="annottext">readVar :: Var s a -&gt; Scene s a
+</span><a href="Reanimate.Scene.Var.html#readVar"><span class="hs-identifier hs-var hs-var">readVar</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span id="local-6989586621679542869"><span class="annot"><span class="annottext">STRef s (VarData a)
+</span><a href="#local-6989586621679542869"><span class="hs-identifier hs-var">ref</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">VarData a -&gt; Time -&gt; a
+forall a. VarData a -&gt; Time -&gt; a
+</span><a href="Reanimate.Scene.Var.html#readVarData"><span class="hs-identifier hs-var">readVarData</span></a></span><span> </span><span class="annot"><span class="annottext">(VarData a -&gt; Time -&gt; a)
+-&gt; Scene s (VarData a) -&gt; Scene s (Time -&gt; a)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">ST s (VarData a) -&gt; Scene s (VarData a)
+forall s a. ST s a -&gt; Scene s a
+</span><a href="Reanimate.Scene.Core.html#liftST"><span class="hs-identifier hs-var">liftST</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">STRef s (VarData a) -&gt; ST s (VarData a)
+forall s a. STRef s a -&gt; ST s a
+</span><span class="hs-identifier hs-var">readSTRef</span></span><span> </span><span class="annot"><span class="annottext">STRef s (VarData a)
+</span><a href="#local-6989586621679542869"><span class="hs-identifier hs-var">ref</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Scene s (Time -&gt; a) -&gt; Scene s Time -&gt; Scene s a
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Scene s Time
+forall s. Scene s Time
+</span><a href="Reanimate.Scene.Core.html#queryNow"><span class="hs-identifier hs-var">queryNow</span></a></span><span>
+</span><span id="line-46"></span><span>
+</span><span id="line-47"></span><span id="local-6989586621679542866"><span id="local-6989586621679542867"><span class="annot"><a href="Reanimate.Scene.Var.html#unpackVar"><span class="hs-identifier hs-type">unpackVar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542867"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542866"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ST</span></span><span> </span><span class="annot"><a href="#local-6989586621679542867"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679542866"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-48"></span><span id="unpackVar"><span class="annot"><span class="annottext">unpackVar :: Var s a -&gt; ST s (Time -&gt; a)
+</span><a href="Reanimate.Scene.Var.html#unpackVar"><span class="hs-identifier hs-var hs-var">unpackVar</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span id="local-6989586621679542864"><span class="annot"><span class="annottext">STRef s (VarData a)
+</span><a href="#local-6989586621679542864"><span class="hs-identifier hs-var">ref</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">VarData a -&gt; Time -&gt; a
+forall a. VarData a -&gt; Time -&gt; a
+</span><a href="Reanimate.Scene.Var.html#readVarData"><span class="hs-identifier hs-var">readVarData</span></a></span><span> </span><span class="annot"><span class="annottext">(VarData a -&gt; Time -&gt; a) -&gt; ST s (VarData a) -&gt; ST s (Time -&gt; a)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">STRef s (VarData a) -&gt; ST s (VarData a)
+forall s a. STRef s a -&gt; ST s a
+</span><span class="hs-identifier hs-var">readSTRef</span></span><span> </span><span class="annot"><span class="annottext">STRef s (VarData a)
+</span><a href="#local-6989586621679542864"><span class="hs-identifier hs-var">ref</span></a></span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span class="hs-comment">-- | Write the value of a variable at the current timestamp.</span><span>
+</span><span id="line-51"></span><span class="hs-comment">--</span><span>
+</span><span id="line-52"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-53"></span><span class="hs-comment">--</span><span>
+</span><span id="line-54"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- do v \&lt;- 'newVar' 0</span><span>
+</span><span id="line-56"></span><span class="hs-comment">--    'Reanimate.Scene.newSprite' $ 'Reanimate.Svg.Constructors.mkCircle' \&lt;$\&gt; 'Reanimate.Scene.unVar' v</span><span>
+</span><span id="line-57"></span><span class="hs-comment">--    'writeVar' v 1; 'wait' 1</span><span>
+</span><span id="line-58"></span><span class="hs-comment">--    'writeVar' v 2; 'wait' 1</span><span>
+</span><span id="line-59"></span><span class="hs-comment">--    'writeVar' v 3; 'wait' 1</span><span>
+</span><span id="line-60"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-61"></span><span class="hs-comment">--</span><span>
+</span><span id="line-62"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_writeVar.gif&gt;&gt;</span><span>
+</span><span id="line-63"></span><span id="local-6989586621679542862"><span id="local-6989586621679542863"><span class="annot"><a href="Reanimate.Scene.Var.html#writeVar"><span class="hs-identifier hs-type">writeVar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542863"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542862"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679542862"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542863"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-64"></span><span id="writeVar"><span class="annot"><span class="annottext">writeVar :: Var s a -&gt; a -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Var.html#writeVar"><span class="hs-identifier hs-var hs-var">writeVar</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span id="local-6989586621679542860"><span class="annot"><span class="annottext">STRef s (VarData a)
+</span><a href="#local-6989586621679542860"><span class="hs-identifier hs-var">ref</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679542859"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542859"><span class="hs-identifier hs-var">val</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-65"></span><span>  </span><span id="local-6989586621679542858"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542858"><span class="hs-identifier hs-var">now</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Scene s Time
+forall s. Scene s Time
+</span><a href="Reanimate.Scene.Core.html#queryNow"><span class="hs-identifier hs-var">queryNow</span></a></span><span>
+</span><span id="line-66"></span><span>  </span><span class="annot"><span class="annottext">ST s () -&gt; Scene s ()
+forall s a. ST s a -&gt; Scene s a
+</span><a href="Reanimate.Scene.Core.html#liftST"><span class="hs-identifier hs-var">liftST</span></a></span><span> </span><span class="annot"><span class="annottext">(ST s () -&gt; Scene s ()) -&gt; ST s () -&gt; Scene s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">STRef s (VarData a) -&gt; (VarData a -&gt; VarData a) -&gt; ST s ()
+forall s a. STRef s a -&gt; (a -&gt; a) -&gt; ST s ()
+</span><span class="hs-identifier hs-var">modifySTRef</span></span><span> </span><span class="annot"><span class="annottext">STRef s (VarData a)
+</span><a href="#local-6989586621679542860"><span class="hs-identifier hs-var">ref</span></a></span><span> </span><span class="annot"><span class="annottext">((VarData a -&gt; VarData a) -&gt; ST s ())
+-&gt; (VarData a -&gt; VarData a) -&gt; ST s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; a -&gt; VarData a -&gt; VarData a
+forall a. Time -&gt; a -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#writeVarData"><span class="hs-identifier hs-var">writeVarData</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542858"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542859"><span class="hs-identifier hs-var">val</span></a></span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span class="hs-comment">-- | Modify the value of a variable at the current timestamp and all future timestamps.</span><span>
+</span><span id="line-69"></span><span id="local-6989586621679542855"><span id="local-6989586621679542856"><span class="annot"><a href="Reanimate.Scene.Var.html#modifyVar"><span class="hs-identifier hs-type">modifyVar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542856"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542855"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679542855"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679542855"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542856"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-70"></span><span id="modifyVar"><span class="annot"><span class="annottext">modifyVar :: Var s a -&gt; (a -&gt; a) -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Var.html#modifyVar"><span class="hs-identifier hs-var hs-var">modifyVar</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span id="local-6989586621679542853"><span class="annot"><span class="annottext">STRef s (VarData a)
+</span><a href="#local-6989586621679542853"><span class="hs-identifier hs-var">ref</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679542852"><span class="annot"><span class="annottext">a -&gt; a
+</span><a href="#local-6989586621679542852"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-71"></span><span>  </span><span id="local-6989586621679542851"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542851"><span class="hs-identifier hs-var">now</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Scene s Time
+forall s. Scene s Time
+</span><a href="Reanimate.Scene.Core.html#queryNow"><span class="hs-identifier hs-var">queryNow</span></a></span><span>
+</span><span id="line-72"></span><span>  </span><span class="annot"><span class="annottext">ST s () -&gt; Scene s ()
+forall s a. ST s a -&gt; Scene s a
+</span><a href="Reanimate.Scene.Core.html#liftST"><span class="hs-identifier hs-var">liftST</span></a></span><span> </span><span class="annot"><span class="annottext">(ST s () -&gt; Scene s ()) -&gt; ST s () -&gt; Scene s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">STRef s (VarData a) -&gt; (VarData a -&gt; VarData a) -&gt; ST s ()
+forall s a. STRef s a -&gt; (a -&gt; a) -&gt; ST s ()
+</span><span class="hs-identifier hs-var">modifySTRef</span></span><span> </span><span class="annot"><span class="annottext">STRef s (VarData a)
+</span><a href="#local-6989586621679542853"><span class="hs-identifier hs-var">ref</span></a></span><span> </span><span class="annot"><span class="annottext">((VarData a -&gt; VarData a) -&gt; ST s ())
+-&gt; (VarData a -&gt; VarData a) -&gt; ST s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; (a -&gt; a) -&gt; VarData a -&gt; VarData a
+forall a. Time -&gt; (a -&gt; a) -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#modifyVarData"><span class="hs-identifier hs-var">modifyVarData</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542851"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a
+</span><a href="#local-6989586621679542852"><span class="hs-identifier hs-var">fn</span></a></span><span>
+</span><span id="line-73"></span><span>
+</span><span id="line-74"></span><span class="hs-comment">-- | Modify a variable between @now@ and @now+duration@.</span><span>
+</span><span id="line-75"></span><span id="local-6989586621679542848"><span id="local-6989586621679542849"><span class="annot"><a href="Reanimate.Scene.Var.html#tweenVar"><span class="hs-identifier hs-type">tweenVar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542849"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542848"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Duration"><span class="hs-identifier hs-type">Duration</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679542848"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679542848"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542849"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-76"></span><span id="tweenVar"><span class="annot"><span class="annottext">tweenVar :: Var s a -&gt; Time -&gt; (a -&gt; Time -&gt; a) -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Var.html#tweenVar"><span class="hs-identifier hs-var hs-var">tweenVar</span></a></span></span><span> </span><span class="annot"><span class="annottext">Var s a
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679542846"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542846"><span class="hs-identifier hs-var">dur</span></a></span></span><span> </span><span class="annot"><span class="annottext">a -&gt; Time -&gt; a
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542846"><span class="hs-identifier hs-var">dur</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Scene s ()
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;Reanimate.tweenVar: durations must be non-negative&quot;</span></span><span>
+</span><span id="line-77"></span><span class="annot"><a href="Reanimate.Scene.Var.html#tweenVar"><span class="hs-identifier hs-var">tweenVar</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span id="local-6989586621679542843"><span class="annot"><span class="annottext">STRef s (VarData a)
+</span><a href="#local-6989586621679542843"><span class="hs-identifier hs-var">ref</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679542842"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542842"><span class="hs-identifier hs-var">dur</span></a></span></span><span> </span><span id="local-6989586621679542841"><span class="annot"><span class="annottext">a -&gt; Time -&gt; a
+</span><a href="#local-6989586621679542841"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-78"></span><span>  </span><span id="local-6989586621679542840"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542840"><span class="hs-identifier hs-var">now</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Scene s Time
+forall s. Scene s Time
+</span><a href="Reanimate.Scene.Core.html#queryNow"><span class="hs-identifier hs-var">queryNow</span></a></span><span>
+</span><span id="line-79"></span><span>  </span><span class="annot"><span class="annottext">ST s () -&gt; Scene s ()
+forall s a. ST s a -&gt; Scene s a
+</span><a href="Reanimate.Scene.Core.html#liftST"><span class="hs-identifier hs-var">liftST</span></a></span><span> </span><span class="annot"><span class="annottext">(ST s () -&gt; Scene s ()) -&gt; ST s () -&gt; Scene s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">STRef s (VarData a) -&gt; (VarData a -&gt; VarData a) -&gt; ST s ()
+forall s a. STRef s a -&gt; (a -&gt; a) -&gt; ST s ()
+</span><span class="hs-identifier hs-var">modifySTRef</span></span><span> </span><span class="annot"><span class="annottext">STRef s (VarData a)
+</span><a href="#local-6989586621679542843"><span class="hs-identifier hs-var">ref</span></a></span><span> </span><span class="annot"><span class="annottext">((VarData a -&gt; VarData a) -&gt; ST s ())
+-&gt; (VarData a -&gt; VarData a) -&gt; ST s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; (a -&gt; Time -&gt; a) -&gt; VarData a -&gt; VarData a
+forall a.
+Time -&gt; Time -&gt; (a -&gt; Time -&gt; a) -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#tweenVarData"><span class="hs-identifier hs-var">tweenVarData</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542840"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542842"><span class="hs-identifier hs-var">dur</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; Time -&gt; a
+</span><a href="#local-6989586621679542841"><span class="hs-identifier hs-var">fn</span></a></span><span>
+</span><span id="line-80"></span><span>  </span><span class="annot"><span class="annottext">Time -&gt; Scene s ()
+forall s. Time -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Core.html#wait"><span class="hs-identifier hs-var">wait</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542842"><span class="hs-identifier hs-var">dur</span></a></span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span id="local-6989586621679542963"><span class="annot"><a href="Reanimate.Scene.Var.html#readVarData"><span class="hs-identifier hs-type">readVarData</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542963"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679542963"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-83"></span><span id="readVarData"><span class="annot"><span class="annottext">readVarData :: VarData a -&gt; Time -&gt; a
+</span><a href="Reanimate.Scene.Var.html#readVarData"><span class="hs-identifier hs-var hs-var">readVarData</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span id="local-6989586621679542838"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542838"><span class="hs-identifier hs-var">def</span></a></span></span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Maybe Time
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542838"><span class="hs-identifier hs-var">def</span></a></span><span>
+</span><span id="line-84"></span><span class="annot"><a href="Reanimate.Scene.Var.html#readVarData"><span class="hs-identifier hs-var">readVarData</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span id="local-6989586621679542837"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542837"><span class="hs-identifier hs-var">def</span></a></span></span><span> </span><span id="local-6989586621679542836"><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542836"><span class="hs-identifier hs-var">timeline</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679542835"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542835"><span class="hs-identifier hs-var">lastTime</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679542834"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542834"><span class="hs-identifier hs-var">lastValue</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679542833"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542833"><span class="hs-identifier hs-var">now</span></a></span></span><span>
+</span><span id="line-85"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542833"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542835"><span class="hs-identifier hs-var">lastTime</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Timeline a -&gt; a -&gt; Time -&gt; a
+forall a. Timeline a -&gt; a -&gt; Time -&gt; a
+</span><a href="Reanimate.Scene.Var.html#lookupTimeline"><span class="hs-identifier hs-var">lookupTimeline</span></a></span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542836"><span class="hs-identifier hs-var">timeline</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542837"><span class="hs-identifier hs-var">def</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542833"><span class="hs-identifier hs-var">now</span></a></span><span>
+</span><span id="line-86"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542834"><span class="hs-identifier hs-var">lastValue</span></a></span><span>
+</span><span id="line-87"></span><span>
+</span><span id="line-88"></span><span id="local-6989586621679542937"><span class="annot"><a href="Reanimate.Scene.Var.html#lookupTimeline"><span class="hs-identifier hs-type">lookupTimeline</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#Timeline"><span class="hs-identifier hs-type">Timeline</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542937"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679542937"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679542937"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-89"></span><span id="lookupTimeline"><span class="annot"><span class="annottext">lookupTimeline :: Timeline a -&gt; a -&gt; Time -&gt; a
+</span><a href="Reanimate.Scene.Var.html#lookupTimeline"><span class="hs-identifier hs-var hs-var">lookupTimeline</span></a></span></span><span> </span><span id="local-6989586621679542831"><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542831"><span class="hs-identifier hs-var">timeline</span></a></span></span><span> </span><span id="local-6989586621679542830"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542830"><span class="hs-identifier hs-var">def</span></a></span></span><span> </span><span id="local-6989586621679542829"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542829"><span class="hs-identifier hs-var">now</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Timeline a -&gt; Maybe (Time, Modifier a)
+forall k v. Ord k =&gt; k -&gt; Map k v -&gt; Maybe (k, v)
+</span><span class="hs-identifier hs-var">M.lookupLE</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542829"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542831"><span class="hs-identifier hs-var">timeline</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-90"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#StaticValue"><span class="hs-identifier hs-type">StaticValue</span></a></span><span> </span><span id="local-6989586621679542827"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542827"><span class="hs-identifier hs-var">sVal</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542827"><span class="hs-identifier hs-var">sVal</span></a></span><span>
+</span><span id="line-91"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679542826"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542826"><span class="hs-identifier hs-var">t</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#TweenValue"><span class="hs-identifier hs-type">TweenValue</span></a></span><span> </span><span id="local-6989586621679542825"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542825"><span class="hs-identifier hs-var">dur</span></a></span></span><span> </span><span id="local-6989586621679542824"><span class="annot"><span class="annottext">a -&gt; Time -&gt; a
+</span><a href="#local-6989586621679542824"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-92"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542826"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542825"><span class="hs-identifier hs-var">dur</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542829"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">a -&gt; Time -&gt; a
+</span><a href="#local-6989586621679542824"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542830"><span class="hs-identifier hs-var">def</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542829"><span class="hs-identifier hs-var">now</span></a></span><span>
+</span><span id="line-93"></span><span>  </span><span class="annot"><span class="annottext">Maybe (Time, Modifier a)
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542830"><span class="hs-identifier hs-var">def</span></a></span><span>
+</span><span id="line-94"></span><span>
+</span><span id="line-95"></span><span id="local-6989586621679542950"><span class="annot"><a href="Reanimate.Scene.Var.html#writeVarData"><span class="hs-identifier hs-type">writeVarData</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679542950"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542950"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542950"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-96"></span><span id="writeVarData"><span class="annot"><span class="annottext">writeVarData :: Time -&gt; a -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#writeVarData"><span class="hs-identifier hs-var hs-var">writeVarData</span></a></span></span><span> </span><span id="local-6989586621679542821"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542821"><span class="hs-identifier hs-var">now</span></a></span></span><span> </span><span id="local-6989586621679542820"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542820"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679542819"><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542819"><span class="hs-identifier hs-var">var</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-97"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679542818"><span class="annot"><span class="annottext">before :: VarData a
+</span><a href="#local-6989586621679542818"><span class="hs-identifier hs-var hs-var">before</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time -&gt; VarData a -&gt; VarData a
+forall a. Time -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#keepBefore"><span class="hs-identifier hs-var">keepBefore</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542821"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542819"><span class="hs-identifier hs-var">var</span></a></span><span>
+</span><span id="line-98"></span><span>      </span><span id="local-6989586621679542816"><span class="annot"><span class="annottext">after :: VarData a
+</span><a href="#local-6989586621679542816"><span class="hs-identifier hs-var hs-var">after</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Timeline a -&gt; Maybe Time -&gt; a -&gt; VarData a
+forall a. a -&gt; Timeline a -&gt; Maybe Time -&gt; a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-var">VarData</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">VarData a -&gt; a
+forall a. VarData a -&gt; a
+</span><a href="Reanimate.Scene.Var.html#evarDefault"><span class="hs-identifier hs-var hs-var">evarDefault</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542819"><span class="hs-identifier hs-var">var</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Timeline a
+forall k a. Map k a
+</span><span class="hs-identifier hs-var">M.empty</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Maybe Time
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542821"><span class="hs-identifier hs-var">now</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542820"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-99"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542816"><span class="hs-identifier hs-var">after</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a -&gt; VarData a -&gt; VarData a
+forall a. VarData a -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#elseVar"><span class="hs-operator hs-var">`elseVar`</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542818"><span class="hs-identifier hs-var">before</span></a></span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span id="local-6989586621679542947"><span class="annot"><a href="Reanimate.Scene.Var.html#modifyVarData"><span class="hs-identifier hs-type">modifyVarData</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679542947"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679542947"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542947"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542947"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-102"></span><span id="modifyVarData"><span class="annot"><span class="annottext">modifyVarData :: Time -&gt; (a -&gt; a) -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#modifyVarData"><span class="hs-identifier hs-var hs-var">modifyVarData</span></a></span></span><span> </span><span id="local-6989586621679542814"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542814"><span class="hs-identifier hs-var">now</span></a></span></span><span> </span><span id="local-6989586621679542813"><span class="annot"><span class="annottext">a -&gt; a
+</span><a href="#local-6989586621679542813"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span id="local-6989586621679542812"><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542812"><span class="hs-identifier hs-var">var</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-103"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679542811"><span class="annot"><span class="annottext">before :: VarData a
+</span><a href="#local-6989586621679542811"><span class="hs-identifier hs-var hs-var">before</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time -&gt; VarData a -&gt; VarData a
+forall a. Time -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#keepBefore"><span class="hs-identifier hs-var">keepBefore</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542814"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542812"><span class="hs-identifier hs-var">var</span></a></span><span>
+</span><span id="line-104"></span><span>      </span><span id="local-6989586621679542810"><span class="annot"><span class="annottext">after :: VarData a
+</span><a href="#local-6989586621679542810"><span class="hs-identifier hs-var hs-var">after</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time -&gt; VarData a -&gt; VarData a
+forall a. Time -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#keepFrom"><span class="hs-identifier hs-var">keepFrom</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542814"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542812"><span class="hs-identifier hs-var">var</span></a></span><span>
+</span><span id="line-105"></span><span>      </span><span id="local-6989586621679542808"><span class="annot"><span class="annottext">timeline :: Map Time (Modifier a)
+</span><a href="#local-6989586621679542808"><span class="hs-identifier hs-var hs-var">timeline</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((Modifier a -&gt; Modifier a)
+ -&gt; Map Time (Modifier a) -&gt; Map Time (Modifier a))
+-&gt; Map Time (Modifier a)
+-&gt; (Modifier a -&gt; Modifier a)
+-&gt; Map Time (Modifier a)
+forall a b c. (a -&gt; b -&gt; c) -&gt; b -&gt; a -&gt; c
+</span><span class="hs-identifier hs-var">flip</span></span><span> </span><span class="annot"><span class="annottext">(Modifier a -&gt; Modifier a)
+-&gt; Map Time (Modifier a) -&gt; Map Time (Modifier a)
+forall a b k. (a -&gt; b) -&gt; Map k a -&gt; Map k b
+</span><span class="hs-identifier hs-var">M.map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">VarData a -&gt; Map Time (Modifier a)
+forall a. VarData a -&gt; Timeline a
+</span><a href="Reanimate.Scene.Var.html#evarTimeline"><span class="hs-identifier hs-var hs-var">evarTimeline</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542810"><span class="hs-identifier hs-var">after</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">((Modifier a -&gt; Modifier a) -&gt; Map Time (Modifier a))
+-&gt; (Modifier a -&gt; Modifier a) -&gt; Map Time (Modifier a)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span class="hs-glyph">case</span><span>
+</span><span id="line-106"></span><span>        </span><span class="annot"><a href="Reanimate.Scene.Var.html#StaticValue"><span class="hs-identifier hs-type">StaticValue</span></a></span><span> </span><span id="local-6989586621679542805"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542805"><span class="hs-identifier hs-var">s</span></a></span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">a -&gt; Modifier a
+forall a. a -&gt; Modifier a
+</span><a href="Reanimate.Scene.Var.html#StaticValue"><span class="hs-identifier hs-var">StaticValue</span></a></span><span> </span><span class="annot"><span class="annottext">(a -&gt; Modifier a) -&gt; a -&gt; Modifier a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; a
+</span><a href="#local-6989586621679542813"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542805"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-107"></span><span>        </span><span class="annot"><a href="Reanimate.Scene.Var.html#TweenValue"><span class="hs-identifier hs-type">TweenValue</span></a></span><span> </span><span id="local-6989586621679542804"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542804"><span class="hs-identifier hs-var">dur</span></a></span></span><span> </span><span id="local-6989586621679542803"><span class="annot"><span class="annottext">a -&gt; Time -&gt; a
+</span><a href="#local-6989586621679542803"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Time -&gt; (a -&gt; Time -&gt; a) -&gt; Modifier a
+forall a. Time -&gt; (a -&gt; Time -&gt; a) -&gt; Modifier a
+</span><a href="Reanimate.Scene.Var.html#TweenValue"><span class="hs-identifier hs-var">TweenValue</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542804"><span class="hs-identifier hs-var">dur</span></a></span><span> </span><span class="annot"><span class="annottext">((a -&gt; Time -&gt; a) -&gt; Modifier a) -&gt; (a -&gt; Time -&gt; a) -&gt; Modifier a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679542802"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542802"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679542801"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542801"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">a -&gt; a
+</span><a href="#local-6989586621679542813"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Time -&gt; a
+</span><a href="#local-6989586621679542803"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542802"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542801"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-108"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542810"><span class="hs-identifier hs-var">after</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><span class="annottext">evarTimeline :: Map Time (Modifier a)
+</span><a href="Reanimate.Scene.Var.html#evarTimeline"><span class="hs-identifier hs-var">evarTimeline</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Map Time (Modifier a)
+</span><a href="#local-6989586621679542808"><span class="hs-identifier hs-var">timeline</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">evarLastValue :: a
+</span><a href="Reanimate.Scene.Var.html#evarLastValue"><span class="hs-identifier hs-var">evarLastValue</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; a
+</span><a href="#local-6989586621679542813"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="annot"><span class="annottext">(a -&gt; a) -&gt; a -&gt; a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">VarData a -&gt; a
+forall a. VarData a -&gt; a
+</span><a href="Reanimate.Scene.Var.html#evarLastValue"><span class="hs-identifier hs-var hs-var">evarLastValue</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542810"><span class="hs-identifier hs-var">after</span></a></span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">VarData a -&gt; VarData a -&gt; VarData a
+forall a. VarData a -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#elseVar"><span class="hs-operator hs-var">`elseVar`</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542811"><span class="hs-identifier hs-var">before</span></a></span><span>
+</span><span id="line-109"></span><span>
+</span><span id="line-110"></span><span class="hs-comment">-- Note: The function passed here takes time on the scale 0 to 1</span><span>
+</span><span id="line-111"></span><span class="hs-comment">--       while the function in `TweenValue` takes time on an absolute scale.</span><span>
+</span><span id="line-112"></span><span id="local-6989586621679542940"><span class="annot"><a href="Reanimate.Scene.Var.html#tweenVarData"><span class="hs-identifier hs-type">tweenVarData</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Duration"><span class="hs-identifier hs-type">Duration</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679542940"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679542940"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542940"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542940"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-113"></span><span id="tweenVarData"><span class="annot"><span class="annottext">tweenVarData :: Time -&gt; Time -&gt; (a -&gt; Time -&gt; a) -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#tweenVarData"><span class="hs-identifier hs-var hs-var">tweenVarData</span></a></span></span><span> </span><span id="local-6989586621679542800"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542800"><span class="hs-identifier hs-var">st</span></a></span></span><span> </span><span id="local-6989586621679542799"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542799"><span class="hs-identifier hs-var">dur</span></a></span></span><span> </span><span id="local-6989586621679542798"><span class="annot"><span class="annottext">a -&gt; Time -&gt; a
+</span><a href="#local-6989586621679542798"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span id="local-6989586621679542797"><span class="annot"><span class="annottext">var :: VarData a
+</span><a href="#local-6989586621679542797"><span class="hs-identifier hs-var">var</span></a></span></span><span class="hs-glyph">@</span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679542793"><span id="local-6989586621679542794"><span id="local-6989586621679542795"><span id="local-6989586621679542796"><span class="annot"><span class="annottext">a
+Maybe Time
+Timeline a
+evarLastValue :: a
+evarLastTime :: Maybe Time
+evarTimeline :: Timeline a
+evarDefault :: a
+evarLastValue :: forall a. VarData a -&gt; a
+evarLastTime :: forall a. VarData a -&gt; Maybe Time
+evarTimeline :: forall a. VarData a -&gt; Timeline a
+evarDefault :: forall a. VarData a -&gt; a
+</span><a href="#local-6989586621679542793"><span class="hs-glyph hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">..</span></a></span></span></span></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-114"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679542792"><span class="annot"><span class="annottext">nd :: Time
+</span><a href="#local-6989586621679542792"><span class="hs-identifier hs-var hs-var">nd</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542800"><span class="hs-identifier hs-var">st</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542799"><span class="hs-identifier hs-var">dur</span></a></span><span>
+</span><span id="line-115"></span><span>      </span><span id="local-6989586621679542791"><span class="annot"><span class="annottext">before :: VarData a
+</span><a href="#local-6989586621679542791"><span class="hs-identifier hs-var hs-var">before</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time -&gt; VarData a -&gt; VarData a
+forall a. Time -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#keepBefore"><span class="hs-identifier hs-var">keepBefore</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542800"><span class="hs-identifier hs-var">st</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542797"><span class="hs-identifier hs-var">var</span></a></span><span>
+</span><span id="line-116"></span><span>      </span><span id="local-6989586621679542790"><span class="annot"><span class="annottext">during :: VarData a
+</span><a href="#local-6989586621679542790"><span class="hs-identifier hs-var hs-var">during</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Time -&gt; Maybe Time -&gt; VarData a -&gt; VarData a
+forall a. Maybe Time -&gt; Maybe Time -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#keepInRange"><span class="hs-identifier hs-var">keepInRange</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Maybe Time
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542800"><span class="hs-identifier hs-var">st</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Maybe Time
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542792"><span class="hs-identifier hs-var">nd</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542797"><span class="hs-identifier hs-var">var</span></a></span><span>
+</span><span id="line-117"></span><span>      </span><span id="local-6989586621679542788"><span class="annot"><span class="annottext">tweenFn :: a -&gt; Time -&gt; a
+</span><a href="#local-6989586621679542788"><span class="hs-identifier hs-var hs-var">tweenFn</span></a></span></span><span> </span><span id="local-6989586621679542787"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542787"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679542786"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542786"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-118"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679542785"><span class="annot"><span class="annottext">idx :: Time
+</span><a href="#local-6989586621679542785"><span class="hs-identifier hs-var hs-var">idx</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542786"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542800"><span class="hs-identifier hs-var">st</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542799"><span class="hs-identifier hs-var">dur</span></a></span><span>
+</span><span id="line-119"></span><span>            </span><span id="local-6989586621679542783"><span class="annot"><span class="annottext">idx' :: Time
+</span><a href="#local-6989586621679542783"><span class="hs-identifier hs-var hs-var">idx'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Bool
+forall a. RealFloat a =&gt; a -&gt; Bool
+</span><span class="hs-identifier hs-var">isNaN</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542785"><span class="hs-identifier hs-var">idx</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">1</span></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542785"><span class="hs-identifier hs-var">idx</span></a></span><span>
+</span><span id="line-120"></span><span>         </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">a -&gt; Time -&gt; a
+</span><a href="#local-6989586621679542798"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">VarData a -&gt; Time -&gt; a
+forall a. VarData a -&gt; Time -&gt; a
+</span><a href="Reanimate.Scene.Var.html#readVarData"><span class="hs-identifier hs-var">readVarData</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542790"><span class="hs-identifier hs-var">during</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><span class="annottext">evarDefault :: a
+</span><a href="Reanimate.Scene.Var.html#evarDefault"><span class="hs-identifier hs-var">evarDefault</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542787"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542786"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542783"><span class="hs-identifier hs-var">idx'</span></a></span><span>
+</span><span id="line-121"></span><span>      </span><span id="local-6989586621679542781"><span class="annot"><span class="annottext">valueTweenEnd :: a
+</span><a href="#local-6989586621679542781"><span class="hs-identifier hs-var hs-var">valueTweenEnd</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Time -&gt; a
+</span><a href="#local-6989586621679542788"><span class="hs-identifier hs-var">tweenFn</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542796"><span class="hs-identifier hs-var">evarDefault</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542792"><span class="hs-identifier hs-var">nd</span></a></span><span> </span><span class="hs-comment">-- we'll never use the def here, replace with error?</span><span>
+</span><span id="line-122"></span><span>      </span><span id="local-6989586621679542780"><span class="annot"><span class="annottext">after :: VarData a
+</span><a href="#local-6989586621679542780"><span class="hs-identifier hs-var hs-var">after</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Timeline a -&gt; Maybe Time -&gt; a -&gt; VarData a
+forall a. a -&gt; Timeline a -&gt; Maybe Time -&gt; a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-var">VarData</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542796"><span class="hs-identifier hs-var">evarDefault</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Modifier a -&gt; Timeline a
+forall k a. k -&gt; a -&gt; Map k a
+</span><span class="hs-identifier hs-var">M.singleton</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542800"><span class="hs-identifier hs-var">st</span></a></span><span> </span><span class="annot"><span class="annottext">(Modifier a -&gt; Timeline a) -&gt; Modifier a -&gt; Timeline a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; (a -&gt; Time -&gt; a) -&gt; Modifier a
+forall a. Time -&gt; (a -&gt; Time -&gt; a) -&gt; Modifier a
+</span><a href="Reanimate.Scene.Var.html#TweenValue"><span class="hs-identifier hs-var">TweenValue</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542799"><span class="hs-identifier hs-var">dur</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; Time -&gt; a
+</span><a href="#local-6989586621679542788"><span class="hs-identifier hs-var">tweenFn</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Maybe Time
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542792"><span class="hs-identifier hs-var">nd</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542781"><span class="hs-identifier hs-var">valueTweenEnd</span></a></span><span>
+</span><span id="line-123"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542780"><span class="hs-identifier hs-var">after</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a -&gt; VarData a -&gt; VarData a
+forall a. VarData a -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#elseVar"><span class="hs-operator hs-var">`elseVar`</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542791"><span class="hs-identifier hs-var">before</span></a></span><span>
+</span><span id="line-124"></span><span>
+</span><span id="line-125"></span><span class="hs-comment">-- Returns the union of two vars such that we use the second var if first var doesn't have a value.</span><span>
+</span><span id="line-126"></span><span class="hs-comment">-- Assumes both vars have same default value.</span><span>
+</span><span id="line-127"></span><span id="local-6989586621679542929"><span class="annot"><a href="Reanimate.Scene.Var.html#elseVar"><span class="hs-identifier hs-type">elseVar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542929"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542929"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542929"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-128"></span><span id="elseVar"><span class="annot"><span class="annottext">elseVar :: VarData a -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#elseVar"><span class="hs-identifier hs-var hs-var">elseVar</span></a></span></span><span> </span><span id="local-6989586621679542778"><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542778"><span class="hs-identifier hs-var">var1</span></a></span></span><span> </span><span id="local-6989586621679542777"><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542777"><span class="hs-identifier hs-var">var2</span></a></span></span><span>
+</span><span id="line-129"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679542776"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542776"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">VarData a -&gt; Maybe Time
+forall a. VarData a -&gt; Maybe Time
+</span><a href="Reanimate.Scene.Var.html#evarLastTime"><span class="hs-identifier hs-var hs-var">evarLastTime</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542778"><span class="hs-identifier hs-var">var1</span></a></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-130"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679542775"><span class="annot"><span class="annottext">afterTimeline :: Timeline a
+</span><a href="#local-6989586621679542775"><span class="hs-identifier hs-var hs-var">afterTimeline</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">VarData a -&gt; Timeline a
+forall a. VarData a -&gt; Timeline a
+</span><a href="Reanimate.Scene.Var.html#evarTimeline"><span class="hs-identifier hs-var hs-var">evarTimeline</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542778"><span class="hs-identifier hs-var">var1</span></a></span><span>
+</span><span id="line-131"></span><span>        </span><span id="local-6989586621679542774"><span class="annot"><span class="annottext">joinAt :: Time
+</span><a href="#local-6989586621679542774"><span class="hs-identifier hs-var hs-var">joinAt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time
+-&gt; ((Time, Modifier a) -&gt; Time) -&gt; Maybe (Time, Modifier a) -&gt; Time
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542776"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">(Time, Modifier a) -&gt; Time
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="annot"><span class="annottext">(Maybe (Time, Modifier a) -&gt; Time)
+-&gt; Maybe (Time, Modifier a) -&gt; Time
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Timeline a -&gt; Maybe (Time, Modifier a)
+forall k a. Map k a -&gt; Maybe (k, a)
+</span><span class="hs-identifier hs-var">M.lookupMin</span></span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542775"><span class="hs-identifier hs-var">afterTimeline</span></a></span><span>
+</span><span id="line-132"></span><span>        </span><span id="local-6989586621679542771"><span class="annot"><span class="annottext">beforeTimeline :: Timeline a
+</span><a href="#local-6989586621679542771"><span class="hs-identifier hs-var hs-var">beforeTimeline</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Time -&gt; VarData a -&gt; VarData a
+forall a. Time -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#keepBefore"><span class="hs-identifier hs-var">keepBefore</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542774"><span class="hs-identifier hs-var">joinAt</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542777"><span class="hs-identifier hs-var">var2</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-133"></span><span>          </span><span id="local-6989586621679542770"><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542770"><span class="hs-identifier hs-var">x</span></a></span></span><span>
+</span><span id="line-134"></span><span>            </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679542769"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542769"><span class="hs-identifier hs-var">lastTime</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">VarData a -&gt; Maybe Time
+forall a. VarData a -&gt; Maybe Time
+</span><a href="Reanimate.Scene.Var.html#evarLastTime"><span class="hs-identifier hs-var hs-var">evarLastTime</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542770"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542769"><span class="hs-identifier hs-var">lastTime</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542774"><span class="hs-identifier hs-var">joinAt</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Modifier a -&gt; Timeline a -&gt; Timeline a
+forall k a. Ord k =&gt; k -&gt; a -&gt; Map k a -&gt; Map k a
+</span><span class="hs-identifier hs-var">M.insert</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542769"><span class="hs-identifier hs-var">lastTime</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Modifier a
+forall a. a -&gt; Modifier a
+</span><a href="Reanimate.Scene.Var.html#StaticValue"><span class="hs-identifier hs-var">StaticValue</span></a></span><span> </span><span class="annot"><span class="annottext">(a -&gt; Modifier a) -&gt; a -&gt; Modifier a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">VarData a -&gt; a
+forall a. VarData a -&gt; a
+</span><a href="Reanimate.Scene.Var.html#evarLastValue"><span class="hs-identifier hs-var hs-var">evarLastValue</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542770"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Timeline a -&gt; Timeline a) -&gt; Timeline a -&gt; Timeline a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">VarData a -&gt; Timeline a
+forall a. VarData a -&gt; Timeline a
+</span><a href="Reanimate.Scene.Var.html#evarTimeline"><span class="hs-identifier hs-var hs-var">evarTimeline</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542770"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-135"></span><span>            </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">VarData a -&gt; Timeline a
+forall a. VarData a -&gt; Timeline a
+</span><a href="Reanimate.Scene.Var.html#evarTimeline"><span class="hs-identifier hs-var hs-var">evarTimeline</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542770"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-136"></span><span>     </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542778"><span class="hs-identifier hs-var">var1</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><span class="annottext">evarTimeline :: Timeline a
+</span><a href="Reanimate.Scene.Var.html#evarTimeline"><span class="hs-identifier hs-var">evarTimeline</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Timeline a -&gt; Timeline a -&gt; Timeline a
+forall k a. Ord k =&gt; Map k a -&gt; Map k a -&gt; Map k a
+</span><span class="hs-identifier hs-var">M.union</span></span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542775"><span class="hs-identifier hs-var">afterTimeline</span></a></span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542771"><span class="hs-identifier hs-var">beforeTimeline</span></a></span><span class="hs-special">}</span><span>
+</span><span id="line-137"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542777"><span class="hs-identifier hs-var">var2</span></a></span><span>
+</span><span id="line-138"></span><span>
+</span><span id="line-139"></span><span class="hs-comment">-- Restrict a var to a given time interval.</span><span>
+</span><span id="line-140"></span><span id="local-6989586621679542919"><span class="annot"><a href="Reanimate.Scene.Var.html#keepInRange"><span class="hs-identifier hs-type">keepInRange</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542919"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542919"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-141"></span><span id="keepInRange"><span class="annot"><span class="annottext">keepInRange :: Maybe Time -&gt; Maybe Time -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#keepInRange"><span class="hs-identifier hs-var hs-var">keepInRange</span></a></span></span><span> </span><span id="local-6989586621679542766"><span class="annot"><span class="annottext">Maybe Time
+</span><a href="#local-6989586621679542766"><span class="hs-identifier hs-var">st</span></a></span></span><span> </span><span id="local-6989586621679542765"><span class="annot"><span class="annottext">Maybe Time
+</span><a href="#local-6989586621679542765"><span class="hs-identifier hs-var">nd</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(VarData a -&gt; VarData a)
+-&gt; (Time -&gt; VarData a -&gt; VarData a)
+-&gt; Maybe Time
+-&gt; VarData a
+-&gt; VarData a
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="annot"><span class="annottext">VarData a -&gt; VarData a
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; VarData a -&gt; VarData a
+forall a. Time -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#keepFrom"><span class="hs-identifier hs-var">keepFrom</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Time
+</span><a href="#local-6989586621679542766"><span class="hs-identifier hs-var">st</span></a></span><span> </span><span class="annot"><span class="annottext">(VarData a -&gt; VarData a)
+-&gt; (VarData a -&gt; VarData a) -&gt; VarData a -&gt; VarData a
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(VarData a -&gt; VarData a)
+-&gt; (Time -&gt; VarData a -&gt; VarData a)
+-&gt; Maybe Time
+-&gt; VarData a
+-&gt; VarData a
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="annot"><span class="annottext">VarData a -&gt; VarData a
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; VarData a -&gt; VarData a
+forall a. Time -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#keepBefore"><span class="hs-identifier hs-var">keepBefore</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Time
+</span><a href="#local-6989586621679542765"><span class="hs-identifier hs-var">nd</span></a></span><span>
+</span><span id="line-142"></span><span>
+</span><span id="line-143"></span><span class="hs-comment">-- Restrict a var to start at given timestamp.</span><span>
+</span><span id="line-144"></span><span id="local-6989586621679542762"><span class="annot"><a href="Reanimate.Scene.Var.html#keepFrom"><span class="hs-identifier hs-type">keepFrom</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542762"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542762"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-145"></span><span id="keepFrom"><span class="annot"><span class="annottext">keepFrom :: Time -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#keepFrom"><span class="hs-identifier hs-var hs-var">keepFrom</span></a></span></span><span> </span><span id="local-6989586621679542761"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542761"><span class="hs-identifier hs-var">st</span></a></span></span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679542757"><span id="local-6989586621679542758"><span id="local-6989586621679542759"><span id="local-6989586621679542760"><span class="annot"><span class="annottext">a
+Maybe Time
+Timeline a
+evarLastValue :: a
+evarLastTime :: Maybe Time
+evarTimeline :: Timeline a
+evarDefault :: a
+evarLastValue :: forall a. VarData a -&gt; a
+evarLastTime :: forall a. VarData a -&gt; Maybe Time
+evarTimeline :: forall a. VarData a -&gt; Timeline a
+evarDefault :: forall a. VarData a -&gt; a
+</span><a href="#local-6989586621679542757"><span class="hs-glyph hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">..</span></a></span></span></span></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-146"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679542756"><span class="annot"><span class="annottext">timeline' :: Timeline a
+</span><a href="#local-6989586621679542756"><span class="hs-identifier hs-var hs-var">timeline'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Bool) -&gt; Timeline a -&gt; Timeline a
+forall k a. (k -&gt; Bool) -&gt; Map k a -&gt; Map k a
+</span><span class="hs-identifier hs-var">M.dropWhileAntitone</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542761"><span class="hs-identifier hs-var">st</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542759"><span class="hs-identifier hs-var">evarTimeline</span></a></span><span>
+</span><span id="line-147"></span><span>      </span><span class="hs-comment">-- if there is no modifier in timeline starting at st,</span><span>
+</span><span id="line-148"></span><span>      </span><span class="hs-comment">-- we must get the modifier that starts before and truncate it to start at st.</span><span>
+</span><span id="line-149"></span><span>      </span><span id="local-6989586621679542754"><span class="annot"><span class="annottext">timeline'' :: Timeline a
+</span><a href="#local-6989586621679542754"><span class="hs-identifier hs-var hs-var">timeline''</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Timeline a -&gt; Maybe (Time, Modifier a)
+forall k v. Ord k =&gt; k -&gt; Map k v -&gt; Maybe (k, v)
+</span><span class="hs-identifier hs-var">M.lookupLE</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542761"><span class="hs-identifier hs-var">st</span></a></span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542759"><span class="hs-identifier hs-var">evarTimeline</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-150"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679542753"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542753"><span class="hs-identifier hs-var">t</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679542752"><span class="annot"><span class="annottext">val :: Modifier a
+</span><a href="#local-6989586621679542752"><span class="hs-identifier hs-var">val</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Var.html#StaticValue"><span class="hs-identifier hs-type">StaticValue</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-151"></span><span>          </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542753"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542761"><span class="hs-identifier hs-var">st</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Modifier a -&gt; Timeline a -&gt; Timeline a
+forall k a. Ord k =&gt; k -&gt; a -&gt; Map k a -&gt; Map k a
+</span><span class="hs-identifier hs-var">M.insert</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542761"><span class="hs-identifier hs-var">st</span></a></span><span> </span><span class="annot"><span class="annottext">Modifier a
+</span><a href="#local-6989586621679542752"><span class="hs-identifier hs-var">val</span></a></span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542756"><span class="hs-identifier hs-var">timeline'</span></a></span><span>
+</span><span id="line-152"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679542751"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542751"><span class="hs-identifier hs-var">t</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#TweenValue"><span class="hs-identifier hs-type">TweenValue</span></a></span><span> </span><span id="local-6989586621679542750"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542750"><span class="hs-identifier hs-var">dur</span></a></span></span><span> </span><span id="local-6989586621679542749"><span class="annot"><span class="annottext">a -&gt; Time -&gt; a
+</span><a href="#local-6989586621679542749"><span class="hs-identifier hs-var">fn</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-153"></span><span>          </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542751"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542761"><span class="hs-identifier hs-var">st</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542751"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542750"><span class="hs-identifier hs-var">dur</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542761"><span class="hs-identifier hs-var">st</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Modifier a -&gt; Timeline a -&gt; Timeline a
+forall k a. Ord k =&gt; k -&gt; a -&gt; Map k a -&gt; Map k a
+</span><span class="hs-identifier hs-var">M.insert</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542761"><span class="hs-identifier hs-var">st</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; (a -&gt; Time -&gt; a) -&gt; Modifier a
+forall a. Time -&gt; (a -&gt; Time -&gt; a) -&gt; Modifier a
+</span><a href="Reanimate.Scene.Var.html#TweenValue"><span class="hs-identifier hs-var">TweenValue</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542751"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542750"><span class="hs-identifier hs-var">dur</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542761"><span class="hs-identifier hs-var">st</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a -&gt; Time -&gt; a
+</span><a href="#local-6989586621679542749"><span class="hs-identifier hs-var">fn</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542756"><span class="hs-identifier hs-var">timeline'</span></a></span><span>
+</span><span id="line-154"></span><span>        </span><span class="annot"><span class="annottext">Maybe (Time, Modifier a)
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542756"><span class="hs-identifier hs-var">timeline'</span></a></span><span>
+</span><span id="line-155"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">a -&gt; Timeline a -&gt; Maybe Time -&gt; a -&gt; VarData a
+forall a. a -&gt; Timeline a -&gt; Maybe Time -&gt; a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-var">VarData</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542760"><span class="hs-identifier hs-var">evarDefault</span></a></span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542754"><span class="hs-identifier hs-var">timeline''</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe Time -&gt; Maybe Time -&gt; Maybe Time
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="annot"><span class="annottext">Maybe Time
+</span><a href="#local-6989586621679542758"><span class="hs-identifier hs-var">evarLastTime</span></a></span><span> </span><span class="annot"><span class="annottext">(Maybe Time -&gt; Maybe Time) -&gt; Maybe Time -&gt; Maybe Time
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Maybe Time
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542761"><span class="hs-identifier hs-var">st</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542757"><span class="hs-identifier hs-var">evarLastValue</span></a></span><span>
+</span><span id="line-156"></span><span>
+</span><span id="line-157"></span><span class="hs-comment">-- Restrict a var to end(clamp) at given timestamp.</span><span>
+</span><span id="line-158"></span><span id="local-6989586621679542930"><span class="annot"><a href="Reanimate.Scene.Var.html#keepBefore"><span class="hs-identifier hs-type">keepBefore</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542930"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679542930"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-159"></span><span id="keepBefore"><span class="annot"><span class="annottext">keepBefore :: Time -&gt; VarData a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#keepBefore"><span class="hs-identifier hs-var hs-var">keepBefore</span></a></span></span><span> </span><span id="local-6989586621679542747"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542747"><span class="hs-identifier hs-var">nd</span></a></span></span><span> </span><span id="local-6989586621679542746"><span class="annot"><span class="annottext">var :: VarData a
+</span><a href="#local-6989586621679542746"><span class="hs-identifier hs-var">var</span></a></span></span><span class="hs-glyph">@</span><span class="annot"><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-type">VarData</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679542742"><span id="local-6989586621679542743"><span id="local-6989586621679542744"><span id="local-6989586621679542745"><span class="annot"><span class="annottext">a
+Maybe Time
+Timeline a
+evarLastValue :: a
+evarLastTime :: Maybe Time
+evarTimeline :: Timeline a
+evarDefault :: a
+evarLastValue :: forall a. VarData a -&gt; a
+evarLastTime :: forall a. VarData a -&gt; Maybe Time
+evarTimeline :: forall a. VarData a -&gt; Timeline a
+evarDefault :: forall a. VarData a -&gt; a
+</span><a href="#local-6989586621679542742"><span class="hs-glyph hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">..</span></a></span></span></span></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-160"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679542741"><span class="annot"><span class="annottext">timeline' :: Timeline a
+</span><a href="#local-6989586621679542741"><span class="hs-identifier hs-var hs-var">timeline'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Bool) -&gt; Timeline a -&gt; Timeline a
+forall k a. (k -&gt; Bool) -&gt; Map k a -&gt; Map k a
+</span><span class="hs-identifier hs-var">M.takeWhileAntitone</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542747"><span class="hs-identifier hs-var">nd</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542744"><span class="hs-identifier hs-var">evarTimeline</span></a></span><span>
+</span><span id="line-161"></span><span>      </span><span id="local-6989586621679542739"><span class="annot"><span class="annottext">lastModifier :: Maybe (Time, Modifier a)
+</span><a href="#local-6989586621679542739"><span class="hs-identifier hs-var hs-var">lastModifier</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Timeline a -&gt; Maybe (Time, Modifier a)
+forall k a. Map k a -&gt; Maybe (k, a)
+</span><span class="hs-identifier hs-var">M.lookupMax</span></span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542741"><span class="hs-identifier hs-var">timeline'</span></a></span><span>
+</span><span id="line-162"></span><span>      </span><span id="local-6989586621679542737"><span class="annot"><span class="annottext">timeline'' :: Timeline a
+</span><a href="#local-6989586621679542737"><span class="hs-identifier hs-var hs-var">timeline''</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe (Time, Modifier a)
+</span><a href="#local-6989586621679542739"><span class="hs-identifier hs-var">lastModifier</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-163"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679542736"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542736"><span class="hs-identifier hs-var">t</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#TweenValue"><span class="hs-identifier hs-type">TweenValue</span></a></span><span> </span><span id="local-6989586621679542735"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542735"><span class="hs-identifier hs-var">dur</span></a></span></span><span> </span><span id="local-6989586621679542734"><span class="annot"><span class="annottext">a -&gt; Time -&gt; a
+</span><a href="#local-6989586621679542734"><span class="hs-identifier hs-var">fn</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-164"></span><span>          </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542736"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542735"><span class="hs-identifier hs-var">dur</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542747"><span class="hs-identifier hs-var">nd</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Modifier a -&gt; Timeline a -&gt; Timeline a
+forall k a. Ord k =&gt; k -&gt; a -&gt; Map k a -&gt; Map k a
+</span><span class="hs-identifier hs-var">M.insert</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542736"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; (a -&gt; Time -&gt; a) -&gt; Modifier a
+forall a. Time -&gt; (a -&gt; Time -&gt; a) -&gt; Modifier a
+</span><a href="Reanimate.Scene.Var.html#TweenValue"><span class="hs-identifier hs-var">TweenValue</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542747"><span class="hs-identifier hs-var">nd</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542736"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a -&gt; Time -&gt; a
+</span><a href="#local-6989586621679542734"><span class="hs-identifier hs-var">fn</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542741"><span class="hs-identifier hs-var">timeline'</span></a></span><span>
+</span><span id="line-165"></span><span>        </span><span class="annot"><span class="annottext">Maybe (Time, Modifier a)
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542741"><span class="hs-identifier hs-var">timeline'</span></a></span><span>
+</span><span id="line-166"></span><span>      </span><span id="local-6989586621679542733"><span class="annot"><span class="annottext">lastTime :: Maybe Time
+</span><a href="#local-6989586621679542733"><span class="hs-identifier hs-var hs-var">lastTime</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe (Time, Modifier a)
+</span><a href="#local-6989586621679542739"><span class="hs-identifier hs-var">lastModifier</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-167"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679542732"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542732"><span class="hs-identifier hs-var">t</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#TweenValue"><span class="hs-identifier hs-type">TweenValue</span></a></span><span> </span><span id="local-6989586621679542731"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542731"><span class="hs-identifier hs-var">dur</span></a></span></span><span> </span><span class="annot"><span class="annottext">a -&gt; Time -&gt; a
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Maybe Time
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Maybe Time) -&gt; Time -&gt; Maybe Time
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">min</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542747"><span class="hs-identifier hs-var">nd</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542732"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542731"><span class="hs-identifier hs-var">dur</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-168"></span><span>        </span><span class="annot"><span class="annottext">Maybe (Time, Modifier a)
+</span><span class="hs-identifier">_</span></span><span>                          </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">min</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679542747"><span class="hs-identifier hs-var">nd</span></a></span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Time) -&gt; Maybe Time -&gt; Maybe Time
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Maybe Time
+</span><a href="#local-6989586621679542743"><span class="hs-identifier hs-var">evarLastTime</span></a></span><span>
+</span><span id="line-169"></span><span>   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">a -&gt; Timeline a -&gt; Maybe Time -&gt; a -&gt; VarData a
+forall a. a -&gt; Timeline a -&gt; Maybe Time -&gt; a -&gt; VarData a
+</span><a href="Reanimate.Scene.Var.html#VarData"><span class="hs-identifier hs-var">VarData</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542745"><span class="hs-identifier hs-var">evarDefault</span></a></span><span> </span><span class="annot"><span class="annottext">Timeline a
+</span><a href="#local-6989586621679542737"><span class="hs-identifier hs-var">timeline''</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Time
+</span><a href="#local-6989586621679542733"><span class="hs-identifier hs-var">lastTime</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; (Time -&gt; a) -&gt; Maybe Time -&gt; a
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679542745"><span class="hs-identifier hs-var">evarDefault</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">VarData a -&gt; Time -&gt; a
+forall a. VarData a -&gt; Time -&gt; a
+</span><a href="Reanimate.Scene.Var.html#readVarData"><span class="hs-identifier hs-var">readVarData</span></a></span><span> </span><span class="annot"><span class="annottext">VarData a
+</span><a href="#local-6989586621679542746"><span class="hs-identifier hs-var">var</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Time
+</span><a href="#local-6989586621679542733"><span class="hs-identifier hs-var">lastTime</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-170"></span></pre></body></html>

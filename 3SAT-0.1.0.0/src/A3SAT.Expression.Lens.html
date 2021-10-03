@@ -1,0 +1,640 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Module      : A3SAT.Expression.Lens
+Description : Lens for the 'ExpressionF' functor and 'LExpression's.
+Copyright   : (c) Xie Ruifeng, 2020
+License     : AGPL-3
+Maintainer  : krantz.xrf@outlook.com
+Stability   : experimental
+Portability : portable
+-}</span><span>
+</span><span id="line-10"></span><span class="hs-pragma">{-# LANGUAGE TemplateHaskell #-}</span><span>
+</span><span id="line-11"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">A3SAT.Expression.Lens</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-12"></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="A3SAT.Expression.html"><span class="hs-identifier">A3SAT.Expression</span></a></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Lens.Extras</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">is</span></span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Bifunctor.Fix</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Bitraversable</span></span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-comment">-- * Optics for Expression Functor</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span id="_ParenF"><span id="_OrF"><span id="_AndF"><span id="_NotF"><span id="_VarF"><span id="local-6989586621679184883"><span id="local-6989586621679184884"><span class="hs-identifier">makePrisms</span><span> </span><span class="hs-special">''</span><span class="hs-identifier">ExpressionF</span></span></span></span></span></span></span></span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-comment">-- |Prisms for 'AndF' and 'OrF'.</span><span>
+</span><span id="line-24"></span><span id="local-6989586621679184835"><span id="local-6989586621679184836"><span class="annot"><a href="A3SAT.Expression.Lens.html#_BinOpF"><span class="hs-identifier hs-type">_BinOpF</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#ExpressionF"><span class="hs-identifier hs-type">ExpressionF</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184836"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184835"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679184836"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679184835"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679184836"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-25"></span><span id="_BinOpF"><span class="annot"><span class="annottext">_BinOpF :: ((a, l, a) -&gt; f (a, l, a))
+-&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+</span><a href="A3SAT.Expression.Lens.html#_BinOpF"><span class="hs-identifier hs-var hs-var">_BinOpF</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Prism' (ExpressionF a l) (a, l, a)
+-&gt; Prism' (ExpressionF a l) (a, l, a)
+-&gt; Traversal' (ExpressionF a l) (a, l, a)
+forall s a. Prism' s a -&gt; Prism' s a -&gt; Traversal' s a
+</span><a href="A3SAT.Expression.Lens.html#disjointUnion"><span class="hs-identifier hs-var">disjointUnion</span></a></span><span> </span><span class="annot"><span class="annottext">forall a l. Prism' (ExpressionF a l) (a, l, a)
+Prism' (ExpressionF a l) (a, l, a)
+</span><a href="A3SAT.Expression.Lens.html#_AndF"><span class="hs-identifier hs-var">_AndF</span></a></span><span> </span><span class="annot"><span class="annottext">forall a l. Prism' (ExpressionF a l) (a, l, a)
+Prism' (ExpressionF a l) (a, l, a)
+</span><a href="A3SAT.Expression.Lens.html#_OrF"><span class="hs-identifier hs-var">_OrF</span></a></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- |Label for variables matching the predicate.</span><span>
+</span><span id="line-28"></span><span id="local-6989586621679184856"><span id="local-6989586621679184857"><span class="annot"><a href="A3SAT.Expression.Lens.html#varF"><span class="hs-identifier hs-type">varF</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Word</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#ExpressionF"><span class="hs-identifier hs-type">ExpressionF</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184857"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184856"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679184856"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word</span></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-29"></span><span id="varF"><span class="annot"><span class="annottext">varF :: (Word -&gt; Bool) -&gt; Traversal' (ExpressionF a l) (l, Word)
+</span><a href="A3SAT.Expression.Lens.html#varF"><span class="hs-identifier hs-var hs-var">varF</span></a></span></span><span> </span><span id="local-6989586621679184717"><span class="annot"><span class="annottext">Word -&gt; Bool
+</span><a href="#local-6989586621679184717"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((l, Word) -&gt; f (l, Word))
+-&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+forall a l. Prism' (ExpressionF a l) (l, Word)
+</span><a href="A3SAT.Expression.Lens.html#_VarF"><span class="hs-identifier hs-var">_VarF</span></a></span><span> </span><span class="annot"><span class="annottext">(((l, Word) -&gt; f (l, Word))
+ -&gt; ExpressionF a l -&gt; f (ExpressionF a l))
+-&gt; (((l, Word) -&gt; f (l, Word)) -&gt; (l, Word) -&gt; f (l, Word))
+-&gt; ((l, Word) -&gt; f (l, Word))
+-&gt; ExpressionF a l
+-&gt; f (ExpressionF a l)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">((l, Word) -&gt; Bool)
+-&gt; ((l, Word) -&gt; f (l, Word)) -&gt; (l, Word) -&gt; f (l, Word)
+forall (p :: * -&gt; * -&gt; *) (f :: * -&gt; *) a.
+(Choice p, Applicative f) =&gt;
+(a -&gt; Bool) -&gt; Optic' p f a a
+</span><span class="hs-identifier hs-var">filtered</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word -&gt; Bool
+</span><a href="#local-6989586621679184717"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">(Word -&gt; Bool) -&gt; ((l, Word) -&gt; Word) -&gt; (l, Word) -&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Getting Word (l, Word) Word -&gt; (l, Word) -&gt; Word
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting Word (l, Word) Word
+forall s t a b. Field2 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_2</span></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- |Label for all variables.</span><span>
+</span><span id="line-32"></span><span id="local-6989586621679184711"><span id="local-6989586621679184712"><span class="annot"><a href="A3SAT.Expression.Lens.html#allVarF"><span class="hs-identifier hs-type">allVarF</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#ExpressionF"><span class="hs-identifier hs-type">ExpressionF</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184712"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184711"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184711"><span class="hs-identifier hs-type">l</span></a></span></span></span><span>
+</span><span id="line-33"></span><span id="allVarF"><span class="annot"><span class="annottext">allVarF :: (l -&gt; f l) -&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+</span><a href="A3SAT.Expression.Lens.html#allVarF"><span class="hs-identifier hs-var hs-var">allVarF</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Word -&gt; Bool) -&gt; Traversal' (ExpressionF a l) (l, Word)
+forall a l.
+(Word -&gt; Bool) -&gt; Traversal' (ExpressionF a l) (l, Word)
+</span><a href="A3SAT.Expression.Lens.html#varF"><span class="hs-identifier hs-var">varF</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool -&gt; Word -&gt; Bool
+forall a b. a -&gt; b -&gt; a
+</span><span class="hs-identifier hs-var">const</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(((l, Word) -&gt; f (l, Word))
+ -&gt; ExpressionF a l -&gt; f (ExpressionF a l))
+-&gt; ((l -&gt; f l) -&gt; (l, Word) -&gt; f (l, Word))
+-&gt; (l -&gt; f l)
+-&gt; ExpressionF a l
+-&gt; f (ExpressionF a l)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(l -&gt; f l) -&gt; (l, Word) -&gt; f (l, Word)
+forall s t a b. Field1 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_1</span></span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="hs-comment">-- |Label for 'NotF'.</span><span>
+</span><span id="line-36"></span><span id="local-6989586621679184791"><span id="local-6989586621679184792"><span class="annot"><a href="A3SAT.Expression.Lens.html#notF"><span class="hs-identifier hs-type">notF</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#ExpressionF"><span class="hs-identifier hs-type">ExpressionF</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184792"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184791"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184791"><span class="hs-identifier hs-type">l</span></a></span></span></span><span>
+</span><span id="line-37"></span><span id="notF"><span class="annot"><span class="annottext">notF :: (l -&gt; f l) -&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+</span><a href="A3SAT.Expression.Lens.html#notF"><span class="hs-identifier hs-var hs-var">notF</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((l, a) -&gt; f (l, a)) -&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+forall a l. Prism' (ExpressionF a l) (l, a)
+</span><a href="A3SAT.Expression.Lens.html#_NotF"><span class="hs-identifier hs-var">_NotF</span></a></span><span> </span><span class="annot"><span class="annottext">(((l, a) -&gt; f (l, a)) -&gt; ExpressionF a l -&gt; f (ExpressionF a l))
+-&gt; ((l -&gt; f l) -&gt; (l, a) -&gt; f (l, a))
+-&gt; (l -&gt; f l)
+-&gt; ExpressionF a l
+-&gt; f (ExpressionF a l)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(l -&gt; f l) -&gt; (l, a) -&gt; f (l, a)
+forall s t a b. Field1 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_1</span></span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="hs-comment">-- |Label for 'AndF'.</span><span>
+</span><span id="line-40"></span><span id="local-6989586621679184705"><span id="local-6989586621679184706"><span class="annot"><a href="A3SAT.Expression.Lens.html#andF"><span class="hs-identifier hs-type">andF</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#ExpressionF"><span class="hs-identifier hs-type">ExpressionF</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184706"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184705"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184705"><span class="hs-identifier hs-type">l</span></a></span></span></span><span>
+</span><span id="line-41"></span><span id="andF"><span class="annot"><span class="annottext">andF :: (l -&gt; f l) -&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+</span><a href="A3SAT.Expression.Lens.html#andF"><span class="hs-identifier hs-var hs-var">andF</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((a, l, a) -&gt; f (a, l, a))
+-&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+forall a l. Prism' (ExpressionF a l) (a, l, a)
+</span><a href="A3SAT.Expression.Lens.html#_AndF"><span class="hs-identifier hs-var">_AndF</span></a></span><span> </span><span class="annot"><span class="annottext">(((a, l, a) -&gt; f (a, l, a))
+ -&gt; ExpressionF a l -&gt; f (ExpressionF a l))
+-&gt; ((l -&gt; f l) -&gt; (a, l, a) -&gt; f (a, l, a))
+-&gt; (l -&gt; f l)
+-&gt; ExpressionF a l
+-&gt; f (ExpressionF a l)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(l -&gt; f l) -&gt; (a, l, a) -&gt; f (a, l, a)
+forall s t a b. Field2 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_2</span></span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="hs-comment">-- |Label for 'OrF'.</span><span>
+</span><span id="line-44"></span><span id="local-6989586621679184702"><span id="local-6989586621679184703"><span class="annot"><a href="A3SAT.Expression.Lens.html#orF"><span class="hs-identifier hs-type">orF</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#ExpressionF"><span class="hs-identifier hs-type">ExpressionF</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184703"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184702"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184702"><span class="hs-identifier hs-type">l</span></a></span></span></span><span>
+</span><span id="line-45"></span><span id="orF"><span class="annot"><span class="annottext">orF :: (l -&gt; f l) -&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+</span><a href="A3SAT.Expression.Lens.html#orF"><span class="hs-identifier hs-var hs-var">orF</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((a, l, a) -&gt; f (a, l, a))
+-&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+forall a l. Prism' (ExpressionF a l) (a, l, a)
+</span><a href="A3SAT.Expression.Lens.html#_OrF"><span class="hs-identifier hs-var">_OrF</span></a></span><span> </span><span class="annot"><span class="annottext">(((a, l, a) -&gt; f (a, l, a))
+ -&gt; ExpressionF a l -&gt; f (ExpressionF a l))
+-&gt; ((l -&gt; f l) -&gt; (a, l, a) -&gt; f (a, l, a))
+-&gt; (l -&gt; f l)
+-&gt; ExpressionF a l
+-&gt; f (ExpressionF a l)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(l -&gt; f l) -&gt; (a, l, a) -&gt; f (a, l, a)
+forall s t a b. Field2 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_2</span></span><span>
+</span><span id="line-46"></span><span>
+</span><span id="line-47"></span><span class="hs-comment">-- |Label for 'AndF' and 'OrF'.</span><span>
+</span><span id="line-48"></span><span id="local-6989586621679184699"><span id="local-6989586621679184700"><span class="annot"><a href="A3SAT.Expression.Lens.html#binOpF"><span class="hs-identifier hs-type">binOpF</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#ExpressionF"><span class="hs-identifier hs-type">ExpressionF</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184700"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184699"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184699"><span class="hs-identifier hs-type">l</span></a></span></span></span><span>
+</span><span id="line-49"></span><span id="binOpF"><span class="annot"><span class="annottext">binOpF :: (l -&gt; f l) -&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+</span><a href="A3SAT.Expression.Lens.html#binOpF"><span class="hs-identifier hs-var hs-var">binOpF</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((a, l, a) -&gt; f (a, l, a))
+-&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+forall a l. Traversal' (ExpressionF a l) (a, l, a)
+</span><a href="A3SAT.Expression.Lens.html#_BinOpF"><span class="hs-identifier hs-var">_BinOpF</span></a></span><span> </span><span class="annot"><span class="annottext">(((a, l, a) -&gt; f (a, l, a))
+ -&gt; ExpressionF a l -&gt; f (ExpressionF a l))
+-&gt; ((l -&gt; f l) -&gt; (a, l, a) -&gt; f (a, l, a))
+-&gt; (l -&gt; f l)
+-&gt; ExpressionF a l
+-&gt; f (ExpressionF a l)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(l -&gt; f l) -&gt; (a, l, a) -&gt; f (a, l, a)
+forall s t a b. Field2 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_2</span></span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span class="hs-comment">-- |Left parentheses.</span><span>
+</span><span id="line-52"></span><span id="local-6989586621679184696"><span id="local-6989586621679184697"><span class="annot"><a href="A3SAT.Expression.Lens.html#leftParenF"><span class="hs-identifier hs-type">leftParenF</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#ExpressionF"><span class="hs-identifier hs-type">ExpressionF</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184697"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184696"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184696"><span class="hs-identifier hs-type">l</span></a></span></span></span><span>
+</span><span id="line-53"></span><span id="leftParenF"><span class="annot"><span class="annottext">leftParenF :: (l -&gt; f l) -&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+</span><a href="A3SAT.Expression.Lens.html#leftParenF"><span class="hs-identifier hs-var hs-var">leftParenF</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((l, a, l) -&gt; f (l, a, l))
+-&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+forall a l. Prism' (ExpressionF a l) (l, a, l)
+</span><a href="A3SAT.Expression.Lens.html#_ParenF"><span class="hs-identifier hs-var">_ParenF</span></a></span><span> </span><span class="annot"><span class="annottext">(((l, a, l) -&gt; f (l, a, l))
+ -&gt; ExpressionF a l -&gt; f (ExpressionF a l))
+-&gt; ((l -&gt; f l) -&gt; (l, a, l) -&gt; f (l, a, l))
+-&gt; (l -&gt; f l)
+-&gt; ExpressionF a l
+-&gt; f (ExpressionF a l)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(l -&gt; f l) -&gt; (l, a, l) -&gt; f (l, a, l)
+forall s t a b. Field1 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_1</span></span><span>
+</span><span id="line-54"></span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- |Right parentheses.</span><span>
+</span><span id="line-56"></span><span id="local-6989586621679184693"><span id="local-6989586621679184694"><span class="annot"><a href="A3SAT.Expression.Lens.html#rightParenF"><span class="hs-identifier hs-type">rightParenF</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#ExpressionF"><span class="hs-identifier hs-type">ExpressionF</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184694"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184693"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184693"><span class="hs-identifier hs-type">l</span></a></span></span></span><span>
+</span><span id="line-57"></span><span id="rightParenF"><span class="annot"><span class="annottext">rightParenF :: (l -&gt; f l) -&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+</span><a href="A3SAT.Expression.Lens.html#rightParenF"><span class="hs-identifier hs-var hs-var">rightParenF</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((l, a, l) -&gt; f (l, a, l))
+-&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+forall a l. Prism' (ExpressionF a l) (l, a, l)
+</span><a href="A3SAT.Expression.Lens.html#_ParenF"><span class="hs-identifier hs-var">_ParenF</span></a></span><span> </span><span class="annot"><span class="annottext">(((l, a, l) -&gt; f (l, a, l))
+ -&gt; ExpressionF a l -&gt; f (ExpressionF a l))
+-&gt; ((l -&gt; f l) -&gt; (l, a, l) -&gt; f (l, a, l))
+-&gt; (l -&gt; f l)
+-&gt; ExpressionF a l
+-&gt; f (ExpressionF a l)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(l -&gt; f l) -&gt; (l, a, l) -&gt; f (l, a, l)
+forall s t a b. Field3 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_3</span></span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span class="hs-comment">-- |Both parentheses.</span><span>
+</span><span id="line-60"></span><span id="local-6989586621679184689"><span id="local-6989586621679184690"><span class="annot"><a href="A3SAT.Expression.Lens.html#parenF"><span class="hs-identifier hs-type">parenF</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#ExpressionF"><span class="hs-identifier hs-type">ExpressionF</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184690"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184689"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184689"><span class="hs-identifier hs-type">l</span></a></span></span></span><span>
+</span><span id="line-61"></span><span id="parenF"><span class="annot"><span class="annottext">parenF :: (l -&gt; f l) -&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+</span><a href="A3SAT.Expression.Lens.html#parenF"><span class="hs-identifier hs-var hs-var">parenF</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((l, a, l) -&gt; f (l, a, l))
+-&gt; ExpressionF a l -&gt; f (ExpressionF a l)
+forall a l. Prism' (ExpressionF a l) (l, a, l)
+</span><a href="A3SAT.Expression.Lens.html#_ParenF"><span class="hs-identifier hs-var">_ParenF</span></a></span><span> </span><span class="annot"><span class="annottext">(((l, a, l) -&gt; f (l, a, l))
+ -&gt; ExpressionF a l -&gt; f (ExpressionF a l))
+-&gt; ((l -&gt; f l) -&gt; (l, a, l) -&gt; f (l, a, l))
+-&gt; (l -&gt; f l)
+-&gt; ExpressionF a l
+-&gt; f (ExpressionF a l)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(l -&gt; f l) -&gt; (l, a, l) -&gt; f (l, a, l)
+forall (f :: * -&gt; *) t a a.
+Applicative f =&gt;
+(t -&gt; f a) -&gt; (t, a, t) -&gt; f (a, a, a)
+</span><a href="#local-6989586621679184687"><span class="hs-identifier hs-var">_1_and_3</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-62"></span><span>  </span><span id="local-6989586621679184687"><span class="annot"><span class="annottext">_1_and_3 :: (t -&gt; f a) -&gt; (t, a, t) -&gt; f (a, a, a)
+</span><a href="#local-6989586621679184687"><span class="hs-identifier hs-var hs-var">_1_and_3</span></a></span></span><span> </span><span id="local-6989586621679184686"><span class="annot"><span class="annottext">t -&gt; f a
+</span><a href="#local-6989586621679184686"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679184685"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679184685"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679184684"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679184684"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679184683"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679184683"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-special">,</span><span class="hs-special">,</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(a -&gt; a -&gt; a -&gt; (a, a, a)) -&gt; f a -&gt; f (a -&gt; a -&gt; (a, a, a))
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">t -&gt; f a
+</span><a href="#local-6989586621679184686"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679184685"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">f (a -&gt; a -&gt; (a, a, a)) -&gt; f a -&gt; f (a -&gt; (a, a, a))
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; f a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679184684"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">f (a -&gt; (a, a, a)) -&gt; f a -&gt; f (a, a, a)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">t -&gt; f a
+</span><a href="#local-6989586621679184686"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679184683"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-63"></span><span>
+</span><span id="line-64"></span><span class="hs-comment">-- * Optics for Expressions</span><span>
+</span><span id="line-65"></span><span>
+</span><span id="line-66"></span><span class="hs-comment">-- |Label for variables matching the predicate.</span><span>
+</span><span id="line-67"></span><span id="local-6989586621679184795"><span class="annot"><a href="A3SAT.Expression.Lens.html#vars"><span class="hs-identifier hs-type">vars</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Word</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184795"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679184795"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word</span></span><span class="hs-special">)</span></span><span>
+</span><span id="line-68"></span><span id="vars"><span class="annot"><span class="annottext">vars :: (Word -&gt; Bool) -&gt; Traversal' (LExpression l) (l, Word)
+</span><a href="A3SAT.Expression.Lens.html#vars"><span class="hs-identifier hs-var hs-var">vars</span></a></span></span><span> </span><span id="local-6989586621679184680"><span class="annot"><span class="annottext">Word -&gt; Bool
+</span><a href="#local-6989586621679184680"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(forall a. LensLike' f (ExpressionF a l) (l, Word))
+-&gt; LensLike' f (LExpression l) (l, Word)
+forall (f :: * -&gt; *) l b.
+Applicative f =&gt;
+(forall a. LensLike' f (ExpressionF a l) b)
+-&gt; LensLike' f (LExpression l) b
+</span><a href="A3SAT.Expression.Lens.html#fixExpr"><span class="hs-identifier hs-var">fixExpr</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Word -&gt; Bool) -&gt; Traversal' (ExpressionF a l) (l, Word)
+forall a l.
+(Word -&gt; Bool) -&gt; Traversal' (ExpressionF a l) (l, Word)
+</span><a href="A3SAT.Expression.Lens.html#varF"><span class="hs-identifier hs-var">varF</span></a></span><span> </span><span class="annot"><span class="annottext">Word -&gt; Bool
+</span><a href="#local-6989586621679184680"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-69"></span><span>
+</span><span id="line-70"></span><span class="hs-comment">-- |Label for all variables.</span><span>
+</span><span id="line-71"></span><span id="local-6989586621679184678"><span class="annot"><a href="A3SAT.Expression.Lens.html#allVars"><span class="hs-identifier hs-type">allVars</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184678"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184678"><span class="hs-identifier hs-type">l</span></a></span></span><span>
+</span><span id="line-72"></span><span id="allVars"><span class="annot"><span class="annottext">allVars :: (l -&gt; f l) -&gt; LExpression l -&gt; f (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#allVars"><span class="hs-identifier hs-var hs-var">allVars</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Word -&gt; Bool) -&gt; Traversal' (LExpression l) (l, Word)
+forall l. (Word -&gt; Bool) -&gt; Traversal' (LExpression l) (l, Word)
+</span><a href="A3SAT.Expression.Lens.html#vars"><span class="hs-identifier hs-var">vars</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool -&gt; Word -&gt; Bool
+forall a b. a -&gt; b -&gt; a
+</span><span class="hs-identifier hs-var">const</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(((l, Word) -&gt; f (l, Word)) -&gt; LExpression l -&gt; f (LExpression l))
+-&gt; ((l -&gt; f l) -&gt; (l, Word) -&gt; f (l, Word))
+-&gt; (l -&gt; f l)
+-&gt; LExpression l
+-&gt; f (LExpression l)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(l -&gt; f l) -&gt; (l, Word) -&gt; f (l, Word)
+forall s t a b. Field1 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_1</span></span><span>
+</span><span id="line-73"></span><span>
+</span><span id="line-74"></span><span class="hs-comment">-- |Label for 'NotF'.</span><span>
+</span><span id="line-75"></span><span id="local-6989586621679184676"><span class="annot"><a href="A3SAT.Expression.Lens.html#nots"><span class="hs-identifier hs-type">nots</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184676"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184676"><span class="hs-identifier hs-type">l</span></a></span></span><span>
+</span><span id="line-76"></span><span id="nots"><span class="annot"><span class="annottext">nots :: (l -&gt; f l) -&gt; LExpression l -&gt; f (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#nots"><span class="hs-identifier hs-var hs-var">nots</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(forall a. LensLike' f (ExpressionF a l) l)
+-&gt; (l -&gt; f l) -&gt; LExpression l -&gt; f (LExpression l)
+forall (f :: * -&gt; *) l b.
+Applicative f =&gt;
+(forall a. LensLike' f (ExpressionF a l) b)
+-&gt; LensLike' f (LExpression l) b
+</span><a href="A3SAT.Expression.Lens.html#fixExpr"><span class="hs-identifier hs-var">fixExpr</span></a></span><span> </span><span class="annot"><span class="annottext">forall a. LensLike' f (ExpressionF a l) l
+forall a l. Traversal' (ExpressionF a l) l
+</span><a href="A3SAT.Expression.Lens.html#notF"><span class="hs-identifier hs-var">notF</span></a></span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span class="hs-comment">-- |Label for 'AndF'.</span><span>
+</span><span id="line-79"></span><span id="local-6989586621679184674"><span class="annot"><a href="A3SAT.Expression.Lens.html#ands"><span class="hs-identifier hs-type">ands</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184674"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184674"><span class="hs-identifier hs-type">l</span></a></span></span><span>
+</span><span id="line-80"></span><span id="ands"><span class="annot"><span class="annottext">ands :: (l -&gt; f l) -&gt; LExpression l -&gt; f (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#ands"><span class="hs-identifier hs-var hs-var">ands</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(forall a. LensLike' f (ExpressionF a l) l)
+-&gt; (l -&gt; f l) -&gt; LExpression l -&gt; f (LExpression l)
+forall (f :: * -&gt; *) l b.
+Applicative f =&gt;
+(forall a. LensLike' f (ExpressionF a l) b)
+-&gt; LensLike' f (LExpression l) b
+</span><a href="A3SAT.Expression.Lens.html#fixExpr"><span class="hs-identifier hs-var">fixExpr</span></a></span><span> </span><span class="annot"><span class="annottext">forall a. LensLike' f (ExpressionF a l) l
+forall a l. Traversal' (ExpressionF a l) l
+</span><a href="A3SAT.Expression.Lens.html#andF"><span class="hs-identifier hs-var">andF</span></a></span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span class="hs-comment">-- |Label for 'OrF'.</span><span>
+</span><span id="line-83"></span><span id="local-6989586621679184672"><span class="annot"><a href="A3SAT.Expression.Lens.html#ors"><span class="hs-identifier hs-type">ors</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184672"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184672"><span class="hs-identifier hs-type">l</span></a></span></span><span>
+</span><span id="line-84"></span><span id="ors"><span class="annot"><span class="annottext">ors :: (l -&gt; f l) -&gt; LExpression l -&gt; f (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#ors"><span class="hs-identifier hs-var hs-var">ors</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(forall a. LensLike' f (ExpressionF a l) l)
+-&gt; (l -&gt; f l) -&gt; LExpression l -&gt; f (LExpression l)
+forall (f :: * -&gt; *) l b.
+Applicative f =&gt;
+(forall a. LensLike' f (ExpressionF a l) b)
+-&gt; LensLike' f (LExpression l) b
+</span><a href="A3SAT.Expression.Lens.html#fixExpr"><span class="hs-identifier hs-var">fixExpr</span></a></span><span> </span><span class="annot"><span class="annottext">forall a. LensLike' f (ExpressionF a l) l
+forall a l. Traversal' (ExpressionF a l) l
+</span><a href="A3SAT.Expression.Lens.html#orF"><span class="hs-identifier hs-var">orF</span></a></span><span>
+</span><span id="line-85"></span><span>
+</span><span id="line-86"></span><span class="hs-comment">-- |Label for 'AndF' and 'OrF'.</span><span>
+</span><span id="line-87"></span><span id="local-6989586621679184670"><span class="annot"><a href="A3SAT.Expression.Lens.html#binOps"><span class="hs-identifier hs-type">binOps</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184670"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184670"><span class="hs-identifier hs-type">l</span></a></span></span><span>
+</span><span id="line-88"></span><span id="binOps"><span class="annot"><span class="annottext">binOps :: (l -&gt; f l) -&gt; LExpression l -&gt; f (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#binOps"><span class="hs-identifier hs-var hs-var">binOps</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(forall a. LensLike' f (ExpressionF a l) l)
+-&gt; (l -&gt; f l) -&gt; LExpression l -&gt; f (LExpression l)
+forall (f :: * -&gt; *) l b.
+Applicative f =&gt;
+(forall a. LensLike' f (ExpressionF a l) b)
+-&gt; LensLike' f (LExpression l) b
+</span><a href="A3SAT.Expression.Lens.html#fixExpr"><span class="hs-identifier hs-var">fixExpr</span></a></span><span> </span><span class="annot"><span class="annottext">forall a. LensLike' f (ExpressionF a l) l
+forall a l. Traversal' (ExpressionF a l) l
+</span><a href="A3SAT.Expression.Lens.html#binOpF"><span class="hs-identifier hs-var">binOpF</span></a></span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span class="hs-comment">-- |Left parentheses.</span><span>
+</span><span id="line-91"></span><span id="local-6989586621679184668"><span class="annot"><a href="A3SAT.Expression.Lens.html#leftParens"><span class="hs-identifier hs-type">leftParens</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184668"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184668"><span class="hs-identifier hs-type">l</span></a></span></span><span>
+</span><span id="line-92"></span><span id="leftParens"><span class="annot"><span class="annottext">leftParens :: (l -&gt; f l) -&gt; LExpression l -&gt; f (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#leftParens"><span class="hs-identifier hs-var hs-var">leftParens</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(forall a. LensLike' f (ExpressionF a l) l)
+-&gt; (l -&gt; f l) -&gt; LExpression l -&gt; f (LExpression l)
+forall (f :: * -&gt; *) l b.
+Applicative f =&gt;
+(forall a. LensLike' f (ExpressionF a l) b)
+-&gt; LensLike' f (LExpression l) b
+</span><a href="A3SAT.Expression.Lens.html#fixExpr"><span class="hs-identifier hs-var">fixExpr</span></a></span><span> </span><span class="annot"><span class="annottext">forall a. LensLike' f (ExpressionF a l) l
+forall a l. Traversal' (ExpressionF a l) l
+</span><a href="A3SAT.Expression.Lens.html#leftParenF"><span class="hs-identifier hs-var">leftParenF</span></a></span><span>
+</span><span id="line-93"></span><span>
+</span><span id="line-94"></span><span class="hs-comment">-- |Right parentheses.</span><span>
+</span><span id="line-95"></span><span id="local-6989586621679184666"><span class="annot"><a href="A3SAT.Expression.Lens.html#rightParens"><span class="hs-identifier hs-type">rightParens</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184666"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184666"><span class="hs-identifier hs-type">l</span></a></span></span><span>
+</span><span id="line-96"></span><span id="rightParens"><span class="annot"><span class="annottext">rightParens :: (l -&gt; f l) -&gt; LExpression l -&gt; f (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#rightParens"><span class="hs-identifier hs-var hs-var">rightParens</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(forall a. LensLike' f (ExpressionF a l) l)
+-&gt; (l -&gt; f l) -&gt; LExpression l -&gt; f (LExpression l)
+forall (f :: * -&gt; *) l b.
+Applicative f =&gt;
+(forall a. LensLike' f (ExpressionF a l) b)
+-&gt; LensLike' f (LExpression l) b
+</span><a href="A3SAT.Expression.Lens.html#fixExpr"><span class="hs-identifier hs-var">fixExpr</span></a></span><span> </span><span class="annot"><span class="annottext">forall a. LensLike' f (ExpressionF a l) l
+forall a l. Traversal' (ExpressionF a l) l
+</span><a href="A3SAT.Expression.Lens.html#rightParenF"><span class="hs-identifier hs-var">rightParenF</span></a></span><span>
+</span><span id="line-97"></span><span>
+</span><span id="line-98"></span><span class="hs-comment">-- |Both parentheses.</span><span>
+</span><span id="line-99"></span><span id="local-6989586621679184664"><span class="annot"><a href="A3SAT.Expression.Lens.html#parens"><span class="hs-identifier hs-type">parens</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184664"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184664"><span class="hs-identifier hs-type">l</span></a></span></span><span>
+</span><span id="line-100"></span><span id="parens"><span class="annot"><span class="annottext">parens :: (l -&gt; f l) -&gt; LExpression l -&gt; f (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#parens"><span class="hs-identifier hs-var hs-var">parens</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(forall a. LensLike' f (ExpressionF a l) l)
+-&gt; (l -&gt; f l) -&gt; LExpression l -&gt; f (LExpression l)
+forall (f :: * -&gt; *) l b.
+Applicative f =&gt;
+(forall a. LensLike' f (ExpressionF a l) b)
+-&gt; LensLike' f (LExpression l) b
+</span><a href="A3SAT.Expression.Lens.html#fixExpr"><span class="hs-identifier hs-var">fixExpr</span></a></span><span> </span><span class="annot"><span class="annottext">forall a. LensLike' f (ExpressionF a l) l
+forall a l. Traversal' (ExpressionF a l) l
+</span><a href="A3SAT.Expression.Lens.html#parenF"><span class="hs-identifier hs-var">parenF</span></a></span><span>
+</span><span id="line-101"></span><span>
+</span><span id="line-102"></span><span class="hs-comment">-- * &quot;Global&quot; Optics on Expressions</span><span>
+</span><span id="line-103"></span><span>
+</span><span id="line-104"></span><span class="hs-comment">-- |Travel through a parenthesis.</span><span>
+</span><span id="line-105"></span><span id="local-6989586621679184775"><span class="annot"><a href="A3SAT.Expression.Lens.html#transParen"><span class="hs-identifier hs-type">transParen</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184775"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184775"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-106"></span><span id="transParen"><span class="annot"><span class="annottext">transParen :: (LExpression l -&gt; f (LExpression l))
+-&gt; LExpression l -&gt; f (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#transParen"><span class="hs-identifier hs-var hs-var">transParen</span></a></span></span><span> </span><span id="local-6989586621679184661"><span class="annot"><span class="annottext">LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184661"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LParen"><span class="hs-identifier hs-type">LParen</span></a></span><span> </span><span id="local-6989586621679184659"><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184659"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679184658"><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184658"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679184657"><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184657"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">l -&gt; LExpression l -&gt; l -&gt; LExpression l
+forall l. l -&gt; LExpression l -&gt; l -&gt; LExpression l
+</span><a href="A3SAT.Expression.html#LParen"><span class="hs-identifier hs-var">LParen</span></a></span><span> </span><span class="annot"><span class="annottext">(l -&gt; LExpression l -&gt; l -&gt; LExpression l)
+-&gt; f l -&gt; f (LExpression l -&gt; l -&gt; LExpression l)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">l -&gt; f l
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184659"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">f (LExpression l -&gt; l -&gt; LExpression l)
+-&gt; f (LExpression l) -&gt; f (l -&gt; LExpression l)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">(LExpression l -&gt; f (LExpression l))
+-&gt; LExpression l -&gt; f (LExpression l)
+forall l. Traversal' (LExpression l) (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#transParen"><span class="hs-identifier hs-var">transParen</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184661"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184658"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">f (l -&gt; LExpression l) -&gt; f l -&gt; f (LExpression l)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">l -&gt; f l
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184657"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-107"></span><span class="annot"><a href="A3SAT.Expression.Lens.html#transParen"><span class="hs-identifier hs-var">transParen</span></a></span><span> </span><span id="local-6989586621679184656"><span class="annot"><span class="annottext">LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184656"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679184655"><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184655"><span class="hs-identifier hs-var">z</span></a></span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184656"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184655"><span class="hs-identifier hs-var">z</span></a></span><span>
+</span><span id="line-108"></span><span>
+</span><span id="line-109"></span><span class="hs-comment">-- |An 'LExpression' as a product of a list of 'LExpression's.</span><span>
+</span><span id="line-110"></span><span id="local-6989586621679184654"><span class="annot"><a href="A3SAT.Expression.Lens.html#asProduct"><span class="hs-identifier hs-type">asProduct</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184654"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184654"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-111"></span><span id="asProduct"><span class="annot"><span class="annottext">asProduct :: (LExpression l -&gt; f (LExpression l))
+-&gt; LExpression l -&gt; f (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#asProduct"><span class="hs-identifier hs-var hs-var">asProduct</span></a></span></span><span> </span><span id="local-6989586621679184652"><span class="annot"><span class="annottext">LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184652"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LAnd"><span class="hs-identifier hs-type">LAnd</span></a></span><span> </span><span id="local-6989586621679184650"><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184650"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679184649"><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184649"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679184648"><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184648"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">LExpression l -&gt; l -&gt; LExpression l -&gt; LExpression l
+forall l. LExpression l -&gt; l -&gt; LExpression l -&gt; LExpression l
+</span><a href="A3SAT.Expression.html#LAnd"><span class="hs-identifier hs-var">LAnd</span></a></span><span> </span><span class="annot"><span class="annottext">(LExpression l -&gt; l -&gt; LExpression l -&gt; LExpression l)
+-&gt; f (LExpression l) -&gt; f (l -&gt; LExpression l -&gt; LExpression l)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">(LExpression l -&gt; f (LExpression l))
+-&gt; LExpression l -&gt; f (LExpression l)
+forall l. Traversal' (LExpression l) (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#asProduct"><span class="hs-identifier hs-var">asProduct</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184652"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184650"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">f (l -&gt; LExpression l -&gt; LExpression l)
+-&gt; f l -&gt; f (LExpression l -&gt; LExpression l)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">l -&gt; f l
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184649"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">f (LExpression l -&gt; LExpression l)
+-&gt; f (LExpression l) -&gt; f (LExpression l)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">(LExpression l -&gt; f (LExpression l))
+-&gt; LExpression l -&gt; f (LExpression l)
+forall l. Traversal' (LExpression l) (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#asProduct"><span class="hs-identifier hs-var">asProduct</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184652"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184648"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-112"></span><span class="annot"><a href="A3SAT.Expression.Lens.html#asProduct"><span class="hs-identifier hs-var">asProduct</span></a></span><span> </span><span id="local-6989586621679184647"><span class="annot"><span class="annottext">LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184647"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679184646"><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184646"><span class="hs-identifier hs-var">z</span></a></span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184647"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184646"><span class="hs-identifier hs-var">z</span></a></span><span>
+</span><span id="line-113"></span><span>
+</span><span id="line-114"></span><span class="hs-comment">-- |An 'LExpression' as a sum of a list of 'LExpression's.</span><span>
+</span><span id="line-115"></span><span id="local-6989586621679184645"><span class="annot"><a href="A3SAT.Expression.Lens.html#asSum"><span class="hs-identifier hs-type">asSum</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184645"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184645"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-116"></span><span id="asSum"><span class="annot"><span class="annottext">asSum :: (LExpression l -&gt; f (LExpression l))
+-&gt; LExpression l -&gt; f (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#asSum"><span class="hs-identifier hs-var hs-var">asSum</span></a></span></span><span> </span><span id="local-6989586621679184643"><span class="annot"><span class="annottext">LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184643"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LOr"><span class="hs-identifier hs-type">LOr</span></a></span><span> </span><span id="local-6989586621679184641"><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184641"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679184640"><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184640"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679184639"><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184639"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">LExpression l -&gt; l -&gt; LExpression l -&gt; LExpression l
+forall l. LExpression l -&gt; l -&gt; LExpression l -&gt; LExpression l
+</span><a href="A3SAT.Expression.html#LOr"><span class="hs-identifier hs-var">LOr</span></a></span><span> </span><span class="annot"><span class="annottext">(LExpression l -&gt; l -&gt; LExpression l -&gt; LExpression l)
+-&gt; f (LExpression l) -&gt; f (l -&gt; LExpression l -&gt; LExpression l)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">(LExpression l -&gt; f (LExpression l))
+-&gt; LExpression l -&gt; f (LExpression l)
+forall l. Traversal' (LExpression l) (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#asSum"><span class="hs-identifier hs-var">asSum</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184643"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184641"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">f (l -&gt; LExpression l -&gt; LExpression l)
+-&gt; f l -&gt; f (LExpression l -&gt; LExpression l)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">l -&gt; f l
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184640"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">f (LExpression l -&gt; LExpression l)
+-&gt; f (LExpression l) -&gt; f (LExpression l)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">(LExpression l -&gt; f (LExpression l))
+-&gt; LExpression l -&gt; f (LExpression l)
+forall l. Traversal' (LExpression l) (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#asSum"><span class="hs-identifier hs-var">asSum</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184643"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184639"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-117"></span><span class="annot"><a href="A3SAT.Expression.Lens.html#asSum"><span class="hs-identifier hs-var">asSum</span></a></span><span> </span><span id="local-6989586621679184638"><span class="annot"><span class="annottext">LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184638"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679184637"><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184637"><span class="hs-identifier hs-var">z</span></a></span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184638"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184637"><span class="hs-identifier hs-var">z</span></a></span><span>
+</span><span id="line-118"></span><span>
+</span><span id="line-119"></span><span class="hs-comment">-- |The &quot;primary&quot; label for an 'LExpression'.</span><span>
+</span><span id="line-120"></span><span id="local-6989586621679184636"><span class="annot"><a href="A3SAT.Expression.Lens.html#primaryLabel"><span class="hs-identifier hs-type">primaryLabel</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Lens'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184636"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184636"><span class="hs-identifier hs-type">l</span></a></span></span><span>
+</span><span id="line-121"></span><span id="primaryLabel"><span class="annot"><span class="annottext">primaryLabel :: (l -&gt; f l) -&gt; LExpression l -&gt; f (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#primaryLabel"><span class="hs-identifier hs-var hs-var">primaryLabel</span></a></span></span><span> </span><span id="local-6989586621679184633"><span class="annot"><span class="annottext">l -&gt; f l
+</span><a href="#local-6989586621679184633"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LVar"><span class="hs-identifier hs-type">LVar</span></a></span><span> </span><span id="local-6989586621679184631"><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184631"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679184630"><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679184630"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">l -&gt; f l
+</span><a href="#local-6989586621679184633"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184631"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">f l -&gt; (l -&gt; LExpression l) -&gt; f (LExpression l)
+forall (f :: * -&gt; *) a b. Functor f =&gt; f a -&gt; (a -&gt; b) -&gt; f b
+</span><span class="hs-operator hs-var">&lt;&amp;&gt;</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679184628"><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184628"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">l -&gt; Word -&gt; LExpression l
+forall l. l -&gt; Word -&gt; LExpression l
+</span><a href="A3SAT.Expression.html#LVar"><span class="hs-identifier hs-var">LVar</span></a></span><span> </span><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184628"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679184630"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-122"></span><span class="annot"><a href="A3SAT.Expression.Lens.html#primaryLabel"><span class="hs-identifier hs-var">primaryLabel</span></a></span><span> </span><span id="local-6989586621679184627"><span class="annot"><span class="annottext">l -&gt; f l
+</span><a href="#local-6989586621679184627"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LNot"><span class="hs-identifier hs-type">LNot</span></a></span><span> </span><span id="local-6989586621679184625"><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184625"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679184624"><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184624"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">l -&gt; f l
+</span><a href="#local-6989586621679184627"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184625"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">f l -&gt; (l -&gt; LExpression l) -&gt; f (LExpression l)
+forall (f :: * -&gt; *) a b. Functor f =&gt; f a -&gt; (a -&gt; b) -&gt; f b
+</span><span class="hs-operator hs-var">&lt;&amp;&gt;</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679184623"><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184623"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">l -&gt; LExpression l -&gt; LExpression l
+forall l. l -&gt; LExpression l -&gt; LExpression l
+</span><a href="A3SAT.Expression.html#LNot"><span class="hs-identifier hs-var">LNot</span></a></span><span> </span><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184623"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184624"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-123"></span><span class="annot"><a href="A3SAT.Expression.Lens.html#primaryLabel"><span class="hs-identifier hs-var">primaryLabel</span></a></span><span> </span><span id="local-6989586621679184622"><span class="annot"><span class="annottext">l -&gt; f l
+</span><a href="#local-6989586621679184622"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LAnd"><span class="hs-identifier hs-type">LAnd</span></a></span><span> </span><span id="local-6989586621679184621"><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184621"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679184620"><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184620"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679184619"><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184619"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">l -&gt; f l
+</span><a href="#local-6989586621679184622"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184620"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">f l -&gt; (l -&gt; LExpression l) -&gt; f (LExpression l)
+forall (f :: * -&gt; *) a b. Functor f =&gt; f a -&gt; (a -&gt; b) -&gt; f b
+</span><span class="hs-operator hs-var">&lt;&amp;&gt;</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679184618"><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184618"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">LExpression l -&gt; l -&gt; LExpression l -&gt; LExpression l
+forall l. LExpression l -&gt; l -&gt; LExpression l -&gt; LExpression l
+</span><a href="A3SAT.Expression.html#LAnd"><span class="hs-identifier hs-var">LAnd</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184621"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184618"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184619"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-124"></span><span class="annot"><a href="A3SAT.Expression.Lens.html#primaryLabel"><span class="hs-identifier hs-var">primaryLabel</span></a></span><span> </span><span id="local-6989586621679184617"><span class="annot"><span class="annottext">l -&gt; f l
+</span><a href="#local-6989586621679184617"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LOr"><span class="hs-identifier hs-type">LOr</span></a></span><span> </span><span id="local-6989586621679184616"><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184616"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679184615"><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184615"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679184614"><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184614"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">l -&gt; f l
+</span><a href="#local-6989586621679184617"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184615"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">f l -&gt; (l -&gt; LExpression l) -&gt; f (LExpression l)
+forall (f :: * -&gt; *) a b. Functor f =&gt; f a -&gt; (a -&gt; b) -&gt; f b
+</span><span class="hs-operator hs-var">&lt;&amp;&gt;</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679184613"><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184613"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">LExpression l -&gt; l -&gt; LExpression l -&gt; LExpression l
+forall l. LExpression l -&gt; l -&gt; LExpression l -&gt; LExpression l
+</span><a href="A3SAT.Expression.html#LOr"><span class="hs-identifier hs-var">LOr</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184616"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184613"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184614"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-125"></span><span class="annot"><a href="A3SAT.Expression.Lens.html#primaryLabel"><span class="hs-identifier hs-var">primaryLabel</span></a></span><span> </span><span id="local-6989586621679184612"><span class="annot"><span class="annottext">l -&gt; f l
+</span><a href="#local-6989586621679184612"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LParen"><span class="hs-identifier hs-type">LParen</span></a></span><span> </span><span id="local-6989586621679184611"><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184611"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679184610"><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184610"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679184609"><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184609"><span class="hs-identifier hs-var">l'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">l -&gt; f l
+</span><a href="#local-6989586621679184612"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184611"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">f l -&gt; (l -&gt; LExpression l) -&gt; f (LExpression l)
+forall (f :: * -&gt; *) a b. Functor f =&gt; f a -&gt; (a -&gt; b) -&gt; f b
+</span><span class="hs-operator hs-var">&lt;&amp;&gt;</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679184608"><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184608"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">l -&gt; LExpression l -&gt; l -&gt; LExpression l
+forall l. l -&gt; LExpression l -&gt; l -&gt; LExpression l
+</span><a href="A3SAT.Expression.html#LParen"><span class="hs-identifier hs-var">LParen</span></a></span><span> </span><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184608"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">LExpression l
+</span><a href="#local-6989586621679184610"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">l
+</span><a href="#local-6989586621679184609"><span class="hs-identifier hs-var">l'</span></a></span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span class="hs-comment">-- * Utility Functions</span><span>
+</span><span id="line-128"></span><span>
+</span><span id="line-129"></span><span class="hs-comment">-- |Make a disjoint union of 2 'Prism''s.</span><span>
+</span><span id="line-130"></span><span id="local-6989586621679184885"><span id="local-6989586621679184886"><span class="annot"><a href="A3SAT.Expression.Lens.html#disjointUnion"><span class="hs-identifier hs-type">disjointUnion</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Prism'</span></span><span> </span><span class="annot"><a href="#local-6989586621679184886"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184885"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Prism'</span></span><span> </span><span class="annot"><a href="#local-6989586621679184886"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184885"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversal'</span></span><span> </span><span class="annot"><a href="#local-6989586621679184886"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184885"><span class="hs-identifier hs-type">a</span></a></span></span></span><span>
+</span><span id="line-131"></span><span id="disjointUnion"><span class="annot"><span class="annottext">disjointUnion :: Prism' s a -&gt; Prism' s a -&gt; Traversal' s a
+</span><a href="A3SAT.Expression.Lens.html#disjointUnion"><span class="hs-identifier hs-var hs-var">disjointUnion</span></a></span></span><span> </span><span id="local-6989586621679184607"><span class="annot"><span class="annottext">Prism' s a
+</span><a href="#local-6989586621679184607"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679184606"><span class="annot"><span class="annottext">Prism' s a
+</span><a href="#local-6989586621679184606"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span id="local-6989586621679184605"><span class="annot"><span class="annottext">a -&gt; f a
+</span><a href="#local-6989586621679184605"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679184604"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679184604"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">APrism s s a a -&gt; s -&gt; Bool
+forall s t a b. APrism s t a b -&gt; s -&gt; Bool
+</span><span class="hs-identifier hs-var">is</span></span><span> </span><span class="annot"><span class="annottext">APrism s s a a
+Prism' s a
+</span><a href="#local-6989586621679184607"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679184604"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">(a -&gt; f a) -&gt; s -&gt; f s
+Prism' s a
+</span><a href="#local-6989586621679184607"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; f a
+</span><a href="#local-6989586621679184605"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679184604"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">(a -&gt; f a) -&gt; s -&gt; f s
+Prism' s a
+</span><a href="#local-6989586621679184606"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; f a
+</span><a href="#local-6989586621679184605"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679184604"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-132"></span><span>
+</span><span id="line-133"></span><span class="hs-comment">-- |Fixpoint for lenses on the expression functor.</span><span>
+</span><span id="line-134"></span><span class="hs-comment">--</span><span>
+</span><span id="line-135"></span><span class="hs-comment">-- WARNING: recursive traversal are done after non-recursive ones.</span><span>
+</span><span id="line-136"></span><span class="hs-comment">-- Thus traversal does not follow the field order in data declaration.</span><span>
+</span><span id="line-137"></span><span id="local-6989586621679184799"><span id="local-6989586621679184800"><span id="local-6989586621679184801"><span class="annot"><a href="A3SAT.Expression.Lens.html#fixExpr"><span class="hs-identifier hs-type">fixExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Applicative</span></span><span> </span><span class="annot"><a href="#local-6989586621679184801"><span class="hs-identifier hs-type">f</span></a></span><span>
+</span><span id="line-138"></span><span>        </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679184803"><span class="annot"><a href="#local-6989586621679184803"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-operator">.</span><span> </span><span class="annot"><span class="hs-identifier hs-type">LensLike'</span></span><span> </span><span class="annot"><a href="#local-6989586621679184801"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#ExpressionF"><span class="hs-identifier hs-type">ExpressionF</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184803"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184800"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184799"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-139"></span><span>        </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">LensLike'</span></span><span> </span><span class="annot"><a href="#local-6989586621679184801"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184800"><span class="hs-identifier hs-type">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679184799"><span class="hs-identifier hs-type">b</span></a></span></span></span></span><span>
+</span><span id="line-140"></span><span id="fixExpr"><span class="annot"><span class="annottext">fixExpr :: (forall a. LensLike' f (ExpressionF a l) b)
+-&gt; LensLike' f (LExpression l) b
+</span><a href="A3SAT.Expression.Lens.html#fixExpr"><span class="hs-identifier hs-var hs-var">fixExpr</span></a></span></span><span> </span><span id="local-6989586621679184603"><span class="annot"><span class="annottext">forall a. LensLike' f (ExpressionF a l) b
+</span><a href="#local-6989586621679184603"><span class="hs-identifier hs-var">ls</span></a></span></span><span> </span><span id="local-6989586621679184602"><span class="annot"><span class="annottext">b -&gt; f b
+</span><a href="#local-6989586621679184602"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184601"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-141"></span><span>  </span><span id="local-6989586621679184601"><span class="annot"><span class="annottext">go :: LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184601"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">In</span></span><span> </span><span id="local-6989586621679184599"><span class="annot"><span class="annottext">ExpressionF (LExpression l) l
+</span><a href="#local-6989586621679184599"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ExpressionF (LExpression l) l -&gt; LExpression l
+forall k (p :: * -&gt; k -&gt; *) (a :: k). p (Fix p a) a -&gt; Fix p a
+</span><span class="hs-identifier hs-var">In</span></span><span> </span><span class="annot"><span class="annottext">(ExpressionF (LExpression l) l -&gt; LExpression l)
+-&gt; f (ExpressionF (LExpression l) l) -&gt; f (LExpression l)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ExpressionF (LExpression l) l
+-&gt; ExpressionF (LExpression l) l -&gt; ExpressionF (LExpression l) l
+forall b l'' a'' b.
+ExpressionF b l'' -&gt; ExpressionF a'' b -&gt; ExpressionF a'' l''
+</span><a href="#local-6989586621679184598"><span class="hs-identifier hs-var">merge</span></a></span><span> </span><span class="annot"><span class="annottext">(ExpressionF (LExpression l) l
+ -&gt; ExpressionF (LExpression l) l -&gt; ExpressionF (LExpression l) l)
+-&gt; f (ExpressionF (LExpression l) l)
+-&gt; f (ExpressionF (LExpression l) l
+      -&gt; ExpressionF (LExpression l) l)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">LensLike' f (ExpressionF (LExpression l) l) b
+forall a. LensLike' f (ExpressionF a l) b
+</span><a href="#local-6989586621679184603"><span class="hs-identifier hs-var">ls</span></a></span><span> </span><span class="annot"><span class="annottext">b -&gt; f b
+</span><a href="#local-6989586621679184602"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">ExpressionF (LExpression l) l
+</span><a href="#local-6989586621679184599"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">f (ExpressionF (LExpression l) l -&gt; ExpressionF (LExpression l) l)
+-&gt; f (ExpressionF (LExpression l) l)
+-&gt; f (ExpressionF (LExpression l) l)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">(LExpression l -&gt; f (LExpression l))
+-&gt; (l -&gt; f l)
+-&gt; ExpressionF (LExpression l) l
+-&gt; f (ExpressionF (LExpression l) l)
+forall (t :: * -&gt; * -&gt; *) (f :: * -&gt; *) a c b d.
+(Bitraversable t, Applicative f) =&gt;
+(a -&gt; f c) -&gt; (b -&gt; f d) -&gt; t a b -&gt; f (t c d)
+</span><span class="hs-identifier hs-var">bitraverse</span></span><span> </span><span class="annot"><span class="annottext">LExpression l -&gt; f (LExpression l)
+</span><a href="#local-6989586621679184601"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">l -&gt; f l
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">ExpressionF (LExpression l) l
+</span><a href="#local-6989586621679184599"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-142"></span><span>  </span><span id="local-6989586621679184598"><span class="annot"><span class="annottext">merge :: ExpressionF b l'' -&gt; ExpressionF a'' b -&gt; ExpressionF a'' l''
+</span><a href="#local-6989586621679184598"><span class="hs-identifier hs-var hs-var">merge</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(b -&gt; a'' -&gt; a'')
+-&gt; (l'' -&gt; b -&gt; l'')
+-&gt; (ExpressionF b l'' -&gt; ExpressionF a'' b -&gt; ExpressionF a'' l'')
+-&gt; ExpressionF b l''
+-&gt; ExpressionF a'' b
+-&gt; ExpressionF a'' l''
+forall a a' a'' l l' l''.
+(a -&gt; a' -&gt; a'')
+-&gt; (l -&gt; l' -&gt; l'')
+-&gt; (ExpressionF a l -&gt; ExpressionF a' l' -&gt; ExpressionF a'' l'')
+-&gt; ExpressionF a l
+-&gt; ExpressionF a' l'
+-&gt; ExpressionF a'' l''
+</span><a href="A3SAT.Expression.html#zipExprFWith"><span class="hs-identifier hs-var">zipExprFWith</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a'' -&gt; a'') -&gt; b -&gt; a'' -&gt; a''
+forall a b. a -&gt; b -&gt; a
+</span><span class="hs-identifier hs-var">const</span></span><span> </span><span class="annot"><span class="annottext">a'' -&gt; a''
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">l'' -&gt; b -&gt; l''
+forall a b. a -&gt; b -&gt; a
+</span><span class="hs-identifier hs-var">const</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Char]
+-&gt; ExpressionF b l'' -&gt; ExpressionF a'' b -&gt; ExpressionF a'' l''
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;impossible&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-143"></span></pre></body></html>

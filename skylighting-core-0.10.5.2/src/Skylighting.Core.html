@@ -1,0 +1,215 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Skylighting.Core</span><span> </span><span class="hs-special">(</span><span>
+</span><span id="line-2"></span><span>    </span><span class="annot"><a href="Skylighting.Core.html#lookupSyntax"><span class="hs-identifier">lookupSyntax</span></a></span><span>
+</span><span id="line-3"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Skylighting.Core.html#syntaxByName"><span class="hs-identifier">syntaxByName</span></a></span><span>
+</span><span id="line-4"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Skylighting.Core.html#syntaxByShortName"><span class="hs-identifier">syntaxByShortName</span></a></span><span>
+</span><span id="line-5"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Skylighting.Core.html#syntaxesByExtension"><span class="hs-identifier">syntaxesByExtension</span></a></span><span>
+</span><span id="line-6"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Skylighting.Core.html#syntaxesByFilename"><span class="hs-identifier">syntaxesByFilename</span></a></span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Skylighting.Types.html"><span class="hs-identifier">Skylighting.Types</span></a></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Skylighting.Tokenizer.html"><span class="hs-identifier">Skylighting.Tokenizer</span></a></span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Skylighting.Parser.html"><span class="hs-identifier">Skylighting.Parser</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Skylighting.Regex.html"><span class="hs-identifier">Skylighting.Regex</span></a></span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Skylighting.Styles.html"><span class="hs-identifier">Skylighting.Styles</span></a></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Skylighting.Loader.html"><span class="hs-identifier">Skylighting.Loader</span></a></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Skylighting.Format.ANSI.html"><span class="hs-identifier">Skylighting.Format.ANSI</span></a></span><span>
+</span><span id="line-14"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Skylighting.Format.HTML.html"><span class="hs-identifier">Skylighting.Format.HTML</span></a></span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Skylighting.Format.LaTeX.html"><span class="hs-identifier">Skylighting.Format.LaTeX</span></a></span><span>
+</span><span id="line-16"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">tails</span></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Map</span></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">listToMaybe</span></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Text</span></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Skylighting.Format.ANSI.html"><span class="hs-identifier">Skylighting.Format.ANSI</span></a></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Skylighting.Format.HTML.html"><span class="hs-identifier">Skylighting.Format.HTML</span></a></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Skylighting.Format.LaTeX.html"><span class="hs-identifier">Skylighting.Format.LaTeX</span></a></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Skylighting.Loader.html"><span class="hs-identifier">Skylighting.Loader</span></a></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Skylighting.Parser.html"><span class="hs-identifier">Skylighting.Parser</span></a></span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Skylighting.Regex.html"><span class="hs-identifier">Skylighting.Regex</span></a></span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Skylighting.Styles.html"><span class="hs-identifier">Skylighting.Styles</span></a></span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Skylighting.Tokenizer.html"><span class="hs-identifier">Skylighting.Tokenizer</span></a></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Skylighting.Types.html"><span class="hs-identifier">Skylighting.Types</span></a></span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="hs-comment">-- | Returns a list of syntaxes appropriate for the given file extension.</span><span>
+</span><span id="line-34"></span><span class="annot"><a href="Skylighting.Core.html#syntaxesByExtension"><span class="hs-identifier hs-type">syntaxesByExtension</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Skylighting.Types.html#SyntaxMap"><span class="hs-identifier hs-type">SyntaxMap</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Skylighting.Types.html#Syntax"><span class="hs-identifier hs-type">Syntax</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-35"></span><span id="syntaxesByExtension"><span class="annot"><span class="annottext">syntaxesByExtension :: SyntaxMap -&gt; String -&gt; [Syntax]
+</span><a href="Skylighting.Core.html#syntaxesByExtension"><span class="hs-identifier hs-var hs-var">syntaxesByExtension</span></a></span></span><span> </span><span id="local-6989586621679140871"><span class="annot"><span class="annottext">SyntaxMap
+</span><a href="#local-6989586621679140871"><span class="hs-identifier hs-var">syntaxmap</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'.'</span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679140870"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679140870"><span class="hs-identifier hs-var">ext</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-36"></span><span>  </span><span class="annot"><span class="annottext">SyntaxMap -&gt; String -&gt; [Syntax]
+</span><a href="Skylighting.Core.html#syntaxesByFilename"><span class="hs-identifier hs-var">syntaxesByFilename</span></a></span><span> </span><span class="annot"><span class="annottext">SyntaxMap
+</span><a href="#local-6989586621679140871"><span class="hs-identifier hs-var">syntaxmap</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;*.&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679140870"><span class="hs-identifier hs-var">ext</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-37"></span><span class="annot"><a href="Skylighting.Core.html#syntaxesByExtension"><span class="hs-identifier hs-var">syntaxesByExtension</span></a></span><span> </span><span id="local-6989586621679140869"><span class="annot"><span class="annottext">SyntaxMap
+</span><a href="#local-6989586621679140869"><span class="hs-identifier hs-var">syntaxmap</span></a></span></span><span> </span><span id="local-6989586621679140868"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679140868"><span class="hs-identifier hs-var">ext</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-38"></span><span>  </span><span class="annot"><span class="annottext">SyntaxMap -&gt; String -&gt; [Syntax]
+</span><a href="Skylighting.Core.html#syntaxesByFilename"><span class="hs-identifier hs-var">syntaxesByFilename</span></a></span><span> </span><span class="annot"><span class="annottext">SyntaxMap
+</span><a href="#local-6989586621679140869"><span class="hs-identifier hs-var">syntaxmap</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;*.&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679140868"><span class="hs-identifier hs-var">ext</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-39"></span><span>
+</span><span id="line-40"></span><span class="hs-comment">-- | Returns a list of syntaxes appropriate for the given filename.</span><span>
+</span><span id="line-41"></span><span class="annot"><a href="Skylighting.Core.html#syntaxesByFilename"><span class="hs-identifier hs-type">syntaxesByFilename</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Skylighting.Types.html#SyntaxMap"><span class="hs-identifier hs-type">SyntaxMap</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Skylighting.Types.html#Syntax"><span class="hs-identifier hs-type">Syntax</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-42"></span><span id="syntaxesByFilename"><span class="annot"><span class="annottext">syntaxesByFilename :: SyntaxMap -&gt; String -&gt; [Syntax]
+</span><a href="Skylighting.Core.html#syntaxesByFilename"><span class="hs-identifier hs-var hs-var">syntaxesByFilename</span></a></span></span><span> </span><span id="local-6989586621679140867"><span class="annot"><span class="annottext">SyntaxMap
+</span><a href="#local-6989586621679140867"><span class="hs-identifier hs-var">syntaxmap</span></a></span></span><span> </span><span id="local-6989586621679140866"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679140866"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Syntax
+</span><a href="#local-6989586621679140865"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679140865"><span class="annot"><span class="annottext">Syntax
+</span><a href="#local-6989586621679140865"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">SyntaxMap -&gt; [Syntax]
+forall k a. Map k a -&gt; [a]
+</span><span class="hs-identifier hs-var">Map.elems</span></span><span> </span><span class="annot"><span class="annottext">SyntaxMap
+</span><a href="#local-6989586621679140867"><span class="hs-identifier hs-var">syntaxmap</span></a></span><span>
+</span><span id="line-43"></span><span>                                </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; Bool
+</span><a href="Skylighting.Core.html#matchGlobs"><span class="hs-identifier hs-var">matchGlobs</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679140866"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Syntax -&gt; [String]
+</span><a href="Skylighting.Types.html#sExtensions"><span class="hs-identifier hs-var hs-var">sExtensions</span></a></span><span> </span><span class="annot"><span class="annottext">Syntax
+</span><a href="#local-6989586621679140865"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-44"></span><span>
+</span><span id="line-45"></span><span class="hs-comment">-- | Lookup a syntax by full name (case insensitive).</span><span>
+</span><span id="line-46"></span><span class="annot"><a href="Skylighting.Core.html#syntaxByName"><span class="hs-identifier hs-type">syntaxByName</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Skylighting.Types.html#SyntaxMap"><span class="hs-identifier hs-type">SyntaxMap</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Skylighting.Types.html#Syntax"><span class="hs-identifier hs-type">Syntax</span></a></span><span>
+</span><span id="line-47"></span><span id="syntaxByName"><span class="annot"><span class="annottext">syntaxByName :: SyntaxMap -&gt; Text -&gt; Maybe Syntax
+</span><a href="Skylighting.Core.html#syntaxByName"><span class="hs-identifier hs-var hs-var">syntaxByName</span></a></span></span><span> </span><span id="local-6989586621679140861"><span class="annot"><span class="annottext">SyntaxMap
+</span><a href="#local-6989586621679140861"><span class="hs-identifier hs-var">syntaxmap</span></a></span></span><span> </span><span id="local-6989586621679140860"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140860"><span class="hs-identifier hs-var">name</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-48"></span><span>  </span><span class="annot"><span class="annottext">Text -&gt; SyntaxMap -&gt; Maybe Syntax
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Map.lookup</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><span class="hs-identifier hs-var">Text.toLower</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140860"><span class="hs-identifier hs-var">name</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; SyntaxMap -&gt; SyntaxMap
+forall k2 k1 a. Ord k2 =&gt; (k1 -&gt; k2) -&gt; Map k1 a -&gt; Map k2 a
+</span><span class="hs-identifier hs-var">Map.mapKeys</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><span class="hs-identifier hs-var">Text.toLower</span></span><span> </span><span class="annot"><span class="annottext">SyntaxMap
+</span><a href="#local-6989586621679140861"><span class="hs-identifier hs-var">syntaxmap</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span class="hs-comment">-- | Lookup a syntax by short name (case insensitive).</span><span>
+</span><span id="line-51"></span><span class="annot"><a href="Skylighting.Core.html#syntaxByShortName"><span class="hs-identifier hs-type">syntaxByShortName</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Skylighting.Types.html#SyntaxMap"><span class="hs-identifier hs-type">SyntaxMap</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Skylighting.Types.html#Syntax"><span class="hs-identifier hs-type">Syntax</span></a></span><span>
+</span><span id="line-52"></span><span id="syntaxByShortName"><span class="annot"><span class="annottext">syntaxByShortName :: SyntaxMap -&gt; Text -&gt; Maybe Syntax
+</span><a href="Skylighting.Core.html#syntaxByShortName"><span class="hs-identifier hs-var hs-var">syntaxByShortName</span></a></span></span><span> </span><span id="local-6989586621679140856"><span class="annot"><span class="annottext">SyntaxMap
+</span><a href="#local-6989586621679140856"><span class="hs-identifier hs-var">syntaxmap</span></a></span></span><span> </span><span id="local-6989586621679140855"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140855"><span class="hs-identifier hs-var">name</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Syntax] -&gt; Maybe Syntax
+forall a. [a] -&gt; Maybe a
+</span><span class="hs-identifier hs-var">listToMaybe</span></span><span>
+</span><span id="line-53"></span><span>  </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Syntax
+</span><a href="#local-6989586621679140854"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679140854"><span class="annot"><span class="annottext">Syntax
+</span><a href="#local-6989586621679140854"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">SyntaxMap -&gt; [Syntax]
+forall k a. Map k a -&gt; [a]
+</span><span class="hs-identifier hs-var">Map.elems</span></span><span> </span><span class="annot"><span class="annottext">SyntaxMap
+</span><a href="#local-6989586621679140856"><span class="hs-identifier hs-var">syntaxmap</span></a></span><span>
+</span><span id="line-54"></span><span>     </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><span class="hs-identifier hs-var">Text.toLower</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Syntax -&gt; Text
+</span><a href="Skylighting.Types.html#sShortname"><span class="hs-identifier hs-var hs-var">sShortname</span></a></span><span> </span><span class="annot"><span class="annottext">Syntax
+</span><a href="#local-6989586621679140854"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><span class="hs-identifier hs-var">Text.toLower</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140855"><span class="hs-identifier hs-var">name</span></a></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span class="hs-comment">-- | Lookup syntax by (in order) full name (case insensitive),</span><span>
+</span><span id="line-57"></span><span class="hs-comment">-- short name (case insensitive), extension.</span><span>
+</span><span id="line-58"></span><span class="annot"><a href="Skylighting.Core.html#lookupSyntax"><span class="hs-identifier hs-type">lookupSyntax</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Skylighting.Types.html#SyntaxMap"><span class="hs-identifier hs-type">SyntaxMap</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Skylighting.Types.html#Syntax"><span class="hs-identifier hs-type">Syntax</span></a></span><span>
+</span><span id="line-59"></span><span id="lookupSyntax"><span class="annot"><span class="annottext">lookupSyntax :: Text -&gt; SyntaxMap -&gt; Maybe Syntax
+</span><a href="Skylighting.Core.html#lookupSyntax"><span class="hs-identifier hs-var hs-var">lookupSyntax</span></a></span></span><span> </span><span id="local-6989586621679140852"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140852"><span class="hs-identifier hs-var">lang</span></a></span></span><span> </span><span id="local-6989586621679140851"><span class="annot"><span class="annottext">SyntaxMap
+</span><a href="#local-6989586621679140851"><span class="hs-identifier hs-var">syntaxmap</span></a></span></span><span>
+</span><span id="line-60"></span><span>  </span><span class="hs-comment">-- special cases:</span><span>
+</span><span id="line-61"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140852"><span class="hs-identifier hs-var">lang</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">Text.pack</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;csharp&quot;</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; SyntaxMap -&gt; Maybe Syntax
+</span><a href="Skylighting.Core.html#lookupSyntax"><span class="hs-identifier hs-var">lookupSyntax</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">Text.pack</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;cs&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">SyntaxMap
+</span><a href="#local-6989586621679140851"><span class="hs-identifier hs-var">syntaxmap</span></a></span><span>
+</span><span id="line-62"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140852"><span class="hs-identifier hs-var">lang</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">Text.pack</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;fortran&quot;</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; SyntaxMap -&gt; Maybe Syntax
+</span><a href="Skylighting.Core.html#lookupSyntax"><span class="hs-identifier hs-var">lookupSyntax</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">Text.pack</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;for&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-63"></span><span>              </span><span class="annot"><span class="annottext">SyntaxMap
+</span><a href="#local-6989586621679140851"><span class="hs-identifier hs-var">syntaxmap</span></a></span><span>
+</span><span id="line-64"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-65"></span><span>    </span><span class="annot"><span class="annottext">SyntaxMap -&gt; Text -&gt; Maybe Syntax
+</span><a href="Skylighting.Core.html#syntaxByName"><span class="hs-identifier hs-var">syntaxByName</span></a></span><span> </span><span class="annot"><span class="annottext">SyntaxMap
+</span><a href="#local-6989586621679140851"><span class="hs-identifier hs-var">syntaxmap</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140852"><span class="hs-identifier hs-var">lang</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Syntax -&gt; Maybe Syntax -&gt; Maybe Syntax
+forall (m :: * -&gt; *) a. MonadPlus m =&gt; m a -&gt; m a -&gt; m a
+</span><span class="hs-operator hs-var">`mplus`</span></span><span>
+</span><span id="line-66"></span><span>    </span><span class="annot"><span class="annottext">SyntaxMap -&gt; Text -&gt; Maybe Syntax
+</span><a href="Skylighting.Core.html#syntaxByShortName"><span class="hs-identifier hs-var">syntaxByShortName</span></a></span><span> </span><span class="annot"><span class="annottext">SyntaxMap
+</span><a href="#local-6989586621679140851"><span class="hs-identifier hs-var">syntaxmap</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140852"><span class="hs-identifier hs-var">lang</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Syntax -&gt; Maybe Syntax -&gt; Maybe Syntax
+forall (m :: * -&gt; *) a. MonadPlus m =&gt; m a -&gt; m a -&gt; m a
+</span><span class="hs-operator hs-var">`mplus`</span></span><span>
+</span><span id="line-67"></span><span>    </span><span class="annot"><span class="annottext">[Syntax] -&gt; Maybe Syntax
+forall a. [a] -&gt; Maybe a
+</span><span class="hs-identifier hs-var">listToMaybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SyntaxMap -&gt; String -&gt; [Syntax]
+</span><a href="Skylighting.Core.html#syntaxesByExtension"><span class="hs-identifier hs-var">syntaxesByExtension</span></a></span><span> </span><span class="annot"><span class="annottext">SyntaxMap
+</span><a href="#local-6989586621679140851"><span class="hs-identifier hs-var">syntaxmap</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; String
+</span><span class="hs-identifier hs-var">Text.unpack</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679140852"><span class="hs-identifier hs-var">lang</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span class="hs-comment">-- | Match filename against a list of globs contained in a semicolon-separated</span><span>
+</span><span id="line-70"></span><span class="hs-comment">-- string.</span><span>
+</span><span id="line-71"></span><span class="annot"><a href="Skylighting.Core.html#matchGlobs"><span class="hs-identifier hs-type">matchGlobs</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-72"></span><span id="matchGlobs"><span class="annot"><span class="annottext">matchGlobs :: String -&gt; [String] -&gt; Bool
+</span><a href="Skylighting.Core.html#matchGlobs"><span class="hs-identifier hs-var hs-var">matchGlobs</span></a></span></span><span> </span><span id="local-6989586621679140847"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679140847"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span id="local-6989586621679140846"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679140846"><span class="hs-identifier hs-var">globs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(String -&gt; Bool) -&gt; [String] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; (a -&gt; Bool) -&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">any</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(String -&gt; String -&gt; Bool) -&gt; String -&gt; String -&gt; Bool
+forall a b c. (a -&gt; b -&gt; c) -&gt; b -&gt; a -&gt; c
+</span><span class="hs-identifier hs-var">flip</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; Bool
+</span><a href="Skylighting.Core.html#matchGlob"><span class="hs-identifier hs-var">matchGlob</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679140847"><span class="hs-identifier hs-var">fn</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679140846"><span class="hs-identifier hs-var">globs</span></a></span><span>
+</span><span id="line-73"></span><span>
+</span><span id="line-74"></span><span class="hs-comment">-- | Match filename against a glob pattern with asterisks.</span><span>
+</span><span id="line-75"></span><span class="annot"><a href="Skylighting.Core.html#matchGlob"><span class="hs-identifier hs-type">matchGlob</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-76"></span><span id="matchGlob"><span class="annot"><span class="annottext">matchGlob :: String -&gt; String -&gt; Bool
+</span><a href="Skylighting.Core.html#matchGlob"><span class="hs-identifier hs-var hs-var">matchGlob</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'*'</span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679140842"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679140842"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679140841"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679140841"><span class="hs-identifier hs-var">fn</span></a></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(String -&gt; Bool) -&gt; [String] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; (a -&gt; Bool) -&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">any</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; String -&gt; Bool
+</span><a href="Skylighting.Core.html#matchGlob"><span class="hs-identifier hs-var">matchGlob</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679140842"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; [String]
+forall a. [a] -&gt; [[a]]
+</span><span class="hs-identifier hs-var">tails</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679140841"><span class="hs-identifier hs-var">fn</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-77"></span><span class="annot"><a href="Skylighting.Core.html#matchGlob"><span class="hs-identifier hs-var">matchGlob</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679140840"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679140840"><span class="hs-identifier hs-var">x</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679140839"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679140839"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679140838"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679140838"><span class="hs-identifier hs-var">y</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679140837"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679140837"><span class="hs-identifier hs-var">ys</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679140840"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679140838"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; Bool
+</span><a href="Skylighting.Core.html#matchGlob"><span class="hs-identifier hs-var">matchGlob</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679140839"><span class="hs-identifier hs-var">xs</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679140837"><span class="hs-identifier hs-var">ys</span></a></span><span>
+</span><span id="line-78"></span><span class="annot"><a href="Skylighting.Core.html#matchGlob"><span class="hs-identifier hs-var">matchGlob</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-79"></span><span class="annot"><a href="Skylighting.Core.html#matchGlob"><span class="hs-identifier hs-var">matchGlob</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-identifier">_</span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-80"></span></pre></body></html>

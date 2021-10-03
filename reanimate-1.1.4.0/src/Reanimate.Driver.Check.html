@@ -1,0 +1,786 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE ScopedTypeVariables #-}</span><span>
+</span><span id="line-2"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Driver.Check</span><span>
+</span><span id="line-3"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Driver.Check.html#checkEnvironment"><span class="hs-identifier">checkEnvironment</span></a></span><span>
+</span><span id="line-4"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Driver.Check.html#hasRSvg"><span class="hs-identifier">hasRSvg</span></a></span><span>
+</span><span id="line-5"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Driver.Check.html#hasInkscape"><span class="hs-identifier">hasInkscape</span></a></span><span>
+</span><span id="line-6"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Driver.Check.html#hasMagick"><span class="hs-identifier">hasMagick</span></a></span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Driver.Check.html#hasFFmpegRSvg"><span class="hs-identifier">hasFFmpegRSvg</span></a></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-9"></span><span>
+</span><span id="line-10"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Exception</span></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">SomeException</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">handle</span></span><span class="hs-special">)</span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>                </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">forM_</span></span><span class="hs-special">)</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>                   </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">fromMaybe</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">listToMaybe</span></span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Version</span></span><span>                 </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Version</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Version</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">parseVersion</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">showVersion</span></span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Driver.Magick.html"><span class="hs-identifier">Reanimate.Driver.Magick</span></a></span><span>      </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Driver.Magick.html#magickCmd"><span class="hs-identifier">magickCmd</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Misc.html"><span class="hs-identifier">Reanimate.Misc</span></a></span><span>               </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Misc.html#runCmd_"><span class="hs-identifier">runCmd_</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.Console.ANSI.Codes</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.Directory</span></span><span>             </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">findExecutable</span></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO</span></span><span>                    </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">hClose</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">hPutStr</span></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO.Temp</span></span><span>               </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">withSystemTempDirectory</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">withTempFile</span></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Text.ParserCombinators.ReadP</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">readP_to_S</span></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Text.Printf</span></span><span>                  </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">printf</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-comment">--------------------------------------------------------------------------</span><span>
+</span><span id="line-24"></span><span class="hs-comment">-- Check environment</span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="annot"><a href="Reanimate.Driver.Check.html#checkEnvironment"><span class="hs-identifier hs-type">checkEnvironment</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span id="checkEnvironment"><span class="annot"><span class="annottext">checkEnvironment :: IO ()
+</span><a href="Reanimate.Driver.Check.html#checkEnvironment"><span class="hs-identifier hs-var hs-var">checkEnvironment</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-28"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; IO ()
+</span><span class="hs-identifier hs-var">putStrLn</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;reanimate checks:&quot;</span></span><span>
+</span><span id="line-29"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String) -&gt; IO ()
+</span><a href="#local-6989586621679540925"><span class="hs-identifier hs-var">runCheck</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Has ffmpeg&quot;</span></span><span> </span><span class="annot"><span class="annottext">IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasFFmpeg"><span class="hs-identifier hs-var">hasFFmpeg</span></a></span><span>
+</span><span id="line-30"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String) -&gt; IO ()
+</span><a href="#local-6989586621679540925"><span class="hs-identifier hs-var">runCheck</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Has ffmpeg(rsvg)&quot;</span></span><span> </span><span class="annot"><span class="annottext">IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasFFmpegRSvg"><span class="hs-identifier hs-var">hasFFmpegRSvg</span></a></span><span>
+</span><span id="line-31"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String) -&gt; IO ()
+</span><a href="#local-6989586621679540925"><span class="hs-identifier hs-var">runCheck</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Has dvisvgm&quot;</span></span><span> </span><span class="annot"><span class="annottext">IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasDvisvgm"><span class="hs-identifier hs-var">hasDvisvgm</span></a></span><span>
+</span><span id="line-32"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String) -&gt; IO ()
+</span><a href="#local-6989586621679540925"><span class="hs-identifier hs-var">runCheck</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Has povray&quot;</span></span><span> </span><span class="annot"><span class="annottext">IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasPovray"><span class="hs-identifier hs-var">hasPovray</span></a></span><span>
+</span><span id="line-33"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String) -&gt; IO ()
+</span><a href="#local-6989586621679540925"><span class="hs-identifier hs-var">runCheck</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Has blender&quot;</span></span><span> </span><span class="annot"><span class="annottext">IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasBlender"><span class="hs-identifier hs-var">hasBlender</span></a></span><span>
+</span><span id="line-34"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String) -&gt; IO ()
+</span><a href="#local-6989586621679540925"><span class="hs-identifier hs-var">runCheck</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Has rsvg-convert&quot;</span></span><span> </span><span class="annot"><span class="annottext">IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasRSvg"><span class="hs-identifier hs-var">hasRSvg</span></a></span><span>
+</span><span id="line-35"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String) -&gt; IO ()
+</span><a href="#local-6989586621679540925"><span class="hs-identifier hs-var">runCheck</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Has inkscape&quot;</span></span><span> </span><span class="annot"><span class="annottext">IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasInkscape"><span class="hs-identifier hs-var">hasInkscape</span></a></span><span>
+</span><span id="line-36"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String) -&gt; IO ()
+</span><a href="#local-6989586621679540925"><span class="hs-identifier hs-var">runCheck</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Has imagemagick&quot;</span></span><span> </span><span class="annot"><span class="annottext">IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasMagick"><span class="hs-identifier hs-var">hasMagick</span></a></span><span>
+</span><span id="line-37"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String) -&gt; IO ()
+</span><a href="#local-6989586621679540925"><span class="hs-identifier hs-var">runCheck</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Has LaTeX&quot;</span></span><span> </span><span class="annot"><span class="annottext">IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasLaTeX"><span class="hs-identifier hs-var">hasLaTeX</span></a></span><span>
+</span><span id="line-38"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String) -&gt; IO ()
+</span><a href="#local-6989586621679540925"><span class="hs-identifier hs-var">runCheck</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Has LaTeX package '&quot;</span></span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;babel&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;'&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(IO (Either String String) -&gt; IO ())
+-&gt; IO (Either String String) -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasTeXPackage"><span class="hs-identifier hs-var">hasTeXPackage</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;latex&quot;</span></span><span>
+</span><span id="line-39"></span><span>      </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;[english]{babel}&quot;</span></span><span>
+</span><span id="line-40"></span><span>    </span><span class="annot"><span class="annottext">[String] -&gt; (String -&gt; IO ()) -&gt; IO ()
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Foldable t, Monad m) =&gt;
+t a -&gt; (a -&gt; m b) -&gt; m ()
+</span><span class="hs-identifier hs-var">forM_</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679540918"><span class="hs-identifier hs-var">latexPackages</span></a></span><span> </span><span class="annot"><span class="annottext">((String -&gt; IO ()) -&gt; IO ()) -&gt; (String -&gt; IO ()) -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679540917"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540917"><span class="hs-identifier hs-var">pkg</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-41"></span><span>      </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String) -&gt; IO ()
+</span><a href="#local-6989586621679540925"><span class="hs-identifier hs-var">runCheck</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Has LaTeX package '&quot;</span></span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540917"><span class="hs-identifier hs-var">pkg</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;'&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(IO (Either String String) -&gt; IO ())
+-&gt; IO (Either String String) -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasTeXPackage"><span class="hs-identifier hs-var">hasTeXPackage</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;latex&quot;</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; IO (Either String String))
+-&gt; String -&gt; IO (Either String String)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-42"></span><span>        </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;{&quot;</span></span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540917"><span class="hs-identifier hs-var">pkg</span></a></span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;}&quot;</span></span><span>
+</span><span id="line-43"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String) -&gt; IO ()
+</span><a href="#local-6989586621679540925"><span class="hs-identifier hs-var">runCheck</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Has XeLaTeX&quot;</span></span><span> </span><span class="annot"><span class="annottext">IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasXeLaTeX"><span class="hs-identifier hs-var">hasXeLaTeX</span></a></span><span>
+</span><span id="line-44"></span><span>    </span><span class="annot"><span class="annottext">[String] -&gt; (String -&gt; IO ()) -&gt; IO ()
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Foldable t, Monad m) =&gt;
+t a -&gt; (a -&gt; m b) -&gt; m ()
+</span><span class="hs-identifier hs-var">forM_</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679540915"><span class="hs-identifier hs-var">xelatexPackages</span></a></span><span> </span><span class="annot"><span class="annottext">((String -&gt; IO ()) -&gt; IO ()) -&gt; (String -&gt; IO ()) -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679540914"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540914"><span class="hs-identifier hs-var">pkg</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-45"></span><span>      </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String) -&gt; IO ()
+</span><a href="#local-6989586621679540925"><span class="hs-identifier hs-var">runCheck</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Has XeLaTeX package '&quot;</span></span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540914"><span class="hs-identifier hs-var">pkg</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;'&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(IO (Either String String) -&gt; IO ())
+-&gt; IO (Either String String) -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasTeXPackage"><span class="hs-identifier hs-var">hasTeXPackage</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;xelatex&quot;</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; IO (Either String String))
+-&gt; String -&gt; IO (Either String String)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-46"></span><span>        </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;{&quot;</span></span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540914"><span class="hs-identifier hs-var">pkg</span></a></span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;}&quot;</span></span><span>
+</span><span id="line-47"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-48"></span><span>    </span><span id="local-6989586621679540918"><span class="annot"><span class="annottext">latexPackages :: [String]
+</span><a href="#local-6989586621679540918"><span class="hs-identifier hs-var hs-var">latexPackages</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-49"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;preview&quot;</span></span><span>
+</span><span id="line-50"></span><span>      </span><span class="hs-special">,</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;amsmath&quot;</span></span><span>
+</span><span id="line-51"></span><span>      </span><span class="hs-comment">--,&quot;amssymb&quot;</span><span>
+</span><span id="line-52"></span><span>      </span><span class="hs-comment">--,&quot;dsfont&quot;</span><span>
+</span><span id="line-53"></span><span>      </span><span class="hs-comment">--,&quot;setspace&quot;</span><span>
+</span><span id="line-54"></span><span>      </span><span class="hs-comment">--,&quot;relsize&quot;</span><span>
+</span><span id="line-55"></span><span>      </span><span class="hs-comment">--,&quot;textcomp&quot;</span><span>
+</span><span id="line-56"></span><span>      </span><span class="hs-comment">--,&quot;mathrsfs&quot;</span><span>
+</span><span id="line-57"></span><span>      </span><span class="hs-comment">--,&quot;calligra&quot;</span><span>
+</span><span id="line-58"></span><span>      </span><span class="hs-comment">--,&quot;wasysym&quot;</span><span>
+</span><span id="line-59"></span><span>      </span><span class="hs-comment">--,&quot;ragged2e&quot;</span><span>
+</span><span id="line-60"></span><span>      </span><span class="hs-comment">--,&quot;physics&quot;</span><span>
+</span><span id="line-61"></span><span>      </span><span class="hs-comment">--,&quot;xcolor&quot;</span><span>
+</span><span id="line-62"></span><span>      </span><span class="hs-comment">--,&quot;textcomp&quot;</span><span>
+</span><span id="line-63"></span><span>      </span><span class="hs-comment">--,&quot;xfrac&quot;</span><span>
+</span><span id="line-64"></span><span>      </span><span class="hs-comment">--,&quot;microtype&quot;</span><span>
+</span><span id="line-65"></span><span>      </span><span class="hs-special">]</span><span>
+</span><span id="line-66"></span><span>    </span><span id="local-6989586621679540915"><span class="annot"><span class="annottext">xelatexPackages :: [String]
+</span><a href="#local-6989586621679540915"><span class="hs-identifier hs-var hs-var">xelatexPackages</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-67"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;ctex&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-68"></span><span>    </span><span id="local-6989586621679540925"><span class="annot"><span class="annottext">runCheck :: String -&gt; IO (Either String String) -&gt; IO ()
+</span><a href="#local-6989586621679540925"><span class="hs-identifier hs-var hs-var">runCheck</span></a></span></span><span> </span><span id="local-6989586621679540913"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540913"><span class="hs-identifier hs-var">msg</span></a></span></span><span> </span><span id="local-6989586621679540912"><span class="annot"><span class="annottext">IO (Either String String)
+</span><a href="#local-6989586621679540912"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-69"></span><span>      </span><span class="annot"><span class="annottext">String -&gt; String -&gt; IO ()
+forall r. PrintfType r =&gt; String -&gt; r
+</span><span class="hs-identifier hs-var">printf</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;  %-35s&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540913"><span class="hs-identifier hs-var">msg</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;:&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-70"></span><span>      </span><span id="local-6989586621679540911"><span class="annot"><span class="annottext">Either String String
+</span><a href="#local-6989586621679540911"><span class="hs-identifier hs-var">val</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO (Either String String)
+</span><a href="#local-6989586621679540912"><span class="hs-identifier hs-var">fn</span></a></span><span>
+</span><span id="line-71"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Either String String
+</span><a href="#local-6989586621679540911"><span class="hs-identifier hs-var">val</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-72"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679540910"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540910"><span class="hs-identifier hs-var">err</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Color -&gt; String -&gt; IO ()
+</span><a href="Reanimate.Driver.Check.html#putStrLnColor"><span class="hs-identifier hs-var">putStrLnColor</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier hs-var">Red</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540910"><span class="hs-identifier hs-var">err</span></a></span><span>
+</span><span id="line-73"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679540907"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540907"><span class="hs-identifier hs-var">ok</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Color -&gt; String -&gt; IO ()
+</span><a href="Reanimate.Driver.Check.html#putStrLnColor"><span class="hs-identifier hs-var">putStrLnColor</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier hs-var">Green</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540907"><span class="hs-identifier hs-var">ok</span></a></span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span class="annot"><a href="Reanimate.Driver.Check.html#putStrLnColor"><span class="hs-identifier hs-type">putStrLnColor</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Color</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-76"></span><span id="putStrLnColor"><span class="annot"><span class="annottext">putStrLnColor :: Color -&gt; String -&gt; IO ()
+</span><a href="Reanimate.Driver.Check.html#putStrLnColor"><span class="hs-identifier hs-var hs-var">putStrLnColor</span></a></span></span><span> </span><span id="local-6989586621679540905"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679540905"><span class="hs-identifier hs-var">color</span></a></span></span><span> </span><span id="local-6989586621679540904"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540904"><span class="hs-identifier hs-var">msg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-77"></span><span>  </span><span class="annot"><span class="annottext">String -&gt; IO ()
+</span><span class="hs-identifier hs-var">putStrLn</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; IO ()) -&gt; String -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[SGR] -&gt; String
+</span><span class="hs-identifier hs-var">setSGRCode</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">ConsoleLayer -&gt; ColorIntensity -&gt; Color -&gt; SGR
+</span><span class="hs-identifier hs-var">SetColor</span></span><span> </span><span class="annot"><span class="annottext">ConsoleLayer
+</span><span class="hs-identifier hs-var">Foreground</span></span><span> </span><span class="annot"><span class="annottext">ColorIntensity
+</span><span class="hs-identifier hs-var">Vivid</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679540905"><span class="hs-identifier hs-var">color</span></a></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540904"><span class="hs-identifier hs-var">msg</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[SGR] -&gt; String
+</span><span class="hs-identifier hs-var">setSGRCode</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">SGR
+</span><span class="hs-identifier hs-var">Reset</span></span><span class="hs-special">]</span><span>
+</span><span id="line-78"></span><span>
+</span><span id="line-79"></span><span class="hs-comment">-- latex, dvisvgm, xelatex</span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span class="annot"><a href="Reanimate.Driver.Check.html#hasLaTeX"><span class="hs-identifier hs-type">hasLaTeX</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-82"></span><span id="hasLaTeX"><span class="annot"><span class="annottext">hasLaTeX :: IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasLaTeX"><span class="hs-identifier hs-var hs-var">hasLaTeX</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasProgram"><span class="hs-identifier hs-var">hasProgram</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;latex&quot;</span></span><span>
+</span><span id="line-83"></span><span>
+</span><span id="line-84"></span><span class="annot"><a href="Reanimate.Driver.Check.html#hasXeLaTeX"><span class="hs-identifier hs-type">hasXeLaTeX</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-85"></span><span id="hasXeLaTeX"><span class="annot"><span class="annottext">hasXeLaTeX :: IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasXeLaTeX"><span class="hs-identifier hs-var hs-var">hasXeLaTeX</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasProgram"><span class="hs-identifier hs-var">hasProgram</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;xelatex&quot;</span></span><span>
+</span><span id="line-86"></span><span>
+</span><span id="line-87"></span><span class="annot"><a href="Reanimate.Driver.Check.html#hasDvisvgm"><span class="hs-identifier hs-type">hasDvisvgm</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-88"></span><span id="hasDvisvgm"><span class="annot"><span class="annottext">hasDvisvgm :: IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasDvisvgm"><span class="hs-identifier hs-var hs-var">hasDvisvgm</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasProgram"><span class="hs-identifier hs-var">hasProgram</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;dvisvgm&quot;</span></span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span class="annot"><a href="Reanimate.Driver.Check.html#hasPovray"><span class="hs-identifier hs-type">hasPovray</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-91"></span><span id="hasPovray"><span class="annot"><span class="annottext">hasPovray :: IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasPovray"><span class="hs-identifier hs-var hs-var">hasPovray</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasProgram"><span class="hs-identifier hs-var">hasProgram</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;povray&quot;</span></span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span class="annot"><a href="Reanimate.Driver.Check.html#hasFFmpeg"><span class="hs-identifier hs-type">hasFFmpeg</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-94"></span><span id="hasFFmpeg"><span class="annot"><span class="annottext">hasFFmpeg :: IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasFFmpeg"><span class="hs-identifier hs-var hs-var">hasFFmpeg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Version -&gt; Maybe Version -&gt; Either String String
+</span><a href="Reanimate.Driver.Check.html#checkMinVersion"><span class="hs-identifier hs-var">checkMinVersion</span></a></span><span> </span><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540896"><span class="hs-identifier hs-var">minVersion</span></a></span><span> </span><span class="annot"><span class="annottext">(Maybe Version -&gt; Either String String)
+-&gt; IO (Maybe Version) -&gt; IO (Either String String)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">IO (Maybe Version)
+</span><a href="Reanimate.Driver.Check.html#ffmpegVersion"><span class="hs-identifier hs-var">ffmpegVersion</span></a></span><span>
+</span><span id="line-95"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-96"></span><span>    </span><span id="local-6989586621679540896"><span class="annot"><span class="annottext">minVersion :: Version
+</span><a href="#local-6989586621679540896"><span class="hs-identifier hs-var hs-var">minVersion</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Int] -&gt; [String] -&gt; Version
+</span><span class="hs-identifier hs-var">Version</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-special">]</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-97"></span><span>
+</span><span id="line-98"></span><span class="annot"><a href="Reanimate.Driver.Check.html#hasFFmpegRSvg"><span class="hs-identifier hs-type">hasFFmpegRSvg</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-99"></span><span id="hasFFmpegRSvg"><span class="annot"><span class="annottext">hasFFmpegRSvg :: IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasFFmpegRSvg"><span class="hs-identifier hs-var hs-var">hasFFmpegRSvg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-100"></span><span>  </span><span id="local-6989586621679540893"><span class="annot"><span class="annottext">Maybe String
+</span><a href="#local-6989586621679540893"><span class="hs-identifier hs-var">mbPath</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO (Maybe String)
+</span><span class="hs-identifier hs-var">findExecutable</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;ffmpeg&quot;</span></span><span>
+</span><span id="line-101"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe String
+</span><a href="#local-6989586621679540893"><span class="hs-identifier hs-var">mbPath</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-102"></span><span>    </span><span class="annot"><span class="annottext">Maybe String
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either String String -&gt; IO (Either String String)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Either String String -&gt; IO (Either String String))
+-&gt; Either String String -&gt; IO (Either String String)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Either String String
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;n/a&quot;</span></span><span>
+</span><span id="line-103"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679540892"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540892"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-104"></span><span>      </span><span id="local-6989586621679540891"><span class="annot"><span class="annottext">Either String String
+</span><a href="#local-6989586621679540891"><span class="hs-identifier hs-var">ret</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; IO (Either String String)
+</span><a href="Reanimate.Misc.html#runCmd_"><span class="hs-identifier hs-var">runCmd_</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540892"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;-version&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-105"></span><span>      </span><span class="annot"><span class="annottext">Either String String -&gt; IO (Either String String)
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Either String String -&gt; IO (Either String String))
+-&gt; Either String String -&gt; IO (Either String String)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Either String String
+</span><a href="#local-6989586621679540891"><span class="hs-identifier hs-var">ret</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-106"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679540890"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540890"><span class="hs-identifier hs-var">out</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;--enable-librsvg&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; Bool
+forall (t :: * -&gt; *) a. (Foldable t, Eq a) =&gt; a -&gt; t a -&gt; Bool
+</span><span class="hs-operator hs-var">`elem`</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; [String]
+</span><span class="hs-identifier hs-var">words</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540890"><span class="hs-identifier hs-var">out</span></a></span><span>
+</span><span id="line-107"></span><span>          </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; Either String String
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;yes&quot;</span></span><span>
+</span><span id="line-108"></span><span>        </span><span class="annot"><span class="annottext">Either String String
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; Either String String
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;no&quot;</span></span><span>
+</span><span id="line-109"></span><span>
+</span><span id="line-110"></span><span class="annot"><a href="Reanimate.Driver.Check.html#hasBlender"><span class="hs-identifier hs-type">hasBlender</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-111"></span><span id="hasBlender"><span class="annot"><span class="annottext">hasBlender :: IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasBlender"><span class="hs-identifier hs-var hs-var">hasBlender</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Version -&gt; Maybe Version -&gt; Either String String
+</span><a href="Reanimate.Driver.Check.html#checkMinVersion"><span class="hs-identifier hs-var">checkMinVersion</span></a></span><span> </span><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540887"><span class="hs-identifier hs-var">minVersion</span></a></span><span> </span><span class="annot"><span class="annottext">(Maybe Version -&gt; Either String String)
+-&gt; IO (Maybe Version) -&gt; IO (Either String String)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">IO (Maybe Version)
+</span><a href="Reanimate.Driver.Check.html#blenderVersion"><span class="hs-identifier hs-var">blenderVersion</span></a></span><span>
+</span><span id="line-112"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-113"></span><span>    </span><span id="local-6989586621679540887"><span class="annot"><span class="annottext">minVersion :: Version
+</span><a href="#local-6989586621679540887"><span class="hs-identifier hs-var hs-var">minVersion</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Int] -&gt; [String] -&gt; Version
+</span><span class="hs-identifier hs-var">Version</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">80</span></span><span class="hs-special">]</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-114"></span><span>
+</span><span id="line-115"></span><span class="annot"><a href="Reanimate.Driver.Check.html#hasRSvg"><span class="hs-identifier hs-type">hasRSvg</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-116"></span><span id="hasRSvg"><span class="annot"><span class="annottext">hasRSvg :: IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasRSvg"><span class="hs-identifier hs-var hs-var">hasRSvg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Version -&gt; Maybe Version -&gt; Either String String
+</span><a href="Reanimate.Driver.Check.html#checkMinVersion"><span class="hs-identifier hs-var">checkMinVersion</span></a></span><span> </span><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540885"><span class="hs-identifier hs-var">minVersion</span></a></span><span> </span><span class="annot"><span class="annottext">(Maybe Version -&gt; Either String String)
+-&gt; IO (Maybe Version) -&gt; IO (Either String String)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">IO (Maybe Version)
+</span><a href="Reanimate.Driver.Check.html#rsvgVersion"><span class="hs-identifier hs-var">rsvgVersion</span></a></span><span>
+</span><span id="line-117"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-118"></span><span>    </span><span id="local-6989586621679540885"><span class="annot"><span class="annottext">minVersion :: Version
+</span><a href="#local-6989586621679540885"><span class="hs-identifier hs-var hs-var">minVersion</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Int] -&gt; [String] -&gt; Version
+</span><span class="hs-identifier hs-var">Version</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">44</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">]</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-119"></span><span>
+</span><span id="line-120"></span><span class="annot"><a href="Reanimate.Driver.Check.html#hasInkscape"><span class="hs-identifier hs-type">hasInkscape</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-121"></span><span id="hasInkscape"><span class="annot"><span class="annottext">hasInkscape :: IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasInkscape"><span class="hs-identifier hs-var hs-var">hasInkscape</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Version -&gt; Maybe Version -&gt; Either String String
+</span><a href="Reanimate.Driver.Check.html#checkMinVersion"><span class="hs-identifier hs-var">checkMinVersion</span></a></span><span> </span><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540883"><span class="hs-identifier hs-var">minVersion</span></a></span><span> </span><span class="annot"><span class="annottext">(Maybe Version -&gt; Either String String)
+-&gt; IO (Maybe Version) -&gt; IO (Either String String)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">IO (Maybe Version)
+</span><a href="Reanimate.Driver.Check.html#inkscapeVersion"><span class="hs-identifier hs-var">inkscapeVersion</span></a></span><span>
+</span><span id="line-122"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-123"></span><span>    </span><span id="local-6989586621679540883"><span class="annot"><span class="annottext">minVersion :: Version
+</span><a href="#local-6989586621679540883"><span class="hs-identifier hs-var hs-var">minVersion</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Int] -&gt; [String] -&gt; Version
+</span><span class="hs-identifier hs-var">Version</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">92</span></span><span class="hs-special">]</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-124"></span><span>
+</span><span id="line-125"></span><span class="annot"><a href="Reanimate.Driver.Check.html#hasMagick"><span class="hs-identifier hs-type">hasMagick</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-126"></span><span id="hasMagick"><span class="annot"><span class="annottext">hasMagick :: IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasMagick"><span class="hs-identifier hs-var hs-var">hasMagick</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Version -&gt; Maybe Version -&gt; Either String String
+</span><a href="Reanimate.Driver.Check.html#checkMinVersion"><span class="hs-identifier hs-var">checkMinVersion</span></a></span><span> </span><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540881"><span class="hs-identifier hs-var">minVersion</span></a></span><span> </span><span class="annot"><span class="annottext">(Maybe Version -&gt; Either String String)
+-&gt; IO (Maybe Version) -&gt; IO (Either String String)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">IO (Maybe Version)
+</span><a href="Reanimate.Driver.Check.html#magickVersion"><span class="hs-identifier hs-var">magickVersion</span></a></span><span>
+</span><span id="line-127"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-128"></span><span>    </span><span id="local-6989586621679540881"><span class="annot"><span class="annottext">minVersion :: Version
+</span><a href="#local-6989586621679540881"><span class="hs-identifier hs-var hs-var">minVersion</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Int] -&gt; [String] -&gt; Version
+</span><span class="hs-identifier hs-var">Version</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">6</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">]</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-129"></span><span>
+</span><span id="line-130"></span><span class="annot"><a href="Reanimate.Driver.Check.html#ffmpegVersion"><span class="hs-identifier hs-type">ffmpegVersion</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Version</span></span><span class="hs-special">)</span><span>
+</span><span id="line-131"></span><span id="ffmpegVersion"><span class="annot"><span class="annottext">ffmpegVersion :: IO (Maybe Version)
+</span><a href="Reanimate.Driver.Check.html#ffmpegVersion"><span class="hs-identifier hs-var hs-var">ffmpegVersion</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; (String -&gt; String) -&gt; IO (Maybe Version)
+</span><a href="Reanimate.Driver.Check.html#extractVersion"><span class="hs-identifier hs-var">extractVersion</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;ffmpeg&quot;</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;-version&quot;</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">((String -&gt; String) -&gt; IO (Maybe Version))
+-&gt; (String -&gt; String) -&gt; IO (Maybe Version)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679540878"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540878"><span class="hs-identifier hs-var">line</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-132"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Int -&gt; [String] -&gt; [String]
+forall a. Int -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">take</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span> </span><span class="annot"><span class="annottext">([String] -&gt; [String]) -&gt; [String] -&gt; [String]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; [String]
+</span><span class="hs-identifier hs-var">words</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540878"><span class="hs-identifier hs-var">line</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-133"></span><span>        </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;ffmpeg&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;version&quot;</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679540876"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540876"><span class="hs-identifier hs-var">vs</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540876"><span class="hs-identifier hs-var">vs</span></a></span><span>
+</span><span id="line-134"></span><span>        </span><span class="annot"><span class="annottext">[String]
+</span><span class="hs-identifier">_</span></span><span>                         </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-135"></span><span>
+</span><span id="line-136"></span><span class="annot"><a href="Reanimate.Driver.Check.html#blenderVersion"><span class="hs-identifier hs-type">blenderVersion</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Version</span></span><span class="hs-special">)</span><span>
+</span><span id="line-137"></span><span id="blenderVersion"><span class="annot"><span class="annottext">blenderVersion :: IO (Maybe Version)
+</span><a href="Reanimate.Driver.Check.html#blenderVersion"><span class="hs-identifier hs-var hs-var">blenderVersion</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; (String -&gt; String) -&gt; IO (Maybe Version)
+</span><a href="Reanimate.Driver.Check.html#extractVersion"><span class="hs-identifier hs-var">extractVersion</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;blender&quot;</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;--version&quot;</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">((String -&gt; String) -&gt; IO (Maybe Version))
+-&gt; (String -&gt; String) -&gt; IO (Maybe Version)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679540875"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540875"><span class="hs-identifier hs-var">line</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-138"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Int -&gt; [String] -&gt; [String]
+forall a. Int -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">take</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; [String]
+</span><span class="hs-identifier hs-var">words</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540875"><span class="hs-identifier hs-var">line</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-139"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Blender&quot;</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679540874"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540874"><span class="hs-identifier hs-var">vs</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540874"><span class="hs-identifier hs-var">vs</span></a></span><span>
+</span><span id="line-140"></span><span>      </span><span class="annot"><span class="annottext">[String]
+</span><span class="hs-identifier">_</span></span><span>               </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-141"></span><span>
+</span><span id="line-142"></span><span class="annot"><a href="Reanimate.Driver.Check.html#rsvgVersion"><span class="hs-identifier hs-type">rsvgVersion</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Version</span></span><span class="hs-special">)</span><span>
+</span><span id="line-143"></span><span id="rsvgVersion"><span class="annot"><span class="annottext">rsvgVersion :: IO (Maybe Version)
+</span><a href="Reanimate.Driver.Check.html#rsvgVersion"><span class="hs-identifier hs-var hs-var">rsvgVersion</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; (String -&gt; String) -&gt; IO (Maybe Version)
+</span><a href="Reanimate.Driver.Check.html#extractVersion"><span class="hs-identifier hs-var">extractVersion</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;rsvg-convert&quot;</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;--version&quot;</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">((String -&gt; String) -&gt; IO (Maybe Version))
+-&gt; (String -&gt; String) -&gt; IO (Maybe Version)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679540873"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540873"><span class="hs-identifier hs-var">line</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-144"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">String -&gt; [String]
+</span><span class="hs-identifier hs-var">words</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540873"><span class="hs-identifier hs-var">line</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-145"></span><span>    </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;rsvg-convert&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;version&quot;</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679540872"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540872"><span class="hs-identifier hs-var">vs</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540872"><span class="hs-identifier hs-var">vs</span></a></span><span>
+</span><span id="line-146"></span><span>    </span><span class="annot"><span class="annottext">[String]
+</span><span class="hs-identifier">_</span></span><span>                               </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-147"></span><span>
+</span><span id="line-148"></span><span class="annot"><a href="Reanimate.Driver.Check.html#inkscapeVersion"><span class="hs-identifier hs-type">inkscapeVersion</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Version</span></span><span class="hs-special">)</span><span>
+</span><span id="line-149"></span><span id="inkscapeVersion"><span class="annot"><span class="annottext">inkscapeVersion :: IO (Maybe Version)
+</span><a href="Reanimate.Driver.Check.html#inkscapeVersion"><span class="hs-identifier hs-var hs-var">inkscapeVersion</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; (String -&gt; String) -&gt; IO (Maybe Version)
+</span><a href="Reanimate.Driver.Check.html#extractVersion"><span class="hs-identifier hs-var">extractVersion</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;inkscape&quot;</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;--version&quot;</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">((String -&gt; String) -&gt; IO (Maybe Version))
+-&gt; (String -&gt; String) -&gt; IO (Maybe Version)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679540871"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540871"><span class="hs-identifier hs-var">line</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-150"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Int -&gt; [String] -&gt; [String]
+forall a. Int -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">take</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">([String] -&gt; [String]) -&gt; [String] -&gt; [String]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; [String]
+</span><span class="hs-identifier hs-var">words</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540871"><span class="hs-identifier hs-var">line</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-151"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Inkscape&quot;</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679540870"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540870"><span class="hs-identifier hs-var">vs</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540870"><span class="hs-identifier hs-var">vs</span></a></span><span>
+</span><span id="line-152"></span><span>      </span><span class="annot"><span class="annottext">[String]
+</span><span class="hs-identifier">_</span></span><span>                </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-153"></span><span>
+</span><span id="line-154"></span><span class="annot"><a href="Reanimate.Driver.Check.html#magickVersion"><span class="hs-identifier hs-type">magickVersion</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Version</span></span><span class="hs-special">)</span><span>
+</span><span id="line-155"></span><span id="magickVersion"><span class="annot"><span class="annottext">magickVersion :: IO (Maybe Version)
+</span><a href="Reanimate.Driver.Check.html#magickVersion"><span class="hs-identifier hs-var hs-var">magickVersion</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; (String -&gt; String) -&gt; IO (Maybe Version)
+</span><a href="Reanimate.Driver.Check.html#extractVersion"><span class="hs-identifier hs-var">extractVersion</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="Reanimate.Driver.Magick.html#magickCmd"><span class="hs-identifier hs-var">magickCmd</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;-version&quot;</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">((String -&gt; String) -&gt; IO (Maybe Version))
+-&gt; (String -&gt; String) -&gt; IO (Maybe Version)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679540869"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540869"><span class="hs-identifier hs-var">line</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-156"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Int -&gt; [String] -&gt; [String]
+forall a. Int -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">take</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span> </span><span class="annot"><span class="annottext">([String] -&gt; [String]) -&gt; [String] -&gt; [String]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; [String]
+</span><span class="hs-identifier hs-var">words</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540869"><span class="hs-identifier hs-var">line</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-157"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Version:&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;ImageMagick&quot;</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679540868"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540868"><span class="hs-identifier hs-var">vs</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540868"><span class="hs-identifier hs-var">vs</span></a></span><span>
+</span><span id="line-158"></span><span>      </span><span class="annot"><span class="annottext">[String]
+</span><span class="hs-identifier">_</span></span><span>                               </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-159"></span><span>
+</span><span id="line-160"></span><span class="annot"><a href="Reanimate.Driver.Check.html#checkMinVersion"><span class="hs-identifier hs-type">checkMinVersion</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Version</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Version</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-161"></span><span id="checkMinVersion"><span class="annot"><span class="annottext">checkMinVersion :: Version -&gt; Maybe Version -&gt; Either String String
+</span><a href="Reanimate.Driver.Check.html#checkMinVersion"><span class="hs-identifier hs-var hs-var">checkMinVersion</span></a></span></span><span> </span><span id="local-6989586621679540867"><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540867"><span class="hs-identifier hs-var">_minVersion</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe Version
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Either String String
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;no&quot;</span></span><span>
+</span><span id="line-162"></span><span class="annot"><a href="Reanimate.Driver.Check.html#checkMinVersion"><span class="hs-identifier hs-var">checkMinVersion</span></a></span><span> </span><span id="local-6989586621679540866"><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540866"><span class="hs-identifier hs-var">minVersion</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679540865"><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540865"><span class="hs-identifier hs-var">vs</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-163"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540865"><span class="hs-identifier hs-var">vs</span></a></span><span> </span><span class="annot"><span class="annottext">Version -&gt; Version -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540866"><span class="hs-identifier hs-var">minVersion</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Either String String
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Either String String) -&gt; String -&gt; Either String String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;too old: &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">Version -&gt; String
+</span><span class="hs-identifier hs-var">showVersion</span></span><span> </span><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540865"><span class="hs-identifier hs-var">vs</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; &lt; &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">Version -&gt; String
+</span><span class="hs-identifier hs-var">showVersion</span></span><span> </span><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540866"><span class="hs-identifier hs-var">minVersion</span></a></span><span>
+</span><span id="line-164"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Either String String
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Version -&gt; String
+</span><span class="hs-identifier hs-var">showVersion</span></span><span> </span><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540865"><span class="hs-identifier hs-var">vs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-165"></span><span>
+</span><span id="line-166"></span><span class="annot"><a href="Reanimate.Driver.Check.html#extractVersion"><span class="hs-identifier hs-type">extractVersion</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Version</span></span><span class="hs-special">)</span><span>
+</span><span id="line-167"></span><span id="extractVersion"><span class="annot"><span class="annottext">extractVersion :: String -&gt; [String] -&gt; (String -&gt; String) -&gt; IO (Maybe Version)
+</span><a href="Reanimate.Driver.Check.html#extractVersion"><span class="hs-identifier hs-var hs-var">extractVersion</span></a></span></span><span> </span><span id="local-6989586621679540862"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540862"><span class="hs-identifier hs-var">execPath</span></a></span></span><span> </span><span id="local-6989586621679540861"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679540861"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span id="local-6989586621679540860"><span class="annot"><span class="annottext">String -&gt; String
+</span><a href="#local-6989586621679540860"><span class="hs-identifier hs-var">outputFilter</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-168"></span><span>  </span><span id="local-6989586621679540859"><span class="annot"><span class="annottext">Maybe String
+</span><a href="#local-6989586621679540859"><span class="hs-identifier hs-var">mbPath</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO (Maybe String)
+</span><span class="hs-identifier hs-var">findExecutable</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540862"><span class="hs-identifier hs-var">execPath</span></a></span><span>
+</span><span id="line-169"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe String
+</span><a href="#local-6989586621679540859"><span class="hs-identifier hs-var">mbPath</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-170"></span><span>    </span><span class="annot"><span class="annottext">Maybe String
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Version -&gt; IO (Maybe Version)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Maybe Version
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-171"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679540858"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540858"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-172"></span><span>      </span><span id="local-6989586621679540857"><span class="annot"><span class="annottext">Either String String
+</span><a href="#local-6989586621679540857"><span class="hs-identifier hs-var">ret</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; IO (Either String String)
+</span><a href="Reanimate.Misc.html#runCmd_"><span class="hs-identifier hs-var">runCmd_</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540858"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679540861"><span class="hs-identifier hs-var">args</span></a></span><span>
+</span><span id="line-173"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Either String String
+</span><a href="#local-6989586621679540857"><span class="hs-identifier hs-var">ret</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-174"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span class="hs-special">{</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Version -&gt; IO (Maybe Version)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Version -&gt; IO (Maybe Version))
+-&gt; Maybe Version -&gt; IO (Maybe Version)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Version -&gt; Maybe Version
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540856"><span class="hs-identifier hs-var">noVersion</span></a></span><span>
+</span><span id="line-175"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679540855"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540855"><span class="hs-identifier hs-var">out</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-176"></span><span>          </span><span class="annot"><span class="annottext">Maybe Version -&gt; IO (Maybe Version)
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Version -&gt; IO (Maybe Version))
+-&gt; Maybe Version -&gt; IO (Maybe Version)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Version -&gt; Maybe Version
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(Version -&gt; Maybe Version) -&gt; Version -&gt; Maybe Version
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Version -&gt; Maybe Version -&gt; Version
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540856"><span class="hs-identifier hs-var">noVersion</span></a></span><span> </span><span class="annot"><span class="annottext">(Maybe Version -&gt; Version) -&gt; Maybe Version -&gt; Version
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Maybe Version
+</span><a href="#local-6989586621679540854"><span class="hs-identifier hs-var">parseVS</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Maybe Version) -&gt; String -&gt; Maybe Version
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+</span><a href="#local-6989586621679540860"><span class="hs-identifier hs-var">outputFilter</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540855"><span class="hs-identifier hs-var">out</span></a></span><span>
+</span><span id="line-177"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-178"></span><span>    </span><span id="local-6989586621679540856"><span class="annot"><span class="annottext">noVersion :: Version
+</span><a href="#local-6989586621679540856"><span class="hs-identifier hs-var hs-var">noVersion</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Int] -&gt; [String] -&gt; Version
+</span><span class="hs-identifier hs-var">Version</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-179"></span><span>    </span><span id="local-6989586621679540854"><span class="annot"><span class="annottext">parseVS :: String -&gt; Maybe Version
+</span><a href="#local-6989586621679540854"><span class="hs-identifier hs-var hs-var">parseVS</span></a></span></span><span> </span><span id="local-6989586621679540853"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540853"><span class="hs-identifier hs-var">vs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Version] -&gt; Maybe Version
+forall a. [a] -&gt; Maybe a
+</span><span class="hs-identifier hs-var">listToMaybe</span></span><span> </span><span class="annot"><span class="annottext">([Version] -&gt; Maybe Version) -&gt; [Version] -&gt; Maybe Version
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Version] -&gt; [Version]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span>
+</span><span id="line-180"></span><span>      </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540851"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679540851"><span class="annot"><span class="annottext">Version
+</span><a href="#local-6989586621679540851"><span class="hs-identifier hs-var">v</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ReadP Version -&gt; ReadS Version
+forall a. ReadP a -&gt; ReadS a
+</span><span class="hs-identifier hs-var">readP_to_S</span></span><span> </span><span class="annot"><span class="annottext">ReadP Version
+</span><span class="hs-identifier hs-var">parseVersion</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540853"><span class="hs-identifier hs-var">vs</span></a></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-181"></span><span>
+</span><span id="line-182"></span><span class="annot"><a href="Reanimate.Driver.Check.html#hasTeXPackage"><span class="hs-identifier hs-type">hasTeXPackage</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-183"></span><span id="hasTeXPackage"><span class="annot"><span class="annottext">hasTeXPackage :: String -&gt; String -&gt; IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasTeXPackage"><span class="hs-identifier hs-var hs-var">hasTeXPackage</span></a></span></span><span> </span><span id="local-6989586621679540850"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540850"><span class="hs-identifier hs-var">exec</span></a></span></span><span> </span><span id="local-6989586621679540849"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540849"><span class="hs-identifier hs-var">pkg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SomeException -&gt; IO (Either String String))
+-&gt; IO (Either String String) -&gt; IO (Either String String)
+forall e a. Exception e =&gt; (e -&gt; IO a) -&gt; IO a -&gt; IO a
+</span><span class="hs-identifier hs-var">handle</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="hs-special">(</span><span class="annot"><span class="annottext">SomeException
+</span><span class="hs-identifier">_</span></span><span class="hs-glyph">::</span><span class="annot"><span class="hs-identifier hs-type">SomeException</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either String String -&gt; IO (Either String String)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Either String String -&gt; IO (Either String String))
+-&gt; Either String String -&gt; IO (Either String String)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Either String String
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;n/a&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(IO (Either String String) -&gt; IO (Either String String))
+-&gt; IO (Either String String) -&gt; IO (Either String String)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-184"></span><span>    </span><span class="annot"><span class="annottext">String
+-&gt; (String -&gt; IO (Either String String))
+-&gt; IO (Either String String)
+forall (m :: * -&gt; *) a.
+(MonadIO m, MonadMask m) =&gt;
+String -&gt; (String -&gt; m a) -&gt; m a
+</span><span class="hs-identifier hs-var">withSystemTempDirectory</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;reanimate&quot;</span></span><span> </span><span class="annot"><span class="annottext">((String -&gt; IO (Either String String))
+ -&gt; IO (Either String String))
+-&gt; (String -&gt; IO (Either String String))
+-&gt; IO (Either String String)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679540848"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540848"><span class="hs-identifier hs-var">tmp_dir</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String
+-&gt; String
+-&gt; (String -&gt; Handle -&gt; IO (Either String String))
+-&gt; IO (Either String String)
+forall (m :: * -&gt; *) a.
+(MonadIO m, MonadMask m) =&gt;
+String -&gt; String -&gt; (String -&gt; Handle -&gt; m a) -&gt; m a
+</span><span class="hs-identifier hs-var">withTempFile</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540848"><span class="hs-identifier hs-var">tmp_dir</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;test.tex&quot;</span></span><span> </span><span class="annot"><span class="annottext">((String -&gt; Handle -&gt; IO (Either String String))
+ -&gt; IO (Either String String))
+-&gt; (String -&gt; Handle -&gt; IO (Either String String))
+-&gt; IO (Either String String)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679540847"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540847"><span class="hs-identifier hs-var">tex_file</span></a></span></span><span> </span><span id="local-6989586621679540846"><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679540846"><span class="hs-identifier hs-var">tex_handle</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-185"></span><span>      </span><span class="annot"><span class="annottext">Handle -&gt; String -&gt; IO ()
+</span><span class="hs-identifier hs-var">hPutStr</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679540846"><span class="hs-identifier hs-var">tex_handle</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540845"><span class="hs-identifier hs-var">tex_document</span></a></span><span>
+</span><span id="line-186"></span><span>      </span><span class="annot"><span class="annottext">Handle -&gt; String -&gt; IO ()
+</span><span class="hs-identifier hs-var">hPutStr</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679540846"><span class="hs-identifier hs-var">tex_handle</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; IO ()) -&gt; String -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;\\usepackage&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540849"><span class="hs-identifier hs-var">pkg</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;\n&quot;</span></span><span>
+</span><span id="line-187"></span><span>      </span><span class="annot"><span class="annottext">Handle -&gt; String -&gt; IO ()
+</span><span class="hs-identifier hs-var">hPutStr</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679540846"><span class="hs-identifier hs-var">tex_handle</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;\\begin{document}\n&quot;</span></span><span>
+</span><span id="line-188"></span><span>      </span><span class="annot"><span class="annottext">Handle -&gt; String -&gt; IO ()
+</span><span class="hs-identifier hs-var">hPutStr</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679540846"><span class="hs-identifier hs-var">tex_handle</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;blah\n&quot;</span></span><span>
+</span><span id="line-189"></span><span>      </span><span class="annot"><span class="annottext">Handle -&gt; String -&gt; IO ()
+</span><span class="hs-identifier hs-var">hPutStr</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679540846"><span class="hs-identifier hs-var">tex_handle</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540844"><span class="hs-identifier hs-var">tex_epilogue</span></a></span><span>
+</span><span id="line-190"></span><span>      </span><span class="annot"><span class="annottext">Handle -&gt; IO ()
+</span><span class="hs-identifier hs-var">hClose</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679540846"><span class="hs-identifier hs-var">tex_handle</span></a></span><span>
+</span><span id="line-191"></span><span>      </span><span id="local-6989586621679540843"><span class="annot"><span class="annottext">Either String String
+</span><a href="#local-6989586621679540843"><span class="hs-identifier hs-var">ret</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; IO (Either String String)
+</span><a href="Reanimate.Misc.html#runCmd_"><span class="hs-identifier hs-var">runCmd_</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540850"><span class="hs-identifier hs-var">exec</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;-interaction=batchmode&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;-halt-on-error&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;-output-directory=&quot;</span></span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540848"><span class="hs-identifier hs-var">tmp_dir</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540847"><span class="hs-identifier hs-var">tex_file</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-192"></span><span>      </span><span class="annot"><span class="annottext">Either String String -&gt; IO (Either String String)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Either String String -&gt; IO (Either String String))
+-&gt; Either String String -&gt; IO (Either String String)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Either String String
+</span><a href="#local-6989586621679540843"><span class="hs-identifier hs-var">ret</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-193"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span class="hs-special">{</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; Either String String
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;OK&quot;</span></span><span>
+</span><span id="line-194"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span class="hs-special">{</span><span class="hs-special">}</span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; Either String String
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;missing&quot;</span></span><span>
+</span><span id="line-195"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-196"></span><span>    </span><span id="local-6989586621679540845"><span class="annot"><span class="annottext">tex_document :: String
+</span><a href="#local-6989586621679540845"><span class="hs-identifier hs-var hs-var">tex_document</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;\\documentclass[preview]{standalone}\n&quot;</span></span><span>
+</span><span id="line-197"></span><span>    </span><span id="local-6989586621679540844"><span class="annot"><span class="annottext">tex_epilogue :: String
+</span><a href="#local-6989586621679540844"><span class="hs-identifier hs-var hs-var">tex_epilogue</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-198"></span><span>      </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;\n\
+      \\\end{document}&quot;</span></span><span>
+</span><span id="line-200"></span><span>
+</span><span id="line-201"></span><span class="annot"><a href="Reanimate.Driver.Check.html#hasProgram"><span class="hs-identifier hs-type">hasProgram</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-202"></span><span id="hasProgram"><span class="annot"><span class="annottext">hasProgram :: String -&gt; IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasProgram"><span class="hs-identifier hs-var hs-var">hasProgram</span></a></span></span><span> </span><span id="local-6989586621679540842"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540842"><span class="hs-identifier hs-var">exec</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-203"></span><span>  </span><span id="local-6989586621679540841"><span class="annot"><span class="annottext">Maybe String
+</span><a href="#local-6989586621679540841"><span class="hs-identifier hs-var">mbPath</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO (Maybe String)
+</span><span class="hs-identifier hs-var">findExecutable</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540842"><span class="hs-identifier hs-var">exec</span></a></span><span>
+</span><span id="line-204"></span><span>  </span><span class="annot"><span class="annottext">Either String String -&gt; IO (Either String String)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Either String String -&gt; IO (Either String String))
+-&gt; Either String String -&gt; IO (Either String String)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe String
+</span><a href="#local-6989586621679540841"><span class="hs-identifier hs-var">mbPath</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-205"></span><span>    </span><span class="annot"><span class="annottext">Maybe String
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; Either String String
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Either String String) -&gt; String -&gt; Either String String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;'&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540842"><span class="hs-identifier hs-var">exec</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;' not found&quot;</span></span><span>
+</span><span id="line-206"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679540840"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540840"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; Either String String
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679540840"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-207"></span></pre></body></html>

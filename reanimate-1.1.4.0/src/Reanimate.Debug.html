@@ -1,0 +1,208 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Copyright   : Written by David Himmelstrup
+License     : Unlicense
+Maintainer  : lemmih@gmail.com
+Stability   : experimental
+Portability : POSIX
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Debug</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Debug.html#traceSVG"><span class="hs-identifier">traceSVG</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Debug.html#traceA"><span class="hs-identifier">traceA</span></a></span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Debug.html#playTraces"><span class="hs-identifier">playTraces</span></a></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Exception</span></span><span>   </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">evaluate</span></span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.IORef</span></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">IORef</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">atomicModifyIORef'</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">modifyIORef'</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">newIORef</span></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>           </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Animation.html"><span class="hs-identifier">Reanimate.Animation</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Animation.html#Animation"><span class="hs-identifier">Animation</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier">SVG</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#duration"><span class="hs-identifier">duration</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#parA"><span class="hs-identifier">parA</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#pause"><span class="hs-identifier">pause</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#seqA"><span class="hs-identifier">seqA</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#staticFrame"><span class="hs-identifier">staticFrame</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Constants.html"><span class="hs-identifier">Reanimate.Constants</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Constants.html#defaultStrokeWidth"><span class="hs-identifier">defaultStrokeWidth</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.LaTeX.html"><span class="hs-identifier">Reanimate.LaTeX</span></a></span><span>     </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.LaTeX.html#latex"><span class="hs-identifier">latex</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Svg.html"><span class="hs-identifier">Reanimate.Svg</span></a></span><span>       </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Svg.Constructors.html#center"><span class="hs-identifier">center</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.Constructors.html#mkGroup"><span class="hs-identifier">mkGroup</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.Constructors.html#translate"><span class="hs-identifier">translate</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.Constructors.html#withFillColor"><span class="hs-identifier">withFillColor</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.Constructors.html#withStrokeColor"><span class="hs-identifier">withStrokeColor</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-22"></span><span>                                      </span><span class="annot"><a href="Reanimate.Svg.Constructors.html#withStrokeWidth"><span class="hs-identifier">withStrokeWidth</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO.Unsafe</span></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">unsafePerformIO</span></span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Text.Printf</span></span><span>         </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">printf</span></span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Debug.html#traceBuffer"><span class="hs-pragma hs-type">traceBuffer</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-27"></span><span class="annot"><a href="Reanimate.Debug.html#traceBuffer"><span class="hs-identifier hs-type">traceBuffer</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IORef</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Reanimate.Animation.html#Animation"><span class="hs-identifier hs-type">Animation</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-28"></span><span id="traceBuffer"><span class="annot"><span class="annottext">traceBuffer :: IORef [Animation]
+</span><a href="Reanimate.Debug.html#traceBuffer"><span class="hs-identifier hs-var hs-var">traceBuffer</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO (IORef [Animation]) -&gt; IORef [Animation]
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Animation] -&gt; IO (IORef [Animation])
+forall a. a -&gt; IO (IORef a)
+</span><span class="hs-identifier hs-var">newIORef</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Debug.html#traceSVG"><span class="hs-pragma hs-type">traceSVG</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- | Add SVG image to trace stack.</span><span>
+</span><span id="line-32"></span><span id="local-6989586621679546523"><span class="annot"><a href="Reanimate.Debug.html#traceSVG"><span class="hs-identifier hs-type">traceSVG</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679546523"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679546523"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-33"></span><span id="traceSVG"><span class="annot"><span class="annottext">traceSVG :: SVG -&gt; a -&gt; a
+</span><a href="Reanimate.Debug.html#traceSVG"><span class="hs-identifier hs-var hs-var">traceSVG</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Animation -&gt; a -&gt; a
+forall a. Animation -&gt; a -&gt; a
+</span><a href="Reanimate.Debug.html#traceA"><span class="hs-identifier hs-var">traceA</span></a></span><span> </span><span class="annot"><span class="annottext">(Animation -&gt; a -&gt; a) -&gt; (SVG -&gt; Animation) -&gt; SVG -&gt; a -&gt; a
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; SVG -&gt; Animation
+</span><a href="Reanimate.Animation.html#staticFrame"><span class="hs-identifier hs-var">staticFrame</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Duration -&gt; Duration
+forall a. Fractional a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">recip</span></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><span class="hs-number">60</span></span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Debug.html#traceA"><span class="hs-pragma hs-type">traceA</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- | Add animation to trace stack.</span><span>
+</span><span id="line-37"></span><span id="local-6989586621679546577"><span class="annot"><a href="Reanimate.Debug.html#traceA"><span class="hs-identifier hs-type">traceA</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Animation"><span class="hs-identifier hs-type">Animation</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679546577"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679546577"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-38"></span><span id="traceA"><span class="annot"><span class="annottext">traceA :: Animation -&gt; a -&gt; a
+</span><a href="Reanimate.Debug.html#traceA"><span class="hs-identifier hs-var hs-var">traceA</span></a></span></span><span> </span><span id="local-6989586621679546520"><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679546520"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679546519"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546519"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO a -&gt; a
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO a -&gt; a) -&gt; IO a -&gt; a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-39"></span><span>  </span><span class="annot"><span class="annottext">IORef [Animation] -&gt; ([Animation] -&gt; [Animation]) -&gt; IO ()
+forall a. IORef a -&gt; (a -&gt; a) -&gt; IO ()
+</span><span class="hs-identifier hs-var">modifyIORef'</span></span><span> </span><span class="annot"><span class="annottext">IORef [Animation]
+</span><a href="Reanimate.Debug.html#traceBuffer"><span class="hs-identifier hs-var">traceBuffer</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679546520"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Animation -&gt; [Animation] -&gt; [Animation]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span><span>  </span><span class="annot"><span class="annottext">a -&gt; IO a
+forall a. a -&gt; IO a
+</span><span class="hs-identifier hs-var">evaluate</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546519"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.Debug.html#playTraces"><span class="hs-pragma hs-type">playTraces</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-43"></span><span class="hs-comment">-- | Evaluate argument and play back the trace stack.</span><span>
+</span><span id="line-44"></span><span id="local-6989586621679546518"><span class="annot"><a href="Reanimate.Debug.html#playTraces"><span class="hs-identifier hs-type">playTraces</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679546518"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Animation"><span class="hs-identifier hs-type">Animation</span></a></span></span><span>
+</span><span id="line-45"></span><span id="playTraces"><span class="annot"><span class="annottext">playTraces :: a -&gt; Animation
+</span><a href="Reanimate.Debug.html#playTraces"><span class="hs-identifier hs-var hs-var">playTraces</span></a></span></span><span> </span><span id="local-6989586621679546517"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546517"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO Animation -&gt; Animation
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO Animation -&gt; Animation) -&gt; IO Animation -&gt; Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-46"></span><span>  </span><span class="annot"><span class="annottext">a
+</span><span class="hs-identifier">_</span></span><span>   </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">a -&gt; IO a
+forall a. a -&gt; IO a
+</span><span class="hs-identifier hs-var">evaluate</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546517"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-47"></span><span>  </span><span id="local-6989586621679546516"><span class="annot"><span class="annottext">[Animation]
+</span><a href="#local-6989586621679546516"><span class="hs-identifier hs-var">lst</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IORef [Animation]
+-&gt; ([Animation] -&gt; ([Animation], [Animation])) -&gt; IO [Animation]
+forall a b. IORef a -&gt; (a -&gt; (a, b)) -&gt; IO b
+</span><span class="hs-identifier hs-var">atomicModifyIORef'</span></span><span> </span><span class="annot"><span class="annottext">IORef [Animation]
+</span><a href="Reanimate.Debug.html#traceBuffer"><span class="hs-identifier hs-var">traceBuffer</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679546515"><span class="annot"><span class="annottext">[Animation]
+</span><a href="#local-6989586621679546515"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Animation] -&gt; [Animation]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="annot"><span class="annottext">[Animation]
+</span><a href="#local-6989586621679546515"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-48"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679546513"><span class="annot"><span class="annottext">n :: Int
+</span><a href="#local-6989586621679546513"><span class="hs-identifier hs-var hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Animation] -&gt; Int
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Int
+</span><span class="hs-identifier hs-var">length</span></span><span> </span><span class="annot"><span class="annottext">[Animation]
+</span><a href="#local-6989586621679546516"><span class="hs-identifier hs-var">lst</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-49"></span><span>  </span><span class="annot"><span class="annottext">Animation -&gt; IO Animation
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Animation -&gt; IO Animation) -&gt; Animation -&gt; IO Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Animation -&gt; Animation -&gt; Animation)
+-&gt; Animation -&gt; [Animation] -&gt; Animation
+forall (t :: * -&gt; *) a b.
+Foldable t =&gt;
+(a -&gt; b -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldr</span></span><span>
+</span><span id="line-50"></span><span>    </span><span class="annot"><span class="annottext">Animation -&gt; Animation -&gt; Animation
+</span><a href="Reanimate.Animation.html#seqA"><span class="hs-identifier hs-var">seqA</span></a></span><span>
+</span><span id="line-51"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Duration -&gt; Animation
+</span><a href="Reanimate.Animation.html#pause"><span class="hs-identifier hs-var">pause</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span>
+</span><span id="line-52"></span><span>    </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679546510"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">Animation -&gt; Animation -&gt; Animation
+</span><a href="Reanimate.Animation.html#parA"><span class="hs-operator hs-var">`parA`</span></a></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; SVG -&gt; Animation
+</span><a href="Reanimate.Animation.html#staticFrame"><span class="hs-identifier hs-var">staticFrame</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Animation -&gt; Duration
+</span><a href="Reanimate.Animation.html#duration"><span class="hs-identifier hs-var">duration</span></a></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679546510"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; SVG
+forall t t. (PrintfArg t, PrintfArg t) =&gt; t -&gt; t -&gt; SVG
+</span><a href="#local-6989586621679546509"><span class="hs-identifier hs-var">counter</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679546508"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679546513"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679546508"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679546508"><span class="hs-identifier hs-var">i</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546510"><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679546510"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Int] -&gt; [Animation] -&gt; [(Int, Animation)]
+forall a b. [a] -&gt; [b] -&gt; [(a, b)]
+</span><span class="hs-identifier hs-var">zip</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">..</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[Animation]
+</span><a href="#local-6989586621679546516"><span class="hs-identifier hs-var">lst</span></a></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-53"></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-54"></span><span>  </span><span id="local-6989586621679546509"><span class="annot"><span class="annottext">counter :: t -&gt; t -&gt; SVG
+</span><a href="#local-6989586621679546509"><span class="hs-identifier hs-var hs-var">counter</span></a></span></span><span> </span><span id="local-6989586621679546507"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679546507"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679546506"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679546506"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[SVG] -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#mkGroup"><span class="hs-identifier hs-var">mkGroup</span></a></span><span>
+</span><span id="line-55"></span><span>    </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Duration -&gt; SVG -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#withStrokeWidth"><span class="hs-identifier hs-var">withStrokeWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="Reanimate.Constants.html#defaultStrokeWidth"><span class="hs-identifier hs-var">defaultStrokeWidth</span></a></span><span>
+</span><span id="line-56"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; SVG -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#withStrokeColor"><span class="hs-identifier hs-var">withStrokeColor</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;black&quot;</span></span><span>
+</span><span id="line-57"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; SVG -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#translate"><span class="hs-identifier hs-var">translate</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><span class="hs-number">6.5</span></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><span class="hs-number">4</span></span><span>
+</span><span id="line-58"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#center"><span class="hs-identifier hs-var">center</span></a></span><span>
+</span><span id="line-59"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#latex"><span class="hs-identifier hs-var">latex</span></a></span><span>
+</span><span id="line-60"></span><span>    </span><span class="annot"><span class="annottext">(Text -&gt; SVG) -&gt; Text -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span>
+</span><span id="line-61"></span><span>    </span><span class="annot"><span class="annottext">(String -&gt; Text) -&gt; String -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; t -&gt; t -&gt; String
+forall r. PrintfType r =&gt; String -&gt; r
+</span><span class="hs-identifier hs-var">printf</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;%d/%d&quot;</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679546507"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679546506"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-62"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Duration -&gt; SVG -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#withStrokeWidth"><span class="hs-identifier hs-var">withStrokeWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-63"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; SVG -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#withFillColor"><span class="hs-identifier hs-var">withFillColor</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;white&quot;</span></span><span>
+</span><span id="line-64"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; SVG -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#translate"><span class="hs-identifier hs-var">translate</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><span class="hs-number">6.5</span></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><span class="hs-number">4</span></span><span>
+</span><span id="line-65"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#center"><span class="hs-identifier hs-var">center</span></a></span><span>
+</span><span id="line-66"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#latex"><span class="hs-identifier hs-var">latex</span></a></span><span>
+</span><span id="line-67"></span><span>    </span><span class="annot"><span class="annottext">(Text -&gt; SVG) -&gt; Text -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span>
+</span><span id="line-68"></span><span>    </span><span class="annot"><span class="annottext">(String -&gt; Text) -&gt; String -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; t -&gt; t -&gt; String
+forall r. PrintfType r =&gt; String -&gt; r
+</span><span class="hs-identifier hs-var">printf</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;%d/%d&quot;</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679546507"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679546506"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-69"></span><span>    </span><span class="hs-special">]</span><span>
+</span><span id="line-70"></span></pre></body></html>

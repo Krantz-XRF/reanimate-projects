@@ -1,0 +1,227 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">-- | Module providing basic input/output for the SVG document,</span><span>
+</span><span id="line-2"></span><span class="hs-comment">-- for document building, please refer to Graphics.Svg.Types.</span><span>
+</span><span id="line-3"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Graphics.SvgTree</span><span>
+</span><span id="line-4"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-comment">-- * Saving/Loading functions</span></span><span>
+</span><span id="line-5"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.html#loadSvgFile"><span class="hs-identifier">loadSvgFile</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-6"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.html#parseSvgFile"><span class="hs-identifier">parseSvgFile</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-7"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.html#parseSvg"><span class="hs-identifier">parseSvg</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-8"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.XmlParser.html#unparse"><span class="hs-identifier">unparse</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-9"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.XmlParser.html#xmlOfDocument"><span class="hs-identifier">xmlOfDocument</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.XmlParser.html#xmlOfTree"><span class="hs-identifier">xmlOfTree</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.html#saveXmlFile"><span class="hs-identifier">saveXmlFile</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-12"></span><span>
+</span><span id="line-13"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Manipulation functions</span></span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.html#cssApply"><span class="hs-identifier">cssApply</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-15"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#cssRulesOfText"><span class="hs-identifier">cssRulesOfText</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-16"></span><span>    </span><span class="hs-comment">-- , applyCSSRules</span><span>
+</span><span id="line-17"></span><span>    </span><span class="hs-comment">-- , resolveUses</span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Type definitions</span></span><span>
+</span><span id="line-20"></span><span>    </span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Graphics.SvgTree.Types.html"><span class="hs-identifier">Graphics.SvgTree.Types</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-21"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">foldl'</span></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.IO</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssParser.html"><span class="hs-identifier">Graphics.SvgTree.CssParser</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#cssRulesOfText"><span class="hs-identifier">cssRulesOfText</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html"><span class="hs-identifier">Graphics.SvgTree.CssTypes</span></a></span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Graphics.SvgTree.Types.html"><span class="hs-identifier">Graphics.SvgTree.Types</span></a></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Graphics.SvgTree.XmlParser.html"><span class="hs-identifier">Graphics.SvgTree.XmlParser</span></a></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Text.XML.Light.Input</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">parseXMLDoc</span></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Text.XML.Light.Output</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">ppcTopElement</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">prettyConfigPP</span></span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="hs-comment">-- | Try to load an svg file on disc and parse it as</span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- a SVG Document.</span><span>
+</span><span id="line-37"></span><span class="annot"><a href="Graphics.SvgTree.html#loadSvgFile"><span class="hs-identifier hs-type">loadSvgFile</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Graphics.SvgTree.Types.Internal.html#Document"><span class="hs-identifier hs-type">Document</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span id="loadSvgFile"><span class="annot"><span class="annottext">loadSvgFile :: FilePath -&gt; IO (Maybe Document)
+</span><a href="Graphics.SvgTree.html#loadSvgFile"><span class="hs-identifier hs-var hs-var">loadSvgFile</span></a></span></span><span> </span><span id="local-6989586621679490845"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679490845"><span class="hs-identifier hs-var">filename</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-39"></span><span>  </span><span class="annot"><span class="annottext">FilePath -&gt; Text -&gt; Maybe Document
+</span><a href="Graphics.SvgTree.html#parseSvgFile"><span class="hs-identifier hs-var">parseSvgFile</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679490845"><span class="hs-identifier hs-var">filename</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Maybe Document) -&gt; IO Text -&gt; IO (Maybe Document)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO Text
+</span><span class="hs-identifier hs-var">T.readFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679490845"><span class="hs-identifier hs-var">filename</span></a></span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span class="hs-comment">-- | Parse an in-memory SVG file</span><span>
+</span><span id="line-42"></span><span class="annot"><a href="Graphics.SvgTree.html#parseSvgFile"><span class="hs-identifier hs-type">parseSvgFile</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-43"></span><span>  </span><span class="hs-comment">-- | Source path/URL of the document, used</span><span>
+</span><span id="line-44"></span><span>  </span><span class="hs-comment">-- to resolve relative links.</span><span>
+</span><span id="line-45"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-46"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-47"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Graphics.SvgTree.Types.Internal.html#Document"><span class="hs-identifier hs-type">Document</span></a></span><span>
+</span><span id="line-48"></span><span id="parseSvgFile"><span class="annot"><span class="annottext">parseSvgFile :: FilePath -&gt; Text -&gt; Maybe Document
+</span><a href="Graphics.SvgTree.html#parseSvgFile"><span class="hs-identifier hs-var hs-var">parseSvgFile</span></a></span></span><span> </span><span id="local-6989586621679490842"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679490842"><span class="hs-identifier hs-var">filename</span></a></span></span><span> </span><span id="local-6989586621679490841"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679490841"><span class="hs-identifier hs-var">fileContent</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-49"></span><span>  </span><span class="annot"><span class="annottext">Text -&gt; Maybe Element
+forall s. XmlSource s =&gt; s -&gt; Maybe Element
+</span><span class="hs-identifier hs-var">parseXMLDoc</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679490841"><span class="hs-identifier hs-var">fileContent</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Element -&gt; (Element -&gt; Maybe Document) -&gt; Maybe Document
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; Element -&gt; Maybe Document
+</span><a href="Graphics.SvgTree.XmlParser.html#unparseDocument"><span class="hs-identifier hs-var">unparseDocument</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679490842"><span class="hs-identifier hs-var">filename</span></a></span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span class="annot"><a href="Graphics.SvgTree.html#parseSvg"><span class="hs-identifier hs-type">parseSvg</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Graphics.SvgTree.Types.Internal.html#Tree"><span class="hs-identifier hs-type">Tree</span></a></span><span>
+</span><span id="line-52"></span><span id="parseSvg"><span class="annot"><span class="annottext">parseSvg :: Text -&gt; Tree
+</span><a href="Graphics.SvgTree.html#parseSvg"><span class="hs-identifier hs-var hs-var">parseSvg</span></a></span></span><span> </span><span id="local-6989586621679490839"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679490839"><span class="hs-identifier hs-var">inp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-53"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Maybe Element
+forall s. XmlSource s =&gt; s -&gt; Maybe Element
+</span><span class="hs-identifier hs-var">parseXMLDoc</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679490839"><span class="hs-identifier hs-var">inp</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-54"></span><span>    </span><span class="annot"><span class="annottext">Maybe Element
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; Tree
+forall a. HasCallStack =&gt; FilePath -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;Invalid XML&quot;</span></span><span>
+</span><span id="line-55"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679490837"><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679490837"><span class="hs-identifier hs-var">xml</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Element -&gt; Tree
+</span><a href="Graphics.SvgTree.XmlParser.html#unparse"><span class="hs-identifier hs-var">unparse</span></a></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679490837"><span class="hs-identifier hs-var">xml</span></a></span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span class="hs-comment">-- | Save a svg Document to a file on disk.</span><span>
+</span><span id="line-58"></span><span class="annot"><a href="Graphics.SvgTree.html#saveXmlFile"><span class="hs-identifier hs-type">saveXmlFile</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Graphics.SvgTree.Types.Internal.html#Document"><span class="hs-identifier hs-type">Document</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-59"></span><span id="saveXmlFile"><span class="annot"><span class="annottext">saveXmlFile :: FilePath -&gt; Document -&gt; IO ()
+</span><a href="Graphics.SvgTree.html#saveXmlFile"><span class="hs-identifier hs-var hs-var">saveXmlFile</span></a></span></span><span> </span><span id="local-6989586621679490836"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679490836"><span class="hs-identifier hs-var">filePath</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-60"></span><span>  </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; IO ()
+</span><span class="hs-identifier hs-var">writeFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679490836"><span class="hs-identifier hs-var">filePath</span></a></span><span> </span><span class="annot"><span class="annottext">(FilePath -&gt; IO ()) -&gt; (Document -&gt; FilePath) -&gt; Document -&gt; IO ()
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">ConfigPP -&gt; Element -&gt; FilePath
+</span><span class="hs-identifier hs-var">ppcTopElement</span></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><span class="hs-identifier hs-var">prettyConfigPP</span></span><span> </span><span class="annot"><span class="annottext">(Element -&gt; FilePath)
+-&gt; (Document -&gt; Element) -&gt; Document -&gt; FilePath
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Document -&gt; Element
+</span><a href="Graphics.SvgTree.XmlParser.html#xmlOfDocument"><span class="hs-identifier hs-var">xmlOfDocument</span></a></span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span class="annot"><a href="Graphics.SvgTree.html#cssDeclApplyer"><span class="hs-identifier hs-type">cssDeclApplyer</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-63"></span><span>  </span><span class="annot"><a href="Graphics.SvgTree.Types.Internal.html#DrawAttributes"><span class="hs-identifier hs-type">DrawAttributes</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-64"></span><span>  </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDeclaration"><span class="hs-identifier hs-type">CssDeclaration</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-65"></span><span>  </span><span class="annot"><a href="Graphics.SvgTree.Types.Internal.html#DrawAttributes"><span class="hs-identifier hs-type">DrawAttributes</span></a></span><span>
+</span><span id="line-66"></span><span id="cssDeclApplyer"><span class="annot"><span class="annottext">cssDeclApplyer :: DrawAttributes -&gt; CssDeclaration -&gt; DrawAttributes
+</span><a href="Graphics.SvgTree.html#cssDeclApplyer"><span class="hs-identifier hs-var hs-var">cssDeclApplyer</span></a></span></span><span> </span><span id="local-6989586621679490832"><span class="annot"><span class="annottext">DrawAttributes
+</span><a href="#local-6989586621679490832"><span class="hs-identifier hs-var">value</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDeclaration"><span class="hs-identifier hs-type">CssDeclaration</span></a></span><span> </span><span id="local-6989586621679490830"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679490830"><span class="hs-identifier hs-var">txt</span></a></span></span><span> </span><span id="local-6989586621679490829"><span class="annot"><span class="annottext">[[CssElement]]
+</span><a href="#local-6989586621679490829"><span class="hs-identifier hs-var">elems</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-67"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Text
+-&gt; [(Text, CssUpdater DrawAttributes)]
+-&gt; Maybe (CssUpdater DrawAttributes)
+forall a b. Eq a =&gt; a -&gt; [(a, b)] -&gt; Maybe b
+</span><span class="hs-identifier hs-var">lookup</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679490830"><span class="hs-identifier hs-var">txt</span></a></span><span> </span><span class="annot"><span class="annottext">[(Text, CssUpdater DrawAttributes)]
+</span><a href="#local-6989586621679490827"><span class="hs-identifier hs-var">cssUpdaters</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-68"></span><span>    </span><span class="annot"><span class="annottext">Maybe (CssUpdater DrawAttributes)
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">DrawAttributes
+</span><a href="#local-6989586621679490832"><span class="hs-identifier hs-var">value</span></a></span><span>
+</span><span id="line-69"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679490826"><span class="annot"><span class="annottext">CssUpdater DrawAttributes
+</span><a href="#local-6989586621679490826"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">CssUpdater DrawAttributes
+</span><a href="#local-6989586621679490826"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">DrawAttributes
+</span><a href="#local-6989586621679490832"><span class="hs-identifier hs-var">value</span></a></span><span> </span><span class="annot"><span class="annottext">[[CssElement]]
+</span><a href="#local-6989586621679490829"><span class="hs-identifier hs-var">elems</span></a></span><span>
+</span><span id="line-70"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-71"></span><span>    </span><span id="local-6989586621679490827"><span class="annot"><span class="annottext">cssUpdaters :: [(Text, CssUpdater DrawAttributes)]
+</span><a href="#local-6989586621679490827"><span class="hs-identifier hs-var hs-var">cssUpdaters</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-72"></span><span>      </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FilePath -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="annottext">(FilePath -&gt; Text) -&gt; FilePath -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">SvgAttributeLens DrawAttributes -&gt; FilePath
+forall t. SvgAttributeLens t -&gt; FilePath
+</span><a href="Graphics.SvgTree.XmlParser.html#_attributeName"><span class="hs-identifier hs-var hs-var">_attributeName</span></a></span><span> </span><span class="annot"><span class="annottext">SvgAttributeLens DrawAttributes
+</span><a href="#local-6989586621679490823"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">CssUpdater DrawAttributes
+</span><a href="#local-6989586621679490822"><span class="hs-identifier hs-var">u</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-73"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679490823"><span class="annot"><span class="annottext">SvgAttributeLens DrawAttributes
+</span><a href="#local-6989586621679490823"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679490822"><span class="annot"><span class="annottext">CssUpdater DrawAttributes
+</span><a href="#local-6989586621679490822"><span class="hs-identifier hs-var">u</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[(SvgAttributeLens DrawAttributes, CssUpdater DrawAttributes)]
+</span><a href="Graphics.SvgTree.XmlParser.html#drawAttributesList"><span class="hs-identifier hs-var">drawAttributesList</span></a></span><span>
+</span><span id="line-74"></span><span>      </span><span class="hs-special">]</span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span class="hs-comment">-- | Rewrite a SVG Tree using some CSS rules.</span><span>
+</span><span id="line-77"></span><span class="hs-comment">--</span><span>
+</span><span id="line-78"></span><span class="hs-comment">-- This action will propagate the definition of the</span><span>
+</span><span id="line-79"></span><span class="hs-comment">-- css directly in each matched element.</span><span>
+</span><span id="line-80"></span><span class="annot"><a href="Graphics.SvgTree.html#cssApply"><span class="hs-identifier hs-type">cssApply</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssRule"><span class="hs-identifier hs-type">CssRule</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Graphics.SvgTree.Types.Internal.html#Tree"><span class="hs-identifier hs-type">Tree</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Graphics.SvgTree.Types.Internal.html#Tree"><span class="hs-identifier hs-type">Tree</span></a></span><span>
+</span><span id="line-81"></span><span id="cssApply"><span class="annot"><span class="annottext">cssApply :: [CssRule] -&gt; Tree -&gt; Tree
+</span><a href="Graphics.SvgTree.html#cssApply"><span class="hs-identifier hs-var hs-var">cssApply</span></a></span></span><span> </span><span id="local-6989586621679490820"><span class="annot"><span class="annottext">[CssRule]
+</span><a href="#local-6989586621679490820"><span class="hs-identifier hs-var">rules</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">([[Tree]] -&gt; Tree) -&gt; Tree -&gt; Tree
+</span><a href="Graphics.SvgTree.Types.Fold.html#zipTree"><span class="hs-identifier hs-var">zipTree</span></a></span><span> </span><span class="annot"><span class="annottext">[[Tree]] -&gt; Tree
+forall p.
+(WithDefaultSvg p, HasDrawAttributes p, CssMatcheable p) =&gt;
+[[p]] -&gt; p
+</span><a href="#local-6989586621679490818"><span class="hs-identifier hs-var">go</span></a></span><span>
+</span><span id="line-82"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-83"></span><span>    </span><span id="local-6989586621679490818"><span class="annot"><span class="annottext">go :: [[p]] -&gt; p
+</span><a href="#local-6989586621679490818"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">p
+forall a. WithDefaultSvg a =&gt; a
+</span><a href="Graphics.SvgTree.Types.Internal.html#defaultSvg"><span class="hs-identifier hs-var">defaultSvg</span></a></span><span>
+</span><span id="line-84"></span><span>    </span><span class="annot"><a href="#local-6989586621679490818"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span class="annot"><span class="annottext">[[p]]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">p
+forall a. WithDefaultSvg a =&gt; a
+</span><a href="Graphics.SvgTree.Types.Internal.html#defaultSvg"><span class="hs-identifier hs-var">defaultSvg</span></a></span><span>
+</span><span id="line-85"></span><span>    </span><span class="annot"><a href="#local-6989586621679490818"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679490816"><span class="annot"><span class="annottext">context :: [[p]]
+</span><a href="#local-6989586621679490816"><span class="hs-identifier hs-var">context</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679490815"><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679490815"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span class="annot"><span class="annottext">[p]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span class="annot"><span class="annottext">[[p]]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679490815"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">p -&gt; (p -&gt; p) -&gt; p
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">(DrawAttributes -&gt; Identity DrawAttributes) -&gt; p -&gt; Identity p
+forall c. HasDrawAttributes c =&gt; Lens' c DrawAttributes
+</span><a href="Graphics.SvgTree.Types.Internal.html#drawAttributes"><span class="hs-identifier hs-var">drawAttributes</span></a></span><span> </span><span class="annot"><span class="annottext">((DrawAttributes -&gt; Identity DrawAttributes) -&gt; p -&gt; Identity p)
+-&gt; DrawAttributes -&gt; p -&gt; p
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">DrawAttributes
+</span><a href="#local-6989586621679490811"><span class="hs-identifier hs-var">attr'</span></a></span><span>
+</span><span id="line-86"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-87"></span><span>        </span><span id="local-6989586621679490810"><span class="annot"><span class="annottext">matchingDeclarations :: [CssDeclaration]
+</span><a href="#local-6989586621679490810"><span class="hs-identifier hs-var hs-var">matchingDeclarations</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-88"></span><span>          </span><span class="annot"><span class="annottext">[CssRule] -&gt; [[p]] -&gt; [CssDeclaration]
+forall a.
+CssMatcheable a =&gt;
+[CssRule] -&gt; CssContext a -&gt; [CssDeclaration]
+</span><a href="Graphics.SvgTree.CssTypes.html#findMatchingDeclarations"><span class="hs-identifier hs-var">findMatchingDeclarations</span></a></span><span> </span><span class="annot"><span class="annottext">[CssRule]
+</span><a href="#local-6989586621679490820"><span class="hs-identifier hs-var">rules</span></a></span><span> </span><span class="annot"><span class="annottext">[[p]]
+</span><a href="#local-6989586621679490816"><span class="hs-identifier hs-var">context</span></a></span><span>
+</span><span id="line-89"></span><span>        </span><span id="local-6989586621679490808"><span class="annot"><span class="annottext">attr :: DrawAttributes
+</span><a href="#local-6989586621679490808"><span class="hs-identifier hs-var hs-var">attr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Getting DrawAttributes p DrawAttributes -&gt; p -&gt; DrawAttributes
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting DrawAttributes p DrawAttributes
+forall c. HasDrawAttributes c =&gt; Lens' c DrawAttributes
+</span><a href="Graphics.SvgTree.Types.Internal.html#drawAttributes"><span class="hs-identifier hs-var">drawAttributes</span></a></span><span> </span><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679490815"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-90"></span><span>        </span><span id="local-6989586621679490811"><span class="annot"><span class="annottext">attr' :: DrawAttributes
+</span><a href="#local-6989586621679490811"><span class="hs-identifier hs-var hs-var">attr'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(DrawAttributes -&gt; CssDeclaration -&gt; DrawAttributes)
+-&gt; DrawAttributes -&gt; [CssDeclaration] -&gt; DrawAttributes
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl'</span></span><span> </span><span class="annot"><span class="annottext">DrawAttributes -&gt; CssDeclaration -&gt; DrawAttributes
+</span><a href="Graphics.SvgTree.html#cssDeclApplyer"><span class="hs-identifier hs-var">cssDeclApplyer</span></a></span><span> </span><span class="annot"><span class="annottext">DrawAttributes
+</span><a href="#local-6989586621679490808"><span class="hs-identifier hs-var">attr</span></a></span><span> </span><span class="annot"><span class="annottext">[CssDeclaration]
+</span><a href="#local-6989586621679490810"><span class="hs-identifier hs-var">matchingDeclarations</span></a></span><span>
+</span><span id="line-91"></span><span>
+</span><span id="line-92"></span><span class="hs-comment">-- For every 'use' tag, try to resolve the geometry associated</span><span>
+</span><span id="line-93"></span><span class="hs-comment">-- with it and place it in the scene Tree. It is important to</span><span>
+</span><span id="line-94"></span><span class="hs-comment">-- resolve the 'use' tag before applying the CSS rules, as some</span><span>
+</span><span id="line-95"></span><span class="hs-comment">-- rules may apply some elements matching the children of &quot;use&quot;.</span><span>
+</span><span id="line-96"></span><span class="hs-comment">-- resolveUses :: Document -&gt; Document</span><span>
+</span><span id="line-97"></span><span class="hs-comment">-- resolveUses doc =</span><span>
+</span><span id="line-98"></span><span class="hs-comment">--   doc { _elements = mapTree fetchUses &lt;$&gt; _elements doc }</span><span>
+</span><span id="line-99"></span><span class="hs-comment">--   where</span><span>
+</span><span id="line-100"></span><span class="hs-comment">--     fetchUses (UseTree useInfo _) = UseTree useInfo $ search useInfo</span><span>
+</span><span id="line-101"></span><span class="hs-comment">--     fetchUses a                   = a</span><span>
+</span><span id="line-102"></span><span class="hs-comment">--</span><span>
+</span><span id="line-103"></span><span class="hs-comment">--     search nfo = M.lookup (_useName nfo) $ _definitions doc</span><span>
+</span><span id="line-104"></span><span>
+</span><span id="line-105"></span><span class="hs-comment">-- -- | Rewrite the document by applying the CSS rules embedded</span><span>
+</span><span id="line-106"></span><span class="hs-comment">-- -- inside it.</span><span>
+</span><span id="line-107"></span><span class="hs-comment">-- applyCSSRules :: Document -&gt; Document</span><span>
+</span><span id="line-108"></span><span class="hs-comment">-- applyCSSRules doc = doc</span><span>
+</span><span id="line-109"></span><span class="hs-comment">--     { _elements = cssApply (_styleRules doc) &lt;$&gt; _elements doc }</span><span>
+</span><span id="line-110"></span></pre></body></html>

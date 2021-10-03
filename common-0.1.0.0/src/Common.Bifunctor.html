@@ -1,0 +1,117 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Module      : Common.Bifunctor
+Description : Common utilities for bifunctors.
+Copyright   : (c) Xie Ruifeng, 2020
+License     : AGPL-3
+Maintainer  : krantz.xrf@outlook.com
+Stability   : experimental
+Portability : portable
+-}</span><span>
+</span><span id="line-10"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Common.Bifunctor</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Bifunctor</span></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Bifunctor.Fix</span></span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-comment">-- |Fold 'Fix'. Copied from data-fix 0.3.0.</span><span>
+</span><span id="line-17"></span><span class="hs-comment">-- Package &quot;data-fix&quot; uses 'Functor' instead of 'Bifunctor'.</span><span>
+</span><span id="line-18"></span><span id="local-6989586621679231870"><span id="local-6989586621679231871"><span id="local-6989586621679231872"><span class="annot"><a href="Common.Bifunctor.html#foldFix"><span class="hs-identifier hs-type">foldFix</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bifunctor</span></span><span> </span><span class="annot"><a href="#local-6989586621679231872"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679231872"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679231871"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679231870"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679231871"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Fix</span></span><span> </span><span class="annot"><a href="#local-6989586621679231872"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679231870"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679231871"><span class="hs-identifier hs-type">b</span></a></span></span></span></span><span>
+</span><span id="line-19"></span><span id="foldFix"><span class="annot"><span class="annottext">foldFix :: (f b a -&gt; b) -&gt; Fix f a -&gt; b
+</span><a href="Common.Bifunctor.html#foldFix"><span class="hs-identifier hs-var hs-var">foldFix</span></a></span></span><span> </span><span id="local-6989586621679231868"><span class="annot"><span class="annottext">f b a -&gt; b
+</span><a href="#local-6989586621679231868"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Fix f a -&gt; b
+</span><a href="#local-6989586621679231867"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679231867"><span class="annot"><span class="annottext">go :: Fix f a -&gt; b
+</span><a href="#local-6989586621679231867"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">f b a -&gt; b
+</span><a href="#local-6989586621679231868"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">(f b a -&gt; b) -&gt; (Fix f a -&gt; f b a) -&gt; Fix f a -&gt; b
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Fix f a -&gt; b) -&gt; f (Fix f a) a -&gt; f b a
+forall (p :: * -&gt; * -&gt; *) a b c.
+Bifunctor p =&gt;
+(a -&gt; b) -&gt; p a c -&gt; p b c
+</span><span class="hs-identifier hs-var">first</span></span><span> </span><span class="annot"><span class="annottext">Fix f a -&gt; b
+</span><a href="#local-6989586621679231867"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">(f (Fix f a) a -&gt; f b a)
+-&gt; (Fix f a -&gt; f (Fix f a) a) -&gt; Fix f a -&gt; f b a
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Fix f a -&gt; f (Fix f a) a
+forall k (p :: * -&gt; k -&gt; *) (a :: k). Fix p a -&gt; p (Fix p a) a
+</span><span class="hs-identifier hs-var hs-var">out</span></span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-comment">-- |Scan 'Fix'.</span><span>
+</span><span id="line-22"></span><span id="local-6989586621679231861"><span id="local-6989586621679231862"><span id="local-6989586621679231863"><span class="annot"><a href="Common.Bifunctor.html#scanFix"><span class="hs-identifier hs-type">scanFix</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bifunctor</span></span><span> </span><span class="annot"><a href="#local-6989586621679231863"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679231863"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679231862"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679231861"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679231862"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Fix</span></span><span> </span><span class="annot"><a href="#local-6989586621679231863"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679231861"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Fix</span></span><span> </span><span class="annot"><a href="#local-6989586621679231863"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679231862"><span class="hs-identifier hs-type">b</span></a></span></span></span></span><span>
+</span><span id="line-23"></span><span id="scanFix"><span class="annot"><span class="annottext">scanFix :: (f b a -&gt; b) -&gt; Fix f a -&gt; Fix f b
+</span><a href="Common.Bifunctor.html#scanFix"><span class="hs-identifier hs-var hs-var">scanFix</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Lens a b a b -&gt; (f b a -&gt; b) -&gt; Fix f a -&gt; Fix f b
+forall (f :: * -&gt; * -&gt; *) s t a b.
+Bifunctor f =&gt;
+Lens s t a b -&gt; (f b a -&gt; b) -&gt; Fix f s -&gt; Fix f t
+</span><a href="Common.Bifunctor.html#scanFixIdx"><span class="hs-identifier hs-var">scanFixIdx</span></a></span><span> </span><span class="annot"><span class="annottext">forall a. a -&gt; a
+Lens a b a b
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- |Scan 'Fix' with 'Control.Lens.Type.Lens'.</span><span>
+</span><span id="line-26"></span><span id="local-6989586621679231915"><span id="local-6989586621679231916"><span id="local-6989586621679231917"><span id="local-6989586621679231918"><span id="local-6989586621679231919"><span class="annot"><a href="Common.Bifunctor.html#scanFixIdx"><span class="hs-identifier hs-type">scanFixIdx</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bifunctor</span></span><span> </span><span class="annot"><a href="#local-6989586621679231919"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Lens</span></span><span> </span><span class="annot"><a href="#local-6989586621679231918"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679231917"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679231916"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679231915"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679231919"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679231915"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679231916"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679231915"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Fix</span></span><span> </span><span class="annot"><a href="#local-6989586621679231919"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679231918"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Fix</span></span><span> </span><span class="annot"><a href="#local-6989586621679231919"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679231917"><span class="hs-identifier hs-type">t</span></a></span></span></span></span></span></span><span>
+</span><span id="line-27"></span><span id="scanFixIdx"><span class="annot"><span class="annottext">scanFixIdx :: Lens s t a b -&gt; (f b a -&gt; b) -&gt; Fix f s -&gt; Fix f t
+</span><a href="Common.Bifunctor.html#scanFixIdx"><span class="hs-identifier hs-var hs-var">scanFixIdx</span></a></span></span><span> </span><span id="local-6989586621679231857"><span class="annot"><span class="annottext">Lens s t a b
+</span><a href="#local-6989586621679231857"><span class="hs-identifier hs-var">idx</span></a></span></span><span> </span><span id="local-6989586621679231856"><span class="annot"><span class="annottext">f b a -&gt; b
+</span><a href="#local-6989586621679231856"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(b, Fix f t) -&gt; Fix f t
+forall a b. (a, b) -&gt; b
+</span><span class="hs-identifier hs-var">snd</span></span><span> </span><span class="annot"><span class="annottext">((b, Fix f t) -&gt; Fix f t)
+-&gt; (Fix f s -&gt; (b, Fix f t)) -&gt; Fix f s -&gt; Fix f t
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Fix f s -&gt; (b, Fix f t)
+</span><a href="#local-6989586621679231855"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-28"></span><span>  </span><span id="local-6989586621679231855"><span class="annot"><span class="annottext">go :: Fix f s -&gt; (b, Fix f t)
+</span><a href="#local-6989586621679231855"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">In</span></span><span> </span><span id="local-6989586621679231853"><span class="annot"><span class="annottext">f (Fix f s) s
+</span><a href="#local-6989586621679231853"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-29"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679231852"><span class="annot"><span class="annottext">p :: f (b, Fix f t) s
+</span><a href="#local-6989586621679231852"><span class="hs-identifier hs-var hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Fix f s -&gt; (b, Fix f t)) -&gt; f (Fix f s) s -&gt; f (b, Fix f t) s
+forall (p :: * -&gt; * -&gt; *) a b c.
+Bifunctor p =&gt;
+(a -&gt; b) -&gt; p a c -&gt; p b c
+</span><span class="hs-identifier hs-var">first</span></span><span> </span><span class="annot"><span class="annottext">Fix f s -&gt; (b, Fix f t)
+</span><a href="#local-6989586621679231855"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">f (Fix f s) s
+</span><a href="#local-6989586621679231853"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-30"></span><span>        </span><span id="local-6989586621679231851"><span class="annot"><span class="annottext">b :: b
+</span><a href="#local-6989586621679231851"><span class="hs-identifier hs-var hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">f b a -&gt; b
+</span><a href="#local-6989586621679231856"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">((b, Fix f t) -&gt; b) -&gt; (s -&gt; a) -&gt; f (b, Fix f t) s -&gt; f b a
+forall (p :: * -&gt; * -&gt; *) a b c d.
+Bifunctor p =&gt;
+(a -&gt; b) -&gt; (c -&gt; d) -&gt; p a c -&gt; p b d
+</span><span class="hs-identifier hs-var">bimap</span></span><span> </span><span class="annot"><span class="annottext">(b, Fix f t) -&gt; b
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Optical (-&gt;) (-&gt;) (Const a) s t a b -&gt; s -&gt; a
+forall a t b. Optical (-&gt;) (-&gt;) (Const a) s t a b -&gt; s -&gt; a
+</span><a href="#local-6989586621679231849"><span class="hs-identifier hs-var">get</span></a></span><span> </span><span class="annot"><span class="annottext">Optical (-&gt;) (-&gt;) (Const a) s t a b
+Lens s t a b
+</span><a href="#local-6989586621679231857"><span class="hs-identifier hs-var">idx</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">f (b, Fix f t) s
+</span><a href="#local-6989586621679231852"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span>        </span><span id="local-6989586621679231849"><span class="annot"><span class="annottext">get :: Optical (-&gt;) (-&gt;) (Const a) s t a b -&gt; s -&gt; a
+</span><a href="#local-6989586621679231849"><span class="hs-identifier hs-var hs-var">get</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Getting a s a -&gt; s -&gt; a
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">(Getting a s a -&gt; s -&gt; a)
+-&gt; (Optical (-&gt;) (-&gt;) (Const a) s t a b -&gt; Getting a s a)
+-&gt; Optical (-&gt;) (-&gt;) (Const a) s t a b
+-&gt; s
+-&gt; a
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Optical (-&gt;) (-&gt;) (Const a) s t a b -&gt; Getting a s a
+forall (p :: * -&gt; * -&gt; *) (q :: * -&gt; * -&gt; *) (f :: * -&gt; *) s t a b.
+(Profunctor p, Profunctor q, Functor f, Contravariant f) =&gt;
+Optical p q f s t a b -&gt; Optical' p q f s a
+</span><span class="hs-identifier hs-var">getting</span></span><span>
+</span><span id="line-32"></span><span>    </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679231851"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">f (Fix f t) t -&gt; Fix f t
+forall k (p :: * -&gt; k -&gt; *) (a :: k). p (Fix p a) a -&gt; Fix p a
+</span><span class="hs-identifier hs-var">In</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">((b, Fix f t) -&gt; Fix f t)
+-&gt; (s -&gt; t) -&gt; f (b, Fix f t) s -&gt; f (Fix f t) t
+forall (p :: * -&gt; * -&gt; *) a b c d.
+Bifunctor p =&gt;
+(a -&gt; b) -&gt; (c -&gt; d) -&gt; p a c -&gt; p b d
+</span><span class="hs-identifier hs-var">bimap</span></span><span> </span><span class="annot"><span class="annottext">(b, Fix f t) -&gt; Fix f t
+forall a b. (a, b) -&gt; b
+</span><span class="hs-identifier hs-var">snd</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ASetter s t a b -&gt; b -&gt; s -&gt; t
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-identifier hs-var">set</span></span><span> </span><span class="annot"><span class="annottext">ASetter s t a b
+Lens s t a b
+</span><a href="#local-6989586621679231857"><span class="hs-identifier hs-var">idx</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679231851"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">f (b, Fix f t) s
+</span><a href="#local-6989586621679231852"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span></pre></body></html>

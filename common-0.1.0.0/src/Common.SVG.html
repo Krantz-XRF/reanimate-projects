@@ -1,0 +1,987 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Module      : Common.SVG
+Description : Common SVG related utilities.
+Copyright   : (c) Xie Ruifeng, 2020
+License     : AGPL-3
+Maintainer  : krantz.xrf@outlook.com
+Stability   : experimental
+Portability : portable
+-}</span><span>
+</span><span id="line-10"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Common.SVG</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Arrow</span></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree.Types</span></span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Linear.Metric</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">distance</span></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Linear.V2</span></span><span>     </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">V2</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">V2</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Linear.Vector</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(*^)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate.Animation</span></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate.Svg</span></span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- |Adjust the @strokeWidth@ for an 'SVG'.</span><span>
+</span><span id="line-26"></span><span class="annot"><a href="Common.SVG.html#adjustStrokeWidth"><span class="hs-identifier hs-type">adjustStrokeWidth</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span>
+</span><span id="line-27"></span><span id="adjustStrokeWidth"><span class="annot"><span class="annottext">adjustStrokeWidth :: (Double -&gt; Double) -&gt; SVG -&gt; SVG
+</span><a href="Common.SVG.html#adjustStrokeWidth"><span class="hs-identifier hs-var hs-var">adjustStrokeWidth</span></a></span></span><span> </span><span id="local-6989586621679234147"><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679234147"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">mapTree</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Maybe Number -&gt; Identity (Maybe Number)) -&gt; SVG -&gt; Identity SVG
+forall c. HasDrawAttributes c =&gt; Lens' c (Maybe Number)
+</span><span class="hs-identifier hs-var">strokeWidth</span></span><span> </span><span class="annot"><span class="annottext">((Maybe Number -&gt; Identity (Maybe Number)) -&gt; SVG -&gt; Identity SVG)
+-&gt; ((Number -&gt; Identity Number)
+    -&gt; Maybe Number -&gt; Identity (Maybe Number))
+-&gt; (Number -&gt; Identity Number)
+-&gt; SVG
+-&gt; Identity SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Number -&gt; Identity Number)
+-&gt; Maybe Number -&gt; Identity (Maybe Number)
+forall a b. Prism (Maybe a) (Maybe b) a b
+</span><span class="hs-identifier hs-var">_Just</span></span><span> </span><span class="annot"><span class="annottext">((Number -&gt; Identity Number) -&gt; SVG -&gt; Identity SVG)
+-&gt; (Number -&gt; Number) -&gt; SVG -&gt; SVG
+forall s t a b. ASetter s t a b -&gt; (a -&gt; b) -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">%~</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double) -&gt; Number -&gt; Number
+</span><span class="hs-identifier hs-var">mapNumber</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679234147"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span class="hs-comment">-- |Predefined style for paths: every path is counterclockwise, and left paths appear first.</span><span>
+</span><span id="line-30"></span><span class="annot"><a href="Common.SVG.html#counterclockwiseLR"><span class="hs-identifier hs-type">counterclockwiseLR</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span>
+</span><span id="line-31"></span><span id="counterclockwiseLR"><span class="annot"><span class="annottext">counterclockwiseLR :: [PathCommand] -&gt; [PathCommand]
+</span><a href="Common.SVG.html#counterclockwiseLR"><span class="hs-identifier hs-var hs-var">counterclockwiseLR</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">([PathCommand] -&gt; [PathCommand])
+-&gt; [[PathCommand]] -&gt; [PathCommand]
+forall (t :: * -&gt; *) a b. Foldable t =&gt; (a -&gt; [b]) -&gt; t a -&gt; [b]
+</span><span class="hs-identifier hs-var">concatMap</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; [PathCommand]
+</span><a href="Common.SVG.html#makeCounterclockwise"><span class="hs-identifier hs-var">makeCounterclockwise</span></a></span><span> </span><span class="annot"><span class="annottext">([[PathCommand]] -&gt; [PathCommand])
+-&gt; ([PathCommand] -&gt; [[PathCommand]])
+-&gt; [PathCommand]
+-&gt; [PathCommand]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">([PathCommand] -&gt; Double) -&gt; [[PathCommand]] -&gt; [[PathCommand]]
+forall b a. Ord b =&gt; (a -&gt; b) -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">sortOn</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Getting Double (Double, Double, Double, Double) Double
+-&gt; (Double, Double, Double, Double) -&gt; Double
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting Double (Double, Double, Double, Double) Double
+forall s t a b. Field1 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_1</span></span><span> </span><span class="annot"><span class="annottext">((Double, Double, Double, Double) -&gt; Double)
+-&gt; ([PathCommand] -&gt; (Double, Double, Double, Double))
+-&gt; [PathCommand]
+-&gt; Double
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; (Double, Double, Double, Double)
+</span><a href="Common.SVG.html#pathBB"><span class="hs-identifier hs-var">pathBB</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([[PathCommand]] -&gt; [[PathCommand]])
+-&gt; ([PathCommand] -&gt; [[PathCommand]])
+-&gt; [PathCommand]
+-&gt; [[PathCommand]]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; [[PathCommand]]
+</span><a href="Common.SVG.html#groupPath"><span class="hs-identifier hs-var">groupPath</span></a></span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="hs-comment">-- |Predefined style for paths: every path is clockwise, and left paths appear first.</span><span>
+</span><span id="line-34"></span><span class="annot"><a href="Common.SVG.html#clockwiseLR"><span class="hs-identifier hs-type">clockwiseLR</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span>
+</span><span id="line-35"></span><span id="clockwiseLR"><span class="annot"><span class="annottext">clockwiseLR :: [PathCommand] -&gt; [PathCommand]
+</span><a href="Common.SVG.html#clockwiseLR"><span class="hs-identifier hs-var hs-var">clockwiseLR</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">([PathCommand] -&gt; [PathCommand])
+-&gt; [[PathCommand]] -&gt; [PathCommand]
+forall (t :: * -&gt; *) a b. Foldable t =&gt; (a -&gt; [b]) -&gt; t a -&gt; [b]
+</span><span class="hs-identifier hs-var">concatMap</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; [PathCommand]
+</span><a href="Common.SVG.html#makeClockwise"><span class="hs-identifier hs-var">makeClockwise</span></a></span><span> </span><span class="annot"><span class="annottext">([[PathCommand]] -&gt; [PathCommand])
+-&gt; ([PathCommand] -&gt; [[PathCommand]])
+-&gt; [PathCommand]
+-&gt; [PathCommand]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">([PathCommand] -&gt; Double) -&gt; [[PathCommand]] -&gt; [[PathCommand]]
+forall b a. Ord b =&gt; (a -&gt; b) -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">sortOn</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Getting Double (Double, Double, Double, Double) Double
+-&gt; (Double, Double, Double, Double) -&gt; Double
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting Double (Double, Double, Double, Double) Double
+forall s t a b. Field1 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_1</span></span><span> </span><span class="annot"><span class="annottext">((Double, Double, Double, Double) -&gt; Double)
+-&gt; ([PathCommand] -&gt; (Double, Double, Double, Double))
+-&gt; [PathCommand]
+-&gt; Double
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; (Double, Double, Double, Double)
+</span><a href="Common.SVG.html#pathBB"><span class="hs-identifier hs-var">pathBB</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([[PathCommand]] -&gt; [[PathCommand]])
+-&gt; ([PathCommand] -&gt; [[PathCommand]])
+-&gt; [PathCommand]
+-&gt; [[PathCommand]]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; [[PathCommand]]
+</span><a href="Common.SVG.html#groupPath"><span class="hs-identifier hs-var">groupPath</span></a></span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-comment">-- |Group a series of 'PathCommand's by subpaths.</span><span>
+</span><span id="line-38"></span><span class="annot"><a href="Common.SVG.html#groupPath"><span class="hs-identifier hs-type">groupPath</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-39"></span><span id="groupPath"><span class="annot"><span class="annottext">groupPath :: [PathCommand] -&gt; [[PathCommand]]
+</span><a href="Common.SVG.html#groupPath"><span class="hs-identifier hs-var hs-var">groupPath</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(PathCommand -&gt; PathCommand -&gt; Bool)
+-&gt; [PathCommand] -&gt; [[PathCommand]]
+forall a. (a -&gt; a -&gt; Bool) -&gt; [a] -&gt; [[a]]
+</span><span class="hs-identifier hs-var">groupBy</span></span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; PathCommand -&gt; Bool
+forall p. p -&gt; PathCommand -&gt; Bool
+</span><a href="#local-6989586621679234129"><span class="hs-identifier hs-var">grouping</span></a></span><span>
+</span><span id="line-40"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679234129"><span class="annot"><span class="annottext">grouping :: p -&gt; PathCommand -&gt; Bool
+</span><a href="#local-6989586621679234129"><span class="hs-identifier hs-var hs-var">grouping</span></a></span></span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">MoveTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-41"></span><span>        </span><span class="annot"><a href="#local-6989586621679234129"><span class="hs-identifier hs-var">grouping</span></a></span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">PathCommand
+</span><span class="hs-identifier">_</span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="hs-comment">-- |Sort subpaths by some ordering.</span><span>
+</span><span id="line-44"></span><span class="annot"><a href="Common.SVG.html#sortPathBy"><span class="hs-identifier hs-type">sortPathBy</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Ordering</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span>
+</span><span id="line-45"></span><span id="sortPathBy"><span class="annot"><span class="annottext">sortPathBy :: ([PathCommand] -&gt; [PathCommand] -&gt; Ordering)
+-&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="Common.SVG.html#sortPathBy"><span class="hs-identifier hs-var hs-var">sortPathBy</span></a></span></span><span> </span><span id="local-6989586621679234126"><span class="annot"><span class="annottext">[PathCommand] -&gt; [PathCommand] -&gt; Ordering
+</span><a href="#local-6989586621679234126"><span class="hs-identifier hs-var">cmp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[[PathCommand]] -&gt; [PathCommand]
+forall (t :: * -&gt; *) a. Foldable t =&gt; t [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">concat</span></span><span> </span><span class="annot"><span class="annottext">([[PathCommand]] -&gt; [PathCommand])
+-&gt; ([PathCommand] -&gt; [[PathCommand]])
+-&gt; [PathCommand]
+-&gt; [PathCommand]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">([PathCommand] -&gt; [PathCommand] -&gt; Ordering)
+-&gt; [[PathCommand]] -&gt; [[PathCommand]]
+forall a. (a -&gt; a -&gt; Ordering) -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">sortBy</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; [PathCommand] -&gt; Ordering
+</span><a href="#local-6989586621679234126"><span class="hs-identifier hs-var">cmp</span></a></span><span> </span><span class="annot"><span class="annottext">([[PathCommand]] -&gt; [[PathCommand]])
+-&gt; ([PathCommand] -&gt; [[PathCommand]])
+-&gt; [PathCommand]
+-&gt; [[PathCommand]]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; [[PathCommand]]
+</span><a href="Common.SVG.html#groupPath"><span class="hs-identifier hs-var">groupPath</span></a></span><span>
+</span><span id="line-46"></span><span>
+</span><span id="line-47"></span><span class="hs-comment">-- |Sort subpaths by comparing the results of a key function applied to each element.</span><span>
+</span><span id="line-48"></span><span class="hs-comment">--</span><span>
+</span><span id="line-49"></span><span class="hs-comment">-- @sortPathOn f@ is equivalent to @sortPathBy (comparing f)@, but has the performance</span><span>
+</span><span id="line-50"></span><span class="hs-comment">-- advantage of only evaluating @f@ once for each element in the input list. This is</span><span>
+</span><span id="line-51"></span><span class="hs-comment">-- called the decorate-sort-undecorate paradigm, or Schwartzian transform.</span><span>
+</span><span id="line-52"></span><span class="hs-comment">--</span><span>
+</span><span id="line-53"></span><span class="hs-comment">-- See also 'sortOn' and 'sortBy'.</span><span>
+</span><span id="line-54"></span><span class="hs-comment">--</span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- For predefined key functions, see 'pathBB', 'pathCenter', 'pathRadius'.</span><span>
+</span><span id="line-56"></span><span id="local-6989586621679234123"><span class="annot"><a href="Common.SVG.html#sortPathOn"><span class="hs-identifier hs-type">sortPathOn</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Ord</span></span><span> </span><span class="annot"><a href="#local-6989586621679234123"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679234123"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span></span><span>
+</span><span id="line-57"></span><span id="sortPathOn"><span class="annot"><span class="annottext">sortPathOn :: ([PathCommand] -&gt; a) -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="Common.SVG.html#sortPathOn"><span class="hs-identifier hs-var hs-var">sortPathOn</span></a></span></span><span> </span><span id="local-6989586621679234121"><span class="annot"><span class="annottext">[PathCommand] -&gt; a
+</span><a href="#local-6989586621679234121"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[[PathCommand]] -&gt; [PathCommand]
+forall (t :: * -&gt; *) a. Foldable t =&gt; t [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">concat</span></span><span> </span><span class="annot"><span class="annottext">([[PathCommand]] -&gt; [PathCommand])
+-&gt; ([PathCommand] -&gt; [[PathCommand]])
+-&gt; [PathCommand]
+-&gt; [PathCommand]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">([PathCommand] -&gt; a) -&gt; [[PathCommand]] -&gt; [[PathCommand]]
+forall b a. Ord b =&gt; (a -&gt; b) -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">sortOn</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; a
+</span><a href="#local-6989586621679234121"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">([[PathCommand]] -&gt; [[PathCommand]])
+-&gt; ([PathCommand] -&gt; [[PathCommand]])
+-&gt; [PathCommand]
+-&gt; [[PathCommand]]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; [[PathCommand]]
+</span><a href="Common.SVG.html#groupPath"><span class="hs-identifier hs-var">groupPath</span></a></span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span class="hs-comment">-- |Bounding box of a (sub-) path.</span><span>
+</span><span id="line-60"></span><span class="annot"><a href="Common.SVG.html#pathBB"><span class="hs-identifier hs-type">pathBB</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span class="hs-special">)</span><span>
+</span><span id="line-61"></span><span id="pathBB"><span class="annot"><span class="annottext">pathBB :: [PathCommand] -&gt; (Double, Double, Double, Double)
+</span><a href="Common.SVG.html#pathBB"><span class="hs-identifier hs-var hs-var">pathBB</span></a></span></span><span> </span><span id="local-6989586621679234119"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234119"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; (Double, Double, Double, Double)
+</span><span class="hs-identifier hs-var">boundingBox</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path -&gt; SVG
+</span><span class="hs-identifier hs-var">PathTree</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+forall a. WithDefaultSvg a =&gt; a
+</span><span class="hs-identifier hs-var">defaultSvg</span></span><span> </span><span class="annot"><span class="annottext">Path -&gt; (Path -&gt; Path) -&gt; Path
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">([PathCommand] -&gt; Identity [PathCommand]) -&gt; Path -&gt; Identity Path
+Lens' Path [PathCommand]
+</span><span class="hs-identifier hs-var">pathDefinition</span></span><span> </span><span class="annot"><span class="annottext">(([PathCommand] -&gt; Identity [PathCommand])
+ -&gt; Path -&gt; Identity Path)
+-&gt; [PathCommand] -&gt; Path -&gt; Path
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234119"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="hs-comment">-- |Center of a path.</span><span>
+</span><span id="line-64"></span><span class="annot"><a href="Common.SVG.html#pathCenter"><span class="hs-identifier hs-type">pathCenter</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">RPoint</span></span><span>
+</span><span id="line-65"></span><span id="pathCenter"><span class="annot"><span class="annottext">pathCenter :: [PathCommand] -&gt; RPoint
+</span><a href="Common.SVG.html#pathCenter"><span class="hs-identifier hs-var hs-var">pathCenter</span></a></span></span><span> </span><span id="local-6989586621679234111"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234111"><span class="hs-identifier hs-var">pth</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; RPoint
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679234110"><span class="hs-identifier hs-var">x0</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679234108"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679234106"><span class="hs-identifier hs-var">y0</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679234105"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span>
+</span><span id="line-66"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">!</span><span id="local-6989586621679234110"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679234110"><span class="hs-identifier hs-var">x0</span></a></span></span><span class="hs-special">,</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679234106"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679234106"><span class="hs-identifier hs-var">y0</span></a></span></span><span class="hs-special">,</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679234108"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679234108"><span class="hs-identifier hs-var">w</span></a></span></span><span class="hs-special">,</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679234105"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679234105"><span class="hs-identifier hs-var">h</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; (Double, Double, Double, Double)
+</span><a href="Common.SVG.html#pathBB"><span class="hs-identifier hs-var">pathBB</span></a></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234111"><span class="hs-identifier hs-var">pth</span></a></span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span class="hs-comment">-- |Radius of a (sub-) path, i.e. maximum distance from the center of the bounding box.</span><span>
+</span><span id="line-69"></span><span class="annot"><a href="Common.SVG.html#pathRadius"><span class="hs-identifier hs-type">pathRadius</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span>
+</span><span id="line-70"></span><span id="pathRadius"><span class="annot"><span class="annottext">pathRadius :: [PathCommand] -&gt; Double
+</span><a href="Common.SVG.html#pathRadius"><span class="hs-identifier hs-var hs-var">pathRadius</span></a></span></span><span> </span><span id="local-6989586621679234103"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234103"><span class="hs-identifier hs-var">pth</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Double] -&gt; Double
+forall (t :: * -&gt; *) a. (Foldable t, Ord a) =&gt; t a -&gt; a
+</span><span class="hs-identifier hs-var">maximum</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(RPoint -&gt; Double) -&gt; [RPoint] -&gt; [Double]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RPoint -&gt; RPoint -&gt; Double
+forall (f :: * -&gt; *) a. (Metric f, Floating a) =&gt; f a -&gt; f a -&gt; a
+</span><span class="hs-identifier hs-var">distance</span></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234101"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234100"><span class="hs-identifier hs-var">points</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-71"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679234101"><span class="annot"><span class="annottext">c :: RPoint
+</span><a href="#local-6989586621679234101"><span class="hs-identifier hs-var hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; RPoint
+</span><a href="Common.SVG.html#pathCenter"><span class="hs-identifier hs-var">pathCenter</span></a></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234103"><span class="hs-identifier hs-var">pth</span></a></span><span>
+</span><span id="line-72"></span><span>        </span><span id="local-6989586621679234100"><span class="annot"><span class="annottext">points :: [RPoint]
+</span><a href="#local-6989586621679234100"><span class="hs-identifier hs-var hs-var">points</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[LineCommand] -&gt; [RPoint]
+</span><a href="Common.SVG.html#getPoints"><span class="hs-identifier hs-var">getPoints</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[PathCommand] -&gt; [LineCommand]
+</span><span class="hs-identifier hs-var">toLineCommands</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234103"><span class="hs-identifier hs-var">pth</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-73"></span><span>
+</span><span id="line-74"></span><span class="hs-comment">-- |Get end points and control points for a path (as @[LineCommand]@).</span><span>
+</span><span id="line-75"></span><span class="annot"><a href="Common.SVG.html#getPoints"><span class="hs-identifier hs-type">getPoints</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">LineCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">RPoint</span></span><span class="hs-special">]</span><span>
+</span><span id="line-76"></span><span id="getPoints"><span class="annot"><span class="annottext">getPoints :: [LineCommand] -&gt; [RPoint]
+</span><a href="Common.SVG.html#getPoints"><span class="hs-identifier hs-var hs-var">getPoints</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[RPoint] -&gt; [LineCommand] -&gt; [RPoint]
+</span><a href="#local-6989586621679234097"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-77"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679234097"><span class="annot"><span class="annottext">go :: [RPoint] -&gt; [LineCommand] -&gt; [RPoint]
+</span><a href="#local-6989586621679234097"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679234096"><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234096"><span class="hs-identifier hs-var">res</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>                     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234096"><span class="hs-identifier hs-var">res</span></a></span><span>
+</span><span id="line-78"></span><span>        </span><span class="annot"><a href="#local-6989586621679234097"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679234095"><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234095"><span class="hs-identifier hs-var">res</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">LineMove</span></span><span> </span><span id="local-6989586621679234093"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234093"><span class="hs-identifier hs-var">p0</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679234092"><span class="annot"><span class="annottext">[LineCommand]
+</span><a href="#local-6989586621679234092"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[RPoint] -&gt; [LineCommand] -&gt; [RPoint]
+</span><a href="#local-6989586621679234097"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234093"><span class="hs-identifier hs-var">p0</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint -&gt; [RPoint] -&gt; [RPoint]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234095"><span class="hs-identifier hs-var">res</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[LineCommand]
+</span><a href="#local-6989586621679234092"><span class="hs-identifier hs-var">rest</span></a></span><span>
+</span><span id="line-79"></span><span>        </span><span class="annot"><a href="#local-6989586621679234097"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679234091"><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234091"><span class="hs-identifier hs-var">res</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">LineBezier</span></span><span> </span><span id="local-6989586621679234089"><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234089"><span class="hs-identifier hs-var">ps</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679234088"><span class="annot"><span class="annottext">[LineCommand]
+</span><a href="#local-6989586621679234088"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[RPoint] -&gt; [LineCommand] -&gt; [RPoint]
+</span><a href="#local-6989586621679234097"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234089"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="annot"><span class="annottext">[RPoint] -&gt; [RPoint] -&gt; [RPoint]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234091"><span class="hs-identifier hs-var">res</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[LineCommand]
+</span><a href="#local-6989586621679234088"><span class="hs-identifier hs-var">rest</span></a></span><span>
+</span><span id="line-80"></span><span>        </span><span class="annot"><a href="#local-6989586621679234097"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679234087"><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234087"><span class="hs-identifier hs-var">res</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">LineEnd</span></span><span> </span><span id="local-6989586621679234085"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234085"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679234084"><span class="annot"><span class="annottext">[LineCommand]
+</span><a href="#local-6989586621679234084"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[RPoint] -&gt; [LineCommand] -&gt; [RPoint]
+</span><a href="#local-6989586621679234097"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234085"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint -&gt; [RPoint] -&gt; [RPoint]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234087"><span class="hs-identifier hs-var">res</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[LineCommand]
+</span><a href="#local-6989586621679234084"><span class="hs-identifier hs-var">rest</span></a></span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span class="hs-comment">-- |Flip the directon of an SVG path (as @[LineCommand]@).</span><span>
+</span><span id="line-83"></span><span class="hs-comment">-- Prefer 'flipPath' over roundtripping through 'toLineCommands' and 'lineToPath'.</span><span>
+</span><span id="line-84"></span><span class="annot"><a href="Common.SVG.html#flipLine"><span class="hs-identifier hs-type">flipLine</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">LineCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">LineCommand</span></span><span class="hs-special">]</span><span>
+</span><span id="line-85"></span><span id="flipLine"><span class="annot"><span class="annottext">flipLine :: [LineCommand] -&gt; [LineCommand]
+</span><a href="Common.SVG.html#flipLine"><span class="hs-identifier hs-var hs-var">flipLine</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[LineCommand] -&gt; [LineCommand]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="annot"><span class="annottext">([LineCommand] -&gt; [LineCommand])
+-&gt; ([LineCommand] -&gt; [LineCommand])
+-&gt; [LineCommand]
+-&gt; [LineCommand]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">([LineCommand] -&gt; [RPoint] -&gt; [LineCommand])
+-&gt; ([LineCommand], [RPoint]) -&gt; [LineCommand]
+forall a b c. (a -&gt; b -&gt; c) -&gt; (a, b) -&gt; c
+</span><span class="hs-identifier hs-var">uncurry</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(LineCommand -&gt; RPoint -&gt; LineCommand)
+-&gt; [LineCommand] -&gt; [RPoint] -&gt; [LineCommand]
+forall a b c. (a -&gt; b -&gt; c) -&gt; [a] -&gt; [b] -&gt; [c]
+</span><span class="hs-identifier hs-var">zipWith</span></span><span> </span><span class="annot"><span class="annottext">LineCommand -&gt; RPoint -&gt; LineCommand
+</span><a href="#local-6989586621679234079"><span class="hs-identifier hs-var">flipSegment</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(([LineCommand], [RPoint]) -&gt; [LineCommand])
+-&gt; ([LineCommand] -&gt; ([LineCommand], [RPoint]))
+-&gt; [LineCommand]
+-&gt; [LineCommand]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[LineCommand] -&gt; [LineCommand]
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="annot"><span class="annottext">([LineCommand] -&gt; [LineCommand])
+-&gt; ([LineCommand] -&gt; [RPoint])
+-&gt; [LineCommand]
+-&gt; ([LineCommand], [RPoint])
+forall (a :: * -&gt; * -&gt; *) b c c'.
+Arrow a =&gt;
+a b c -&gt; a b c' -&gt; a b (c, c')
+</span><span class="hs-operator hs-var">&amp;&amp;&amp;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RPoint
+forall a. HasCallStack =&gt; a
+</span><span class="hs-identifier hs-var">undefined</span></span><span> </span><span class="annot"><span class="annottext">RPoint -&gt; [RPoint] -&gt; [RPoint]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([RPoint] -&gt; [RPoint])
+-&gt; ([LineCommand] -&gt; [RPoint]) -&gt; [LineCommand] -&gt; [RPoint]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(LineCommand -&gt; RPoint) -&gt; [LineCommand] -&gt; [RPoint]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">LineCommand -&gt; RPoint
+</span><a href="#local-6989586621679234075"><span class="hs-identifier hs-var">extractPos</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-86"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679234079"><span class="annot"><span class="annottext">flipSegment :: LineCommand -&gt; RPoint -&gt; LineCommand
+</span><a href="#local-6989586621679234079"><span class="hs-identifier hs-var hs-var">flipSegment</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">LineMove</span></span><span> </span><span id="local-6989586621679234074"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234074"><span class="hs-identifier hs-var">p0</span></a></span></span><span class="hs-special">)</span><span>   </span><span class="annot"><span class="annottext">RPoint
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RPoint -&gt; LineCommand
+</span><span class="hs-identifier hs-var">LineEnd</span></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234074"><span class="hs-identifier hs-var">p0</span></a></span><span>
+</span><span id="line-87"></span><span>        </span><span class="annot"><a href="#local-6989586621679234079"><span class="hs-identifier hs-var">flipSegment</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">LineBezier</span></span><span> </span><span id="local-6989586621679234073"><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234073"><span class="hs-identifier hs-var">ps</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679234072"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234072"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[RPoint] -&gt; LineCommand
+</span><span class="hs-identifier hs-var">LineBezier</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234072"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint -&gt; [RPoint] -&gt; [RPoint]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[RPoint] -&gt; [RPoint]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[RPoint] -&gt; [RPoint]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">init</span></span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234073"><span class="hs-identifier hs-var">ps</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-88"></span><span>        </span><span class="annot"><a href="#local-6989586621679234079"><span class="hs-identifier hs-var">flipSegment</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">LineEnd</span></span><span> </span><span id="local-6989586621679234070"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234070"><span class="hs-identifier hs-var">p</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="annot"><span class="annottext">RPoint
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RPoint -&gt; LineCommand
+</span><span class="hs-identifier hs-var">LineMove</span></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234070"><span class="hs-identifier hs-var">p</span></a></span><span>
+</span><span id="line-89"></span><span>        </span><span id="local-6989586621679234075"><span class="annot"><span class="annottext">extractPos :: LineCommand -&gt; RPoint
+</span><a href="#local-6989586621679234075"><span class="hs-identifier hs-var hs-var">extractPos</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">LineMove</span></span><span> </span><span id="local-6989586621679234069"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234069"><span class="hs-identifier hs-var">p0</span></a></span></span><span class="hs-special">)</span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234069"><span class="hs-identifier hs-var">p0</span></a></span><span>
+</span><span id="line-90"></span><span>        </span><span class="annot"><a href="#local-6989586621679234075"><span class="hs-identifier hs-var">extractPos</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">LineBezier</span></span><span> </span><span id="local-6989586621679234068"><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234068"><span class="hs-identifier hs-var">ps</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[RPoint] -&gt; RPoint
+forall a. [a] -&gt; a
+</span><span class="hs-identifier hs-var">last</span></span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234068"><span class="hs-identifier hs-var">ps</span></a></span><span>
+</span><span id="line-91"></span><span>        </span><span class="annot"><a href="#local-6989586621679234075"><span class="hs-identifier hs-var">extractPos</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">LineEnd</span></span><span> </span><span id="local-6989586621679234066"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234066"><span class="hs-identifier hs-var">p</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234066"><span class="hs-identifier hs-var">p</span></a></span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span class="hs-comment">-- |Check whether a (closed) path is clockwise or counterclockwise.</span><span>
+</span><span id="line-94"></span><span class="annot"><a href="Common.SVG.html#isClockwise"><span class="hs-identifier hs-type">isClockwise</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">RPoint</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-95"></span><span id="isClockwise"><span class="annot"><span class="annottext">isClockwise :: [RPoint] -&gt; Bool
+</span><a href="Common.SVG.html#isClockwise"><span class="hs-identifier hs-var hs-var">isClockwise</span></a></span></span><span> </span><span id="local-6989586621679234064"><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234064"><span class="hs-identifier hs-var">ps</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Double] -&gt; Double
+forall (t :: * -&gt; *) a. (Foldable t, Num a) =&gt; t a -&gt; a
+</span><span class="hs-identifier hs-var">sum</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(RPoint -&gt; RPoint -&gt; Double) -&gt; [RPoint] -&gt; [RPoint] -&gt; [Double]
+forall a b c. (a -&gt; b -&gt; c) -&gt; [a] -&gt; [b] -&gt; [c]
+</span><span class="hs-identifier hs-var">zipWith</span></span><span> </span><span class="annot"><span class="annottext">RPoint -&gt; RPoint -&gt; Double
+forall a. Num a =&gt; V2 a -&gt; V2 a -&gt; a
+</span><a href="#local-6989586621679234062"><span class="hs-identifier hs-var">area2</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[RPoint] -&gt; [RPoint]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">tail</span></span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234064"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="annot"><span class="annottext">[RPoint] -&gt; [RPoint] -&gt; [RPoint]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">[RPoint] -&gt; RPoint
+forall a. [a] -&gt; a
+</span><span class="hs-identifier hs-var">head</span></span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234064"><span class="hs-identifier hs-var">ps</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234064"><span class="hs-identifier hs-var">ps</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-96"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679234062"><span class="annot"><span class="annottext">area2 :: V2 a -&gt; V2 a -&gt; a
+</span><a href="#local-6989586621679234062"><span class="hs-identifier hs-var hs-var">area2</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span id="local-6989586621679234059"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679234059"><span class="hs-identifier hs-var">x0</span></a></span></span><span> </span><span id="local-6989586621679234058"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679234058"><span class="hs-identifier hs-var">y0</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span id="local-6989586621679234057"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679234057"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679234056"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679234056"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679234057"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679234059"><span class="hs-identifier hs-var">x0</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679234056"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679234058"><span class="hs-identifier hs-var">y0</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-97"></span><span>  </span><span class="hs-comment">-- area2 calculates 2x the area under the current segment</span><span>
+</span><span id="line-98"></span><span>
+</span><span id="line-99"></span><span class="hs-comment">-- |Make a path clockwise by flipping if it was not.</span><span>
+</span><span id="line-100"></span><span class="annot"><a href="Common.SVG.html#makeClockwise"><span class="hs-identifier hs-type">makeClockwise</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span>
+</span><span id="line-101"></span><span id="makeClockwise"><span class="annot"><span class="annottext">makeClockwise :: [PathCommand] -&gt; [PathCommand]
+</span><a href="Common.SVG.html#makeClockwise"><span class="hs-identifier hs-var hs-var">makeClockwise</span></a></span></span><span> </span><span id="local-6989586621679234054"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234054"><span class="hs-identifier hs-var">ps</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">[RPoint] -&gt; Bool
+</span><a href="Common.SVG.html#isClockwise"><span class="hs-identifier hs-var">isClockwise</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[LineCommand] -&gt; [RPoint]
+</span><a href="Common.SVG.html#getPoints"><span class="hs-identifier hs-var">getPoints</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[PathCommand] -&gt; [LineCommand]
+</span><span class="hs-identifier hs-var">toLineCommands</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234054"><span class="hs-identifier hs-var">ps</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234054"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; [PathCommand]
+</span><a href="Common.SVG.html#flipPath"><span class="hs-identifier hs-var">flipPath</span></a></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234054"><span class="hs-identifier hs-var">ps</span></a></span><span>
+</span><span id="line-102"></span><span>
+</span><span id="line-103"></span><span class="hs-comment">-- |Make a path clockwise by flipping if it was not.</span><span>
+</span><span id="line-104"></span><span class="annot"><a href="Common.SVG.html#makeCounterclockwise"><span class="hs-identifier hs-type">makeCounterclockwise</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span>
+</span><span id="line-105"></span><span id="makeCounterclockwise"><span class="annot"><span class="annottext">makeCounterclockwise :: [PathCommand] -&gt; [PathCommand]
+</span><a href="Common.SVG.html#makeCounterclockwise"><span class="hs-identifier hs-var hs-var">makeCounterclockwise</span></a></span></span><span> </span><span id="local-6989586621679234052"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234052"><span class="hs-identifier hs-var">ps</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">[RPoint] -&gt; Bool
+</span><a href="Common.SVG.html#isClockwise"><span class="hs-identifier hs-var">isClockwise</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[LineCommand] -&gt; [RPoint]
+</span><a href="Common.SVG.html#getPoints"><span class="hs-identifier hs-var">getPoints</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[PathCommand] -&gt; [LineCommand]
+</span><span class="hs-identifier hs-var">toLineCommands</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234052"><span class="hs-identifier hs-var">ps</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; [PathCommand]
+</span><a href="Common.SVG.html#flipPath"><span class="hs-identifier hs-var">flipPath</span></a></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234052"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234052"><span class="hs-identifier hs-var">ps</span></a></span><span>
+</span><span id="line-106"></span><span>
+</span><span id="line-107"></span><span class="hs-comment">-- |Flip the directon of an SVG path.</span><span>
+</span><span id="line-108"></span><span class="annot"><a href="Common.SVG.html#flipPath"><span class="hs-identifier hs-type">flipPath</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span>
+</span><span id="line-109"></span><span id="flipPath"><span class="annot"><span class="annottext">flipPath :: [PathCommand] -&gt; [PathCommand]
+</span><a href="Common.SVG.html#flipPath"><span class="hs-identifier hs-var hs-var">flipPath</span></a></span></span><span> </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">MoveTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginAbsolute</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679234050"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234050"><span class="hs-identifier hs-var">pInit</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679234049"><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234049"><span class="hs-identifier hs-var">pRest</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679234048"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234048"><span class="hs-identifier hs-var">cRest</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234047"><span class="hs-identifier hs-var">res</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-110"></span><span>  </span><span id="local-6989586621679234047"><span class="annot"><span class="annottext">res :: [PathCommand]
+</span><a href="#local-6989586621679234047"><span class="hs-identifier hs-var hs-var">res</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[PathCommand] -&gt; [PathCommand]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe RPoint
+-&gt; RPoint -&gt; Maybe RPoint -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234050"><span class="hs-identifier hs-var">pInit</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; [RPoint] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">LineTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginAbsolute</span></span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234049"><span class="hs-identifier hs-var">pRest</span></a></span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234048"><span class="hs-identifier hs-var">cRest</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-111"></span><span>  </span><span id="local-6989586621679234044"><span class="annot"><span class="annottext">step :: Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var hs-var">step</span></a></span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginAbsolute</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679234043"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679234043"><span class="hs-identifier hs-var">p'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679234043"><span class="hs-identifier hs-var">p'</span></a></span><span>
+</span><span id="line-112"></span><span>  </span><span class="annot"><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginRelative</span></span><span> </span><span id="local-6989586621679234041"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679234041"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679234040"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679234040"><span class="hs-identifier hs-var">p'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679234041"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679234040"><span class="hs-identifier hs-var">p'</span></a></span><span>
+</span><span id="line-113"></span><span>  </span><span id="local-6989586621679234039"><span class="annot"><span class="annottext">upd :: Maybe a -&gt; a -&gt; Maybe a
+</span><a href="#local-6989586621679234039"><span class="hs-identifier hs-var hs-var">upd</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>     </span><span id="local-6989586621679234038"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679234038"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Maybe a
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679234038"><span class="hs-identifier hs-var">p</span></a></span><span>
+</span><span id="line-114"></span><span>  </span><span class="annot"><a href="#local-6989586621679234039"><span class="hs-identifier hs-var">upd</span></a></span><span> </span><span id="local-6989586621679234037"><span class="annot"><span class="annottext">p0 :: Maybe a
+</span><a href="#local-6989586621679234037"><span class="hs-identifier hs-var">p0</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe a
+</span><a href="#local-6989586621679234037"><span class="hs-identifier hs-var">p0</span></a></span><span>
+</span><span id="line-115"></span><span>  </span><span class="annot"><a href="#local-6989586621679234046"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">RPoint</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">RPoint</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">RPoint</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">PathCommand</span></span><span class="hs-special">]</span><span>
+</span><span id="line-116"></span><span>  </span><span id="local-6989586621679234046"><span class="annot"><span class="annottext">go :: Maybe RPoint
+-&gt; RPoint -&gt; Maybe RPoint -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="#local-6989586621679234046"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><span class="hs-identifier">_</span></span><span>  </span><span id="local-6989586621679234036"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234036"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">MoveTo</span></span><span> </span><span id="local-6989586621679234035"><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234035"><span class="hs-identifier hs-var">orig</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679234034"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234034"><span class="hs-identifier hs-var">p'</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679234033"><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234033"><span class="hs-identifier hs-var">ps</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679234032"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234032"><span class="hs-identifier hs-var">cmds</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-117"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Origin -&gt; [RPoint] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">MoveTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginAbsolute</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234036"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+-&gt; RPoint -&gt; Maybe RPoint -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234035"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234036"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234034"><span class="hs-identifier hs-var">p'</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; [RPoint] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">LineTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234035"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234033"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234032"><span class="hs-identifier hs-var">cmds</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-118"></span><span>  </span><span class="annot"><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679234031"><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679234031"><span class="hs-identifier hs-var">p0</span></a></span></span><span> </span><span id="local-6989586621679234030"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234030"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">LineTo</span></span><span> </span><span id="local-6989586621679234029"><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234029"><span class="hs-identifier hs-var">orig</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679234028"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234028"><span class="hs-identifier hs-var">p'</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679234027"><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234027"><span class="hs-identifier hs-var">ps</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679234026"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234026"><span class="hs-identifier hs-var">cmds</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-119"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Origin -&gt; [RPoint] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">LineTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginAbsolute</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234030"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+-&gt; RPoint -&gt; Maybe RPoint -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe RPoint -&gt; RPoint -&gt; Maybe RPoint
+forall a. Maybe a -&gt; a -&gt; Maybe a
+</span><a href="#local-6989586621679234039"><span class="hs-identifier hs-var">upd</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679234031"><span class="hs-identifier hs-var">p0</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234030"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234029"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234030"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234028"><span class="hs-identifier hs-var">p'</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; [RPoint] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">LineTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234029"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679234027"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234026"><span class="hs-identifier hs-var">cmds</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-120"></span><span>  </span><span class="annot"><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679234025"><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679234025"><span class="hs-identifier hs-var">p0</span></a></span></span><span> </span><span id="local-6989586621679234024"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234024"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">HorizontalTo</span></span><span> </span><span id="local-6989586621679234022"><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234022"><span class="hs-identifier hs-var">orig</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679234021"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679234021"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679234020"><span class="annot"><span class="annottext">[Double]
+</span><a href="#local-6989586621679234020"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679234019"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234019"><span class="hs-identifier hs-var">cmds</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-121"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Origin -&gt; [Double] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">HorizontalTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginAbsolute</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Getting Double RPoint Double -&gt; RPoint -&gt; Double
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting Double RPoint Double
+forall s t a b. Field1 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_1</span></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234024"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-122"></span><span>    </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+-&gt; RPoint -&gt; Maybe RPoint -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe RPoint -&gt; RPoint -&gt; Maybe RPoint
+forall a. Maybe a -&gt; a -&gt; Maybe a
+</span><a href="#local-6989586621679234039"><span class="hs-identifier hs-var">upd</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679234025"><span class="hs-identifier hs-var">p0</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234024"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234022"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234024"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; RPoint
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679234021"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Getting Double RPoint Double -&gt; RPoint -&gt; Double
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting Double RPoint Double
+forall s t a b. Field2 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_2</span></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234024"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; [Double] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">HorizontalTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234022"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">[Double]
+</span><a href="#local-6989586621679234020"><span class="hs-identifier hs-var">xs</span></a></span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234019"><span class="hs-identifier hs-var">cmds</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-123"></span><span>  </span><span class="annot"><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679234017"><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679234017"><span class="hs-identifier hs-var">p0</span></a></span></span><span> </span><span id="local-6989586621679234016"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234016"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">VerticalTo</span></span><span> </span><span id="local-6989586621679234014"><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234014"><span class="hs-identifier hs-var">orig</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679234013"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679234013"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679234012"><span class="annot"><span class="annottext">[Double]
+</span><a href="#local-6989586621679234012"><span class="hs-identifier hs-var">ys</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679234011"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234011"><span class="hs-identifier hs-var">cmds</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-124"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Origin -&gt; [Double] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">VerticalTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginAbsolute</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Getting Double RPoint Double -&gt; RPoint -&gt; Double
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting Double RPoint Double
+forall s t a b. Field2 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_2</span></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234016"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-125"></span><span>    </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+-&gt; RPoint -&gt; Maybe RPoint -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe RPoint -&gt; RPoint -&gt; Maybe RPoint
+forall a. Maybe a -&gt; a -&gt; Maybe a
+</span><a href="#local-6989586621679234039"><span class="hs-identifier hs-var">upd</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679234017"><span class="hs-identifier hs-var">p0</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234016"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234014"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234016"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; RPoint
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Getting Double RPoint Double -&gt; RPoint -&gt; Double
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting Double RPoint Double
+forall s t a b. Field1 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_1</span></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234016"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679234013"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; [Double] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">VerticalTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234014"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">[Double]
+</span><a href="#local-6989586621679234012"><span class="hs-identifier hs-var">ys</span></a></span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234011"><span class="hs-identifier hs-var">cmds</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-126"></span><span>  </span><span class="annot"><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679234010"><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679234010"><span class="hs-identifier hs-var">p0</span></a></span></span><span> </span><span id="local-6989586621679234009"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234009"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">CurveTo</span></span><span> </span><span id="local-6989586621679234007"><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234007"><span class="hs-identifier hs-var">orig</span></a></span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679234006"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234006"><span class="hs-identifier hs-var">c1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679234005"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234005"><span class="hs-identifier hs-var">c2</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679234004"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234004"><span class="hs-identifier hs-var">p'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679234003"><span class="annot"><span class="annottext">[(RPoint, RPoint, RPoint)]
+</span><a href="#local-6989586621679234003"><span class="hs-identifier hs-var">ps</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679234002"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234002"><span class="hs-identifier hs-var">cmds</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-127"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Origin -&gt; [(RPoint, RPoint, RPoint)] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">CurveTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginAbsolute</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234007"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234009"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234005"><span class="hs-identifier hs-var">c2</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234007"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234009"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234006"><span class="hs-identifier hs-var">c1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234009"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-128"></span><span>    </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+-&gt; RPoint -&gt; Maybe RPoint -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe RPoint -&gt; RPoint -&gt; Maybe RPoint
+forall a. Maybe a -&gt; a -&gt; Maybe a
+</span><a href="#local-6989586621679234039"><span class="hs-identifier hs-var">upd</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679234010"><span class="hs-identifier hs-var">p0</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234009"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234007"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234009"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234004"><span class="hs-identifier hs-var">p'</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RPoint -&gt; Maybe RPoint
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234007"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234009"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234005"><span class="hs-identifier hs-var">c2</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; [(RPoint, RPoint, RPoint)] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">CurveTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679234007"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">[(RPoint, RPoint, RPoint)]
+</span><a href="#local-6989586621679234003"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679234002"><span class="hs-identifier hs-var">cmds</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-129"></span><span>  </span><span class="annot"><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679234001"><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679234001"><span class="hs-identifier hs-var">p0</span></a></span></span><span> </span><span id="local-6989586621679234000"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234000"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679233999"><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233999"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">SmoothCurveTo</span></span><span> </span><span id="local-6989586621679233997"><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233997"><span class="hs-identifier hs-var">orig</span></a></span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679233996"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233996"><span class="hs-identifier hs-var">c2</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233995"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233995"><span class="hs-identifier hs-var">p'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679233994"><span class="annot"><span class="annottext">[(RPoint, RPoint)]
+</span><a href="#local-6989586621679233994"><span class="hs-identifier hs-var">ps</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679233993"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233993"><span class="hs-identifier hs-var">cmds</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233999"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-130"></span><span>    </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+-&gt; RPoint -&gt; Maybe RPoint -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679234001"><span class="hs-identifier hs-var">p0</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234000"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233999"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; [(RPoint, RPoint)] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">QuadraticBezier</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233997"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233996"><span class="hs-identifier hs-var">c2</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233995"><span class="hs-identifier hs-var">p'</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Origin -&gt; [(RPoint, RPoint)] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">SmoothCurveTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233997"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">[(RPoint, RPoint)]
+</span><a href="#local-6989586621679233994"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233993"><span class="hs-identifier hs-var">cmds</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-131"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679233991"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233991"><span class="hs-identifier hs-var">c1</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+-&gt; RPoint -&gt; Maybe RPoint -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679234001"><span class="hs-identifier hs-var">p0</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234000"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233999"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; [(RPoint, RPoint, RPoint)] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">CurveTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginAbsolute</span></span><span>
+</span><span id="line-132"></span><span>      </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; RPoint -&gt; RPoint
+forall (f :: * -&gt; *) a. (Functor f, Num a) =&gt; a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">*^</span></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234000"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233997"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234000"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233991"><span class="hs-identifier hs-var">c1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233997"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234000"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233996"><span class="hs-identifier hs-var">c2</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233997"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679234000"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233995"><span class="hs-identifier hs-var">p'</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-133"></span><span>      </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Origin -&gt; [(RPoint, RPoint)] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">SmoothCurveTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233997"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">[(RPoint, RPoint)]
+</span><a href="#local-6989586621679233994"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233993"><span class="hs-identifier hs-var">cmds</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-134"></span><span>  </span><span class="annot"><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679233990"><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233990"><span class="hs-identifier hs-var">p0</span></a></span></span><span> </span><span id="local-6989586621679233989"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233989"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">QuadraticBezier</span></span><span> </span><span id="local-6989586621679233988"><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233988"><span class="hs-identifier hs-var">orig</span></a></span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679233987"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233987"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233986"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233986"><span class="hs-identifier hs-var">p'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679233985"><span class="annot"><span class="annottext">[(RPoint, RPoint)]
+</span><a href="#local-6989586621679233985"><span class="hs-identifier hs-var">ps</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679233984"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233984"><span class="hs-identifier hs-var">cmds</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-135"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Origin -&gt; [(RPoint, RPoint)] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">QuadraticBezier</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginAbsolute</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233988"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233989"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233987"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233989"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-136"></span><span>    </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+-&gt; RPoint -&gt; Maybe RPoint -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe RPoint -&gt; RPoint -&gt; Maybe RPoint
+forall a. Maybe a -&gt; a -&gt; Maybe a
+</span><a href="#local-6989586621679234039"><span class="hs-identifier hs-var">upd</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233990"><span class="hs-identifier hs-var">p0</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233989"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233988"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233989"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233986"><span class="hs-identifier hs-var">p'</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RPoint -&gt; Maybe RPoint
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233988"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233989"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233987"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; [(RPoint, RPoint)] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">QuadraticBezier</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233988"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">[(RPoint, RPoint)]
+</span><a href="#local-6989586621679233985"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233984"><span class="hs-identifier hs-var">cmds</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-137"></span><span>  </span><span class="annot"><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679233983"><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233983"><span class="hs-identifier hs-var">p0</span></a></span></span><span> </span><span id="local-6989586621679233982"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233982"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679233981"><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233981"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">SmoothQuadraticBezierCurveTo</span></span><span> </span><span id="local-6989586621679233979"><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233979"><span class="hs-identifier hs-var">orig</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233978"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233978"><span class="hs-identifier hs-var">p'</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679233977"><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679233977"><span class="hs-identifier hs-var">ps</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679233976"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233976"><span class="hs-identifier hs-var">cmds</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233981"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-138"></span><span>    </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+-&gt; RPoint -&gt; Maybe RPoint -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233983"><span class="hs-identifier hs-var">p0</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233982"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233981"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; [RPoint] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">LineTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233979"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233978"><span class="hs-identifier hs-var">p'</span></a></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Origin -&gt; [RPoint] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">SmoothQuadraticBezierCurveTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233979"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679233977"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233976"><span class="hs-identifier hs-var">cmds</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-139"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679233975"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233975"><span class="hs-identifier hs-var">c1</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+-&gt; RPoint -&gt; Maybe RPoint -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233983"><span class="hs-identifier hs-var">p0</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233982"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233981"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; [(RPoint, RPoint)] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">QuadraticBezier</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginAbsolute</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; RPoint -&gt; RPoint
+forall (f :: * -&gt; *) a. (Functor f, Num a) =&gt; a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">*^</span></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233982"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233979"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233982"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233975"><span class="hs-identifier hs-var">c1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233979"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233982"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233978"><span class="hs-identifier hs-var">p'</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-140"></span><span>      </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Origin -&gt; [RPoint] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">SmoothQuadraticBezierCurveTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233979"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">[RPoint]
+</span><a href="#local-6989586621679233977"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233976"><span class="hs-identifier hs-var">cmds</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-141"></span><span>  </span><span class="annot"><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679233974"><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233974"><span class="hs-identifier hs-var">p0</span></a></span></span><span> </span><span id="local-6989586621679233973"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233973"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">EllipticalArc</span></span><span> </span><span id="local-6989586621679233971"><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233971"><span class="hs-identifier hs-var">orig</span></a></span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679233970"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233970"><span class="hs-identifier hs-var">cx</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233969"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233969"><span class="hs-identifier hs-var">cy</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233968"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233968"><span class="hs-identifier hs-var">rot</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233967"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679233967"><span class="hs-identifier hs-var">fLarge</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233966"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679233966"><span class="hs-identifier hs-var">fSweep</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233965"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233965"><span class="hs-identifier hs-var">p'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679233964"><span class="annot"><span class="annottext">[(Double, Double, Double, Bool, Bool, RPoint)]
+</span><a href="#local-6989586621679233964"><span class="hs-identifier hs-var">ps</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679233963"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233963"><span class="hs-identifier hs-var">cmds</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-142"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span> </span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span id="local-6989586621679233962"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233962"><span class="hs-identifier hs-var">cx'</span></a></span></span><span> </span><span id="local-6989586621679233961"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233961"><span class="hs-identifier hs-var">cy'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233971"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233973"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; RPoint
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233970"><span class="hs-identifier hs-var">cx</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233969"><span class="hs-identifier hs-var">cy</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-143"></span><span>    </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Origin
+-&gt; [(Double, Double, Double, Bool, Bool, RPoint)] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">EllipticalArc</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginAbsolute</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233962"><span class="hs-identifier hs-var">cx'</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233961"><span class="hs-identifier hs-var">cy'</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679233968"><span class="hs-identifier hs-var">rot</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679233967"><span class="hs-identifier hs-var">fLarge</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679233966"><span class="hs-identifier hs-var">fSweep</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233973"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-144"></span><span>    </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+-&gt; RPoint -&gt; Maybe RPoint -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233974"><span class="hs-identifier hs-var">p0</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; RPoint -&gt; RPoint -&gt; RPoint
+forall a. Num a =&gt; Origin -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679234044"><span class="hs-identifier hs-var">step</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233971"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233973"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233965"><span class="hs-identifier hs-var">p'</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin
+-&gt; [(Double, Double, Double, Bool, Bool, RPoint)] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">EllipticalArc</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679233971"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">[(Double, Double, Double, Bool, Bool, RPoint)]
+</span><a href="#local-6989586621679233964"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233963"><span class="hs-identifier hs-var">cmds</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-145"></span><span>  </span><span class="annot"><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>   </span><span id="local-6989586621679233959"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233959"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679233958"><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233958"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">PathCommand
+</span><span class="hs-identifier hs-var">EndPath</span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679233956"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233956"><span class="hs-identifier hs-var">cmds</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+-&gt; RPoint -&gt; Maybe RPoint -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233959"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233958"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233956"><span class="hs-identifier hs-var">cmds</span></a></span><span>
+</span><span id="line-146"></span><span>  </span><span class="annot"><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679233955"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233955"><span class="hs-identifier hs-var">p0</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679233954"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233954"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679233953"><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233953"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">PathCommand
+</span><span class="hs-identifier hs-var">EndPath</span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679233952"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233952"><span class="hs-identifier hs-var">cmds</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+-&gt; RPoint -&gt; Maybe RPoint -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">RPoint -&gt; Maybe RPoint
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233955"><span class="hs-identifier hs-var">p0</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233954"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233953"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; [RPoint] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">LineTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginAbsolute</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233955"><span class="hs-identifier hs-var">p0</span></a></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233952"><span class="hs-identifier hs-var">cmds</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-147"></span><span>  </span><span class="annot"><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679233951"><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233951"><span class="hs-identifier hs-var">p0</span></a></span></span><span> </span><span id="local-6989586621679233950"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233950"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679233949"><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233949"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">PathCommand
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679233948"><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233948"><span class="hs-identifier hs-var">cmds</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+-&gt; RPoint -&gt; Maybe RPoint -&gt; [PathCommand] -&gt; [PathCommand]
+</span><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233951"><span class="hs-identifier hs-var">p0</span></a></span><span> </span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233950"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><a href="#local-6989586621679233949"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233948"><span class="hs-identifier hs-var">cmds</span></a></span><span>
+</span><span id="line-148"></span><span>  </span><span class="annot"><a href="#local-6989586621679234046"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><span class="hs-identifier">_</span></span><span>  </span><span id="local-6989586621679233947"><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233947"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe RPoint
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Origin -&gt; [RPoint] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">MoveTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginAbsolute</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">RPoint
+</span><a href="#local-6989586621679233947"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-149"></span></pre></body></html>

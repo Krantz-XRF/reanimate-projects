@@ -1,0 +1,1376 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE BangPatterns, MultiWayIf #-}</span><span>
+</span><span id="line-2"></span><span class="hs-comment">-- | Intersection routines using Bezier Clipping.  Provides also functions for finding the roots of onedimensional bezier curves.  This can be used as a general polynomial root solver by converting from the power basis to the bernstein basis.</span><span>
+</span><span id="line-3"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Geom2D.CubicBezier.Intersection</span><span>
+</span><span id="line-4"></span><span>       </span><span class="hs-special">(</span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#bezierIntersection"><span class="hs-identifier">bezierIntersection</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#bezierLineIntersections"><span class="hs-identifier">bezierLineIntersections</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#bezierFindRoot"><span class="hs-identifier">bezierFindRoot</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-5"></span><span>       </span><span class="hs-keyword">where</span><span>
+</span><span id="line-6"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Geom2D.html"><span class="hs-identifier">Geom2D</span></a></span><span>
+</span><span id="line-7"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html"><span class="hs-identifier">Geom2D.CubicBezier.Basic</span></a></span><span>
+</span><span id="line-8"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Math.BernsteinPoly.html"><span class="hs-identifier">Math.BernsteinPoly</span></a></span><span>
+</span><span id="line-9"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>
+</span><span id="line-10"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Numeric.html"><span class="hs-identifier">Geom2D.CubicBezier.Numeric</span></a></span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Vector.Unboxed</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">V</span></span><span>
+</span><span id="line-12"></span><span>
+</span><span id="line-13"></span><span class="hs-comment">-- find the convex hull by comparing the angles of the vectors with</span><span>
+</span><span id="line-14"></span><span class="hs-comment">-- the cross product and backtracking if necessary.</span><span>
+</span><span id="line-15"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#findOuter%27"><span class="hs-identifier hs-type">findOuter'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Geom2D.html#DPoint"><span class="hs-identifier hs-type">DPoint</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Geom2D.html#DPoint"><span class="hs-identifier hs-type">DPoint</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Geom2D.html#DPoint"><span class="hs-identifier hs-type">DPoint</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Geom2D.html#DPoint"><span class="hs-identifier hs-type">DPoint</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Geom2D.html#DPoint"><span class="hs-identifier hs-type">DPoint</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-16"></span><span id="findOuter%27"><span class="annot"><span class="annottext">findOuter' :: Bool -&gt; DPoint -&gt; DPoint -&gt; [DPoint] -&gt; Either [DPoint] [DPoint]
+</span><a href="Geom2D.CubicBezier.Intersection.html#findOuter%27"><span class="hs-identifier hs-var hs-var">findOuter'</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238623"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679238623"><span class="hs-identifier hs-var">upper</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238622"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238622"><span class="hs-identifier hs-var">dir</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238621"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238621"><span class="hs-identifier hs-var">p1</span></a></span></span><span> </span><span id="local-6989586621679238620"><span class="annot"><span class="annottext">l :: [DPoint]
+</span><a href="#local-6989586621679238620"><span class="hs-identifier hs-var">l</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span id="local-6989586621679238619"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238619"><span class="hs-identifier hs-var">p2</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679238618"><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238618"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span>  </span><span class="hs-comment">-- backtrack if the direction is outward</span><span>
+</span><span id="line-18"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679238623"><span class="hs-identifier hs-var">upper</span></a></span><span>
+</span><span id="line-19"></span><span>    </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238622"><span class="hs-identifier hs-var">dir</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; DPoint -&gt; Double
+forall a. Num a =&gt; Point a -&gt; Point a -&gt; a
+</span><a href="Geom2D.html#vectorCross"><span class="hs-operator hs-var">`vectorCross`</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238619"><span class="hs-identifier hs-var">p2</span></a></span><span class="annot"><span class="annottext">DPoint -&gt; DPoint -&gt; DPoint
+forall v. AdditiveGroup v =&gt; v -&gt; v -&gt; v
+</span><span class="hs-operator hs-var">^-^</span></span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238621"><span class="hs-identifier hs-var">p1</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-comment">-- left turn</span><span>
+</span><span id="line-20"></span><span>    </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238622"><span class="hs-identifier hs-var">dir</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; DPoint -&gt; Double
+forall a. Num a =&gt; Point a -&gt; Point a -&gt; a
+</span><a href="Geom2D.html#vectorCross"><span class="hs-operator hs-var">`vectorCross`</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238619"><span class="hs-identifier hs-var">p2</span></a></span><span class="annot"><span class="annottext">DPoint -&gt; DPoint -&gt; DPoint
+forall v. AdditiveGroup v =&gt; v -&gt; v -&gt; v
+</span><span class="hs-operator hs-var">^-^</span></span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238621"><span class="hs-identifier hs-var">p1</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[DPoint] -&gt; Either [DPoint] [DPoint]
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238620"><span class="hs-identifier hs-var">l</span></a></span><span>
+</span><span id="line-21"></span><span>  </span><span class="hs-comment">-- succeed</span><span>
+</span><span id="line-22"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; DPoint -&gt; DPoint -&gt; [DPoint] -&gt; Either [DPoint] [DPoint]
+</span><a href="Geom2D.CubicBezier.Intersection.html#findOuter%27"><span class="hs-identifier hs-var">findOuter'</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679238623"><span class="hs-identifier hs-var">upper</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238619"><span class="hs-identifier hs-var">p2</span></a></span><span class="annot"><span class="annottext">DPoint -&gt; DPoint -&gt; DPoint
+forall v. AdditiveGroup v =&gt; v -&gt; v -&gt; v
+</span><span class="hs-operator hs-var">^-^</span></span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238621"><span class="hs-identifier hs-var">p1</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238619"><span class="hs-identifier hs-var">p2</span></a></span><span> </span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238618"><span class="hs-identifier hs-var">rest</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-23"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679238613"><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238613"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; DPoint -&gt; DPoint -&gt; [DPoint] -&gt; Either [DPoint] [DPoint]
+</span><a href="Geom2D.CubicBezier.Intersection.html#findOuter%27"><span class="hs-identifier hs-var">findOuter'</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679238623"><span class="hs-identifier hs-var">upper</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238622"><span class="hs-identifier hs-var">dir</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238621"><span class="hs-identifier hs-var">p1</span></a></span><span> </span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238613"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-24"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679238612"><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238612"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[DPoint] -&gt; Either [DPoint] [DPoint]
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238621"><span class="hs-identifier hs-var">p1</span></a></span><span class="annot"><span class="annottext">DPoint -&gt; [DPoint] -&gt; [DPoint]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238612"><span class="hs-identifier hs-var">m</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#findOuter%27"><span class="hs-identifier hs-var">findOuter'</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679238611"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238611"><span class="hs-identifier hs-var">p1</span></a></span></span><span> </span><span id="local-6989586621679238610"><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238610"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[DPoint] -&gt; Either [DPoint] [DPoint]
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238611"><span class="hs-identifier hs-var">p1</span></a></span><span class="annot"><span class="annottext">DPoint -&gt; [DPoint] -&gt; [DPoint]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238610"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- find the outermost point.  It doesn't look at the x values.</span><span>
+</span><span id="line-29"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#findOuter"><span class="hs-identifier hs-type">findOuter</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Geom2D.html#DPoint"><span class="hs-identifier hs-type">DPoint</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Geom2D.html#DPoint"><span class="hs-identifier hs-type">DPoint</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-30"></span><span id="findOuter"><span class="annot"><span class="annottext">findOuter :: Bool -&gt; [DPoint] -&gt; [DPoint]
+</span><a href="Geom2D.CubicBezier.Intersection.html#findOuter"><span class="hs-identifier hs-var hs-var">findOuter</span></a></span></span><span> </span><span id="local-6989586621679238608"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679238608"><span class="hs-identifier hs-var">upper</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679238607"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238607"><span class="hs-identifier hs-var">p1</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679238606"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238606"><span class="hs-identifier hs-var">p2</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679238605"><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238605"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-31"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; DPoint -&gt; DPoint -&gt; [DPoint] -&gt; Either [DPoint] [DPoint]
+</span><a href="Geom2D.CubicBezier.Intersection.html#findOuter%27"><span class="hs-identifier hs-var">findOuter'</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679238608"><span class="hs-identifier hs-var">upper</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238606"><span class="hs-identifier hs-var">p2</span></a></span><span class="annot"><span class="annottext">DPoint -&gt; DPoint -&gt; DPoint
+forall v. AdditiveGroup v =&gt; v -&gt; v -&gt; v
+</span><span class="hs-operator hs-var">^-^</span></span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238607"><span class="hs-identifier hs-var">p1</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238606"><span class="hs-identifier hs-var">p2</span></a></span><span> </span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238605"><span class="hs-identifier hs-var">rest</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-32"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679238604"><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238604"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238607"><span class="hs-identifier hs-var">p1</span></a></span><span class="annot"><span class="annottext">DPoint -&gt; [DPoint] -&gt; [DPoint]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238604"><span class="hs-identifier hs-var">l</span></a></span><span>
+</span><span id="line-33"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679238603"><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238603"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; [DPoint] -&gt; [DPoint]
+</span><a href="Geom2D.CubicBezier.Intersection.html#findOuter"><span class="hs-identifier hs-var">findOuter</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679238608"><span class="hs-identifier hs-var">upper</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238607"><span class="hs-identifier hs-var">p1</span></a></span><span class="annot"><span class="annottext">DPoint -&gt; [DPoint] -&gt; [DPoint]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238603"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#findOuter"><span class="hs-identifier hs-var">findOuter</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679238602"><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238602"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238602"><span class="hs-identifier hs-var">l</span></a></span><span>    </span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- take the y values and turn it in into a convex hull with upper en</span><span>
+</span><span id="line-37"></span><span class="hs-comment">-- lower points separated.</span><span>
+</span><span id="line-38"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#makeHull"><span class="hs-identifier hs-type">makeHull</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><a href="Geom2D.html#DPoint"><span class="hs-identifier hs-type">DPoint</span></a></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Geom2D.html#DPoint"><span class="hs-identifier hs-type">DPoint</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-39"></span><span id="makeHull"><span class="annot"><span class="annottext">makeHull :: [Double] -&gt; ([DPoint], [DPoint])
+</span><a href="Geom2D.CubicBezier.Intersection.html#makeHull"><span class="hs-identifier hs-var hs-var">makeHull</span></a></span></span><span> </span><span id="local-6989586621679238600"><span class="annot"><span class="annottext">[Double]
+</span><a href="#local-6989586621679238600"><span class="hs-identifier hs-var">ds</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-40"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679238599"><span class="annot"><span class="annottext">n :: Double
+</span><a href="#local-6989586621679238599"><span class="hs-identifier hs-var hs-var">n</span></a></span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Double) -&gt; Int -&gt; Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Double] -&gt; Int
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Int
+</span><span class="hs-identifier hs-var">length</span></span><span> </span><span class="annot"><span class="annottext">[Double]
+</span><a href="#local-6989586621679238600"><span class="hs-identifier hs-var">ds</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-41"></span><span>      </span><span id="local-6989586621679238597"><span class="annot"><span class="annottext">points :: [DPoint]
+</span><a href="#local-6989586621679238597"><span class="hs-identifier hs-var hs-var">points</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double -&gt; DPoint) -&gt; [Double] -&gt; [Double] -&gt; [DPoint]
+forall a b c. (a -&gt; b -&gt; c) -&gt; [a] -&gt; [b] -&gt; [c]
+</span><span class="hs-identifier hs-var">zipWith</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; DPoint
+forall a. a -&gt; a -&gt; Point a
+</span><a href="Geom2D.html#Point"><span class="hs-identifier hs-var">Point</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238594"><span class="hs-identifier hs-var">i</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238599"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679238594"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238594"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238599"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">]</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[Double]
+</span><a href="#local-6989586621679238600"><span class="hs-identifier hs-var">ds</span></a></span><span>
+</span><span id="line-42"></span><span>  </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool -&gt; [DPoint] -&gt; [DPoint]
+</span><a href="Geom2D.CubicBezier.Intersection.html#findOuter"><span class="hs-identifier hs-var">findOuter</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238597"><span class="hs-identifier hs-var">points</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-43"></span><span>      </span><span class="annot"><span class="annottext">Bool -&gt; [DPoint] -&gt; [DPoint]
+</span><a href="Geom2D.CubicBezier.Intersection.html#findOuter"><span class="hs-identifier hs-var">findOuter</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238597"><span class="hs-identifier hs-var">points</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-44"></span><span>
+</span><span id="line-45"></span><span class="hs-comment">-- test if the chords cross the fat line</span><span>
+</span><span id="line-46"></span><span class="hs-comment">-- return the continuation if above the line</span><span>
+</span><span id="line-47"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#testBelow"><span class="hs-identifier hs-type">testBelow</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Geom2D.html#DPoint"><span class="hs-identifier hs-type">DPoint</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-48"></span><span id="testBelow"><span class="annot"><span class="annottext">testBelow :: Double -&gt; [DPoint] -&gt; Maybe Double -&gt; Maybe Double
+</span><a href="Geom2D.CubicBezier.Intersection.html#testBelow"><span class="hs-identifier hs-var hs-var">testBelow</span></a></span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span>    </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">Maybe Double
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Double
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-49"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#testBelow"><span class="hs-identifier hs-var">testBelow</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span>    </span><span class="hs-special">[</span><span class="annot"><span class="annottext">DPoint
+</span><span class="hs-identifier">_</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">Maybe Double
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Double
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-50"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#testBelow"><span class="hs-identifier hs-var">testBelow</span></a></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238591"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238591"><span class="hs-identifier hs-var">dmin</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679238590"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238590"><span class="hs-identifier hs-var">p</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679238589"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238589"><span class="hs-identifier hs-var">q</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679238588"><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238588"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679238587"><span class="annot"><span class="annottext">Maybe Double
+</span><a href="#local-6989586621679238587"><span class="hs-identifier hs-var">cont</span></a></span></span><span>
+</span><span id="line-51"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Double
+forall a. Point a -&gt; a
+</span><a href="Geom2D.html#pointY"><span class="hs-identifier hs-var hs-var">pointY</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238590"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238591"><span class="hs-identifier hs-var">dmin</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Double
+</span><a href="#local-6989586621679238587"><span class="hs-identifier hs-var">cont</span></a></span><span>
+</span><span id="line-52"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Double
+forall a. Point a -&gt; a
+</span><a href="Geom2D.html#pointY"><span class="hs-identifier hs-var hs-var">pointY</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238590"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Double
+forall a. Point a -&gt; a
+</span><a href="Geom2D.html#pointY"><span class="hs-identifier hs-var hs-var">pointY</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238589"><span class="hs-identifier hs-var">q</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Double
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-53"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Double
+forall a. Point a -&gt; a
+</span><a href="Geom2D.html#pointY"><span class="hs-identifier hs-var hs-var">pointY</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238589"><span class="hs-identifier hs-var">q</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238591"><span class="hs-identifier hs-var">dmin</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; [DPoint] -&gt; Maybe Double -&gt; Maybe Double
+</span><a href="Geom2D.CubicBezier.Intersection.html#testBelow"><span class="hs-identifier hs-var">testBelow</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238591"><span class="hs-identifier hs-var">dmin</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238589"><span class="hs-identifier hs-var">q</span></a></span><span class="annot"><span class="annottext">DPoint -&gt; [DPoint] -&gt; [DPoint]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238588"><span class="hs-identifier hs-var">rest</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Double
+</span><a href="#local-6989586621679238587"><span class="hs-identifier hs-var">cont</span></a></span><span>
+</span><span id="line-54"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Maybe Double
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Maybe Double) -&gt; Double -&gt; Maybe Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; DPoint -&gt; DPoint -&gt; Double
+</span><a href="Geom2D.CubicBezier.Intersection.html#intersectPt"><span class="hs-identifier hs-var">intersectPt</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238591"><span class="hs-identifier hs-var">dmin</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238590"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238589"><span class="hs-identifier hs-var">q</span></a></span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#testBetween"><span class="hs-identifier hs-type">testBetween</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Geom2D.html#DPoint"><span class="hs-identifier hs-type">DPoint</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-57"></span><span id="testBetween"><span class="annot"><span class="annottext">testBetween :: Double -&gt; DPoint -&gt; Maybe Double -&gt; Maybe Double
+</span><a href="Geom2D.CubicBezier.Intersection.html#testBetween"><span class="hs-identifier hs-var hs-var">testBetween</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238583"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238583"><span class="hs-identifier hs-var">dmax</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Geom2D.html#Point"><span class="hs-identifier hs-type">Point</span></a></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238582"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238582"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238581"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238581"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679238580"><span class="annot"><span class="annottext">Maybe Double
+</span><a href="#local-6989586621679238580"><span class="hs-identifier hs-var">cont</span></a></span></span><span>
+</span><span id="line-58"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238581"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238583"><span class="hs-identifier hs-var">dmax</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Maybe Double
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238582"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-59"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Double
+</span><a href="#local-6989586621679238580"><span class="hs-identifier hs-var">cont</span></a></span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span class="hs-comment">-- test if the chords cross the line y=dmax somewhere</span><span>
+</span><span id="line-62"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#testAbove"><span class="hs-identifier hs-type">testAbove</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Geom2D.html#DPoint"><span class="hs-identifier hs-type">DPoint</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-63"></span><span id="testAbove"><span class="annot"><span class="annottext">testAbove :: Double -&gt; [DPoint] -&gt; Maybe Double
+</span><a href="Geom2D.CubicBezier.Intersection.html#testAbove"><span class="hs-identifier hs-var hs-var">testAbove</span></a></span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span>    </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Double
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-64"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#testAbove"><span class="hs-identifier hs-var">testAbove</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span>    </span><span class="hs-special">[</span><span class="annot"><span class="annottext">DPoint
+</span><span class="hs-identifier">_</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Double
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-65"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#testAbove"><span class="hs-identifier hs-var">testAbove</span></a></span><span> </span><span id="local-6989586621679238577"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238577"><span class="hs-identifier hs-var">dmax</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679238576"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238576"><span class="hs-identifier hs-var">p</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679238575"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238575"><span class="hs-identifier hs-var">q</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679238574"><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238574"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-66"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Double
+forall a. Point a -&gt; a
+</span><a href="Geom2D.html#pointY"><span class="hs-identifier hs-var hs-var">pointY</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238576"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Double
+forall a. Point a -&gt; a
+</span><a href="Geom2D.html#pointY"><span class="hs-identifier hs-var hs-var">pointY</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238575"><span class="hs-identifier hs-var">q</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Double
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-67"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Double
+forall a. Point a -&gt; a
+</span><a href="Geom2D.html#pointY"><span class="hs-identifier hs-var hs-var">pointY</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238575"><span class="hs-identifier hs-var">q</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238577"><span class="hs-identifier hs-var">dmax</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; [DPoint] -&gt; Maybe Double
+</span><a href="Geom2D.CubicBezier.Intersection.html#testAbove"><span class="hs-identifier hs-var">testAbove</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238577"><span class="hs-identifier hs-var">dmax</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238575"><span class="hs-identifier hs-var">q</span></a></span><span class="annot"><span class="annottext">DPoint -&gt; [DPoint] -&gt; [DPoint]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238574"><span class="hs-identifier hs-var">rest</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-68"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Maybe Double
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Maybe Double) -&gt; Double -&gt; Maybe Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; DPoint -&gt; DPoint -&gt; Double
+</span><a href="Geom2D.CubicBezier.Intersection.html#intersectPt"><span class="hs-identifier hs-var">intersectPt</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238577"><span class="hs-identifier hs-var">dmax</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238576"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238575"><span class="hs-identifier hs-var">q</span></a></span><span>
+</span><span id="line-69"></span><span>
+</span><span id="line-70"></span><span class="hs-comment">-- find the x value where the line through the two points</span><span>
+</span><span id="line-71"></span><span class="hs-comment">-- intersect the line y=d</span><span>
+</span><span id="line-72"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#intersectPt"><span class="hs-identifier hs-type">intersectPt</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Geom2D.html#DPoint"><span class="hs-identifier hs-type">DPoint</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Geom2D.html#DPoint"><span class="hs-identifier hs-type">DPoint</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-73"></span><span id="intersectPt"><span class="annot"><span class="annottext">intersectPt :: Double -&gt; DPoint -&gt; DPoint -&gt; Double
+</span><a href="Geom2D.CubicBezier.Intersection.html#intersectPt"><span class="hs-identifier hs-var hs-var">intersectPt</span></a></span></span><span> </span><span id="local-6989586621679238573"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238573"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Geom2D.html#Point"><span class="hs-identifier hs-type">Point</span></a></span><span> </span><span id="local-6989586621679238572"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238572"><span class="hs-identifier hs-var">x1</span></a></span></span><span> </span><span id="local-6989586621679238571"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238571"><span class="hs-identifier hs-var">y1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Geom2D.html#Point"><span class="hs-identifier hs-type">Point</span></a></span><span> </span><span id="local-6989586621679238570"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238570"><span class="hs-identifier hs-var">x2</span></a></span></span><span> </span><span id="local-6989586621679238569"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238569"><span class="hs-identifier hs-var">y2</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-74"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238571"><span class="hs-identifier hs-var">y1</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238569"><span class="hs-identifier hs-var">y2</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238572"><span class="hs-identifier hs-var">x1</span></a></span><span>
+</span><span id="line-75"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-76"></span><span>    </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238572"><span class="hs-identifier hs-var">x1</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238573"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238571"><span class="hs-identifier hs-var">y1</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238570"><span class="hs-identifier hs-var">x2</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238572"><span class="hs-identifier hs-var">x1</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238569"><span class="hs-identifier hs-var">y2</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238571"><span class="hs-identifier hs-var">y1</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span class="hs-comment">-- make a hull and test over which interval the</span><span>
+</span><span id="line-79"></span><span class="hs-comment">-- curve is garuanteed to lie inside the fat line</span><span>
+</span><span id="line-80"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#chopHull"><span class="hs-identifier hs-type">chopHull</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span><span>
+</span><span id="line-81"></span><span id="chopHull"><span class="annot"><span class="annottext">chopHull :: Double -&gt; Double -&gt; [Double] -&gt; Maybe (Double, Double)
+</span><a href="Geom2D.CubicBezier.Intersection.html#chopHull"><span class="hs-identifier hs-var hs-var">chopHull</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238565"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238565"><span class="hs-identifier hs-var">dmin</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238564"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238564"><span class="hs-identifier hs-var">dmax</span></a></span></span><span> </span><span id="local-6989586621679238563"><span class="annot"><span class="annottext">[Double]
+</span><a href="#local-6989586621679238563"><span class="hs-identifier hs-var">ds</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-82"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679238562"><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238562"><span class="hs-identifier hs-var">upper</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679238561"><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238561"><span class="hs-identifier hs-var">lower</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Double] -&gt; ([DPoint], [DPoint])
+</span><a href="Geom2D.CubicBezier.Intersection.html#makeHull"><span class="hs-identifier hs-var">makeHull</span></a></span><span> </span><span class="annot"><span class="annottext">[Double]
+</span><a href="#local-6989586621679238563"><span class="hs-identifier hs-var">ds</span></a></span><span>
+</span><span id="line-83"></span><span>  </span><span id="local-6989586621679238560"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238560"><span class="hs-identifier hs-var">left_t</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Double -&gt; [DPoint] -&gt; Maybe Double -&gt; Maybe Double
+</span><a href="Geom2D.CubicBezier.Intersection.html#testBelow"><span class="hs-identifier hs-var">testBelow</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238565"><span class="hs-identifier hs-var">dmin</span></a></span><span> </span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238562"><span class="hs-identifier hs-var">upper</span></a></span><span> </span><span class="annot"><span class="annottext">(Maybe Double -&gt; Maybe Double) -&gt; Maybe Double -&gt; Maybe Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-84"></span><span>            </span><span class="annot"><span class="annottext">Double -&gt; DPoint -&gt; Maybe Double -&gt; Maybe Double
+</span><a href="Geom2D.CubicBezier.Intersection.html#testBetween"><span class="hs-identifier hs-var">testBetween</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238564"><span class="hs-identifier hs-var">dmax</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[DPoint] -&gt; DPoint
+forall a. [a] -&gt; a
+</span><span class="hs-identifier hs-var">head</span></span><span> </span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238562"><span class="hs-identifier hs-var">upper</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Maybe Double -&gt; Maybe Double) -&gt; Maybe Double -&gt; Maybe Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-85"></span><span>            </span><span class="annot"><span class="annottext">Double -&gt; [DPoint] -&gt; Maybe Double
+</span><a href="Geom2D.CubicBezier.Intersection.html#testAbove"><span class="hs-identifier hs-var">testAbove</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238564"><span class="hs-identifier hs-var">dmax</span></a></span><span> </span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238561"><span class="hs-identifier hs-var">lower</span></a></span><span>
+</span><span id="line-86"></span><span>  </span><span id="local-6989586621679238558"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238558"><span class="hs-identifier hs-var">right_t</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Double -&gt; [DPoint] -&gt; Maybe Double -&gt; Maybe Double
+</span><a href="Geom2D.CubicBezier.Intersection.html#testBelow"><span class="hs-identifier hs-var">testBelow</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238565"><span class="hs-identifier hs-var">dmin</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[DPoint] -&gt; [DPoint]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238562"><span class="hs-identifier hs-var">upper</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Maybe Double -&gt; Maybe Double) -&gt; Maybe Double -&gt; Maybe Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-87"></span><span>             </span><span class="annot"><span class="annottext">Double -&gt; DPoint -&gt; Maybe Double -&gt; Maybe Double
+</span><a href="Geom2D.CubicBezier.Intersection.html#testBetween"><span class="hs-identifier hs-var">testBetween</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238564"><span class="hs-identifier hs-var">dmax</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[DPoint] -&gt; DPoint
+forall a. [a] -&gt; a
+</span><span class="hs-identifier hs-var">last</span></span><span> </span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238562"><span class="hs-identifier hs-var">upper</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Maybe Double -&gt; Maybe Double) -&gt; Maybe Double -&gt; Maybe Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-88"></span><span>             </span><span class="annot"><span class="annottext">Double -&gt; [DPoint] -&gt; Maybe Double
+</span><a href="Geom2D.CubicBezier.Intersection.html#testAbove"><span class="hs-identifier hs-var">testAbove</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238564"><span class="hs-identifier hs-var">dmax</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[DPoint] -&gt; [DPoint]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="annot"><span class="annottext">[DPoint]
+</span><a href="#local-6989586621679238561"><span class="hs-identifier hs-var">lower</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-89"></span><span>  </span><span class="annot"><span class="annottext">(Double, Double) -&gt; Maybe (Double, Double)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238560"><span class="hs-identifier hs-var">left_t</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238558"><span class="hs-identifier hs-var">right_t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-90"></span><span>
+</span><span id="line-91"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#bezierClip"><span class="hs-identifier hs-type">bezierClip</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html#CubicBezier"><span class="hs-identifier hs-type">CubicBezier</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html#CubicBezier"><span class="hs-identifier hs-type">CubicBezier</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-92"></span><span>           </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-93"></span><span>           </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-94"></span><span id="bezierClip"><span class="annot"><span class="annottext">bezierClip :: CubicBezier Double
+-&gt; CubicBezier Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Bool
+-&gt; [(Double, Double)]
+</span><a href="Geom2D.CubicBezier.Intersection.html#bezierClip"><span class="hs-identifier hs-var hs-var">bezierClip</span></a></span></span><span> </span><span id="local-6989586621679238554"><span class="annot"><span class="annottext">p :: CubicBezier Double
+</span><a href="#local-6989586621679238554"><span class="hs-identifier hs-var">p</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html#CubicBezier"><span class="hs-identifier hs-type">CubicBezier</span></a></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238552"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238552"><span class="hs-identifier hs-var">p0</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238551"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238551"><span class="hs-identifier hs-var">p1</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238550"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238550"><span class="hs-identifier hs-var">p2</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238549"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238549"><span class="hs-identifier hs-var">p3</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679238548"><span class="annot"><span class="annottext">q :: CubicBezier Double
+</span><a href="#local-6989586621679238548"><span class="hs-identifier hs-var">q</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html#CubicBezier"><span class="hs-identifier hs-type">CubicBezier</span></a></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238547"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238547"><span class="hs-identifier hs-var">q0</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238546"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238546"><span class="hs-identifier hs-var">q1</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238545"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238545"><span class="hs-identifier hs-var">q2</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679238544"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238544"><span class="hs-identifier hs-var">q3</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-95"></span><span>  </span><span id="local-6989586621679238543"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238543"><span class="hs-identifier hs-var">tmin</span></a></span></span><span> </span><span id="local-6989586621679238542"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238542"><span class="hs-identifier hs-var">tmax</span></a></span></span><span> </span><span id="local-6989586621679238541"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238541"><span class="hs-identifier hs-var">umin</span></a></span></span><span> </span><span id="local-6989586621679238540"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238540"><span class="hs-identifier hs-var">umax</span></a></span></span><span> </span><span id="local-6989586621679238539"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238539"><span class="hs-identifier hs-var">prevClip</span></a></span></span><span> </span><span id="local-6989586621679238538"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238538"><span class="hs-identifier hs-var">pEps</span></a></span></span><span> </span><span id="local-6989586621679238537"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238537"><span class="hs-identifier hs-var">vEps</span></a></span></span><span> </span><span id="local-6989586621679238536"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679238536"><span class="hs-identifier hs-var">revCurves</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">([(Double, Double)] -&gt; [(Double, Double)])
+-&gt; ([(Double, Double)] -&gt; [(Double, Double)])
+-&gt; Either [(Double, Double)] [(Double, Double)]
+-&gt; [(Double, Double)]
+forall a c b. (a -&gt; c) -&gt; (b -&gt; c) -&gt; Either a b -&gt; c
+</span><span class="hs-identifier hs-var">either</span></span><span> </span><span class="annot"><span class="annottext">[(Double, Double)] -&gt; [(Double, Double)]
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="annot"><span class="annottext">[(Double, Double)] -&gt; [(Double, Double)]
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="annot"><span class="annottext">(Either [(Double, Double)] [(Double, Double)]
+ -&gt; [(Double, Double)])
+-&gt; Either [(Double, Double)] [(Double, Double)]
+-&gt; [(Double, Double)]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-96"></span><span>  </span><span id="local-6989586621679238533"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238533"><span class="hs-identifier hs-var">q3'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; DPoint -&gt; Double
+forall a. Floating a =&gt; Point a -&gt; Point a -&gt; a
+</span><a href="Geom2D.html#vectorDistance"><span class="hs-identifier hs-var">vectorDistance</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238547"><span class="hs-identifier hs-var">q0</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238544"><span class="hs-identifier hs-var">q3</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint -&gt; Double
+forall a. Floating a =&gt; Point a -&gt; a
+</span><a href="Geom2D.html#vectorMag"><span class="hs-identifier hs-var">vectorMag</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238547"><span class="hs-identifier hs-var">q0</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint -&gt; Double
+forall a. Floating a =&gt; Point a -&gt; a
+</span><a href="Geom2D.html#vectorMag"><span class="hs-identifier hs-var">vectorMag</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238544"><span class="hs-identifier hs-var">q3</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Floating a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">**</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">30</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Either [(Double, Double)] DPoint
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238544"><span class="hs-identifier hs-var">q3</span></a></span><span>
+</span><span id="line-97"></span><span>            </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; DPoint -&gt; Double
+forall a. Floating a =&gt; Point a -&gt; Point a -&gt; a
+</span><a href="Geom2D.html#vectorDistance"><span class="hs-identifier hs-var">vectorDistance</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238547"><span class="hs-identifier hs-var">q0</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238546"><span class="hs-identifier hs-var">q1</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint -&gt; Double
+forall a. Floating a =&gt; Point a -&gt; a
+</span><a href="Geom2D.html#vectorMag"><span class="hs-identifier hs-var">vectorMag</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238547"><span class="hs-identifier hs-var">q0</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint -&gt; Double
+forall a. Floating a =&gt; Point a -&gt; a
+</span><a href="Geom2D.html#vectorMag"><span class="hs-identifier hs-var">vectorMag</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238546"><span class="hs-identifier hs-var">q1</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Floating a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">**</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">30</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Either [(Double, Double)] DPoint
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238546"><span class="hs-identifier hs-var">q1</span></a></span><span>
+</span><span id="line-98"></span><span>            </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; DPoint -&gt; Double
+forall a. Floating a =&gt; Point a -&gt; Point a -&gt; a
+</span><a href="Geom2D.html#vectorDistance"><span class="hs-identifier hs-var">vectorDistance</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238547"><span class="hs-identifier hs-var">q0</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238545"><span class="hs-identifier hs-var">q2</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint -&gt; Double
+forall a. Floating a =&gt; Point a -&gt; a
+</span><a href="Geom2D.html#vectorMag"><span class="hs-identifier hs-var">vectorMag</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238547"><span class="hs-identifier hs-var">q0</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint -&gt; Double
+forall a. Floating a =&gt; Point a -&gt; a
+</span><a href="Geom2D.html#vectorMag"><span class="hs-identifier hs-var">vectorMag</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238545"><span class="hs-identifier hs-var">q2</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Floating a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">**</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">30</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Either [(Double, Double)] DPoint
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238545"><span class="hs-identifier hs-var">q2</span></a></span><span>
+</span><span id="line-99"></span><span>            </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[(Double, Double)] -&gt; Either [(Double, Double)] DPoint
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">([(Double, Double)] -&gt; Either [(Double, Double)] DPoint)
+-&gt; [(Double, Double)] -&gt; Either [(Double, Double)] DPoint
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-100"></span><span>              </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679238528"><span class="annot"><span class="annottext">t :: Double
+</span><a href="#local-6989586621679238528"><span class="hs-identifier hs-var hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CubicBezier Double -&gt; DPoint -&gt; Double -&gt; Double
+</span><a href="Geom2D.CubicBezier.Basic.html#closest"><span class="hs-identifier hs-var">closest</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238554"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238547"><span class="hs-identifier hs-var">q0</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238537"><span class="hs-identifier hs-var">vEps</span></a></span><span>
+</span><span id="line-101"></span><span>                  </span><span id="local-6989586621679238526"><span class="annot"><span class="annottext">newT :: Double
+</span><a href="#local-6989586621679238526"><span class="hs-identifier hs-var hs-var">newT</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238543"><span class="hs-identifier hs-var">tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238528"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238542"><span class="hs-identifier hs-var">tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238528"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-102"></span><span>                  </span><span id="local-6989586621679238525"><span class="annot"><span class="annottext">umid :: Double
+</span><a href="#local-6989586621679238525"><span class="hs-identifier hs-var hs-var">umid</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238540"><span class="hs-identifier hs-var">umax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.5</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238540"><span class="hs-identifier hs-var">umax</span></a></span><span>
+</span><span id="line-103"></span><span>                       </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238541"><span class="hs-identifier hs-var">umin</span></a></span><span>
+</span><span id="line-104"></span><span>              </span><span class="hs-keyword">in</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; DPoint -&gt; Double
+forall a. Floating a =&gt; Point a -&gt; Point a -&gt; a
+</span><a href="Geom2D.html#vectorDistance"><span class="hs-identifier hs-var">vectorDistance</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CubicBezier Double -&gt; Double -&gt; DPoint
+forall (b :: * -&gt; *) a.
+(GenericBezier b, Unbox a, Fractional a) =&gt;
+b a -&gt; a -&gt; Point a
+</span><a href="Geom2D.CubicBezier.Basic.html#evalBezier"><span class="hs-identifier hs-var">evalBezier</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238554"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238528"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CubicBezier Double -&gt; Double -&gt; DPoint
+forall (b :: * -&gt; *) a.
+(GenericBezier b, Unbox a, Fractional a) =&gt;
+b a -&gt; a -&gt; Point a
+</span><a href="Geom2D.CubicBezier.Basic.html#evalBezier"><span class="hs-identifier hs-var">evalBezier</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238548"><span class="hs-identifier hs-var">q</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.5</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238537"><span class="hs-identifier hs-var">vEps</span></a></span><span>
+</span><span id="line-105"></span><span>                      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-106"></span><span>                    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679238536"><span class="hs-identifier hs-var">revCurves</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238525"><span class="hs-identifier hs-var">umid</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238526"><span class="hs-identifier hs-var">newT</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-107"></span><span>                    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238526"><span class="hs-identifier hs-var">newT</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238525"><span class="hs-identifier hs-var">umid</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-108"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679238523"><span class="annot"><span class="annottext">d :: DPoint -&gt; Double
+</span><a href="#local-6989586621679238523"><span class="hs-identifier hs-var hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Line Double -&gt; DPoint -&gt; Double
+forall a. Floating a =&gt; Line a -&gt; Point a -&gt; a
+</span><a href="Geom2D.html#lineDistance"><span class="hs-identifier hs-var">lineDistance</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint -&gt; DPoint -&gt; Line Double
+forall a. Point a -&gt; Point a -&gt; Line a
+</span><a href="Geom2D.html#Line"><span class="hs-identifier hs-var">Line</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238547"><span class="hs-identifier hs-var">q0</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238533"><span class="hs-identifier hs-var">q3'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-109"></span><span>      </span><span id="local-6989586621679238520"><span class="annot"><span class="annottext">d1 :: Double
+</span><a href="#local-6989586621679238520"><span class="hs-identifier hs-var hs-var">d1</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Double
+</span><a href="#local-6989586621679238523"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238546"><span class="hs-identifier hs-var">q1</span></a></span><span>
+</span><span id="line-110"></span><span>      </span><span id="local-6989586621679238519"><span class="annot"><span class="annottext">d2 :: Double
+</span><a href="#local-6989586621679238519"><span class="hs-identifier hs-var hs-var">d2</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Double
+</span><a href="#local-6989586621679238523"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238545"><span class="hs-identifier hs-var">q2</span></a></span><span>
+</span><span id="line-111"></span><span>      </span><span class="hs-special">(</span><span id="local-6989586621679238518"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238518"><span class="hs-identifier hs-var">dmin</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679238517"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238517"><span class="hs-identifier hs-var">dmax</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238520"><span class="hs-identifier hs-var">d1</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238519"><span class="hs-identifier hs-var">d2</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">3</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">min</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">min</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238520"><span class="hs-identifier hs-var">d1</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238519"><span class="hs-identifier hs-var">d2</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-112"></span><span>                                  </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">3</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238520"><span class="hs-identifier hs-var">d1</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238519"><span class="hs-identifier hs-var">d2</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-113"></span><span>                   </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">4</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">9</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">min</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">min</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238520"><span class="hs-identifier hs-var">d1</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238519"><span class="hs-identifier hs-var">d2</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-114"></span><span>                                  </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">4</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">9</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238520"><span class="hs-identifier hs-var">d1</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238519"><span class="hs-identifier hs-var">d2</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-115"></span><span>  </span><span class="hs-special">(</span><span id="local-6989586621679238515"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238515"><span class="hs-identifier hs-var">chop_tmin</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679238514"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238514"><span class="hs-identifier hs-var">chop_tmax</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Either [(Double, Double)] (Double, Double)
+-&gt; ((Double, Double) -&gt; Either [(Double, Double)] (Double, Double))
+-&gt; Maybe (Double, Double)
+-&gt; Either [(Double, Double)] (Double, Double)
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[(Double, Double)] -&gt; Either [(Double, Double)] (Double, Double)
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Double, Double) -&gt; Either [(Double, Double)] (Double, Double)
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">(Maybe (Double, Double)
+ -&gt; Either [(Double, Double)] (Double, Double))
+-&gt; Maybe (Double, Double)
+-&gt; Either [(Double, Double)] (Double, Double)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-116"></span><span>                            </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; [Double] -&gt; Maybe (Double, Double)
+</span><a href="Geom2D.CubicBezier.Intersection.html#chopHull"><span class="hs-identifier hs-var">chopHull</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238518"><span class="hs-identifier hs-var">dmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238517"><span class="hs-identifier hs-var">dmax</span></a></span><span> </span><span class="annot"><span class="annottext">([Double] -&gt; Maybe (Double, Double))
+-&gt; [Double] -&gt; Maybe (Double, Double)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-117"></span><span>                            </span><span class="annot"><span class="annottext">(DPoint -&gt; Double) -&gt; [DPoint] -&gt; [Double]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Double
+</span><a href="#local-6989586621679238523"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238552"><span class="hs-identifier hs-var">p0</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238551"><span class="hs-identifier hs-var">p1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238550"><span class="hs-identifier hs-var">p2</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238549"><span class="hs-identifier hs-var">p3</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-118"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679238512"><span class="annot"><span class="annottext">newP :: CubicBezier Double
+</span><a href="#local-6989586621679238512"><span class="hs-identifier hs-var hs-var">newP</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CubicBezier Double -&gt; Double -&gt; Double -&gt; CubicBezier Double
+forall a (b :: * -&gt; *).
+(Ord a, Unbox a, Fractional a, GenericBezier b) =&gt;
+b a -&gt; a -&gt; a -&gt; b a
+</span><a href="Geom2D.CubicBezier.Basic.html#bezierSubsegment"><span class="hs-identifier hs-var">bezierSubsegment</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238554"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238515"><span class="hs-identifier hs-var">chop_tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238514"><span class="hs-identifier hs-var">chop_tmax</span></a></span><span>
+</span><span id="line-119"></span><span>      </span><span id="local-6989586621679238510"><span class="annot"><span class="annottext">newClip :: Double
+</span><a href="#local-6989586621679238510"><span class="hs-identifier hs-var hs-var">newClip</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238514"><span class="hs-identifier hs-var">chop_tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238515"><span class="hs-identifier hs-var">chop_tmin</span></a></span><span>
+</span><span id="line-120"></span><span>      </span><span id="local-6989586621679238509"><span class="annot"><span class="annottext">new_tmin :: Double
+</span><a href="#local-6989586621679238509"><span class="hs-identifier hs-var hs-var">new_tmin</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238542"><span class="hs-identifier hs-var">tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238515"><span class="hs-identifier hs-var">chop_tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238543"><span class="hs-identifier hs-var">tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238515"><span class="hs-identifier hs-var">chop_tmin</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-121"></span><span>      </span><span id="local-6989586621679238508"><span class="annot"><span class="annottext">new_tmax :: Double
+</span><a href="#local-6989586621679238508"><span class="hs-identifier hs-var hs-var">new_tmax</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238542"><span class="hs-identifier hs-var">tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238514"><span class="hs-identifier hs-var">chop_tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238543"><span class="hs-identifier hs-var">tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238514"><span class="hs-identifier hs-var">chop_tmax</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-122"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="hs-comment">-- within tolerance      </span><span>
+</span><span id="line-123"></span><span>       </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238540"><span class="hs-identifier hs-var">umax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238541"><span class="hs-identifier hs-var">umin</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238508"><span class="hs-identifier hs-var">new_tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238509"><span class="hs-identifier hs-var">new_tmin</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238538"><span class="hs-identifier hs-var">pEps</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-124"></span><span>       </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679238507"><span class="annot"><span class="annottext">newu :: Double
+</span><a href="#local-6989586621679238507"><span class="hs-identifier hs-var hs-var">newu</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238540"><span class="hs-identifier hs-var">umax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.5</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238540"><span class="hs-identifier hs-var">umax</span></a></span><span>
+</span><span id="line-125"></span><span>                </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238541"><span class="hs-identifier hs-var">umin</span></a></span><span>
+</span><span id="line-126"></span><span>           </span><span id="local-6989586621679238506"><span class="annot"><span class="annottext">newt :: Double
+</span><a href="#local-6989586621679238506"><span class="hs-identifier hs-var hs-var">newt</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238508"><span class="hs-identifier hs-var">new_tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.5</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238508"><span class="hs-identifier hs-var">new_tmax</span></a></span><span>
+</span><span id="line-127"></span><span>                </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238509"><span class="hs-identifier hs-var">new_tmin</span></a></span><span>
+</span><span id="line-128"></span><span>       </span><span class="hs-keyword">in</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679238536"><span class="hs-identifier hs-var">revCurves</span></a></span><span>
+</span><span id="line-129"></span><span>       </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">[(Double, Double)] -&gt; Either [(Double, Double)] [(Double, Double)]
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238507"><span class="hs-identifier hs-var">newu</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238506"><span class="hs-identifier hs-var">newt</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-130"></span><span>       </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">[(Double, Double)] -&gt; Either [(Double, Double)] [(Double, Double)]
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238506"><span class="hs-identifier hs-var">newt</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238507"><span class="hs-identifier hs-var">newu</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-131"></span><span>           </span><span class="hs-comment">-- not enough reduction, so split the curve in case we have</span><span>
+</span><span id="line-132"></span><span>           </span><span class="hs-comment">-- multiple intersections</span><span>
+</span><span id="line-133"></span><span>     </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238539"><span class="hs-identifier hs-var">prevClip</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.8</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238510"><span class="hs-identifier hs-var">newClip</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.8</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-134"></span><span>             </span><span class="hs-keyword">if</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238508"><span class="hs-identifier hs-var">new_tmax</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238509"><span class="hs-identifier hs-var">new_tmin</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238508"><span class="hs-identifier hs-var">new_tmax</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238509"><span class="hs-identifier hs-var">new_tmin</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Double
+forall a. Floating a =&gt; Point a -&gt; a
+</span><a href="Geom2D.html#vectorMagSquare"><span class="hs-identifier hs-var">vectorMagSquare</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238549"><span class="hs-identifier hs-var">p3</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; DPoint -&gt; DPoint
+forall v. AdditiveGroup v =&gt; v -&gt; v -&gt; v
+</span><span class="hs-operator hs-var">^-^</span></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238552"><span class="hs-identifier hs-var">p0</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span>
+</span><span id="line-135"></span><span>                  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238540"><span class="hs-identifier hs-var">umax</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238541"><span class="hs-identifier hs-var">umin</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238540"><span class="hs-identifier hs-var">umax</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238541"><span class="hs-identifier hs-var">umin</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Double
+forall a. Floating a =&gt; Point a -&gt; a
+</span><a href="Geom2D.html#vectorMagSquare"><span class="hs-identifier hs-var">vectorMagSquare</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238544"><span class="hs-identifier hs-var">q3</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; DPoint -&gt; DPoint
+forall v. AdditiveGroup v =&gt; v -&gt; v -&gt; v
+</span><span class="hs-operator hs-var">^-^</span></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238547"><span class="hs-identifier hs-var">q0</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-136"></span><span>                    </span><span class="hs-comment">-- split the longest segment</span><span>
+</span><span id="line-137"></span><span>                  </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679238503"><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238503"><span class="hs-identifier hs-var">pl</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679238502"><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238502"><span class="hs-identifier hs-var">pr</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+-&gt; Double -&gt; (CubicBezier Double, CubicBezier Double)
+forall a (b :: * -&gt; *).
+(Unbox a, Fractional a, GenericBezier b) =&gt;
+b a -&gt; a -&gt; (b a, b a)
+</span><a href="Geom2D.CubicBezier.Basic.html#splitBezier"><span class="hs-identifier hs-var">splitBezier</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238512"><span class="hs-identifier hs-var">newP</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.5</span></span><span>
+</span><span id="line-138"></span><span>                      </span><span id="local-6989586621679238500"><span class="annot"><span class="annottext">half_t :: Double
+</span><a href="#local-6989586621679238500"><span class="hs-identifier hs-var hs-var">half_t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238509"><span class="hs-identifier hs-var">new_tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238508"><span class="hs-identifier hs-var">new_tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238509"><span class="hs-identifier hs-var">new_tmin</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span>
+</span><span id="line-139"></span><span>                  </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">[(Double, Double)] -&gt; Either [(Double, Double)] [(Double, Double)]
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">([(Double, Double)]
+ -&gt; Either [(Double, Double)] [(Double, Double)])
+-&gt; [(Double, Double)]
+-&gt; Either [(Double, Double)] [(Double, Double)]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+-&gt; CubicBezier Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Bool
+-&gt; [(Double, Double)]
+</span><a href="Geom2D.CubicBezier.Intersection.html#bezierClip"><span class="hs-identifier hs-var">bezierClip</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238548"><span class="hs-identifier hs-var">q</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238503"><span class="hs-identifier hs-var">pl</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238541"><span class="hs-identifier hs-var">umin</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238540"><span class="hs-identifier hs-var">umax</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238509"><span class="hs-identifier hs-var">new_tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238500"><span class="hs-identifier hs-var">half_t</span></a></span><span>
+</span><span id="line-140"></span><span>                     </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238538"><span class="hs-identifier hs-var">pEps</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238537"><span class="hs-identifier hs-var">vEps</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679238536"><span class="hs-identifier hs-var">revCurves</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[(Double, Double)] -&gt; [(Double, Double)] -&gt; [(Double, Double)]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span>
+</span><span id="line-141"></span><span>                     </span><span class="annot"><span class="annottext">CubicBezier Double
+-&gt; CubicBezier Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Bool
+-&gt; [(Double, Double)]
+</span><a href="Geom2D.CubicBezier.Intersection.html#bezierClip"><span class="hs-identifier hs-var">bezierClip</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238548"><span class="hs-identifier hs-var">q</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238502"><span class="hs-identifier hs-var">pr</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238541"><span class="hs-identifier hs-var">umin</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238540"><span class="hs-identifier hs-var">umax</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238500"><span class="hs-identifier hs-var">half_t</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238508"><span class="hs-identifier hs-var">new_tmax</span></a></span><span>
+</span><span id="line-142"></span><span>                     </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238538"><span class="hs-identifier hs-var">pEps</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238537"><span class="hs-identifier hs-var">vEps</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679238536"><span class="hs-identifier hs-var">revCurves</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-143"></span><span>                </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-144"></span><span>                    </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679238498"><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238498"><span class="hs-identifier hs-var">ql</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679238497"><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238497"><span class="hs-identifier hs-var">qr</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+-&gt; Double -&gt; (CubicBezier Double, CubicBezier Double)
+forall a (b :: * -&gt; *).
+(Unbox a, Fractional a, GenericBezier b) =&gt;
+b a -&gt; a -&gt; (b a, b a)
+</span><a href="Geom2D.CubicBezier.Basic.html#splitBezier"><span class="hs-identifier hs-var">splitBezier</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238548"><span class="hs-identifier hs-var">q</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.5</span></span><span>
+</span><span id="line-145"></span><span>                        </span><span id="local-6989586621679238496"><span class="annot"><span class="annottext">half_u :: Double
+</span><a href="#local-6989586621679238496"><span class="hs-identifier hs-var hs-var">half_u</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238541"><span class="hs-identifier hs-var">umin</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238540"><span class="hs-identifier hs-var">umax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238541"><span class="hs-identifier hs-var">umin</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span>
+</span><span id="line-146"></span><span>                    </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">[(Double, Double)] -&gt; Either [(Double, Double)] [(Double, Double)]
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">([(Double, Double)]
+ -&gt; Either [(Double, Double)] [(Double, Double)])
+-&gt; [(Double, Double)]
+-&gt; Either [(Double, Double)] [(Double, Double)]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+-&gt; CubicBezier Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Bool
+-&gt; [(Double, Double)]
+</span><a href="Geom2D.CubicBezier.Intersection.html#bezierClip"><span class="hs-identifier hs-var">bezierClip</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238498"><span class="hs-identifier hs-var">ql</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238512"><span class="hs-identifier hs-var">newP</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238541"><span class="hs-identifier hs-var">umin</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238496"><span class="hs-identifier hs-var">half_u</span></a></span><span>
+</span><span id="line-147"></span><span>                       </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238509"><span class="hs-identifier hs-var">new_tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238508"><span class="hs-identifier hs-var">new_tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238510"><span class="hs-identifier hs-var">newClip</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238538"><span class="hs-identifier hs-var">pEps</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238537"><span class="hs-identifier hs-var">vEps</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679238536"><span class="hs-identifier hs-var">revCurves</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[(Double, Double)] -&gt; [(Double, Double)] -&gt; [(Double, Double)]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span>
+</span><span id="line-148"></span><span>                       </span><span class="annot"><span class="annottext">CubicBezier Double
+-&gt; CubicBezier Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Bool
+-&gt; [(Double, Double)]
+</span><a href="Geom2D.CubicBezier.Intersection.html#bezierClip"><span class="hs-identifier hs-var">bezierClip</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238497"><span class="hs-identifier hs-var">qr</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238512"><span class="hs-identifier hs-var">newP</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238496"><span class="hs-identifier hs-var">half_u</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238540"><span class="hs-identifier hs-var">umax</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238509"><span class="hs-identifier hs-var">new_tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238508"><span class="hs-identifier hs-var">new_tmax</span></a></span><span>
+</span><span id="line-149"></span><span>                       </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238510"><span class="hs-identifier hs-var">newClip</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238538"><span class="hs-identifier hs-var">pEps</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238537"><span class="hs-identifier hs-var">vEps</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679238536"><span class="hs-identifier hs-var">revCurves</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-150"></span><span>      </span><span class="hs-comment">-- iterate with the curves swapped.</span><span>
+</span><span id="line-151"></span><span>     </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-152"></span><span>        </span><span class="annot"><span class="annottext">[(Double, Double)] -&gt; Either [(Double, Double)] [(Double, Double)]
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">([(Double, Double)]
+ -&gt; Either [(Double, Double)] [(Double, Double)])
+-&gt; [(Double, Double)]
+-&gt; Either [(Double, Double)] [(Double, Double)]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+-&gt; CubicBezier Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Bool
+-&gt; [(Double, Double)]
+</span><a href="Geom2D.CubicBezier.Intersection.html#bezierClip"><span class="hs-identifier hs-var">bezierClip</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238548"><span class="hs-identifier hs-var">q</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238512"><span class="hs-identifier hs-var">newP</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238541"><span class="hs-identifier hs-var">umin</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238540"><span class="hs-identifier hs-var">umax</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238509"><span class="hs-identifier hs-var">new_tmin</span></a></span><span>
+</span><span id="line-153"></span><span>        </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238508"><span class="hs-identifier hs-var">new_tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238510"><span class="hs-identifier hs-var">newClip</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238538"><span class="hs-identifier hs-var">pEps</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238537"><span class="hs-identifier hs-var">vEps</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679238536"><span class="hs-identifier hs-var">revCurves</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-154"></span><span>
+</span><span id="line-155"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#minEps"><span class="hs-identifier hs-type">minEps</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-156"></span><span id="minEps"><span class="annot"><span class="annottext">minEps :: Double
+</span><a href="Geom2D.CubicBezier.Intersection.html#minEps"><span class="hs-identifier hs-var hs-var">minEps</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1e-8</span></span><span>
+</span><span id="line-157"></span><span>
+</span><span id="line-158"></span><span class="hs-comment">-- | Find the intersections between two Bezier curves, using the</span><span>
+</span><span id="line-159"></span><span class="hs-comment">-- Bezier Clip algorithm. Returns the parameters for both curves.</span><span>
+</span><span id="line-160"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#bezierIntersection"><span class="hs-identifier hs-type">bezierIntersection</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html#CubicBezier"><span class="hs-identifier hs-type">CubicBezier</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html#CubicBezier"><span class="hs-identifier hs-type">CubicBezier</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-161"></span><span id="bezierIntersection"><span class="annot"><span class="annottext">bezierIntersection :: CubicBezier Double
+-&gt; CubicBezier Double -&gt; Double -&gt; [(Double, Double)]
+</span><a href="Geom2D.CubicBezier.Intersection.html#bezierIntersection"><span class="hs-identifier hs-var hs-var">bezierIntersection</span></a></span></span><span> </span><span id="local-6989586621679238494"><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238494"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679238493"><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238493"><span class="hs-identifier hs-var">q</span></a></span></span><span> </span><span id="local-6989586621679238492"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238492"><span class="hs-identifier hs-var">vEps</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+-&gt; CubicBezier Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Double
+-&gt; Bool
+-&gt; [(Double, Double)]
+</span><a href="Geom2D.CubicBezier.Intersection.html#bezierClip"><span class="hs-identifier hs-var">bezierClip</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238494"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238493"><span class="hs-identifier hs-var">q</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238491"><span class="hs-identifier hs-var">eps2</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238492"><span class="hs-identifier hs-var">vEps</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-162"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679238491"><span class="annot"><span class="annottext">eps2 :: Double
+</span><a href="#local-6989586621679238491"><span class="hs-identifier hs-var hs-var">eps2</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">min</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CubicBezier Double -&gt; Double -&gt; Double
+forall (b :: * -&gt; *).
+GenericBezier b =&gt;
+b Double -&gt; Double -&gt; Double
+</span><a href="Geom2D.CubicBezier.Basic.html#bezierParamTolerance"><span class="hs-identifier hs-var">bezierParamTolerance</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238494"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238492"><span class="hs-identifier hs-var">vEps</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CubicBezier Double -&gt; Double -&gt; Double
+forall (b :: * -&gt; *).
+GenericBezier b =&gt;
+b Double -&gt; Double -&gt; Double
+</span><a href="Geom2D.CubicBezier.Basic.html#bezierParamTolerance"><span class="hs-identifier hs-var">bezierParamTolerance</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238493"><span class="hs-identifier hs-var">q</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238492"><span class="hs-identifier hs-var">vEps</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="Geom2D.CubicBezier.Intersection.html#minEps"><span class="hs-identifier hs-var">minEps</span></a></span><span>
+</span><span id="line-163"></span><span>
+</span><span id="line-164"></span><span class="hs-comment">-- TODO:</span><span>
+</span><span id="line-165"></span><span class="hs-comment">-- following curve generate very large list of intersections</span><span>
+</span><span id="line-166"></span><span class="hs-comment">-- let b1 =  CubicBezier {cubicC0 = Point 365.70000000000005 477.40000000000003, cubicC1 = Point 373.3 476.70000000000005, cubicC2 = Point 381.1 476.3, cubicC3 = Point 389.20000000000005 476.3};</span><span>
+</span><span id="line-167"></span><span class="hs-comment">--     b2 = CubicBezier {cubicC0 = Point 365.70000000000005 477.40000000000003, cubicC1 = Point 365.70000000000005 476.6, cubicC2 = Point 365.70000000000005 475.8, cubicC3 = Point 365.70000000000005 475.0}</span><span>
+</span><span id="line-168"></span><span>
+</span><span id="line-169"></span><span class="hs-comment">------------------------ Line intersection -------------------------------------</span><span>
+</span><span id="line-170"></span><span class="hs-comment">-- Clipping a line uses a simplified version of the Bezier Clip algorithm,</span><span>
+</span><span id="line-171"></span><span class="hs-comment">-- and uses the (thin) line itself instead of the fat line.</span><span>
+</span><span id="line-172"></span><span>
+</span><span id="line-173"></span><span class="hs-comment">-- | Find the zero of a 1D bezier curve of any degree.  Note that this</span><span>
+</span><span id="line-174"></span><span class="hs-comment">-- can be used as a bernstein polynomial root solver by converting from</span><span>
+</span><span id="line-175"></span><span class="hs-comment">-- the power basis to the bernstein basis.</span><span>
+</span><span id="line-176"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#bezierFindRoot"><span class="hs-identifier hs-type">bezierFindRoot</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Math.BernsteinPoly.html#BernsteinPoly"><span class="hs-identifier hs-type">BernsteinPoly</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-comment">-- ^ the bernstein coefficients of the polynomial</span><span>
+</span><span id="line-177"></span><span>               </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>  </span><span class="hs-comment">-- ^ The lower bound of the interval </span><span>
+</span><span id="line-178"></span><span>               </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>  </span><span class="hs-comment">-- ^ The upper bound of the interval</span><span>
+</span><span id="line-179"></span><span>               </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>  </span><span class="hs-comment">-- ^ The accuracy</span><span>
+</span><span id="line-180"></span><span>               </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">]</span><span> </span><span class="hs-comment">-- ^ The roots found</span><span>
+</span><span id="line-181"></span><span id="bezierFindRoot"><span class="annot"><span class="annottext">bezierFindRoot :: BernsteinPoly Double -&gt; Double -&gt; Double -&gt; Double -&gt; [Double]
+</span><a href="Geom2D.CubicBezier.Intersection.html#bezierFindRoot"><span class="hs-identifier hs-var hs-var">bezierFindRoot</span></a></span></span><span> </span><span id="local-6989586621679238489"><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679238489"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679238488"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238488"><span class="hs-identifier hs-var">tmin</span></a></span></span><span> </span><span id="local-6989586621679238487"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238487"><span class="hs-identifier hs-var">tmax</span></a></span></span><span> </span><span id="local-6989586621679238486"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238486"><span class="hs-identifier hs-var">eps</span></a></span></span><span>
+</span><span id="line-182"></span><span>  </span><span class="hs-comment">-- no intersection</span><span>
+</span><span id="line-183"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Maybe (Double, Double) -&gt; Bool
+forall a. Maybe a -&gt; Bool
+</span><span class="hs-identifier hs-var">isNothing</span></span><span> </span><span class="annot"><span class="annottext">Maybe (Double, Double)
+</span><a href="#local-6989586621679238484"><span class="hs-identifier hs-var">chop_interval</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-184"></span><span>
+</span><span id="line-185"></span><span>  </span><span class="hs-comment">-- not enough reduction, so split the curve in case we have</span><span>
+</span><span id="line-186"></span><span>  </span><span class="hs-comment">-- multiple intersections</span><span>
+</span><span id="line-187"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238483"><span class="hs-identifier hs-var">clip</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.8</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-188"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679238482"><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679238482"><span class="hs-identifier hs-var">p1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679238481"><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679238481"><span class="hs-identifier hs-var">p2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; Double -&gt; (BernsteinPoly Double, BernsteinPoly Double)
+forall a.
+(Unbox a, Num a) =&gt;
+BernsteinPoly a -&gt; a -&gt; (BernsteinPoly a, BernsteinPoly a)
+</span><a href="Math.BernsteinPoly.html#bernsteinSplit"><span class="hs-identifier hs-var">bernsteinSplit</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679238479"><span class="hs-identifier hs-var">newP</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.5</span></span><span>
+</span><span id="line-189"></span><span>        </span><span id="local-6989586621679238478"><span class="annot"><span class="annottext">half_t :: Double
+</span><a href="#local-6989586621679238478"><span class="hs-identifier hs-var hs-var">half_t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238477"><span class="hs-identifier hs-var">new_tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238476"><span class="hs-identifier hs-var">new_tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238477"><span class="hs-identifier hs-var">new_tmin</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span>
+</span><span id="line-190"></span><span>    </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; Double -&gt; Double -&gt; Double -&gt; [Double]
+</span><a href="Geom2D.CubicBezier.Intersection.html#bezierFindRoot"><span class="hs-identifier hs-var">bezierFindRoot</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679238482"><span class="hs-identifier hs-var">p1</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238477"><span class="hs-identifier hs-var">new_tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238478"><span class="hs-identifier hs-var">half_t</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238486"><span class="hs-identifier hs-var">eps</span></a></span><span> </span><span class="annot"><span class="annottext">[Double] -&gt; [Double] -&gt; [Double]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span>
+</span><span id="line-191"></span><span>       </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; Double -&gt; Double -&gt; Double -&gt; [Double]
+</span><a href="Geom2D.CubicBezier.Intersection.html#bezierFindRoot"><span class="hs-identifier hs-var">bezierFindRoot</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679238481"><span class="hs-identifier hs-var">p2</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238478"><span class="hs-identifier hs-var">half_t</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238476"><span class="hs-identifier hs-var">new_tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238486"><span class="hs-identifier hs-var">eps</span></a></span><span>
+</span><span id="line-192"></span><span>
+</span><span id="line-193"></span><span>  </span><span class="hs-comment">-- within tolerance</span><span>
+</span><span id="line-194"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238476"><span class="hs-identifier hs-var">new_tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238477"><span class="hs-identifier hs-var">new_tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238486"><span class="hs-identifier hs-var">eps</span></a></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-195"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238477"><span class="hs-identifier hs-var">new_tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238476"><span class="hs-identifier hs-var">new_tmax</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238477"><span class="hs-identifier hs-var">new_tmin</span></a></span><span class="hs-special">)</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span>
+</span><span id="line-196"></span><span>
+</span><span id="line-197"></span><span>      </span><span class="hs-comment">-- iterate</span><span>
+</span><span id="line-198"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-199"></span><span>        </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; Double -&gt; Double -&gt; Double -&gt; [Double]
+</span><a href="Geom2D.CubicBezier.Intersection.html#bezierFindRoot"><span class="hs-identifier hs-var">bezierFindRoot</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679238479"><span class="hs-identifier hs-var">newP</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238477"><span class="hs-identifier hs-var">new_tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238476"><span class="hs-identifier hs-var">new_tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238486"><span class="hs-identifier hs-var">eps</span></a></span><span>
+</span><span id="line-200"></span><span>
+</span><span id="line-201"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-202"></span><span>    </span><span id="local-6989586621679238484"><span class="annot"><span class="annottext">chop_interval :: Maybe (Double, Double)
+</span><a href="#local-6989586621679238484"><span class="hs-identifier hs-var hs-var">chop_interval</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; [Double] -&gt; Maybe (Double, Double)
+</span><a href="Geom2D.CubicBezier.Intersection.html#chopHull"><span class="hs-identifier hs-var">chopHull</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Vector Double -&gt; [Double]
+forall a. Unbox a =&gt; Vector a -&gt; [a]
+</span><span class="hs-identifier hs-var">V.toList</span></span><span> </span><span class="annot"><span class="annottext">(Vector Double -&gt; [Double]) -&gt; Vector Double -&gt; [Double]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; Vector Double
+forall a. BernsteinPoly a -&gt; Vector a
+</span><a href="Math.BernsteinPoly.html#bernsteinCoeffs"><span class="hs-identifier hs-var hs-var">bernsteinCoeffs</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679238489"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-203"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679238473"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238473"><span class="hs-identifier hs-var">chop_tmin</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679238472"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238472"><span class="hs-identifier hs-var">chop_tmax</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (Double, Double)
+</span><a href="#local-6989586621679238484"><span class="hs-identifier hs-var">chop_interval</span></a></span><span>
+</span><span id="line-204"></span><span>    </span><span id="local-6989586621679238479"><span class="annot"><span class="annottext">newP :: BernsteinPoly Double
+</span><a href="#local-6989586621679238479"><span class="hs-identifier hs-var hs-var">newP</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; Double -&gt; Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Ord a, Fractional a) =&gt;
+BernsteinPoly a -&gt; a -&gt; a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#bernsteinSubsegment"><span class="hs-identifier hs-var">bernsteinSubsegment</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679238489"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238473"><span class="hs-identifier hs-var">chop_tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238472"><span class="hs-identifier hs-var">chop_tmax</span></a></span><span>
+</span><span id="line-205"></span><span>    </span><span id="local-6989586621679238483"><span class="annot"><span class="annottext">clip :: Double
+</span><a href="#local-6989586621679238483"><span class="hs-identifier hs-var hs-var">clip</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238472"><span class="hs-identifier hs-var">chop_tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238473"><span class="hs-identifier hs-var">chop_tmin</span></a></span><span>
+</span><span id="line-206"></span><span>    </span><span id="local-6989586621679238477"><span class="annot"><span class="annottext">new_tmin :: Double
+</span><a href="#local-6989586621679238477"><span class="hs-identifier hs-var hs-var">new_tmin</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238487"><span class="hs-identifier hs-var">tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238473"><span class="hs-identifier hs-var">chop_tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238488"><span class="hs-identifier hs-var">tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238473"><span class="hs-identifier hs-var">chop_tmin</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-207"></span><span>    </span><span id="local-6989586621679238476"><span class="annot"><span class="annottext">new_tmax :: Double
+</span><a href="#local-6989586621679238476"><span class="hs-identifier hs-var hs-var">new_tmax</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238487"><span class="hs-identifier hs-var">tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238472"><span class="hs-identifier hs-var">chop_tmax</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238488"><span class="hs-identifier hs-var">tmin</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238472"><span class="hs-identifier hs-var">chop_tmax</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-208"></span><span>
+</span><span id="line-209"></span><span class="hs-comment">-- | Find the intersections of the curve with a line.</span><span>
+</span><span id="line-210"></span><span>
+</span><span id="line-211"></span><span class="hs-comment">-- Apply a transformation to the bezier that maps the line onto the</span><span>
+</span><span id="line-212"></span><span class="hs-comment">-- X-axis.  Then we only need to test the Y-values for a zero.</span><span>
+</span><span id="line-213"></span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html#bezierLineIntersections"><span class="hs-identifier hs-type">bezierLineIntersections</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html#CubicBezier"><span class="hs-identifier hs-type">CubicBezier</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Geom2D.html#Line"><span class="hs-identifier hs-type">Line</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">]</span><span>
+</span><span id="line-214"></span><span id="bezierLineIntersections"><span class="annot"><span class="annottext">bezierLineIntersections :: CubicBezier Double -&gt; Line Double -&gt; Double -&gt; [Double]
+</span><a href="Geom2D.CubicBezier.Intersection.html#bezierLineIntersections"><span class="hs-identifier hs-var hs-var">bezierLineIntersections</span></a></span></span><span> </span><span id="local-6989586621679238470"><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238470"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Geom2D.html#Line"><span class="hs-identifier hs-type">Line</span></a></span><span> </span><span id="local-6989586621679238469"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238469"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679238468"><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238468"><span class="hs-identifier hs-var">q</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679238467"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238467"><span class="hs-identifier hs-var">eps</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-215"></span><span>  </span><span class="annot"><span class="annottext">(Double -&gt; Bool) -&gt; [Double] -&gt; [Double]
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">filter</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679238466"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238466"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238466"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238466"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([Double] -&gt; [Double]) -&gt; [Double] -&gt; [Double]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-216"></span><span>  </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; Double -&gt; [Double]
+</span><a href="Geom2D.CubicBezier.Numeric.html#cubicRoot"><span class="hs-identifier hs-var">cubicRoot</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238464"><span class="hs-identifier hs-var">p3</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">3</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238463"><span class="hs-identifier hs-var">p2</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">3</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238462"><span class="hs-identifier hs-var">p1</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238461"><span class="hs-identifier hs-var">p0</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">3</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238463"><span class="hs-identifier hs-var">p2</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">6</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238462"><span class="hs-identifier hs-var">p1</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">3</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238461"><span class="hs-identifier hs-var">p0</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">3</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238462"><span class="hs-identifier hs-var">p1</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">3</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238461"><span class="hs-identifier hs-var">p0</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238461"><span class="hs-identifier hs-var">p0</span></a></span><span>
+</span><span id="line-217"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html#CubicBezier"><span class="hs-identifier hs-type">CubicBezier</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Geom2D.html#Point"><span class="hs-identifier hs-type">Point</span></a></span><span> </span><span id="local-6989586621679238461"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238461"><span class="hs-identifier hs-var">p0</span></a></span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Geom2D.html#Point"><span class="hs-identifier hs-type">Point</span></a></span><span> </span><span id="local-6989586621679238462"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238462"><span class="hs-identifier hs-var">p1</span></a></span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Geom2D.html#Point"><span class="hs-identifier hs-type">Point</span></a></span><span> </span><span id="local-6989586621679238463"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238463"><span class="hs-identifier hs-var">p2</span></a></span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Geom2D.html#Point"><span class="hs-identifier hs-type">Point</span></a></span><span> </span><span id="local-6989586621679238464"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679238464"><span class="hs-identifier hs-var">p3</span></a></span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span>
+</span><span id="line-218"></span><span>          </span><span class="annot"><span class="annottext">Maybe (Transform Double) -&gt; Transform Double
+forall a. HasCallStack =&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromJust</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Transform Double -&gt; Maybe (Transform Double)
+forall a.
+(Eq a, Fractional a) =&gt;
+Transform a -&gt; Maybe (Transform a)
+</span><a href="Geom2D.html#inverse"><span class="hs-identifier hs-var">inverse</span></a></span><span> </span><span class="annot"><span class="annottext">(Transform Double -&gt; Maybe (Transform Double))
+-&gt; Transform Double -&gt; Maybe (Transform Double)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Transform Double
+forall a. Num a =&gt; Point a -&gt; Transform a
+</span><a href="Geom2D.html#translate"><span class="hs-identifier hs-var">translate</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238469"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Transform Double -&gt; Transform Double -&gt; Transform Double
+forall a b. AffineTransform a b =&gt; Transform b -&gt; a -&gt; a
+</span><a href="Geom2D.html#%24%2A"><span class="hs-operator hs-var">$*</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; Transform Double
+forall a. Floating a =&gt; Point a -&gt; Transform a
+</span><a href="Geom2D.html#rotateVec"><span class="hs-identifier hs-var">rotateVec</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238468"><span class="hs-identifier hs-var">q</span></a></span><span> </span><span class="annot"><span class="annottext">DPoint -&gt; DPoint -&gt; DPoint
+forall v. AdditiveGroup v =&gt; v -&gt; v -&gt; v
+</span><span class="hs-operator hs-var">^-^</span></span><span> </span><span class="annot"><span class="annottext">DPoint
+</span><a href="#local-6989586621679238469"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Transform Double -&gt; CubicBezier Double -&gt; CubicBezier Double
+forall a b. AffineTransform a b =&gt; Transform b -&gt; a -&gt; a
+</span><a href="Geom2D.html#%24%2A"><span class="hs-operator hs-var">$*</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679238470"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-219"></span><span>
+</span><span id="line-220"></span><span class="hs-comment">-- let cb = (CubicBezier (Point 0 0) (Point 3 4) (Point 10 4) (Point 31 2)); cb1 = fst (splitBezier cb 0.83242); cb2 = CubicBezier {bezierC0 = Point 4.542593123258268 2.7028033902052537, bezierC1 = Point 9.036628467934 3.788306467438, bezierC2 = Point 16.832161 3.4493180000000002, bezierC3 = Point 31.0 2.0}</span><span>
+</span><span id="line-221"></span><span class="hs-comment">-- bezierIntersection (CubicBezier (Point 0 0) (Point 3 4) (Point 10 4) (Point 31 2)) (CubicBezier (Point 0 0) (Point 6 8) (Point 2 42) (Point 4 15)) 1e-10</span><span>
+</span><span id="line-222"></span></pre></body></html>

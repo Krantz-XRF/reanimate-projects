@@ -1,0 +1,446 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE RecordWildCards #-}</span><span>
+</span><span id="line-2"></span><span class="hs-comment">{- |
+  Colors are three dimensional and can be projected into many color spaces
+  with different properties.
+
+  Interpolating directly in the RGB color space is unintuitive and rarely useful.
+  If you want to transition through color, you most likely want either the XYZ space
+  (for physically accurate color transitions) or the LAB space (for esthetically
+  pleasing colors).
+-}</span><span>
+</span><span id="line-11"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.ColorComponents</span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier">ColorComponents</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#rgbComponents"><span class="hs-identifier">rgbComponents</span></a></span><span>
+</span><span id="line-14"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#hsvComponents"><span class="hs-identifier">hsvComponents</span></a></span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#labComponents"><span class="hs-identifier">labComponents</span></a></span><span>
+</span><span id="line-16"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#xyzComponents"><span class="hs-identifier">xyzComponents</span></a></span><span>
+</span><span id="line-17"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#lchComponents"><span class="hs-identifier">lchComponents</span></a></span><span>
+</span><span id="line-18"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#interpolate"><span class="hs-identifier">interpolate</span></a></span><span>
+</span><span id="line-19"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#interpolateRGB8"><span class="hs-identifier">interpolateRGB8</span></a></span><span>
+</span><span id="line-20"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#interpolateRGBA8"><span class="hs-identifier">interpolateRGBA8</span></a></span><span>
+</span><span id="line-21"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#toRGB8"><span class="hs-identifier">toRGB8</span></a></span><span>
+</span><span id="line-22"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#fromRGB8"><span class="hs-identifier">fromRGB8</span></a></span><span>
+</span><span id="line-23"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Codec.Picture</span></span><span>              </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Pixel</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">pixelOpacity</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">PixelRGB8</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">PixelRGBA8</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Codec.Picture.Types</span></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">TransparentPixel</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">dropTransparency</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Colour</span></span><span>                </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Colour</span></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Colour.CIE</span></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">cieLAB</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">cieLABView</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">cieXYZ</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">cieXYZView</span></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Colour.CIE.Illuminant</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">d65</span></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Colour.RGBSpace</span></span><span>       </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">RGB</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">RGB</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">uncurryRGB</span></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Colour.RGBSpace.HSV</span></span><span>   </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">hsv</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">hsvView</span></span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Colour.SRGB</span></span><span>           </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">sRGB</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">sRGB24</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">toSRGB</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">toSRGBBounded</span></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Fixed</span></span><span>                 </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">mod'</span></span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Ease.html"><span class="hs-identifier">Reanimate.Ease</span></a></span><span>             </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Ease.html#fromToS"><span class="hs-identifier">fromToS</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- | Constructor and destructor for color's three components.</span><span>
+</span><span id="line-37"></span><span class="hs-keyword">data</span><span> </span><span id="ColorComponents"><span class="annot"><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier hs-var">ColorComponents</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="ColorComponents"><span class="annot"><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier hs-var">ColorComponents</span></a></span></span><span>
+</span><span id="line-38"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="colorUnpack"><span class="annot"><span class="annottext">ColorComponents -&gt; Colour Double -&gt; (Double, Double, Double)
+</span><a href="Reanimate.ColorComponents.html#colorUnpack"><span class="hs-identifier hs-var hs-var">colorUnpack</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Colour</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span><span>
+</span><span id="line-39"></span><span>    </span><span class="hs-comment">-- ^ Unpack a color into its three components.</span><span>
+</span><span id="line-40"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="colorPack"><span class="annot"><span class="annottext">ColorComponents -&gt; Double -&gt; Double -&gt; Double -&gt; Colour Double
+</span><a href="Reanimate.ColorComponents.html#colorPack"><span class="hs-identifier hs-var hs-var">colorPack</span></a></span></span><span>   </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Colour</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-41"></span><span>    </span><span class="hs-comment">-- ^ Restore a color from three coordinates.</span><span>
+</span><span id="line-42"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- | &gt; interpolate rgbComponents yellow blue</span><span>
+</span><span id="line-45"></span><span class="hs-comment">--</span><span>
+</span><span id="line-46"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_rgbComponents.gif&gt;&gt;</span><span>
+</span><span id="line-47"></span><span class="annot"><a href="Reanimate.ColorComponents.html#rgbComponents"><span class="hs-identifier hs-type">rgbComponents</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier hs-type">ColorComponents</span></a></span><span>
+</span><span id="line-48"></span><span id="rgbComponents"><span class="annot"><span class="annottext">rgbComponents :: ColorComponents
+</span><a href="Reanimate.ColorComponents.html#rgbComponents"><span class="hs-identifier hs-var hs-var">rgbComponents</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Colour Double -&gt; (Double, Double, Double))
+-&gt; (Double -&gt; Double -&gt; Double -&gt; Colour Double) -&gt; ColorComponents
+</span><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier hs-var">ColorComponents</span></a></span><span> </span><span class="annot"><span class="annottext">Colour Double -&gt; (Double, Double, Double)
+</span><a href="#local-6989586621679538957"><span class="hs-identifier hs-var">rgbUnpack</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; Colour Double
+forall b. (Ord b, Floating b) =&gt; b -&gt; b -&gt; b -&gt; Colour b
+</span><span class="hs-identifier hs-var">sRGB</span></span><span>
+</span><span id="line-49"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-50"></span><span>    </span><span class="annot"><a href="#local-6989586621679538957"><span class="hs-identifier hs-type">rgbUnpack</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Colour</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span><span>
+</span><span id="line-51"></span><span>    </span><span id="local-6989586621679538957"><span class="annot"><span class="annottext">rgbUnpack :: Colour Double -&gt; (Double, Double, Double)
+</span><a href="#local-6989586621679538957"><span class="hs-identifier hs-var hs-var">rgbUnpack</span></a></span></span><span> </span><span id="local-6989586621679538956"><span class="annot"><span class="annottext">Colour Double
+</span><a href="#local-6989586621679538956"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-52"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Colour Double -&gt; RGB Double
+forall b. (Ord b, Floating b) =&gt; Colour b -&gt; RGB b
+</span><span class="hs-identifier hs-var">toSRGB</span></span><span> </span><span class="annot"><span class="annottext">Colour Double
+</span><a href="#local-6989586621679538956"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-53"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">RGB</span></span><span> </span><span id="local-6989586621679538955"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538955"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span id="local-6989586621679538954"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538954"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span id="local-6989586621679538953"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538953"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538955"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538954"><span class="hs-identifier hs-var">g</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538953"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-54"></span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- | &gt; interpolate hsvComponents yellow blue</span><span>
+</span><span id="line-56"></span><span class="hs-comment">--</span><span>
+</span><span id="line-57"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_hsvComponents.gif&gt;&gt;</span><span>
+</span><span id="line-58"></span><span class="annot"><a href="Reanimate.ColorComponents.html#hsvComponents"><span class="hs-identifier hs-type">hsvComponents</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier hs-type">ColorComponents</span></a></span><span>
+</span><span id="line-59"></span><span id="hsvComponents"><span class="annot"><span class="annottext">hsvComponents :: ColorComponents
+</span><a href="Reanimate.ColorComponents.html#hsvComponents"><span class="hs-identifier hs-var hs-var">hsvComponents</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Colour Double -&gt; (Double, Double, Double))
+-&gt; (Double -&gt; Double -&gt; Double -&gt; Colour Double) -&gt; ColorComponents
+</span><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier hs-var">ColorComponents</span></a></span><span> </span><span class="annot"><span class="annottext">Colour Double -&gt; (Double, Double, Double)
+</span><a href="#local-6989586621679538952"><span class="hs-identifier hs-var">unpack</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; Colour Double
+forall b. (Floating b, RealFrac b) =&gt; b -&gt; b -&gt; b -&gt; Colour b
+</span><a href="#local-6989586621679538951"><span class="hs-identifier hs-var">pack</span></a></span><span>
+</span><span id="line-60"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-61"></span><span>    </span><span id="local-6989586621679538952"><span class="annot"><span class="annottext">unpack :: Colour Double -&gt; (Double, Double, Double)
+</span><a href="#local-6989586621679538952"><span class="hs-identifier hs-var hs-var">unpack</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RGB Double -&gt; (Double, Double, Double)
+forall a. (Fractional a, Ord a) =&gt; RGB a -&gt; (a, a, a)
+</span><span class="hs-identifier hs-var">hsvView</span></span><span class="annot"><span class="annottext">(RGB Double -&gt; (Double, Double, Double))
+-&gt; (Colour Double -&gt; RGB Double)
+-&gt; Colour Double
+-&gt; (Double, Double, Double)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span class="annot"><span class="annottext">Colour Double -&gt; RGB Double
+forall b. (Ord b, Floating b) =&gt; Colour b -&gt; RGB b
+</span><span class="hs-identifier hs-var">toSRGB</span></span><span>
+</span><span id="line-62"></span><span>    </span><span id="local-6989586621679538951"><span class="annot"><span class="annottext">pack :: b -&gt; b -&gt; b -&gt; Colour b
+</span><a href="#local-6989586621679538951"><span class="hs-identifier hs-var hs-var">pack</span></a></span></span><span> </span><span id="local-6989586621679538949"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679538949"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679538948"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679538948"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span id="local-6989586621679538947"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679538947"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(b -&gt; b -&gt; b -&gt; Colour b) -&gt; RGB b -&gt; Colour b
+forall a b. (a -&gt; a -&gt; a -&gt; b) -&gt; RGB a -&gt; b
+</span><span class="hs-identifier hs-var">uncurryRGB</span></span><span> </span><span class="annot"><span class="annottext">b -&gt; b -&gt; b -&gt; Colour b
+forall b. (Ord b, Floating b) =&gt; b -&gt; b -&gt; b -&gt; Colour b
+</span><span class="hs-identifier hs-var">sRGB</span></span><span> </span><span class="annot"><span class="annottext">(RGB b -&gt; Colour b) -&gt; RGB b -&gt; Colour b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">b -&gt; b -&gt; b -&gt; RGB b
+forall a. (RealFrac a, Ord a) =&gt; a -&gt; a -&gt; a -&gt; RGB a
+</span><span class="hs-identifier hs-var">hsv</span></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679538949"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679538948"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679538947"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-63"></span><span>
+</span><span id="line-64"></span><span class="hs-comment">-- | &gt; interpolate labComponents yellow blue</span><span>
+</span><span id="line-65"></span><span class="hs-comment">--</span><span>
+</span><span id="line-66"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_labComponents.gif&gt;&gt;</span><span>
+</span><span id="line-67"></span><span class="annot"><a href="Reanimate.ColorComponents.html#labComponents"><span class="hs-identifier hs-type">labComponents</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier hs-type">ColorComponents</span></a></span><span>
+</span><span id="line-68"></span><span id="labComponents"><span class="annot"><span class="annottext">labComponents :: ColorComponents
+</span><a href="Reanimate.ColorComponents.html#labComponents"><span class="hs-identifier hs-var hs-var">labComponents</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Colour Double -&gt; (Double, Double, Double))
+-&gt; (Double -&gt; Double -&gt; Double -&gt; Colour Double) -&gt; ColorComponents
+</span><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier hs-var">ColorComponents</span></a></span><span> </span><span class="annot"><span class="annottext">Colour Double -&gt; (Double, Double, Double)
+</span><a href="#local-6989586621679538946"><span class="hs-identifier hs-var">unpack</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; Colour Double
+</span><a href="#local-6989586621679538945"><span class="hs-identifier hs-var">pack</span></a></span><span>
+</span><span id="line-69"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-70"></span><span>    </span><span id="local-6989586621679538946"><span class="annot"><span class="annottext">unpack :: Colour Double -&gt; (Double, Double, Double)
+</span><a href="#local-6989586621679538946"><span class="hs-identifier hs-var hs-var">unpack</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Chromaticity Double -&gt; Colour Double -&gt; (Double, Double, Double)
+forall a.
+(Ord a, Floating a) =&gt;
+Chromaticity a -&gt; Colour a -&gt; (a, a, a)
+</span><span class="hs-identifier hs-var">cieLABView</span></span><span> </span><span class="annot"><span class="annottext">Chromaticity Double
+forall a. Fractional a =&gt; Chromaticity a
+</span><span class="hs-identifier hs-var">d65</span></span><span>
+</span><span id="line-71"></span><span>    </span><span id="local-6989586621679538945"><span class="annot"><span class="annottext">pack :: Double -&gt; Double -&gt; Double -&gt; Colour Double
+</span><a href="#local-6989586621679538945"><span class="hs-identifier hs-var hs-var">pack</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Chromaticity Double -&gt; Double -&gt; Double -&gt; Double -&gt; Colour Double
+forall a.
+(Ord a, Floating a) =&gt;
+Chromaticity a -&gt; a -&gt; a -&gt; a -&gt; Colour a
+</span><span class="hs-identifier hs-var">cieLAB</span></span><span> </span><span class="annot"><span class="annottext">Chromaticity Double
+forall a. Fractional a =&gt; Chromaticity a
+</span><span class="hs-identifier hs-var">d65</span></span><span>
+</span><span id="line-72"></span><span>
+</span><span id="line-73"></span><span class="hs-comment">-- | &gt; interpolate xyzComponents yellow blue</span><span>
+</span><span id="line-74"></span><span class="hs-comment">--</span><span>
+</span><span id="line-75"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_xyzComponents.gif&gt;&gt;</span><span>
+</span><span id="line-76"></span><span class="annot"><a href="Reanimate.ColorComponents.html#xyzComponents"><span class="hs-identifier hs-type">xyzComponents</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier hs-type">ColorComponents</span></a></span><span>
+</span><span id="line-77"></span><span id="xyzComponents"><span class="annot"><span class="annottext">xyzComponents :: ColorComponents
+</span><a href="Reanimate.ColorComponents.html#xyzComponents"><span class="hs-identifier hs-var hs-var">xyzComponents</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Colour Double -&gt; (Double, Double, Double))
+-&gt; (Double -&gt; Double -&gt; Double -&gt; Colour Double) -&gt; ColorComponents
+</span><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier hs-var">ColorComponents</span></a></span><span> </span><span class="annot"><span class="annottext">Colour Double -&gt; (Double, Double, Double)
+forall a. Fractional a =&gt; Colour a -&gt; (a, a, a)
+</span><span class="hs-identifier hs-var">cieXYZView</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; Colour Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a -&gt; Colour a
+</span><span class="hs-identifier hs-var">cieXYZ</span></span><span>
+</span><span id="line-78"></span><span>
+</span><span id="line-79"></span><span class="hs-comment">-- | &gt; interpolate lchComponents yellow blue</span><span>
+</span><span id="line-80"></span><span class="hs-comment">--</span><span>
+</span><span id="line-81"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_lchComponents.gif&gt;&gt;</span><span>
+</span><span id="line-82"></span><span class="annot"><a href="Reanimate.ColorComponents.html#lchComponents"><span class="hs-identifier hs-type">lchComponents</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier hs-type">ColorComponents</span></a></span><span>
+</span><span id="line-83"></span><span id="lchComponents"><span class="annot"><span class="annottext">lchComponents :: ColorComponents
+</span><a href="Reanimate.ColorComponents.html#lchComponents"><span class="hs-identifier hs-var hs-var">lchComponents</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Colour Double -&gt; (Double, Double, Double))
+-&gt; (Double -&gt; Double -&gt; Double -&gt; Colour Double) -&gt; ColorComponents
+</span><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier hs-var">ColorComponents</span></a></span><span> </span><span class="annot"><span class="annottext">Colour Double -&gt; (Double, Double, Double)
+</span><a href="#local-6989586621679538944"><span class="hs-identifier hs-var">unpack</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; Colour Double
+</span><a href="#local-6989586621679538943"><span class="hs-identifier hs-var">pack</span></a></span><span>
+</span><span id="line-84"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-85"></span><span>    </span><span class="annot"><a href="#local-6989586621679538942"><span class="hs-identifier hs-type">toDeg</span></a></span><span class="hs-special">,</span><span class="annot"><a href="#local-6989586621679538941"><span class="hs-identifier hs-type">toRad</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-86"></span><span>    </span><span id="local-6989586621679538941"><span class="annot"><span class="annottext">toRad :: Double -&gt; Double
+</span><a href="#local-6989586621679538941"><span class="hs-identifier hs-var hs-var">toRad</span></a></span></span><span> </span><span id="local-6989586621679538940"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538940"><span class="hs-identifier hs-var">deg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538940"><span class="hs-identifier hs-var">deg</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">180</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+forall a. Floating a =&gt; a
+</span><span class="hs-identifier hs-var">pi</span></span><span>
+</span><span id="line-87"></span><span>    </span><span id="local-6989586621679538942"><span class="annot"><span class="annottext">toDeg :: Double -&gt; Double
+</span><a href="#local-6989586621679538942"><span class="hs-identifier hs-var hs-var">toDeg</span></a></span></span><span> </span><span id="local-6989586621679538936"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538936"><span class="hs-identifier hs-var">rad</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538936"><span class="hs-identifier hs-var">rad</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+forall a. Floating a =&gt; a
+</span><span class="hs-identifier hs-var">pi</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">180</span></span><span>
+</span><span id="line-88"></span><span>    </span><span class="annot"><a href="#local-6989586621679538944"><span class="hs-identifier hs-type">unpack</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Colour</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span><span>
+</span><span id="line-89"></span><span>    </span><span id="local-6989586621679538944"><span class="annot"><span class="annottext">unpack :: Colour Double -&gt; (Double, Double, Double)
+</span><a href="#local-6989586621679538944"><span class="hs-identifier hs-var hs-var">unpack</span></a></span></span><span> </span><span id="local-6989586621679538935"><span class="annot"><span class="annottext">Colour Double
+</span><a href="#local-6989586621679538935"><span class="hs-identifier hs-var">color</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-90"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679538934"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538934"><span class="hs-identifier hs-var">l</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679538933"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538933"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679538932"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538932"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Chromaticity Double -&gt; Colour Double -&gt; (Double, Double, Double)
+forall a.
+(Ord a, Floating a) =&gt;
+Chromaticity a -&gt; Colour a -&gt; (a, a, a)
+</span><span class="hs-identifier hs-var">cieLABView</span></span><span> </span><span class="annot"><span class="annottext">Chromaticity Double
+forall a. Fractional a =&gt; Chromaticity a
+</span><span class="hs-identifier hs-var">d65</span></span><span> </span><span class="annot"><span class="annottext">Colour Double
+</span><a href="#local-6989586621679538935"><span class="hs-identifier hs-var">color</span></a></span><span>
+</span><span id="line-91"></span><span>          </span><span id="local-6989586621679538931"><span class="annot"><span class="annottext">c :: Double
+</span><a href="#local-6989586621679538931"><span class="hs-identifier hs-var hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sqrt</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538933"><span class="hs-identifier hs-var">a</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538933"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538932"><span class="hs-identifier hs-var">b</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538932"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-92"></span><span>          </span><span class="annot"><a href="#local-6989586621679538928"><span class="hs-identifier hs-type">h</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-93"></span><span>          </span><span id="local-6989586621679538928"><span class="annot"><span class="annottext">h :: Double
+</span><a href="#local-6989586621679538928"><span class="hs-identifier hs-var hs-var">h</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679538942"><span class="hs-identifier hs-var">toDeg</span></a></span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. RealFloat a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">atan2</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538932"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538933"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">360</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Real a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">`mod'`</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">360</span></span><span>
+</span><span id="line-94"></span><span>          </span><span id="local-6989586621679538926"><span class="annot"><span class="annottext">isZero :: Bool
+</span><a href="#local-6989586621679538926"><span class="hs-identifier hs-var hs-var">isZero</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Integer
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">round</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538931"><span class="hs-identifier hs-var">c</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">10000</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Integer -&gt; Integer -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Integer
+</span><span class="hs-number">0</span></span><span class="hs-glyph">::</span><span class="annot"><span class="hs-identifier hs-type">Integer</span></span><span class="hs-special">)</span><span>
+</span><span id="line-95"></span><span>      </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538934"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538931"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679538926"><span class="hs-identifier hs-var">isZero</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538928"><span class="hs-identifier hs-var">h</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-96"></span><span>    </span><span id="local-6989586621679538943"><span class="annot"><span class="annottext">pack :: Double -&gt; Double -&gt; Double -&gt; Colour Double
+</span><a href="#local-6989586621679538943"><span class="hs-identifier hs-var hs-var">pack</span></a></span></span><span> </span><span id="local-6989586621679538924"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538924"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679538923"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538923"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679538922"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538922"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-97"></span><span>      </span><span class="annot"><span class="annottext">Chromaticity Double -&gt; Double -&gt; Double -&gt; Double -&gt; Colour Double
+forall a.
+(Ord a, Floating a) =&gt;
+Chromaticity a -&gt; a -&gt; a -&gt; a -&gt; Colour a
+</span><span class="hs-identifier hs-var">cieLAB</span></span><span> </span><span class="annot"><span class="annottext">Chromaticity Double
+forall a. Fractional a =&gt; Chromaticity a
+</span><span class="hs-identifier hs-var">d65</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538924"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">cos</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679538941"><span class="hs-identifier hs-var">toRad</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538922"><span class="hs-identifier hs-var">h</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538923"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sin</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679538941"><span class="hs-identifier hs-var">toRad</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538922"><span class="hs-identifier hs-var">h</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538923"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-98"></span><span>
+</span><span id="line-99"></span><span class="hs-comment">-- | Smoothly interpolate between two colors using the given color components.</span><span>
+</span><span id="line-100"></span><span class="annot"><a href="Reanimate.ColorComponents.html#interpolate"><span class="hs-identifier hs-type">interpolate</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier hs-type">ColorComponents</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Colour</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Colour</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Colour</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span><span>
+</span><span id="line-101"></span><span id="interpolate"><span class="annot"><span class="annottext">interpolate :: ColorComponents
+-&gt; Colour Double -&gt; Colour Double -&gt; Double -&gt; Colour Double
+</span><a href="Reanimate.ColorComponents.html#interpolate"><span class="hs-identifier hs-var hs-var">interpolate</span></a></span></span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier hs-type">ColorComponents</span></a></span><span class="hs-special">{</span><span id="local-6989586621679538918"><span id="local-6989586621679538919"><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; Colour Double
+Colour Double -&gt; (Double, Double, Double)
+colorPack :: Double -&gt; Double -&gt; Double -&gt; Colour Double
+colorUnpack :: Colour Double -&gt; (Double, Double, Double)
+colorPack :: ColorComponents -&gt; Double -&gt; Double -&gt; Double -&gt; Colour Double
+colorUnpack :: ColorComponents -&gt; Colour Double -&gt; (Double, Double, Double)
+</span><a href="#local-6989586621679538918"><span class="hs-glyph hs-var hs-var hs-var hs-var">..</span></a></span></span></span><span class="hs-special">}</span><span> </span><span id="local-6989586621679538917"><span class="annot"><span class="annottext">Colour Double
+</span><a href="#local-6989586621679538917"><span class="hs-identifier hs-var">from</span></a></span></span><span> </span><span id="local-6989586621679538916"><span class="annot"><span class="annottext">Colour Double
+</span><a href="#local-6989586621679538916"><span class="hs-identifier hs-var">to</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679538915"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538915"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-102"></span><span>    </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; Colour Double
+</span><a href="#local-6989586621679538918"><span class="hs-identifier hs-var">colorPack</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538914"><span class="hs-identifier hs-var">a1</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538913"><span class="hs-identifier hs-var">a2</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538914"><span class="hs-identifier hs-var">a1</span></a></span><span class="hs-special">)</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538915"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538912"><span class="hs-identifier hs-var">b1</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538911"><span class="hs-identifier hs-var">b2</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538912"><span class="hs-identifier hs-var">b1</span></a></span><span class="hs-special">)</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538915"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538910"><span class="hs-identifier hs-var">c1</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538909"><span class="hs-identifier hs-var">c2</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538910"><span class="hs-identifier hs-var">c1</span></a></span><span class="hs-special">)</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538915"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-103"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-104"></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679538914"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538914"><span class="hs-identifier hs-var">a1</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679538912"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538912"><span class="hs-identifier hs-var">b1</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679538910"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538910"><span class="hs-identifier hs-var">c1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Colour Double -&gt; (Double, Double, Double)
+</span><a href="#local-6989586621679538919"><span class="hs-identifier hs-var">colorUnpack</span></a></span><span> </span><span class="annot"><span class="annottext">Colour Double
+</span><a href="#local-6989586621679538917"><span class="hs-identifier hs-var">from</span></a></span><span>
+</span><span id="line-105"></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679538913"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538913"><span class="hs-identifier hs-var">a2</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679538911"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538911"><span class="hs-identifier hs-var">b2</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679538909"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538909"><span class="hs-identifier hs-var">c2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Colour Double -&gt; (Double, Double, Double)
+</span><a href="#local-6989586621679538919"><span class="hs-identifier hs-var">colorUnpack</span></a></span><span> </span><span class="annot"><span class="annottext">Colour Double
+</span><a href="#local-6989586621679538916"><span class="hs-identifier hs-var">to</span></a></span><span>
+</span><span id="line-106"></span><span>
+</span><span id="line-107"></span><span class="hs-comment">-- | Convenience interpolation function for RGB8 values.</span><span>
+</span><span id="line-108"></span><span class="annot"><a href="Reanimate.ColorComponents.html#interpolateRGB8"><span class="hs-identifier hs-type">interpolateRGB8</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier hs-type">ColorComponents</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PixelRGB8</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PixelRGB8</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PixelRGB8</span></span><span class="hs-special">)</span><span>
+</span><span id="line-109"></span><span id="interpolateRGB8"><span class="annot"><span class="annottext">interpolateRGB8 :: ColorComponents -&gt; PixelRGB8 -&gt; PixelRGB8 -&gt; Double -&gt; PixelRGB8
+</span><a href="Reanimate.ColorComponents.html#interpolateRGB8"><span class="hs-identifier hs-var hs-var">interpolateRGB8</span></a></span></span><span> </span><span id="local-6989586621679538908"><span class="annot"><span class="annottext">ColorComponents
+</span><a href="#local-6989586621679538908"><span class="hs-identifier hs-var">comps</span></a></span></span><span> </span><span id="local-6989586621679538907"><span class="annot"><span class="annottext">PixelRGB8
+</span><a href="#local-6989586621679538907"><span class="hs-identifier hs-var">from</span></a></span></span><span> </span><span id="local-6989586621679538906"><span class="annot"><span class="annottext">PixelRGB8
+</span><a href="#local-6989586621679538906"><span class="hs-identifier hs-var">to</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Colour Double -&gt; PixelRGB8
+</span><a href="Reanimate.ColorComponents.html#toRGB8"><span class="hs-identifier hs-var">toRGB8</span></a></span><span> </span><span class="annot"><span class="annottext">(Colour Double -&gt; PixelRGB8)
+-&gt; (Double -&gt; Colour Double) -&gt; Double -&gt; PixelRGB8
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">ColorComponents
+-&gt; Colour Double -&gt; Colour Double -&gt; Double -&gt; Colour Double
+</span><a href="Reanimate.ColorComponents.html#interpolate"><span class="hs-identifier hs-var">interpolate</span></a></span><span> </span><span class="annot"><span class="annottext">ColorComponents
+</span><a href="#local-6989586621679538908"><span class="hs-identifier hs-var">comps</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">PixelRGB8 -&gt; Colour Double
+</span><a href="Reanimate.ColorComponents.html#fromRGB8"><span class="hs-identifier hs-var">fromRGB8</span></a></span><span> </span><span class="annot"><span class="annottext">PixelRGB8
+</span><a href="#local-6989586621679538907"><span class="hs-identifier hs-var">from</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">PixelRGB8 -&gt; Colour Double
+</span><a href="Reanimate.ColorComponents.html#fromRGB8"><span class="hs-identifier hs-var">fromRGB8</span></a></span><span> </span><span class="annot"><span class="annottext">PixelRGB8
+</span><a href="#local-6989586621679538906"><span class="hs-identifier hs-var">to</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-110"></span><span>
+</span><span id="line-111"></span><span class="hs-comment">-- | Convenience interpolation function for RGBA8 values.</span><span>
+</span><span id="line-112"></span><span class="annot"><a href="Reanimate.ColorComponents.html#interpolateRGBA8"><span class="hs-identifier hs-type">interpolateRGBA8</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.ColorComponents.html#ColorComponents"><span class="hs-identifier hs-type">ColorComponents</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PixelRGBA8</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PixelRGBA8</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PixelRGBA8</span></span><span class="hs-special">)</span><span>
+</span><span id="line-113"></span><span id="interpolateRGBA8"><span class="annot"><span class="annottext">interpolateRGBA8 :: ColorComponents -&gt; PixelRGBA8 -&gt; PixelRGBA8 -&gt; Double -&gt; PixelRGBA8
+</span><a href="Reanimate.ColorComponents.html#interpolateRGBA8"><span class="hs-identifier hs-var hs-var">interpolateRGBA8</span></a></span></span><span> </span><span id="local-6989586621679538905"><span class="annot"><span class="annottext">ColorComponents
+</span><a href="#local-6989586621679538905"><span class="hs-identifier hs-var">comps</span></a></span></span><span> </span><span id="local-6989586621679538904"><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679538904"><span class="hs-identifier hs-var">from</span></a></span></span><span> </span><span id="local-6989586621679538903"><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679538903"><span class="hs-identifier hs-var">to</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679538902"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538902"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-114"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Double -&gt; PixelRGB8
+</span><a href="#local-6989586621679538901"><span class="hs-identifier hs-var">interp</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538902"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-115"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">PixelRGB8</span></span><span> </span><span id="local-6989586621679538899"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538899"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span id="local-6989586621679538898"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538898"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span id="local-6989586621679538897"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538897"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-116"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679538896"><span class="annot"><span class="annottext">alpha :: Double
+</span><a href="#local-6989586621679538896"><span class="hs-identifier hs-var hs-var">alpha</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; Double
+</span><a href="Reanimate.Ease.html#fromToS"><span class="hs-identifier hs-var">fromToS</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Pixel8 -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">(Pixel8 -&gt; Double) -&gt; Pixel8 -&gt; Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; PixelBaseComponent PixelRGBA8
+forall a. Pixel a =&gt; a -&gt; PixelBaseComponent a
+</span><span class="hs-identifier hs-var">pixelOpacity</span></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679538904"><span class="hs-identifier hs-var">from</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Pixel8 -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">(Pixel8 -&gt; Double) -&gt; Pixel8 -&gt; Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; PixelBaseComponent PixelRGBA8
+forall a. Pixel a =&gt; a -&gt; PixelBaseComponent a
+</span><span class="hs-identifier hs-var">pixelOpacity</span></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679538903"><span class="hs-identifier hs-var">to</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538902"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-117"></span><span>      </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; PixelRGBA8
+</span><span class="hs-identifier hs-var">PixelRGBA8</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538899"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538898"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538897"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Pixel8
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">round</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538896"><span class="hs-identifier hs-var">alpha</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-118"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-119"></span><span>    </span><span id="local-6989586621679538901"><span class="annot"><span class="annottext">interp :: Double -&gt; PixelRGB8
+</span><a href="#local-6989586621679538901"><span class="hs-identifier hs-var hs-var">interp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ColorComponents -&gt; PixelRGB8 -&gt; PixelRGB8 -&gt; Double -&gt; PixelRGB8
+</span><a href="Reanimate.ColorComponents.html#interpolateRGB8"><span class="hs-identifier hs-var">interpolateRGB8</span></a></span><span> </span><span class="annot"><span class="annottext">ColorComponents
+</span><a href="#local-6989586621679538905"><span class="hs-identifier hs-var">comps</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; PixelRGB8
+forall a b. TransparentPixel a b =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">dropTransparency</span></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679538904"><span class="hs-identifier hs-var">from</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; PixelRGB8
+forall a b. TransparentPixel a b =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">dropTransparency</span></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679538903"><span class="hs-identifier hs-var">to</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-120"></span><span>
+</span><span id="line-121"></span><span class="hs-comment">-- | Convenience function for expressing a color as an RGB8 value.</span><span>
+</span><span id="line-122"></span><span class="annot"><a href="Reanimate.ColorComponents.html#toRGB8"><span class="hs-identifier hs-type">toRGB8</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Colour</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PixelRGB8</span></span><span>
+</span><span id="line-123"></span><span id="toRGB8"><span class="annot"><span class="annottext">toRGB8 :: Colour Double -&gt; PixelRGB8
+</span><a href="Reanimate.ColorComponents.html#toRGB8"><span class="hs-identifier hs-var hs-var">toRGB8</span></a></span></span><span> </span><span id="local-6989586621679538894"><span class="annot"><span class="annottext">Colour Double
+</span><a href="#local-6989586621679538894"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; PixelRGB8
+</span><span class="hs-identifier hs-var">PixelRGB8</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538893"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538892"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538891"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-124"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-125"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">RGB</span></span><span> </span><span id="local-6989586621679538893"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538893"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span id="local-6989586621679538892"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538892"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span id="local-6989586621679538891"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538891"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Colour Double -&gt; RGB Pixel8
+forall b a.
+(RealFrac b, Floating b, Integral a, Bounded a) =&gt;
+Colour b -&gt; RGB a
+</span><span class="hs-identifier hs-var">toSRGBBounded</span></span><span> </span><span class="annot"><span class="annottext">Colour Double
+</span><a href="#local-6989586621679538894"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span class="hs-comment">-- | Convenience function for expressing an RGB8 value as a color.</span><span>
+</span><span id="line-128"></span><span class="annot"><a href="Reanimate.ColorComponents.html#fromRGB8"><span class="hs-identifier hs-type">fromRGB8</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PixelRGB8</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Colour</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-129"></span><span id="fromRGB8"><span class="annot"><span class="annottext">fromRGB8 :: PixelRGB8 -&gt; Colour Double
+</span><a href="Reanimate.ColorComponents.html#fromRGB8"><span class="hs-identifier hs-var hs-var">fromRGB8</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">PixelRGB8</span></span><span> </span><span id="local-6989586621679538890"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538890"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span id="local-6989586621679538889"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538889"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span id="local-6989586621679538888"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538888"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; Colour Double
+forall b.
+(Ord b, Floating b) =&gt;
+Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; Colour b
+</span><span class="hs-identifier hs-var">sRGB24</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538890"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538889"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679538888"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-130"></span></pre></body></html>

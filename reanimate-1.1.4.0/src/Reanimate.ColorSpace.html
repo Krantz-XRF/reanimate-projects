@@ -1,0 +1,256 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Copyright   : Written by David Himmelstrup
+License     : Unlicense
+Maintainer  : lemmih@gmail.com
+Stability   : experimental
+Portability : POSIX
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.ColorSpace</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.ColorSpace.html#Nanometer"><span class="hs-identifier">Nanometer</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.ColorSpace.html#coneSensitivity"><span class="hs-identifier">coneSensitivity</span></a></span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.ColorSpace.html#bigXYZCoordinates"><span class="hs-identifier">bigXYZCoordinates</span></a></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.ColorSpace.html#lightXYZCoordinates"><span class="hs-identifier">lightXYZCoordinates</span></a></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.ColorSpace.html#nmToColor"><span class="hs-identifier">nmToColor</span></a></span><span>
+</span><span id="line-14"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString.Lazy</span></span><span>       </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">BS</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Colour.CIE</span></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Csv</span></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span>                   </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Map</span></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span>                   </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Map</span></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Vector</span></span><span>                </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">V</span></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Paths_reanimate.html"><span class="hs-identifier">Paths_reanimate</span></a></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO.Unsafe</span></span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="hs-comment">-- | Wavelengths in nanometers.</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">type</span><span> </span><span id="Nanometer"><span class="annot"><a href="Reanimate.ColorSpace.html#Nanometer"><span class="hs-identifier hs-var">Nanometer</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Integer</span></span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.ColorSpace.html#lightXYZCoordinates"><span class="hs-pragma hs-type">lightXYZCoordinates</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-30"></span><span class="hs-comment">-- | (small) xyz values for each wavelength of light.</span><span>
+</span><span id="line-31"></span><span class="annot"><a href="Reanimate.ColorSpace.html#lightXYZCoordinates"><span class="hs-identifier hs-type">lightXYZCoordinates</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Map</span></span><span> </span><span class="annot"><a href="Reanimate.ColorSpace.html#Nanometer"><span class="hs-identifier hs-type">Nanometer</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span id="lightXYZCoordinates"><span class="annot"><span class="annottext">lightXYZCoordinates :: Map Nanometer (Double, Double, Double)
+</span><a href="Reanimate.ColorSpace.html#lightXYZCoordinates"><span class="hs-identifier hs-var hs-var">lightXYZCoordinates</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO (Map Nanometer (Double, Double, Double))
+-&gt; Map Nanometer (Double, Double, Double)
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO (Map Nanometer (Double, Double, Double))
+ -&gt; Map Nanometer (Double, Double, Double))
+-&gt; IO (Map Nanometer (Double, Double, Double))
+-&gt; Map Nanometer (Double, Double, Double)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-33"></span><span>  </span><span id="local-6989586621679538408"><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679538408"><span class="hs-identifier hs-var">dat</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO ByteString
+</span><span class="hs-identifier hs-var">BS.readFile</span></span><span> </span><span class="annot"><span class="annottext">(FilePath -&gt; IO ByteString) -&gt; IO FilePath -&gt; IO ByteString
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; m a -&gt; m b
+</span><span class="hs-operator hs-var">=&lt;&lt;</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO FilePath
+</span><a href="Paths_reanimate.html#getDataFileName"><span class="hs-identifier hs-var">getDataFileName</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;data/CIExyz.csv&quot;</span></span><span>
+</span><span id="line-34"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">HasHeader
+-&gt; ByteString
+-&gt; Either FilePath (Vector (Nanometer, Double, Double, Double))
+forall a.
+FromRecord a =&gt;
+HasHeader -&gt; ByteString -&gt; Either FilePath (Vector a)
+</span><span class="hs-identifier hs-var">decode</span></span><span> </span><span class="annot"><span class="annottext">HasHeader
+</span><span class="hs-identifier hs-var">NoHeader</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679538408"><span class="hs-identifier hs-var">dat</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-35"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679538402"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679538402"><span class="hs-identifier hs-var">err</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO (Map Nanometer (Double, Double, Double))
+forall a. HasCallStack =&gt; FilePath -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679538402"><span class="hs-identifier hs-var">err</span></a></span><span>
+</span><span id="line-36"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679538400"><span class="annot"><span class="annottext">Vector (Nanometer, Double, Double, Double)
+</span><a href="#local-6989586621679538400"><span class="hs-identifier hs-var">vec</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Map Nanometer (Double, Double, Double)
+-&gt; IO (Map Nanometer (Double, Double, Double))
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Map Nanometer (Double, Double, Double)
+ -&gt; IO (Map Nanometer (Double, Double, Double)))
+-&gt; Map Nanometer (Double, Double, Double)
+-&gt; IO (Map Nanometer (Double, Double, Double))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[(Nanometer, (Double, Double, Double))]
+-&gt; Map Nanometer (Double, Double, Double)
+forall k a. Ord k =&gt; [(k, a)] -&gt; Map k a
+</span><span class="hs-identifier hs-var">Map.fromList</span></span><span>
+</span><span id="line-37"></span><span>      </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Nanometer
+</span><a href="#local-6989586621679538398"><span class="hs-identifier hs-var">nm</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538397"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538396"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538395"><span class="hs-identifier hs-var">z</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679538398"><span class="annot"><span class="annottext">Nanometer
+</span><a href="#local-6989586621679538398"><span class="hs-identifier hs-var">nm</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679538397"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538397"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679538396"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538396"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679538395"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538395"><span class="hs-identifier hs-var">z</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Vector (Nanometer, Double, Double, Double)
+-&gt; [(Nanometer, Double, Double, Double)]
+forall a. Vector a -&gt; [a]
+</span><span class="hs-identifier hs-var">V.toList</span></span><span> </span><span class="annot"><span class="annottext">Vector (Nanometer, Double, Double, Double)
+</span><a href="#local-6989586621679538400"><span class="hs-identifier hs-var">vec</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Nanometer
+</span><a href="#local-6989586621679538398"><span class="hs-identifier hs-var">nm</span></a></span><span> </span><span class="annot"><span class="annottext">Nanometer -&gt; Nanometer -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><span class="annottext">Nanometer
+</span><span class="hs-number">700</span></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.ColorSpace.html#bigXYZCoordinates"><span class="hs-pragma hs-type">bigXYZCoordinates</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-40"></span><span class="hs-comment">-- | (big) XYZ values for each wavelength of light.</span><span>
+</span><span id="line-41"></span><span class="annot"><a href="Reanimate.ColorSpace.html#bigXYZCoordinates"><span class="hs-identifier hs-type">bigXYZCoordinates</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Map</span></span><span> </span><span class="annot"><a href="Reanimate.ColorSpace.html#Nanometer"><span class="hs-identifier hs-type">Nanometer</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span><span>
+</span><span id="line-42"></span><span id="bigXYZCoordinates"><span class="annot"><span class="annottext">bigXYZCoordinates :: Map Nanometer (Double, Double, Double)
+</span><a href="Reanimate.ColorSpace.html#bigXYZCoordinates"><span class="hs-identifier hs-var hs-var">bigXYZCoordinates</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO (Map Nanometer (Double, Double, Double))
+-&gt; Map Nanometer (Double, Double, Double)
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO (Map Nanometer (Double, Double, Double))
+ -&gt; Map Nanometer (Double, Double, Double))
+-&gt; IO (Map Nanometer (Double, Double, Double))
+-&gt; Map Nanometer (Double, Double, Double)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-43"></span><span>  </span><span id="local-6989586621679538392"><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679538392"><span class="hs-identifier hs-var">dat</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO ByteString
+</span><span class="hs-identifier hs-var">BS.readFile</span></span><span> </span><span class="annot"><span class="annottext">(FilePath -&gt; IO ByteString) -&gt; IO FilePath -&gt; IO ByteString
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; m a -&gt; m b
+</span><span class="hs-operator hs-var">=&lt;&lt;</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO FilePath
+</span><a href="Paths_reanimate.html#getDataFileName"><span class="hs-identifier hs-var">getDataFileName</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;data/CIE_XYZ.csv&quot;</span></span><span>
+</span><span id="line-44"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">HasHeader
+-&gt; ByteString
+-&gt; Either FilePath (Vector (Nanometer, Double, Double, Double))
+forall a.
+FromRecord a =&gt;
+HasHeader -&gt; ByteString -&gt; Either FilePath (Vector a)
+</span><span class="hs-identifier hs-var">decode</span></span><span> </span><span class="annot"><span class="annottext">HasHeader
+</span><span class="hs-identifier hs-var">NoHeader</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679538392"><span class="hs-identifier hs-var">dat</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-45"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679538391"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679538391"><span class="hs-identifier hs-var">err</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO (Map Nanometer (Double, Double, Double))
+forall a. HasCallStack =&gt; FilePath -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679538391"><span class="hs-identifier hs-var">err</span></a></span><span>
+</span><span id="line-46"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679538390"><span class="annot"><span class="annottext">Vector (Nanometer, Double, Double, Double)
+</span><a href="#local-6989586621679538390"><span class="hs-identifier hs-var">vec</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Map Nanometer (Double, Double, Double)
+-&gt; IO (Map Nanometer (Double, Double, Double))
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Map Nanometer (Double, Double, Double)
+ -&gt; IO (Map Nanometer (Double, Double, Double)))
+-&gt; Map Nanometer (Double, Double, Double)
+-&gt; IO (Map Nanometer (Double, Double, Double))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[(Nanometer, (Double, Double, Double))]
+-&gt; Map Nanometer (Double, Double, Double)
+forall k a. Ord k =&gt; [(k, a)] -&gt; Map k a
+</span><span class="hs-identifier hs-var">Map.fromList</span></span><span>
+</span><span id="line-47"></span><span>      </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Nanometer
+</span><a href="#local-6989586621679538389"><span class="hs-identifier hs-var">nm</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538388"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538387"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538386"><span class="hs-identifier hs-var">z</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679538389"><span class="annot"><span class="annottext">Nanometer
+</span><a href="#local-6989586621679538389"><span class="hs-identifier hs-var">nm</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679538388"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538388"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679538387"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538387"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679538386"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538386"><span class="hs-identifier hs-var">z</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Vector (Nanometer, Double, Double, Double)
+-&gt; [(Nanometer, Double, Double, Double)]
+forall a. Vector a -&gt; [a]
+</span><span class="hs-identifier hs-var">V.toList</span></span><span> </span><span class="annot"><span class="annottext">Vector (Nanometer, Double, Double, Double)
+</span><a href="#local-6989586621679538390"><span class="hs-identifier hs-var">vec</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Nanometer
+</span><a href="#local-6989586621679538389"><span class="hs-identifier hs-var">nm</span></a></span><span> </span><span class="annot"><span class="annottext">Nanometer -&gt; Nanometer -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><span class="annottext">Nanometer
+</span><span class="hs-number">700</span></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-48"></span><span>
+</span><span id="line-49"></span><span class="hs-comment">-- | Helper function for converting a wavelength of light into the</span><span>
+</span><span id="line-50"></span><span class="hs-comment">--   perceived color.</span><span>
+</span><span id="line-51"></span><span class="annot"><a href="Reanimate.ColorSpace.html#nmToColor"><span class="hs-identifier hs-type">nmToColor</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.ColorSpace.html#Nanometer"><span class="hs-identifier hs-type">Nanometer</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Colour</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span><span>
+</span><span id="line-52"></span><span id="nmToColor"><span class="annot"><span class="annottext">nmToColor :: Nanometer -&gt; Maybe (Colour Double)
+</span><a href="Reanimate.ColorSpace.html#nmToColor"><span class="hs-identifier hs-var hs-var">nmToColor</span></a></span></span><span> </span><span id="local-6989586621679538385"><span class="annot"><span class="annottext">Nanometer
+</span><a href="#local-6989586621679538385"><span class="hs-identifier hs-var">nm</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-53"></span><span>  </span><span class="hs-special">(</span><span id="local-6989586621679538384"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538384"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679538383"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538383"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679538382"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538382"><span class="hs-identifier hs-var">z</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Nanometer
+-&gt; Map Nanometer (Double, Double, Double)
+-&gt; Maybe (Double, Double, Double)
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Map.lookup</span></span><span> </span><span class="annot"><span class="annottext">Nanometer
+</span><a href="#local-6989586621679538385"><span class="hs-identifier hs-var">nm</span></a></span><span> </span><span class="annot"><span class="annottext">Map Nanometer (Double, Double, Double)
+</span><a href="Reanimate.ColorSpace.html#bigXYZCoordinates"><span class="hs-identifier hs-var">bigXYZCoordinates</span></a></span><span>
+</span><span id="line-54"></span><span>  </span><span class="annot"><span class="annottext">Colour Double -&gt; Maybe (Colour Double)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Colour Double -&gt; Maybe (Colour Double))
+-&gt; Colour Double -&gt; Maybe (Colour Double)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; Colour Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a -&gt; Colour a
+</span><span class="hs-identifier hs-var">cieXYZ</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538384"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538383"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538382"><span class="hs-identifier hs-var">z</span></a></span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span class="hs-pragma">{-# NOINLINE</span><span> </span><span class="annot"><a href="Reanimate.ColorSpace.html#coneSensitivity"><span class="hs-pragma hs-type">coneSensitivity</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-57"></span><span class="hs-comment">-- (Long, Medium, Short)</span><span>
+</span><span id="line-58"></span><span class="hs-comment">-- | Cone sensitivity by light wavelength.</span><span>
+</span><span id="line-59"></span><span class="annot"><a href="Reanimate.ColorSpace.html#coneSensitivity"><span class="hs-identifier hs-type">coneSensitivity</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Map</span></span><span> </span><span class="annot"><a href="Reanimate.ColorSpace.html#Nanometer"><span class="hs-identifier hs-type">Nanometer</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span><span>
+</span><span id="line-60"></span><span id="coneSensitivity"><span class="annot"><span class="annottext">coneSensitivity :: Map Nanometer (Double, Double, Double)
+</span><a href="Reanimate.ColorSpace.html#coneSensitivity"><span class="hs-identifier hs-var hs-var">coneSensitivity</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO (Map Nanometer (Double, Double, Double))
+-&gt; Map Nanometer (Double, Double, Double)
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO (Map Nanometer (Double, Double, Double))
+ -&gt; Map Nanometer (Double, Double, Double))
+-&gt; IO (Map Nanometer (Double, Double, Double))
+-&gt; Map Nanometer (Double, Double, Double)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-61"></span><span>  </span><span id="local-6989586621679538379"><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679538379"><span class="hs-identifier hs-var">dat</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO ByteString
+</span><span class="hs-identifier hs-var">BS.readFile</span></span><span> </span><span class="annot"><span class="annottext">(FilePath -&gt; IO ByteString) -&gt; IO FilePath -&gt; IO ByteString
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; m a -&gt; m b
+</span><span class="hs-operator hs-var">=&lt;&lt;</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO FilePath
+</span><a href="Paths_reanimate.html#getDataFileName"><span class="hs-identifier hs-var">getDataFileName</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;data/cone_sensitivity_lms.csv&quot;</span></span><span>
+</span><span id="line-62"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">HasHeader
+-&gt; ByteString
+-&gt; Either
+     FilePath (Vector (Nanometer, Double, Double, Maybe Double))
+forall a.
+FromRecord a =&gt;
+HasHeader -&gt; ByteString -&gt; Either FilePath (Vector a)
+</span><span class="hs-identifier hs-var">decode</span></span><span> </span><span class="annot"><span class="annottext">HasHeader
+</span><span class="hs-identifier hs-var">NoHeader</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679538379"><span class="hs-identifier hs-var">dat</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-63"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679538378"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679538378"><span class="hs-identifier hs-var">err</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO (Map Nanometer (Double, Double, Double))
+forall a. HasCallStack =&gt; FilePath -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679538378"><span class="hs-identifier hs-var">err</span></a></span><span>
+</span><span id="line-64"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679538377"><span class="annot"><span class="annottext">Vector (Nanometer, Double, Double, Maybe Double)
+</span><a href="#local-6989586621679538377"><span class="hs-identifier hs-var">vec</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Map Nanometer (Double, Double, Double)
+-&gt; IO (Map Nanometer (Double, Double, Double))
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Map Nanometer (Double, Double, Double)
+ -&gt; IO (Map Nanometer (Double, Double, Double)))
+-&gt; Map Nanometer (Double, Double, Double)
+-&gt; IO (Map Nanometer (Double, Double, Double))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[(Nanometer, (Double, Double, Double))]
+-&gt; Map Nanometer (Double, Double, Double)
+forall k a. Ord k =&gt; [(k, a)] -&gt; Map k a
+</span><span class="hs-identifier hs-var">Map.fromList</span></span><span>
+</span><span id="line-65"></span><span>      </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Nanometer
+</span><a href="#local-6989586621679538376"><span class="hs-identifier hs-var">nm</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538375"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538374"><span class="hs-identifier hs-var">m</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Double -&gt; Maybe Double -&gt; Double
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Maybe Double
+</span><a href="#local-6989586621679538372"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679538376"><span class="annot"><span class="annottext">Nanometer
+</span><a href="#local-6989586621679538376"><span class="hs-identifier hs-var">nm</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679538375"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538375"><span class="hs-identifier hs-var">l</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679538374"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679538374"><span class="hs-identifier hs-var">m</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679538372"><span class="annot"><span class="annottext">Maybe Double
+</span><a href="#local-6989586621679538372"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Vector (Nanometer, Double, Double, Maybe Double)
+-&gt; [(Nanometer, Double, Double, Maybe Double)]
+forall a. Vector a -&gt; [a]
+</span><span class="hs-identifier hs-var">V.toList</span></span><span> </span><span class="annot"><span class="annottext">Vector (Nanometer, Double, Double, Maybe Double)
+</span><a href="#local-6989586621679538377"><span class="hs-identifier hs-var">vec</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Nanometer
+</span><a href="#local-6989586621679538376"><span class="hs-identifier hs-var">nm</span></a></span><span> </span><span class="annot"><span class="annottext">Nanometer -&gt; Nanometer -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><span class="annottext">Nanometer
+</span><span class="hs-number">700</span></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-66"></span></pre></body></html>

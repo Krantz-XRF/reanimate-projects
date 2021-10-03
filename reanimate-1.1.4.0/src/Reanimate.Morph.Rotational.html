@@ -1,0 +1,405 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Copyright   : Written by David Himmelstrup
+License     : Unlicense
+Maintainer  : lemmih@gmail.com
+Stability   : experimental
+Portability : POSIX
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Morph.Rotational</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Morph.Rotational.html#Origin"><span class="hs-identifier">Origin</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Morph.Rotational.html#rotationalTrajectory"><span class="hs-identifier">rotationalTrajectory</span></a></span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Morph.Rotational.html#polygonOrigin"><span class="hs-identifier">polygonOrigin</span></a></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Vector</span></span><span>            </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">V</span></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Linear.Vector</span></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Linear.V2</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Linear.Metric</span></span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Ease.html"><span class="hs-identifier">Reanimate.Ease</span></a></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Morph.Common.html"><span class="hs-identifier">Reanimate.Morph.Common</span></a></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Math.Polygon.html"><span class="hs-identifier">Reanimate.Math.Polygon</span></a></span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-comment">-- | Rotational origin relative to polygon center.</span><span>
+</span><span id="line-24"></span><span class="hs-comment">--   (0.5, 0.5) is center of polygon. Top right is (1,1) and</span><span>
+</span><span id="line-25"></span><span class="hs-comment">--   bottom left is (0,0)</span><span>
+</span><span id="line-26"></span><span class="hs-keyword">type</span><span> </span><span id="Origin"><span class="annot"><a href="Reanimate.Morph.Rotational.html#Origin"><span class="hs-identifier hs-var">Origin</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- | Interpolation by rotating around an origin point.</span><span>
+</span><span id="line-29"></span><span class="hs-comment">--</span><span>
+</span><span id="line-30"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-31"></span><span class="hs-comment">--</span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-33"></span><span class="hs-comment">-- 'Reanimate.playThenReverseA' $ 'Reanimate.pauseAround' 0.5 0.5 $ 'Reanimate.mkAnimation' 3 $ \\t -&gt;</span><span>
+</span><span id="line-34"></span><span class="hs-comment">--   'Reanimate.withStrokeLineJoin' 'Graphics.SvgTree.JoinRound' $</span><span>
+</span><span id="line-35"></span><span class="hs-comment">--   let src = 'Reanimate.scale' 8 $ 'Reanimate.center' $ 'Reanimate.LaTeX.latex' \&quot;X\&quot;</span><span>
+</span><span id="line-36"></span><span class="hs-comment">--       dst = 'Reanimate.scale' 8 $ 'Reanimate.center' $ 'Reanimate.LaTeX.latex' \&quot;H\&quot;</span><span>
+</span><span id="line-37"></span><span class="hs-comment">--   in 'morph' 'Reanimate.Morph.Linear.linear'{'morphTrajectory'='rotationalTrajectory' (0.5,0.5)} src dst t</span><span>
+</span><span id="line-38"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-39"></span><span class="hs-comment">--</span><span>
+</span><span id="line-40"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_rotationalTrajectory.gif&gt;&gt;</span><span>
+</span><span id="line-41"></span><span class="annot"><a href="Reanimate.Morph.Rotational.html#rotationalTrajectory"><span class="hs-identifier hs-type">rotationalTrajectory</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Morph.Rotational.html#Origin"><span class="hs-identifier hs-type">Origin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Morph.Common.html#Trajectory"><span class="hs-identifier hs-type">Trajectory</span></a></span><span>
+</span><span id="line-42"></span><span id="rotationalTrajectory"><span class="annot"><span class="annottext">rotationalTrajectory :: Origin -&gt; Trajectory
+</span><a href="Reanimate.Morph.Rotational.html#rotationalTrajectory"><span class="hs-identifier hs-var hs-var">rotationalTrajectory</span></a></span></span><span> </span><span id="local-6989586621679545659"><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679545659"><span class="hs-identifier hs-var">origin</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679545658"><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545658"><span class="hs-identifier hs-var">src</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679545657"><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545657"><span class="hs-identifier hs-var">dst</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-43"></span><span>    </span><span class="hs-glyph">\</span><span id="local-6989586621679545656"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545656"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-44"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679545655"><span class="annot"><span class="annottext">thisOrigin :: V2 Double
+</span><a href="#local-6989586621679545655"><span class="hs-identifier hs-var hs-var">thisOrigin</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; V2 Double -&gt; V2 Double -&gt; V2 Double
+forall (f :: * -&gt; *) a.
+(Additive f, Num a) =&gt;
+a -&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-identifier hs-var">lerp</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545656"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545653"><span class="hs-identifier hs-var">dstOrigin</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545652"><span class="hs-identifier hs-var">srcOrigin</span></a></span><span> </span><span class="hs-keyword">in</span><span>
+</span><span id="line-45"></span><span>      </span><span class="annot"><span class="annottext">Vector (V2 Rational) -&gt; Polygon
+forall a. PolyCtx a =&gt; Vector (V2 a) -&gt; APolygon a
+</span><a href="Reanimate.Math.Polygon.html#mkPolygon"><span class="hs-identifier hs-var">mkPolygon</span></a></span><span> </span><span class="annot"><span class="annottext">(Vector (V2 Rational) -&gt; Polygon)
+-&gt; Vector (V2 Rational) -&gt; Polygon
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-46"></span><span>      </span><span class="annot"><span class="annottext">Int -&gt; (Int -&gt; V2 Rational) -&gt; Vector (V2 Rational)
+forall a. Int -&gt; (Int -&gt; a) -&gt; Vector a
+</span><span class="hs-identifier hs-var">V.generate</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int
+forall a. APolygon a -&gt; Int
+</span><a href="Reanimate.Math.Polygon.html#pSize"><span class="hs-identifier hs-var">pSize</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545658"><span class="hs-identifier hs-var">src</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">((Int -&gt; V2 Rational) -&gt; Vector (V2 Rational))
+-&gt; (Int -&gt; V2 Rational) -&gt; Vector (V2 Rational)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679545648"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545648"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-47"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679545647"><span class="annot"><span class="annottext">len :: Double
+</span><a href="#local-6989586621679545647"><span class="hs-identifier hs-var hs-var">len</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Signal
+</span><a href="Reanimate.Ease.html#fromToS"><span class="hs-identifier hs-var">fromToS</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Vector Double
+</span><a href="#local-6989586621679545645"><span class="hs-identifier hs-var">srcLengths</span></a></span><span> </span><span class="annot"><span class="annottext">Vector Double -&gt; Int -&gt; Double
+forall a. Vector a -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">V.!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545648"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Vector Double
+</span><a href="#local-6989586621679545643"><span class="hs-identifier hs-var">dstLengths</span></a></span><span> </span><span class="annot"><span class="annottext">Vector Double -&gt; Int -&gt; Double
+forall a. Vector a -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">V.!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545648"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545656"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-48"></span><span>            </span><span id="local-6989586621679545642"><span class="annot"><span class="annottext">ang :: Double
+</span><a href="#local-6989586621679545642"><span class="hs-identifier hs-var hs-var">ang</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Signal
+</span><a href="Reanimate.Morph.Rotational.html#lerpAngle"><span class="hs-identifier hs-var">lerpAngle</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Vector Double
+</span><a href="#local-6989586621679545640"><span class="hs-identifier hs-var">srcAngles</span></a></span><span> </span><span class="annot"><span class="annottext">Vector Double -&gt; Int -&gt; Double
+forall a. Vector a -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">V.!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545648"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Vector Double
+</span><a href="#local-6989586621679545639"><span class="hs-identifier hs-var">dstAngles</span></a></span><span> </span><span class="annot"><span class="annottext">Vector Double -&gt; Int -&gt; Double
+forall a. Vector a -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">V.!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545648"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545656"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-49"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Rational
+forall a b. (Real a, Fractional b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">realToFrac</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Rational) -&gt; V2 Double -&gt; V2 Rational
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545655"><span class="hs-identifier hs-var">thisOrigin</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Double -&gt; V2 Double -&gt; V2 Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; V2 Double
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Signal
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">cos</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545642"><span class="hs-identifier hs-var">ang</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545647"><span class="hs-identifier hs-var">len</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Signal
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sin</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545642"><span class="hs-identifier hs-var">ang</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545647"><span class="hs-identifier hs-var">len</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-50"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-51"></span><span>    </span><span id="local-6989586621679545652"><span class="annot"><span class="annottext">srcOrigin :: V2 Double
+</span><a href="#local-6989586621679545652"><span class="hs-identifier hs-var hs-var">srcOrigin</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Origin -&gt; V2 Double
+</span><a href="Reanimate.Morph.Rotational.html#polygonOrigin"><span class="hs-identifier hs-var">polygonOrigin</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545658"><span class="hs-identifier hs-var">src</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679545659"><span class="hs-identifier hs-var">origin</span></a></span><span>
+</span><span id="line-52"></span><span>    </span><span id="local-6989586621679545653"><span class="annot"><span class="annottext">dstOrigin :: V2 Double
+</span><a href="#local-6989586621679545653"><span class="hs-identifier hs-var hs-var">dstOrigin</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Origin -&gt; V2 Double
+</span><a href="Reanimate.Morph.Rotational.html#polygonOrigin"><span class="hs-identifier hs-var">polygonOrigin</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545657"><span class="hs-identifier hs-var">dst</span></a></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><a href="#local-6989586621679545659"><span class="hs-identifier hs-var">origin</span></a></span><span>
+</span><span id="line-53"></span><span>    </span><span class="annot"><a href="#local-6989586621679545645"><span class="hs-identifier hs-type">srcLengths</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">V.Vector</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-54"></span><span>    </span><span id="local-6989586621679545645"><span class="annot"><span class="annottext">srcLengths :: Vector Double
+</span><a href="#local-6989586621679545645"><span class="hs-identifier hs-var hs-var">srcLengths</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(V2 Rational -&gt; Double) -&gt; Vector (V2 Rational) -&gt; Vector Double
+forall a b. (a -&gt; b) -&gt; Vector a -&gt; Vector b
+</span><span class="hs-identifier hs-var">V.map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Double -&gt; V2 Double -&gt; Double
+forall (f :: * -&gt; *) a. (Metric f, Floating a) =&gt; f a -&gt; f a -&gt; a
+</span><span class="hs-identifier hs-var">distance</span></span><span> </span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545652"><span class="hs-identifier hs-var">srcOrigin</span></a></span><span> </span><span class="annot"><span class="annottext">(V2 Double -&gt; Double)
+-&gt; (V2 Rational -&gt; V2 Double) -&gt; V2 Rational -&gt; Double
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Rational -&gt; Double) -&gt; V2 Rational -&gt; V2 Double
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">Rational -&gt; Double
+forall a b. (Real a, Fractional b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">realToFrac</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Vector (V2 Rational) -&gt; Vector Double)
+-&gt; Vector (V2 Rational) -&gt; Vector Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Vector (V2 Rational)
+forall a. APolygon a -&gt; Vector (V2 a)
+</span><a href="Reanimate.Math.Polygon.html#polygonPoints"><span class="hs-identifier hs-var hs-var">polygonPoints</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545658"><span class="hs-identifier hs-var">src</span></a></span><span>
+</span><span id="line-55"></span><span>    </span><span id="local-6989586621679545643"><span class="annot"><span class="annottext">dstLengths :: Vector Double
+</span><a href="#local-6989586621679545643"><span class="hs-identifier hs-var hs-var">dstLengths</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(V2 Rational -&gt; Double) -&gt; Vector (V2 Rational) -&gt; Vector Double
+forall a b. (a -&gt; b) -&gt; Vector a -&gt; Vector b
+</span><span class="hs-identifier hs-var">V.map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Double -&gt; V2 Double -&gt; Double
+forall (f :: * -&gt; *) a. (Metric f, Floating a) =&gt; f a -&gt; f a -&gt; a
+</span><span class="hs-identifier hs-var">distance</span></span><span> </span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545653"><span class="hs-identifier hs-var">dstOrigin</span></a></span><span> </span><span class="annot"><span class="annottext">(V2 Double -&gt; Double)
+-&gt; (V2 Rational -&gt; V2 Double) -&gt; V2 Rational -&gt; Double
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Rational -&gt; Double) -&gt; V2 Rational -&gt; V2 Double
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">Rational -&gt; Double
+forall a b. (Real a, Fractional b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">realToFrac</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Vector (V2 Rational) -&gt; Vector Double)
+-&gt; Vector (V2 Rational) -&gt; Vector Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Vector (V2 Rational)
+forall a. APolygon a -&gt; Vector (V2 a)
+</span><a href="Reanimate.Math.Polygon.html#polygonPoints"><span class="hs-identifier hs-var hs-var">polygonPoints</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545657"><span class="hs-identifier hs-var">dst</span></a></span><span>
+</span><span id="line-56"></span><span>    </span><span id="local-6989586621679545640"><span class="annot"><span class="annottext">srcAngles :: Vector Double
+</span><a href="#local-6989586621679545640"><span class="hs-identifier hs-var hs-var">srcAngles</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(V2 Rational -&gt; Double) -&gt; Vector (V2 Rational) -&gt; Vector Double
+forall a b. (a -&gt; b) -&gt; Vector a -&gt; Vector b
+</span><span class="hs-identifier hs-var">V.map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Double -&gt; V2 Double -&gt; Double
+</span><a href="#local-6989586621679545628"><span class="hs-identifier hs-var">originAngle</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545652"><span class="hs-identifier hs-var">srcOrigin</span></a></span><span> </span><span class="annot"><span class="annottext">(V2 Double -&gt; Double)
+-&gt; (V2 Rational -&gt; V2 Double) -&gt; V2 Rational -&gt; Double
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Rational -&gt; Double) -&gt; V2 Rational -&gt; V2 Double
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">Rational -&gt; Double
+forall a b. (Real a, Fractional b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">realToFrac</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Vector (V2 Rational) -&gt; Vector Double)
+-&gt; Vector (V2 Rational) -&gt; Vector Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Vector (V2 Rational)
+forall a. APolygon a -&gt; Vector (V2 a)
+</span><a href="Reanimate.Math.Polygon.html#polygonPoints"><span class="hs-identifier hs-var hs-var">polygonPoints</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545658"><span class="hs-identifier hs-var">src</span></a></span><span>
+</span><span id="line-57"></span><span>    </span><span id="local-6989586621679545639"><span class="annot"><span class="annottext">dstAngles :: Vector Double
+</span><a href="#local-6989586621679545639"><span class="hs-identifier hs-var hs-var">dstAngles</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(V2 Rational -&gt; Double) -&gt; Vector (V2 Rational) -&gt; Vector Double
+forall a b. (a -&gt; b) -&gt; Vector a -&gt; Vector b
+</span><span class="hs-identifier hs-var">V.map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Double -&gt; V2 Double -&gt; Double
+</span><a href="#local-6989586621679545628"><span class="hs-identifier hs-var">originAngle</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545653"><span class="hs-identifier hs-var">dstOrigin</span></a></span><span> </span><span class="annot"><span class="annottext">(V2 Double -&gt; Double)
+-&gt; (V2 Rational -&gt; V2 Double) -&gt; V2 Rational -&gt; Double
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Rational -&gt; Double) -&gt; V2 Rational -&gt; V2 Double
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">Rational -&gt; Double
+forall a b. (Real a, Fractional b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">realToFrac</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Vector (V2 Rational) -&gt; Vector Double)
+-&gt; Vector (V2 Rational) -&gt; Vector Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Vector (V2 Rational)
+forall a. APolygon a -&gt; Vector (V2 a)
+</span><a href="Reanimate.Math.Polygon.html#polygonPoints"><span class="hs-identifier hs-var hs-var">polygonPoints</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545657"><span class="hs-identifier hs-var">dst</span></a></span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span>    </span><span id="local-6989586621679545628"><span class="annot"><span class="annottext">originAngle :: V2 Double -&gt; V2 Double -&gt; Double
+</span><a href="#local-6989586621679545628"><span class="hs-identifier hs-var hs-var">originAngle</span></a></span></span><span> </span><span id="local-6989586621679545627"><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545627"><span class="hs-identifier hs-var">o</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">V2 Double -&gt; V2 Double -&gt; V2 Double -&gt; Double
+</span><a href="Reanimate.Morph.Rotational.html#lineAngle"><span class="hs-identifier hs-var">lineAngle</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545627"><span class="hs-identifier hs-var">o</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Double -&gt; V2 Double -&gt; V2 Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; V2 Double
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545627"><span class="hs-identifier hs-var">o</span></a></span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span class="hs-comment">-- | Compute the absolute position of rotational origin point in polygon.</span><span>
+</span><span id="line-62"></span><span class="annot"><a href="Reanimate.Morph.Rotational.html#polygonOrigin"><span class="hs-identifier hs-type">polygonOrigin</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Math.Polygon.html#Polygon"><span class="hs-identifier hs-type">Polygon</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Morph.Rotational.html#Origin"><span class="hs-identifier hs-type">Origin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-63"></span><span id="polygonOrigin"><span class="annot"><span class="annottext">polygonOrigin :: Polygon -&gt; Origin -&gt; V2 Double
+</span><a href="Reanimate.Morph.Rotational.html#polygonOrigin"><span class="hs-identifier hs-var hs-var">polygonOrigin</span></a></span></span><span> </span><span id="local-6989586621679545625"><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545625"><span class="hs-identifier hs-var">poly</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679545624"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545624"><span class="hs-identifier hs-var">originX</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679545623"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545623"><span class="hs-identifier hs-var">originY</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-64"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; (Rational, Rational, Rational, Rational)
+</span><a href="Reanimate.Math.Polygon.html#pBoundingBox"><span class="hs-identifier hs-var">pBoundingBox</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545625"><span class="hs-identifier hs-var">poly</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-65"></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679545621"><span class="annot"><span class="annottext">Rational
+</span><a href="#local-6989586621679545621"><span class="hs-identifier hs-var">polyX</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679545620"><span class="annot"><span class="annottext">Rational
+</span><a href="#local-6989586621679545620"><span class="hs-identifier hs-var">polyY</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679545619"><span class="annot"><span class="annottext">Rational
+</span><a href="#local-6989586621679545619"><span class="hs-identifier hs-var">polyWidth</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679545618"><span class="annot"><span class="annottext">Rational
+</span><a href="#local-6989586621679545618"><span class="hs-identifier hs-var">polyHeight</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-66"></span><span>      </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; V2 Double
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Rational -&gt; Double
+forall a b. (Real a, Fractional b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">realToFrac</span></span><span> </span><span class="annot"><span class="annottext">Rational
+</span><a href="#local-6989586621679545621"><span class="hs-identifier hs-var">polyX</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Rational -&gt; Double
+forall a b. (Real a, Fractional b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">realToFrac</span></span><span> </span><span class="annot"><span class="annottext">Rational
+</span><a href="#local-6989586621679545619"><span class="hs-identifier hs-var">polyWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545624"><span class="hs-identifier hs-var">originX</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-67"></span><span>         </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Rational -&gt; Double
+forall a b. (Real a, Fractional b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">realToFrac</span></span><span> </span><span class="annot"><span class="annottext">Rational
+</span><a href="#local-6989586621679545620"><span class="hs-identifier hs-var">polyY</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Rational -&gt; Double
+forall a b. (Real a, Fractional b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">realToFrac</span></span><span> </span><span class="annot"><span class="annottext">Rational
+</span><a href="#local-6989586621679545618"><span class="hs-identifier hs-var">polyHeight</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545623"><span class="hs-identifier hs-var">originY</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span>
+</span><span id="line-70"></span><span class="annot"><a href="Reanimate.Morph.Rotational.html#lerpAngle"><span class="hs-identifier hs-type">lerpAngle</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-71"></span><span id="lerpAngle"><span class="annot"><span class="annottext">lerpAngle :: Double -&gt; Double -&gt; Signal
+</span><a href="Reanimate.Morph.Rotational.html#lerpAngle"><span class="hs-identifier hs-var hs-var">lerpAngle</span></a></span></span><span> </span><span id="local-6989586621679545617"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545617"><span class="hs-identifier hs-var">fromAng</span></a></span></span><span> </span><span id="local-6989586621679545616"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545616"><span class="hs-identifier hs-var">toAng</span></a></span></span><span> </span><span id="local-6989586621679545615"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545615"><span class="hs-identifier hs-var">t</span></a></span></span><span>
+</span><span id="line-72"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Signal
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">abs</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545617"><span class="hs-identifier hs-var">fromAng</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545616"><span class="hs-identifier hs-var">toAng</span></a></span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+forall a. Floating a =&gt; a
+</span><span class="hs-identifier hs-var">pi</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Signal
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">abs</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545617"><span class="hs-identifier hs-var">fromAng</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545616"><span class="hs-identifier hs-var">toAng</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545615"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545617"><span class="hs-identifier hs-var">fromAng</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545615"><span class="hs-identifier hs-var">t</span></a></span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545616"><span class="hs-identifier hs-var">toAng</span></a></span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+forall a. Floating a =&gt; a
+</span><span class="hs-identifier hs-var">pi</span></span><span class="hs-special">)</span><span>
+</span><span id="line-73"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Signal
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">abs</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545617"><span class="hs-identifier hs-var">fromAng</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545616"><span class="hs-identifier hs-var">toAng</span></a></span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+forall a. Floating a =&gt; a
+</span><span class="hs-identifier hs-var">pi</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Signal
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">abs</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545617"><span class="hs-identifier hs-var">fromAng</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545616"><span class="hs-identifier hs-var">toAng</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545615"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545617"><span class="hs-identifier hs-var">fromAng</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545615"><span class="hs-identifier hs-var">t</span></a></span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545616"><span class="hs-identifier hs-var">toAng</span></a></span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+forall a. Floating a =&gt; a
+</span><span class="hs-identifier hs-var">pi</span></span><span class="hs-special">)</span><span>
+</span><span id="line-74"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545615"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545617"><span class="hs-identifier hs-var">fromAng</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545615"><span class="hs-identifier hs-var">t</span></a></span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545616"><span class="hs-identifier hs-var">toAng</span></a></span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span class="hs-comment">-- Angle from a through b to c.</span><span>
+</span><span id="line-77"></span><span class="annot"><a href="Reanimate.Morph.Rotational.html#lineAngle"><span class="hs-identifier hs-type">lineAngle</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-78"></span><span id="lineAngle"><span class="annot"><span class="annottext">lineAngle :: V2 Double -&gt; V2 Double -&gt; V2 Double -&gt; Double
+</span><a href="Reanimate.Morph.Rotational.html#lineAngle"><span class="hs-identifier hs-var hs-var">lineAngle</span></a></span></span><span> </span><span id="local-6989586621679545611"><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545611"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679545610"><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545610"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span id="local-6989586621679545609"><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545609"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">V2 Double -&gt; V2 Double -&gt; Double
+</span><a href="Reanimate.Morph.Rotational.html#angle%27"><span class="hs-identifier hs-var">angle'</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545611"><span class="hs-identifier hs-var">a</span></a></span><span class="annot"><span class="annottext">V2 Double -&gt; V2 Double -&gt; V2 Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545610"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545609"><span class="hs-identifier hs-var">c</span></a></span><span class="annot"><span class="annottext">V2 Double -&gt; V2 Double -&gt; V2 Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545610"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-79"></span><span>
+</span><span id="line-80"></span><span class="annot"><a href="Reanimate.Morph.Rotational.html#angle%27"><span class="hs-identifier hs-type">angle'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-81"></span><span id="angle%27"><span class="annot"><span class="annottext">angle' :: V2 Double -&gt; V2 Double -&gt; Double
+</span><a href="Reanimate.Morph.Rotational.html#angle%27"><span class="hs-identifier hs-var hs-var">angle'</span></a></span></span><span> </span><span id="local-6989586621679545607"><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545607"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679545606"><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545606"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Signal
+forall a. RealFloat a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">atan2</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Double -&gt; V2 Double -&gt; Double
+forall a. Num a =&gt; V2 a -&gt; V2 a -&gt; a
+</span><span class="hs-identifier hs-var">crossZ</span></span><span> </span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545607"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545606"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Double -&gt; V2 Double -&gt; Double
+forall (f :: * -&gt; *) a. (Metric f, Num a) =&gt; f a -&gt; f a -&gt; a
+</span><span class="hs-identifier hs-var">dot</span></span><span> </span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545607"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Double
+</span><a href="#local-6989586621679545606"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-82"></span></pre></body></html>

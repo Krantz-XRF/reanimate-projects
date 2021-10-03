@@ -1,0 +1,197 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Module      : A3SAT.Animation.Config
+Description : Rendering configuration for 3-SAT problems.
+Copyright   : (c) Xie Ruifeng, 2020
+License     : AGPL-3
+Maintainer  : krantz.xrf@outlook.com
+Stability   : experimental
+Portability : portable
+-}</span><span>
+</span><span id="line-10"></span><span class="hs-pragma">{-# LANGUAGE QuasiQuotes     #-}</span><span>
+</span><span id="line-11"></span><span class="hs-pragma">{-# LANGUAGE Strict          #-}</span><span>
+</span><span id="line-12"></span><span class="hs-pragma">{-# LANGUAGE TemplateHaskell #-}</span><span>
+</span><span id="line-13"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">A3SAT.Animation.Config</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Common.HexColour</span></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree</span></span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-comment">-- |How do we colour the variables?</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">data</span><span> </span><span id="ColourStrategy"><span class="annot"><a href="A3SAT.Animation.Config.html#ColourStrategy"><span class="hs-identifier hs-var">ColourStrategy</span></a></span></span><span>
+</span><span id="line-23"></span><span>  </span><span class="hs-comment">-- |Use 'defaultTextColour'.</span><span>
+</span><span id="line-24"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="NoColour"><span class="annot"><a href="A3SAT.Animation.Config.html#NoColour"><span class="hs-identifier hs-var">NoColour</span></a></span></span><span>
+</span><span id="line-25"></span><span>  </span><span class="hs-comment">-- |Use corresponding 'varColours'.</span><span>
+</span><span id="line-26"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="VarColour"><span class="annot"><a href="A3SAT.Animation.Config.html#VarColour"><span class="hs-identifier hs-var">VarColour</span></a></span></span><span>
+</span><span id="line-27"></span><span>  </span><span class="hs-comment">-- |Use 'trueColour' and 'falseColour'.</span><span>
+</span><span id="line-28"></span><span>  </span><span class="hs-comment">-- Provided the boolean values for those variables.</span><span>
+</span><span id="line-29"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="BoolColour"><span class="annot"><a href="A3SAT.Animation.Config.html#BoolColour"><span class="hs-identifier hs-var">BoolColour</span></a></span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span class="hs-special">]</span><span>
+</span><span id="line-30"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679184041"><span id="local-6989586621679184043"><span id="local-6989586621679184045"><span class="annot"><span class="annottext">Int -&gt; ColourStrategy -&gt; ShowS
+[ColourStrategy] -&gt; ShowS
+ColourStrategy -&gt; String
+(Int -&gt; ColourStrategy -&gt; ShowS)
+-&gt; (ColourStrategy -&gt; String)
+-&gt; ([ColourStrategy] -&gt; ShowS)
+-&gt; Show ColourStrategy
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [ColourStrategy] -&gt; ShowS
+$cshowList :: [ColourStrategy] -&gt; ShowS
+show :: ColourStrategy -&gt; String
+$cshow :: ColourStrategy -&gt; String
+showsPrec :: Int -&gt; ColourStrategy -&gt; ShowS
+$cshowsPrec :: Int -&gt; ColourStrategy -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679184036"><span id="local-6989586621679184038"><span class="annot"><span class="annottext">ColourStrategy -&gt; ColourStrategy -&gt; Bool
+(ColourStrategy -&gt; ColourStrategy -&gt; Bool)
+-&gt; (ColourStrategy -&gt; ColourStrategy -&gt; Bool) -&gt; Eq ColourStrategy
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: ColourStrategy -&gt; ColourStrategy -&gt; Bool
+$c/= :: ColourStrategy -&gt; ColourStrategy -&gt; Bool
+== :: ColourStrategy -&gt; ColourStrategy -&gt; Bool
+$c== :: ColourStrategy -&gt; ColourStrategy -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- |Configurations for the 2048 Game.</span><span>
+</span><span id="line-33"></span><span class="hs-keyword">data</span><span> </span><span id="Anim3SATConfig"><span class="annot"><a href="A3SAT.Animation.Config.html#Anim3SATConfig"><span class="hs-identifier hs-var">Anim3SATConfig</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Anim3SATConfig"><span class="annot"><a href="A3SAT.Animation.Config.html#Anim3SATConfig"><span class="hs-identifier hs-var">Anim3SATConfig</span></a></span></span><span>
+</span><span id="line-34"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="_defaultTextColour"><span class="annot"><span class="annottext">Anim3SATConfig -&gt; Texture
+</span><a href="A3SAT.Animation.Config.html#_defaultTextColour"><span class="hs-identifier hs-var hs-var">_defaultTextColour</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Texture</span></span><span>
+</span><span id="line-35"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="_operatorColour"><span class="annot"><span class="annottext">Anim3SATConfig -&gt; Texture
+</span><a href="A3SAT.Animation.Config.html#_operatorColour"><span class="hs-identifier hs-var hs-var">_operatorColour</span></a></span></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Texture</span></span><span>
+</span><span id="line-36"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="_varColours"><span class="annot"><span class="annottext">Anim3SATConfig -&gt; [Texture]
+</span><a href="A3SAT.Animation.Config.html#_varColours"><span class="hs-identifier hs-var hs-var">_varColours</span></a></span></span><span>        </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Texture</span></span><span class="hs-special">]</span><span>
+</span><span id="line-37"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="_colourStrategy"><span class="annot"><span class="annottext">Anim3SATConfig -&gt; ColourStrategy
+</span><a href="A3SAT.Animation.Config.html#_colourStrategy"><span class="hs-identifier hs-var hs-var">_colourStrategy</span></a></span></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A3SAT.Animation.Config.html#ColourStrategy"><span class="hs-identifier hs-type">ColourStrategy</span></a></span><span>
+</span><span id="line-38"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="_trueColour"><span class="annot"><span class="annottext">Anim3SATConfig -&gt; Texture
+</span><a href="A3SAT.Animation.Config.html#_trueColour"><span class="hs-identifier hs-var hs-var">_trueColour</span></a></span></span><span>        </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Texture</span></span><span>
+</span><span id="line-39"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="_falseColour"><span class="annot"><span class="annottext">Anim3SATConfig -&gt; Texture
+</span><a href="A3SAT.Animation.Config.html#_falseColour"><span class="hs-identifier hs-var hs-var">_falseColour</span></a></span></span><span>       </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Texture</span></span><span>
+</span><span id="line-40"></span><span>  </span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679184022"><span id="local-6989586621679184024"><span id="local-6989586621679184026"><span class="annot"><span class="annottext">Int -&gt; Anim3SATConfig -&gt; ShowS
+[Anim3SATConfig] -&gt; ShowS
+Anim3SATConfig -&gt; String
+(Int -&gt; Anim3SATConfig -&gt; ShowS)
+-&gt; (Anim3SATConfig -&gt; String)
+-&gt; ([Anim3SATConfig] -&gt; ShowS)
+-&gt; Show Anim3SATConfig
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Anim3SATConfig] -&gt; ShowS
+$cshowList :: [Anim3SATConfig] -&gt; ShowS
+show :: Anim3SATConfig -&gt; String
+$cshow :: Anim3SATConfig -&gt; String
+showsPrec :: Int -&gt; Anim3SATConfig -&gt; ShowS
+$cshowsPrec :: Int -&gt; Anim3SATConfig -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- |Classy lens for 'Anim3SATConfig'.</span><span>
+</span><span id="line-43"></span><span id="varColours"><span id="trueColour"><span id="operatorColour"><span id="falseColour"><span id="defaultTextColour"><span id="colourStrategy"><span id="anim3SATConfig"><span id="local-6989586621679184002"><span id="local-6989586621679184004"><span id="local-6989586621679184006"><span id="local-6989586621679184008"><span id="local-6989586621679184010"><span id="local-6989586621679184012"><span id="local-6989586621679184014"><span id="local-6989586621679184016"><span id="local-6989586621679184017"><span id="local-6989586621679184018"><span id="local-6989586621679184019"><span id="local-6989586621679184020"><span id="local-6989586621679184021"><span id="HasAnim3SATConfig"><span id="local-6989586621679184080"><span class="hs-identifier">makeClassy</span><span> </span><span class="hs-special">''</span><span class="hs-identifier">Anim3SATConfig</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span>
+</span><span id="line-44"></span><span>
+</span><span id="line-45"></span><span class="hs-comment">-- |Get variable colour from the 'Anim3SATConfig'.</span><span>
+</span><span id="line-46"></span><span id="local-6989586621679184056"><span class="annot"><a href="A3SAT.Animation.Config.html#getVarColour"><span class="hs-identifier hs-type">getVarColour</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A3SAT.Animation.Config.html#HasAnim3SATConfig"><span class="hs-identifier hs-type">HasAnim3SATConfig</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679184056"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679184056"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Texture</span></span></span><span>
+</span><span id="line-47"></span><span id="getVarColour"><span class="annot"><span class="annottext">getVarColour :: c -&gt; Word -&gt; Texture
+</span><a href="A3SAT.Animation.Config.html#getVarColour"><span class="hs-identifier hs-var hs-var">getVarColour</span></a></span></span><span> </span><span id="local-6989586621679183992"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679183992"><span class="hs-identifier hs-var">cfg</span></a></span></span><span> </span><span id="local-6989586621679183991"><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679183991"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679183992"><span class="hs-identifier hs-var">cfg</span></a></span><span> </span><span class="annot"><span class="annottext">c -&gt; Getting ColourStrategy c ColourStrategy -&gt; ColourStrategy
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span> </span><span class="annot"><span class="annottext">Getting ColourStrategy c ColourStrategy
+forall c. HasAnim3SATConfig c =&gt; Lens' c ColourStrategy
+</span><a href="A3SAT.Animation.Config.html#colourStrategy"><span class="hs-identifier hs-var">colourStrategy</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-48"></span><span>  </span><span class="annot"><span class="annottext">ColourStrategy
+</span><a href="A3SAT.Animation.Config.html#NoColour"><span class="hs-identifier hs-var">NoColour</span></a></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679183992"><span class="hs-identifier hs-var">cfg</span></a></span><span> </span><span class="annot"><span class="annottext">c -&gt; Getting Texture c Texture -&gt; Texture
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span> </span><span class="annot"><span class="annottext">Getting Texture c Texture
+forall c. HasAnim3SATConfig c =&gt; Lens' c Texture
+</span><a href="A3SAT.Animation.Config.html#defaultTextColour"><span class="hs-identifier hs-var">defaultTextColour</span></a></span><span>
+</span><span id="line-49"></span><span>  </span><span class="annot"><span class="annottext">ColourStrategy
+</span><a href="A3SAT.Animation.Config.html#VarColour"><span class="hs-identifier hs-var">VarColour</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679183992"><span class="hs-identifier hs-var">cfg</span></a></span><span> </span><span class="annot"><span class="annottext">c -&gt; Getting [Texture] c [Texture] -&gt; [Texture]
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span> </span><span class="annot"><span class="annottext">Getting [Texture] c [Texture]
+forall c. HasAnim3SATConfig c =&gt; Lens' c [Texture]
+</span><a href="A3SAT.Animation.Config.html#varColours"><span class="hs-identifier hs-var">varColours</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Texture] -&gt; Word -&gt; Texture
+forall i a. Integral i =&gt; [a] -&gt; i -&gt; a
+</span><span class="hs-operator hs-var">`genericIndex`</span></span><span> </span><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679183991"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-50"></span><span>  </span><span class="annot"><a href="A3SAT.Animation.Config.html#BoolColour"><span class="hs-identifier hs-type">BoolColour</span></a></span><span> </span><span id="local-6989586621679183988"><span class="annot"><span class="annottext">[Bool]
+</span><a href="#local-6989586621679183988"><span class="hs-identifier hs-var">bs</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">[Bool]
+</span><a href="#local-6989586621679183988"><span class="hs-identifier hs-var">bs</span></a></span><span> </span><span class="annot"><span class="annottext">[Bool] -&gt; Word -&gt; Bool
+forall i a. Integral i =&gt; [a] -&gt; i -&gt; a
+</span><span class="hs-operator hs-var">`genericIndex`</span></span><span> </span><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679183991"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-51"></span><span>    </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679183992"><span class="hs-identifier hs-var">cfg</span></a></span><span> </span><span class="annot"><span class="annottext">c -&gt; Getting Texture c Texture -&gt; Texture
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span> </span><span class="annot"><span class="annottext">Getting Texture c Texture
+forall c. HasAnim3SATConfig c =&gt; Lens' c Texture
+</span><a href="A3SAT.Animation.Config.html#trueColour"><span class="hs-identifier hs-var">trueColour</span></a></span><span>
+</span><span id="line-52"></span><span>    </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679183992"><span class="hs-identifier hs-var">cfg</span></a></span><span> </span><span class="annot"><span class="annottext">c -&gt; Getting Texture c Texture -&gt; Texture
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span> </span><span class="annot"><span class="annottext">Getting Texture c Texture
+forall c. HasAnim3SATConfig c =&gt; Lens' c Texture
+</span><a href="A3SAT.Animation.Config.html#falseColour"><span class="hs-identifier hs-var">falseColour</span></a></span><span>
+</span><span id="line-53"></span><span>
+</span><span id="line-54"></span><span class="hs-comment">-- |Get variable colour from the 'Anim3SATConfig'.</span><span>
+</span><span id="line-55"></span><span id="local-6989586621679183987"><span class="annot"><a href="A3SAT.Animation.Config.html#getVarColours"><span class="hs-identifier hs-type">getVarColours</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A3SAT.Animation.Config.html#HasAnim3SATConfig"><span class="hs-identifier hs-type">HasAnim3SATConfig</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679183987"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679183987"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Texture</span></span><span class="hs-special">]</span></span><span>
+</span><span id="line-56"></span><span id="getVarColours"><span class="annot"><span class="annottext">getVarColours :: c -&gt; [Texture]
+</span><a href="A3SAT.Animation.Config.html#getVarColours"><span class="hs-identifier hs-var hs-var">getVarColours</span></a></span></span><span> </span><span id="local-6989586621679183985"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679183985"><span class="hs-identifier hs-var">cfg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Word -&gt; Texture) -&gt; [Word] -&gt; [Texture]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">c -&gt; Word -&gt; Texture
+forall c. HasAnim3SATConfig c =&gt; c -&gt; Word -&gt; Texture
+</span><a href="A3SAT.Animation.Config.html#getVarColour"><span class="hs-identifier hs-var">getVarColour</span></a></span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679183985"><span class="hs-identifier hs-var">cfg</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Word
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">..</span><span class="hs-special">]</span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span class="hs-comment">-- |Default configuration for tiles.</span><span>
+</span><span id="line-59"></span><span class="annot"><a href="A3SAT.Animation.Config.html#defaultAnim3SATConfig"><span class="hs-identifier hs-type">defaultAnim3SATConfig</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A3SAT.Animation.Config.html#Anim3SATConfig"><span class="hs-identifier hs-type">Anim3SATConfig</span></a></span><span>
+</span><span id="line-60"></span><span id="defaultAnim3SATConfig"><span class="annot"><span class="annottext">defaultAnim3SATConfig :: Anim3SATConfig
+</span><a href="A3SAT.Animation.Config.html#defaultAnim3SATConfig"><span class="hs-identifier hs-var hs-var">defaultAnim3SATConfig</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Anim3SATConfig :: Texture
+-&gt; Texture
+-&gt; [Texture]
+-&gt; ColourStrategy
+-&gt; Texture
+-&gt; Texture
+-&gt; Anim3SATConfig
+</span><a href="A3SAT.Animation.Config.html#Anim3SATConfig"><span class="hs-identifier hs-type">Anim3SATConfig</span></a></span><span>
+</span><span id="line-61"></span><span>  </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">_defaultTextColour :: Texture
+</span><a href="A3SAT.Animation.Config.html#_defaultTextColour"><span class="hs-identifier hs-var">_defaultTextColour</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="">[rgba|000000|]</span></span><span>
+</span><span id="line-62"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">_operatorColour :: Texture
+</span><a href="A3SAT.Animation.Config.html#_operatorColour"><span class="hs-identifier hs-var">_operatorColour</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="">[rgba|424242|]</span></span><span>
+</span><span id="line-63"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">_varColours :: [Texture]
+</span><a href="A3SAT.Animation.Config.html#_varColours"><span class="hs-identifier hs-var">_varColours</span></a></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Texture]
+</span><a href="A3SAT.Animation.Config.html#defaultVarColours"><span class="hs-identifier hs-var">defaultVarColours</span></a></span><span>
+</span><span id="line-64"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">_colourStrategy :: ColourStrategy
+</span><a href="A3SAT.Animation.Config.html#_colourStrategy"><span class="hs-identifier hs-var">_colourStrategy</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ColourStrategy
+</span><a href="A3SAT.Animation.Config.html#NoColour"><span class="hs-identifier hs-var">NoColour</span></a></span><span>
+</span><span id="line-65"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">_trueColour :: Texture
+</span><a href="A3SAT.Animation.Config.html#_trueColour"><span class="hs-identifier hs-var">_trueColour</span></a></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="">[rgba|99DD99|]</span></span><span>
+</span><span id="line-66"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">_falseColour :: Texture
+</span><a href="A3SAT.Animation.Config.html#_falseColour"><span class="hs-identifier hs-var">_falseColour</span></a></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="">[rgba|EAEAEA|]</span></span><span>
+</span><span id="line-67"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span class="hs-comment">-- |Default variable colours.</span><span>
+</span><span id="line-70"></span><span class="annot"><a href="A3SAT.Animation.Config.html#defaultVarColours"><span class="hs-identifier hs-type">defaultVarColours</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Texture</span></span><span class="hs-special">]</span><span>
+</span><span id="line-71"></span><span id="defaultVarColours"><span class="annot"><span class="annottext">defaultVarColours :: [Texture]
+</span><a href="A3SAT.Animation.Config.html#defaultVarColours"><span class="hs-identifier hs-var hs-var">defaultVarColours</span></a></span></span><span>
+</span><span id="line-72"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="">[rgba|DDCC44|]</span></span><span>
+</span><span id="line-73"></span><span>  </span><span class="annot"><span class="annottext">Texture -&gt; [Texture] -&gt; [Texture]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="">[rgba|77BBEE|]</span></span><span>
+</span><span id="line-74"></span><span>  </span><span class="annot"><span class="annottext">Texture -&gt; [Texture] -&gt; [Texture]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="">[rgba|6E6EEE|]</span></span><span>
+</span><span id="line-75"></span><span>  </span><span class="annot"><span class="annottext">Texture -&gt; [Texture] -&gt; [Texture]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="">[rgba|DD9999|]</span></span><span>
+</span><span id="line-76"></span><span>  </span><span class="annot"><span class="annottext">Texture -&gt; [Texture] -&gt; [Texture]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="">[rgba|BB1E1E|]</span></span><span>
+</span><span id="line-77"></span><span>  </span><span class="annot"><span class="annottext">Texture -&gt; [Texture] -&gt; [Texture]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Texture -&gt; [Texture]
+forall a. a -&gt; [a]
+</span><span class="hs-identifier hs-var">repeat</span></span><span> </span><span class="annot"><span class="">[rgba|000000|]</span></span><span>
+</span><span id="line-78"></span></pre></body></html>

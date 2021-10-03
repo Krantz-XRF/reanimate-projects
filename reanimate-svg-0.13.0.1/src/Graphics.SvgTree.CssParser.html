@@ -1,0 +1,1144 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE PatternGuards     #-}</span><span>
+</span><span id="line-3"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Graphics.SvgTree.CssParser</span><span>
+</span><span id="line-4"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssElement"><span class="hs-identifier">CssElement</span></a></span><span class="hs-special">(</span><span> </span><span class="hs-glyph">..</span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-5"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#complexNumber"><span class="hs-identifier">complexNumber</span></a></span><span>
+</span><span id="line-6"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#declaration"><span class="hs-identifier">declaration</span></a></span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#ruleSet"><span class="hs-identifier">ruleSet</span></a></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#styleString"><span class="hs-identifier">styleString</span></a></span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#dashArray"><span class="hs-identifier">dashArray</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#numberList"><span class="hs-identifier">numberList</span></a></span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#num"><span class="hs-identifier">num</span></a></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#cssRulesOfText"><span class="hs-identifier">cssRulesOfText</span></a></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Applicative</span></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">many</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(&lt;|&gt;)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Attoparsec.Text</span></span><span>       </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Parser</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">char</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">digit</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">double</span></span><span class="hs-special">,</span><span>
+</span><span id="line-17"></span><span>                                             </span><span class="annot"><span class="hs-identifier">letter</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">notChar</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">parseOnly</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">sepBy1</span></span><span class="hs-special">,</span><span>
+</span><span id="line-18"></span><span>                                             </span><span class="annot"><span class="hs-identifier">skipMany</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">skipSpace</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">string</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(&lt;?&gt;)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Attoparsec.Text</span></span><span>       </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">AT</span></span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Attoparsec.Combinator</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">many1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">option</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">sepBy</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Codec.Picture</span></span><span>              </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">PixelRGBA8</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span>                   </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">M</span></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>                  </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Graphics.SvgTree.ColorParser.html"><span class="hs-identifier">Graphics.SvgTree.ColorParser</span></a></span><span>   </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.ColorParser.html#colorParser"><span class="hs-identifier">colorParser</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html"><span class="hs-identifier">Graphics.SvgTree.CssTypes</span></a></span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Graphics.SvgTree.NamedColors.html"><span class="hs-identifier">Graphics.SvgTree.NamedColors</span></a></span><span>   </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.NamedColors.html#svgNamedColors"><span class="hs-identifier">svgNamedColors</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#num"><span class="hs-identifier hs-type">num</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-31"></span><span id="num"><span class="annot"><span class="annottext">num :: Parser Double
+</span><a href="Graphics.SvgTree.CssParser.html#num"><span class="hs-identifier hs-var hs-var">num</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+forall a b. (Real a, Fractional b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">realToFrac</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double) -&gt; Parser Double -&gt; Parser Double
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser Double -&gt; Parser Double
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Double
+</span><a href="#local-6989586621679487819"><span class="hs-identifier hs-var">plusMinus</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Double -&gt; Parser () -&gt; Parser Double
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679487817"><span class="annot"><span class="annottext">doubleNumber :: Parser Double
+</span><a href="#local-6989586621679487817"><span class="hs-identifier hs-var hs-var">doubleNumber</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'.'</span></span><span> </span><span class="annot"><span class="annottext">Parser Char -&gt; Parser Double -&gt; Parser Double
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double
+forall a. (RealFrac a, Floating a) =&gt; a -&gt; a
+</span><a href="#local-6989586621679487816"><span class="hs-identifier hs-var">scale</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double) -&gt; Parser Double -&gt; Parser Double
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Double
+</span><span class="hs-identifier hs-var">double</span></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span>                    </span><span class="annot"><span class="annottext">Parser Double -&gt; Parser Double -&gt; Parser Double
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Double
+</span><span class="hs-identifier hs-var">double</span></span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span>        </span><span id="local-6989586621679487815"><span class="annot"><span class="annottext">scalingCoeff :: a -&gt; a
+</span><a href="#local-6989586621679487815"><span class="hs-identifier hs-var hs-var">scalingCoeff</span></a></span></span><span> </span><span id="local-6989586621679487814"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679487814"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-number">10</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; Int -&gt; a
+forall a b. (Num a, Integral b) =&gt; a -&gt; b -&gt; a
+</span><span class="hs-operator hs-var">^</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679487812"><span class="hs-identifier hs-var">digitCount</span></a></span><span>
+</span><span id="line-36"></span><span>          </span><span class="hs-keyword">where</span><span> </span><span class="annot"><a href="#local-6989586621679487812"><span class="hs-identifier hs-type">digitCount</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-37"></span><span>                </span><span id="local-6989586621679487812"><span class="annot"><span class="annottext">digitCount :: Int
+</span><a href="#local-6989586621679487812"><span class="hs-identifier hs-var hs-var">digitCount</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Int
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">ceiling</span></span><span> </span><span class="annot"><span class="annottext">(a -&gt; Int) -&gt; (a -&gt; a) -&gt; a -&gt; Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Floating a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">logBase</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-number">10</span></span><span> </span><span class="annot"><span class="annottext">(a -&gt; Int) -&gt; a -&gt; Int
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; a
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">abs</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679487814"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span>        </span><span id="local-6989586621679487816"><span class="annot"><span class="annottext">scale :: a -&gt; a
+</span><a href="#local-6989586621679487816"><span class="hs-identifier hs-var hs-var">scale</span></a></span></span><span> </span><span id="local-6989586621679487807"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679487807"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679487807"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; a
+forall a a. (RealFrac a, Floating a, Num a) =&gt; a -&gt; a
+</span><a href="#local-6989586621679487815"><span class="hs-identifier hs-var">scalingCoeff</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679487807"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span>        </span><span id="local-6989586621679487819"><span class="annot"><span class="annottext">plusMinus :: Parser Double
+</span><a href="#local-6989586621679487819"><span class="hs-identifier hs-var hs-var">plusMinus</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">negate</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double)
+-&gt; Parser Text Text -&gt; Parser Text (Double -&gt; Double)
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;-&quot;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text (Double -&gt; Double) -&gt; Parser Double -&gt; Parser Double
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Double
+</span><a href="#local-6989586621679487817"><span class="hs-identifier hs-var">doubleNumber</span></a></span><span>
+</span><span id="line-42"></span><span>                 </span><span class="annot"><span class="annottext">Parser Double -&gt; Parser Double -&gt; Parser Double
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;+&quot;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text -&gt; Parser Double -&gt; Parser Double
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Double
+</span><a href="#local-6989586621679487817"><span class="hs-identifier hs-var">doubleNumber</span></a></span><span>
+</span><span id="line-43"></span><span>                 </span><span class="annot"><span class="annottext">Parser Double -&gt; Parser Double -&gt; Parser Double
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Double
+</span><a href="#local-6989586621679487817"><span class="hs-identifier hs-var">doubleNumber</span></a></span><span>
+</span><span id="line-44"></span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#ident"><span class="hs-identifier hs-type">ident</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-47"></span><span id="ident"><span class="annot"><span class="annottext">ident :: Parser Text Text
+</span><a href="Graphics.SvgTree.CssParser.html#ident"><span class="hs-identifier hs-var hs-var">ident</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-48"></span><span>  </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679487803"><span class="annot"><span class="annottext">Text -&gt; Text
+</span><a href="#local-6989586621679487803"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679487802"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487802"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><a href="#local-6989586621679487803"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; (String -&gt; Text) -&gt; String -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Text -&gt; Text
+</span><span class="hs-identifier hs-var">T.cons</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487802"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; (String -&gt; Text) -&gt; String -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span class="hs-special">)</span><span>
+</span><span id="line-49"></span><span>        </span><span class="annot"><span class="annottext">((Text -&gt; Text) -&gt; Char -&gt; String -&gt; Text)
+-&gt; Parser Text (Text -&gt; Text)
+-&gt; Parser Text (Char -&gt; String -&gt; Text)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text (Text -&gt; Text)
+</span><a href="#local-6989586621679487799"><span class="hs-identifier hs-var">trailingSub</span></a></span><span>
+</span><span id="line-50"></span><span>        </span><span class="annot"><span class="annottext">Parser Text (Char -&gt; String -&gt; Text)
+-&gt; Parser Char -&gt; Parser Text (String -&gt; Text)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Char
+</span><a href="#local-6989586621679487798"><span class="hs-identifier hs-var">nmstart</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text (String -&gt; Text)
+-&gt; Parser Text String -&gt; Parser Text Text
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text String
+</span><a href="#local-6989586621679487797"><span class="hs-identifier hs-var">nmchar</span></a></span><span>
+</span><span id="line-51"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-52"></span><span>    </span><span id="local-6989586621679487799"><span class="annot"><span class="annottext">trailingSub :: Parser Text (Text -&gt; Text)
+</span><a href="#local-6989586621679487799"><span class="hs-identifier hs-var hs-var">trailingSub</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Text)
+-&gt; Parser Text (Text -&gt; Text) -&gt; Parser Text (Text -&gt; Text)
+forall (f :: * -&gt; *) a. Alternative f =&gt; a -&gt; f a -&gt; f a
+</span><span class="hs-identifier hs-var">option</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="annot"><span class="annottext">(Parser Text (Text -&gt; Text) -&gt; Parser Text (Text -&gt; Text))
+-&gt; Parser Text (Text -&gt; Text) -&gt; Parser Text (Text -&gt; Text)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Text -&gt; Text
+</span><span class="hs-identifier hs-var">T.cons</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'-'</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; Parser Char -&gt; Parser Text (Text -&gt; Text)
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'-'</span></span><span>
+</span><span id="line-53"></span><span>    </span><span id="local-6989586621679487795"><span class="annot"><span class="annottext">underscore :: Parser Char
+</span><a href="#local-6989586621679487795"><span class="hs-identifier hs-var hs-var">underscore</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'_'</span></span><span>
+</span><span id="line-54"></span><span>    </span><span id="local-6989586621679487798"><span class="annot"><span class="annottext">nmstart :: Parser Char
+</span><a href="#local-6989586621679487798"><span class="hs-identifier hs-var hs-var">nmstart</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser Char
+</span><span class="hs-identifier hs-var">letter</span></span><span> </span><span class="annot"><span class="annottext">Parser Char -&gt; Parser Char -&gt; Parser Char
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Char
+</span><a href="#local-6989586621679487795"><span class="hs-identifier hs-var">underscore</span></a></span><span>
+</span><span id="line-55"></span><span>    </span><span id="local-6989586621679487797"><span class="annot"><span class="annottext">nmchar :: Parser Text String
+</span><a href="#local-6989586621679487797"><span class="hs-identifier hs-var hs-var">nmchar</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser Char -&gt; Parser Text String
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f [a]
+</span><span class="hs-identifier hs-var">many</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser Char
+</span><span class="hs-identifier hs-var">letter</span></span><span> </span><span class="annot"><span class="annottext">Parser Char -&gt; Parser Char -&gt; Parser Char
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Char
+</span><span class="hs-identifier hs-var">digit</span></span><span> </span><span class="annot"><span class="annottext">Parser Char -&gt; Parser Char -&gt; Parser Char
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Char
+</span><a href="#local-6989586621679487795"><span class="hs-identifier hs-var">underscore</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Char -&gt; Parser Char -&gt; Parser Char
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'-'</span></span><span class="hs-special">)</span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#str"><span class="hs-identifier hs-type">str</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-58"></span><span id="str"><span class="annot"><span class="annottext">str :: Parser Text Text
+</span><a href="Graphics.SvgTree.CssParser.html#str"><span class="hs-identifier hs-var hs-var">str</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&quot;'</span></span><span> </span><span class="annot"><span class="annottext">Parser Char -&gt; Parser Text Text -&gt; Parser Text Text
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Bool) -&gt; Parser Text Text
+</span><span class="hs-identifier hs-var">AT.takeWhile</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">/=</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&quot;'</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Parser Text Text -&gt; Parser Char -&gt; Parser Text Text
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&quot;'</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text -&gt; Parser () -&gt; Parser Text Text
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span>
+</span><span id="line-59"></span><span>   </span><span class="annot"><span class="annottext">Parser Text Text -&gt; String -&gt; Parser Text Text
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;str&quot;</span></span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span id="local-6989586621679487876"><span class="annot"><a href="Graphics.SvgTree.CssParser.html#between"><span class="hs-identifier hs-type">between</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="#local-6989586621679487876"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="#local-6989586621679487876"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-62"></span><span id="between"><span class="annot"><span class="annottext">between :: Char -&gt; Char -&gt; Parser a -&gt; Parser a
+</span><a href="Graphics.SvgTree.CssParser.html#between"><span class="hs-identifier hs-var hs-var">between</span></a></span></span><span> </span><span id="local-6989586621679487790"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487790"><span class="hs-identifier hs-var">o</span></a></span></span><span> </span><span id="local-6989586621679487789"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487789"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span id="local-6989586621679487788"><span class="annot"><span class="annottext">Parser a
+</span><a href="#local-6989586621679487788"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-63"></span><span>  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser Char -&gt; Parser Char
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span>
+</span><span id="line-64"></span><span>      </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487790"><span class="hs-identifier hs-var">o</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Char -&gt; Parser () -&gt; Parser ()
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser a -&gt; Parser a
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser a
+</span><a href="#local-6989586621679487788"><span class="hs-identifier hs-var">p</span></a></span><span>
+</span><span id="line-65"></span><span>           </span><span class="annot"><span class="annottext">Parser a -&gt; Parser () -&gt; Parser a
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser a -&gt; Parser Char -&gt; Parser a
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487789"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="annot"><span class="annottext">Parser a -&gt; Parser () -&gt; Parser a
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span class="hs-special">)</span><span>
+</span><span id="line-66"></span><span>           </span><span class="annot"><span class="annottext">Parser a -&gt; String -&gt; Parser a
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;between &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487790"><span class="hs-identifier hs-var">o</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679487789"><span class="hs-identifier hs-var">e</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span id="local-6989586621679487860"><span class="annot"><a href="Graphics.SvgTree.CssParser.html#bracket"><span class="hs-identifier hs-type">bracket</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="#local-6989586621679487860"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="#local-6989586621679487860"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-69"></span><span id="bracket"><span class="annot"><span class="annottext">bracket :: Parser a -&gt; Parser a
+</span><a href="Graphics.SvgTree.CssParser.html#bracket"><span class="hs-identifier hs-var hs-var">bracket</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Parser a -&gt; Parser a
+forall a. Char -&gt; Char -&gt; Parser a -&gt; Parser a
+</span><a href="Graphics.SvgTree.CssParser.html#between"><span class="hs-identifier hs-var">between</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'['</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">']'</span></span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span>
+</span><span id="line-72"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#comment"><span class="hs-identifier hs-type">comment</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-73"></span><span id="comment"><span class="annot"><span class="annottext">comment :: Parser ()
+</span><a href="Graphics.SvgTree.CssParser.html#comment"><span class="hs-identifier hs-var hs-var">comment</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;/*&quot;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text -&gt; Parser () -&gt; Parser ()
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><a href="#local-6989586621679487785"><span class="hs-identifier hs-var">toStar</span></a></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser () -&gt; Parser ()
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span>
+</span><span id="line-74"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-75"></span><span>    </span><span id="local-6989586621679487785"><span class="annot"><span class="annottext">toStar :: Parser ()
+</span><a href="#local-6989586621679487785"><span class="hs-identifier hs-var hs-var">toStar</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser Char -&gt; Parser ()
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f ()
+</span><span class="hs-identifier hs-var">skipMany</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">notChar</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'*'</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser Char -&gt; Parser Char
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'*'</span></span><span> </span><span class="annot"><span class="annottext">Parser Char -&gt; Parser () -&gt; Parser ()
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><a href="#local-6989586621679487784"><span class="hs-identifier hs-var">testEnd</span></a></span><span>
+</span><span id="line-76"></span><span>    </span><span id="local-6989586621679487784"><span class="annot"><span class="annottext">testEnd :: Parser ()
+</span><a href="#local-6989586621679487784"><span class="hs-identifier hs-var hs-var">testEnd</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">() -&gt; Parser Char -&gt; Parser ()
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'/'</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser () -&gt; Parser ()
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><a href="#local-6989586621679487785"><span class="hs-identifier hs-var">toStar</span></a></span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#cleanSpace"><span class="hs-identifier hs-type">cleanSpace</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-79"></span><span id="cleanSpace"><span class="annot"><span class="annottext">cleanSpace :: Parser ()
+</span><a href="Graphics.SvgTree.CssParser.html#cleanSpace"><span class="hs-identifier hs-var hs-var">cleanSpace</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser Text [()] -&gt; Parser ()
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser Text [()]
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f [a]
+</span><span class="hs-identifier hs-var">many</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><a href="Graphics.SvgTree.CssParser.html#comment"><span class="hs-identifier hs-var">comment</span></a></span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span class="hs-comment">-- | combinator: '+' S* | '&gt;' S*</span><span>
+</span><span id="line-82"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#combinator"><span class="hs-identifier hs-type">combinator</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssSelector"><span class="hs-identifier hs-type">CssSelector</span></a></span><span>
+</span><span id="line-83"></span><span id="combinator"><span class="annot"><span class="annottext">combinator :: Parser CssSelector
+</span><a href="Graphics.SvgTree.CssParser.html#combinator"><span class="hs-identifier hs-var hs-var">combinator</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser CssSelector
+</span><a href="#local-6989586621679487781"><span class="hs-identifier hs-var">parse</span></a></span><span> </span><span class="annot"><span class="annottext">Parser CssSelector -&gt; Parser () -&gt; Parser CssSelector
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><a href="Graphics.SvgTree.CssParser.html#cleanSpace"><span class="hs-identifier hs-var">cleanSpace</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-84"></span><span>  </span><span id="local-6989586621679487781"><span class="annot"><span class="annottext">parse :: Parser CssSelector
+</span><a href="#local-6989586621679487781"><span class="hs-identifier hs-var hs-var">parse</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CssSelector
+</span><a href="Graphics.SvgTree.CssTypes.html#Nearby"><span class="hs-identifier hs-var">Nearby</span></a></span><span> </span><span class="annot"><span class="annottext">CssSelector -&gt; Parser Char -&gt; Parser CssSelector
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'+'</span></span><span>
+</span><span id="line-85"></span><span>       </span><span class="annot"><span class="annottext">Parser CssSelector -&gt; Parser CssSelector -&gt; Parser CssSelector
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">CssSelector
+</span><a href="Graphics.SvgTree.CssTypes.html#DirectChildren"><span class="hs-identifier hs-var">DirectChildren</span></a></span><span> </span><span class="annot"><span class="annottext">CssSelector -&gt; Parser Char -&gt; Parser CssSelector
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&gt;'</span></span><span>
+</span><span id="line-86"></span><span>       </span><span class="annot"><span class="annottext">Parser CssSelector -&gt; String -&gt; Parser CssSelector
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;combinator&quot;</span></span><span>
+</span><span id="line-87"></span><span>
+</span><span id="line-88"></span><span class="hs-comment">-- unary_operator : '-' | '+' ;</span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#commaWsp"><span class="hs-identifier hs-type">commaWsp</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span>
+</span><span id="line-91"></span><span id="commaWsp"><span class="annot"><span class="annottext">commaWsp :: Parser Char
+</span><a href="Graphics.SvgTree.CssParser.html#commaWsp"><span class="hs-identifier hs-var hs-var">commaWsp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser Char -&gt; Parser Char
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char -&gt; Parser Char
+forall (f :: * -&gt; *) a. Alternative f =&gt; a -&gt; f a -&gt; f a
+</span><span class="hs-identifier hs-var">option</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">','</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">','</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Parser Char -&gt; Parser () -&gt; Parser Char
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#ruleSet"><span class="hs-identifier hs-type">ruleSet</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssRule"><span class="hs-identifier hs-type">CssRule</span></a></span><span>
+</span><span id="line-94"></span><span id="ruleSet"><span class="annot"><span class="annottext">ruleSet :: Parser CssRule
+</span><a href="Graphics.SvgTree.CssParser.html#ruleSet"><span class="hs-identifier hs-var hs-var">ruleSet</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><a href="Graphics.SvgTree.CssParser.html#cleanSpace"><span class="hs-identifier hs-var">cleanSpace</span></a></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser CssRule -&gt; Parser CssRule
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser CssRule
+</span><a href="#local-6989586621679487777"><span class="hs-identifier hs-var">rule</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-95"></span><span>  </span><span id="local-6989586621679487777"><span class="annot"><span class="annottext">rule :: Parser CssRule
+</span><a href="#local-6989586621679487777"><span class="hs-identifier hs-var hs-var">rule</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[CssSelectorRule] -&gt; [CssDeclaration] -&gt; CssRule
+</span><a href="Graphics.SvgTree.CssTypes.html#CssRule"><span class="hs-identifier hs-var">CssRule</span></a></span><span>
+</span><span id="line-96"></span><span>      </span><span class="annot"><span class="annottext">([CssSelectorRule] -&gt; [CssDeclaration] -&gt; CssRule)
+-&gt; Parser Text [CssSelectorRule]
+-&gt; Parser Text ([CssDeclaration] -&gt; CssRule)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser CssSelectorRule
+</span><a href="Graphics.SvgTree.CssParser.html#selector"><span class="hs-identifier hs-var">selector</span></a></span><span> </span><span class="annot"><span class="annottext">Parser CssSelectorRule
+-&gt; Parser Char -&gt; Parser Text [CssSelectorRule]
+forall (f :: * -&gt; *) a s. Alternative f =&gt; f a -&gt; f s -&gt; f [a]
+</span><span class="hs-operator hs-var">`sepBy1`</span></span><span> </span><span class="annot"><span class="annottext">Parser Char
+</span><a href="Graphics.SvgTree.CssParser.html#commaWsp"><span class="hs-identifier hs-var">commaWsp</span></a></span><span>
+</span><span id="line-97"></span><span>      </span><span class="annot"><span class="annottext">Parser Text ([CssDeclaration] -&gt; CssRule)
+-&gt; Parser Text [CssDeclaration] -&gt; Parser CssRule
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char
+-&gt; Char
+-&gt; Parser Text [CssDeclaration]
+-&gt; Parser Text [CssDeclaration]
+forall a. Char -&gt; Char -&gt; Parser a -&gt; Parser a
+</span><a href="Graphics.SvgTree.CssParser.html#between"><span class="hs-identifier hs-var">between</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'{'</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'}'</span></span><span> </span><span class="annot"><span class="annottext">Parser Text [CssDeclaration]
+</span><a href="Graphics.SvgTree.CssParser.html#styleString"><span class="hs-identifier hs-var">styleString</span></a></span><span>
+</span><span id="line-98"></span><span>      </span><span class="annot"><span class="annottext">Parser CssRule -&gt; String -&gt; Parser CssRule
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;cssrule&quot;</span></span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#styleString"><span class="hs-identifier hs-type">styleString</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDeclaration"><span class="hs-identifier hs-type">CssDeclaration</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-101"></span><span id="styleString"><span class="annot"><span class="annottext">styleString :: Parser Text [CssDeclaration]
+</span><a href="Graphics.SvgTree.CssParser.html#styleString"><span class="hs-identifier hs-var hs-var">styleString</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser ()
+</span><a href="Graphics.SvgTree.CssParser.html#cleanSpace"><span class="hs-identifier hs-var">cleanSpace</span></a></span><span> </span><span class="annot"><span class="annottext">Parser ()
+-&gt; Parser Text CssDeclaration -&gt; Parser Text CssDeclaration
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text CssDeclaration
+</span><a href="Graphics.SvgTree.CssParser.html#declaration"><span class="hs-identifier hs-var">declaration</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Parser Text CssDeclaration
+-&gt; Parser Char -&gt; Parser Text [CssDeclaration]
+forall (f :: * -&gt; *) a s. Alternative f =&gt; f a -&gt; f s -&gt; f [a]
+</span><span class="hs-operator hs-var">`sepBy`</span></span><span> </span><span class="annot"><span class="annottext">Parser Char
+</span><a href="#local-6989586621679487774"><span class="hs-identifier hs-var">semiWsp</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Parser Text [CssDeclaration]
+-&gt; Parser Char -&gt; Parser Text [CssDeclaration]
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser Char
+</span><a href="#local-6989586621679487773"><span class="hs-identifier hs-var">mayWsp</span></a></span><span>
+</span><span id="line-102"></span><span>           </span><span class="annot"><span class="annottext">Parser Text [CssDeclaration]
+-&gt; String -&gt; Parser Text [CssDeclaration]
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;styleString&quot;</span></span><span>
+</span><span id="line-103"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679487774"><span class="annot"><span class="annottext">semiWsp :: Parser Char
+</span><a href="#local-6989586621679487774"><span class="hs-identifier hs-var hs-var">semiWsp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser Char -&gt; Parser Char
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">';'</span></span><span> </span><span class="annot"><span class="annottext">Parser Char -&gt; Parser () -&gt; Parser Char
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span>
+</span><span id="line-104"></span><span>        </span><span id="local-6989586621679487773"><span class="annot"><span class="annottext">mayWsp :: Parser Char
+</span><a href="#local-6989586621679487773"><span class="hs-identifier hs-var hs-var">mayWsp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char -&gt; Parser Char
+forall (f :: * -&gt; *) a. Alternative f =&gt; a -&gt; f a -&gt; f a
+</span><span class="hs-identifier hs-var">option</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">';'</span></span><span> </span><span class="annot"><span class="annottext">Parser Char
+</span><a href="#local-6989586621679487774"><span class="hs-identifier hs-var">semiWsp</span></a></span><span>
+</span><span id="line-105"></span><span>
+</span><span id="line-106"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#selector"><span class="hs-identifier hs-type">selector</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssSelector"><span class="hs-identifier hs-type">CssSelector</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-107"></span><span id="selector"><span class="annot"><span class="annottext">selector :: Parser CssSelectorRule
+</span><a href="Graphics.SvgTree.CssParser.html#selector"><span class="hs-identifier hs-var hs-var">selector</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">:</span><span class="hs-special">)</span><span>
+</span><span id="line-108"></span><span>        </span><span class="annot"><span class="annottext">(CssSelector -&gt; CssSelectorRule -&gt; CssSelectorRule)
+-&gt; Parser CssSelector
+-&gt; Parser Text (CssSelectorRule -&gt; CssSelectorRule)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[CssDescriptor] -&gt; CssSelector
+</span><a href="Graphics.SvgTree.CssTypes.html#AllOf"><span class="hs-identifier hs-var">AllOf</span></a></span><span> </span><span class="annot"><span class="annottext">([CssDescriptor] -&gt; CssSelector)
+-&gt; Parser Text [CssDescriptor] -&gt; Parser CssSelector
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text [CssDescriptor]
+</span><a href="Graphics.SvgTree.CssParser.html#simpleSelector"><span class="hs-identifier hs-var">simpleSelector</span></a></span><span> </span><span class="annot"><span class="annottext">Parser CssSelector -&gt; Parser () -&gt; Parser CssSelector
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser CssSelector -&gt; String -&gt; Parser CssSelector
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;firstpart:(&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-109"></span><span>        </span><span class="annot"><span class="annottext">Parser Text (CssSelectorRule -&gt; CssSelectorRule)
+-&gt; Parser CssSelectorRule -&gt; Parser CssSelectorRule
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser CssSelectorRule
+</span><a href="#local-6989586621679487770"><span class="hs-identifier hs-var">next</span></a></span><span> </span><span class="annot"><span class="annottext">Parser CssSelectorRule
+-&gt; Parser CssSelectorRule -&gt; Parser CssSelectorRule
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">CssSelectorRule -&gt; Parser CssSelectorRule
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Parser CssSelectorRule -&gt; String -&gt; Parser CssSelectorRule
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;secondpart&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-110"></span><span>        </span><span class="annot"><span class="annottext">Parser CssSelectorRule -&gt; String -&gt; Parser CssSelectorRule
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;selector&quot;</span></span><span>
+</span><span id="line-111"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-112"></span><span>    </span><span class="annot"><a href="#local-6989586621679487769"><span class="hs-identifier hs-type">combOpt</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssSelector"><span class="hs-identifier hs-type">CssSelector</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssSelector"><span class="hs-identifier hs-type">CssSelector</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-113"></span><span>
+</span><span id="line-114"></span><span>    </span><span id="local-6989586621679487769"><span class="annot"><span class="annottext">combOpt :: Parser Text (CssSelectorRule -&gt; CssSelectorRule)
+</span><a href="#local-6989586621679487769"><span class="hs-identifier hs-var hs-var">combOpt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><a href="Graphics.SvgTree.CssParser.html#cleanSpace"><span class="hs-identifier hs-var">cleanSpace</span></a></span><span> </span><span class="annot"><span class="annottext">Parser ()
+-&gt; Parser Text (CssSelectorRule -&gt; CssSelectorRule)
+-&gt; Parser Text (CssSelectorRule -&gt; CssSelectorRule)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">(CssSelectorRule -&gt; CssSelectorRule)
+-&gt; Parser Text (CssSelectorRule -&gt; CssSelectorRule)
+-&gt; Parser Text (CssSelectorRule -&gt; CssSelectorRule)
+forall (f :: * -&gt; *) a. Alternative f =&gt; a -&gt; f a -&gt; f a
+</span><span class="hs-identifier hs-var">option</span></span><span> </span><span class="annot"><span class="annottext">CssSelectorRule -&gt; CssSelectorRule
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="hs-glyph">:</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(CssSelector -&gt; CssSelectorRule -&gt; CssSelectorRule)
+-&gt; Parser CssSelector
+-&gt; Parser Text (CssSelectorRule -&gt; CssSelectorRule)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser CssSelector
+</span><a href="Graphics.SvgTree.CssParser.html#combinator"><span class="hs-identifier hs-var">combinator</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-115"></span><span>    </span><span class="annot"><a href="#local-6989586621679487770"><span class="hs-identifier hs-type">next</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssSelector"><span class="hs-identifier hs-type">CssSelector</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-116"></span><span>    </span><span id="local-6989586621679487770"><span class="annot"><span class="annottext">next :: Parser CssSelectorRule
+</span><a href="#local-6989586621679487770"><span class="hs-identifier hs-var hs-var">next</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser Text (CssSelectorRule -&gt; CssSelectorRule)
+</span><a href="#local-6989586621679487769"><span class="hs-identifier hs-var">combOpt</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text (CssSelectorRule -&gt; CssSelectorRule)
+-&gt; Parser CssSelectorRule -&gt; Parser CssSelectorRule
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser CssSelectorRule
+</span><a href="Graphics.SvgTree.CssParser.html#selector"><span class="hs-identifier hs-var">selector</span></a></span><span>
+</span><span id="line-117"></span><span>
+</span><span id="line-118"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#simpleSelector"><span class="hs-identifier hs-type">simpleSelector</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDescriptor"><span class="hs-identifier hs-type">CssDescriptor</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-119"></span><span id="simpleSelector"><span class="annot"><span class="annottext">simpleSelector :: Parser Text [CssDescriptor]
+</span><a href="Graphics.SvgTree.CssParser.html#simpleSelector"><span class="hs-identifier hs-var hs-var">simpleSelector</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">:</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(CssDescriptor -&gt; [CssDescriptor] -&gt; [CssDescriptor])
+-&gt; Parser Text CssDescriptor
+-&gt; Parser Text ([CssDescriptor] -&gt; [CssDescriptor])
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text CssDescriptor
+</span><a href="#local-6989586621679487768"><span class="hs-identifier hs-var">elementName</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text ([CssDescriptor] -&gt; [CssDescriptor])
+-&gt; Parser Text [CssDescriptor] -&gt; Parser Text [CssDescriptor]
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text CssDescriptor -&gt; Parser Text [CssDescriptor]
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f [a]
+</span><span class="hs-identifier hs-var">many</span></span><span> </span><span class="annot"><span class="annottext">Parser Text CssDescriptor
+</span><a href="#local-6989586621679487767"><span class="hs-identifier hs-var">whole</span></a></span><span>
+</span><span id="line-120"></span><span>              </span><span class="annot"><span class="annottext">Parser Text [CssDescriptor]
+-&gt; Parser Text [CssDescriptor] -&gt; Parser Text [CssDescriptor]
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser Text CssDescriptor -&gt; Parser Text [CssDescriptor]
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f [a]
+</span><span class="hs-identifier hs-var">many1</span></span><span> </span><span class="annot"><span class="annottext">Parser Text CssDescriptor
+</span><a href="#local-6989586621679487767"><span class="hs-identifier hs-var">whole</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text [CssDescriptor]
+-&gt; String -&gt; Parser Text [CssDescriptor]
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;inmany&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-121"></span><span>              </span><span class="annot"><span class="annottext">Parser Text [CssDescriptor]
+-&gt; String -&gt; Parser Text [CssDescriptor]
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;simple selector&quot;</span></span><span>
+</span><span id="line-122"></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-123"></span><span>  </span><span id="local-6989586621679487767"><span class="annot"><span class="annottext">whole :: Parser Text CssDescriptor
+</span><a href="#local-6989586621679487767"><span class="hs-identifier hs-var hs-var">whole</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser Text CssDescriptor
+</span><a href="#local-6989586621679487766"><span class="hs-identifier hs-var">pseudo</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text CssDescriptor
+-&gt; Parser Text CssDescriptor -&gt; Parser Text CssDescriptor
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text CssDescriptor
+</span><a href="#local-6989586621679487765"><span class="hs-identifier hs-var">hash</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text CssDescriptor
+-&gt; Parser Text CssDescriptor -&gt; Parser Text CssDescriptor
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text CssDescriptor
+</span><a href="#local-6989586621679487764"><span class="hs-identifier hs-var">classParser</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text CssDescriptor
+-&gt; Parser Text CssDescriptor -&gt; Parser Text CssDescriptor
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text CssDescriptor
+</span><a href="#local-6989586621679487763"><span class="hs-identifier hs-var">attrib</span></a></span><span>
+</span><span id="line-124"></span><span>       </span><span class="annot"><span class="annottext">Parser Text CssDescriptor -&gt; String -&gt; Parser Text CssDescriptor
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;whole&quot;</span></span><span>
+</span><span id="line-125"></span><span>  </span><span id="local-6989586621679487766"><span class="annot"><span class="annottext">pseudo :: Parser Text CssDescriptor
+</span><a href="#local-6989586621679487766"><span class="hs-identifier hs-var hs-var">pseudo</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">':'</span></span><span> </span><span class="annot"><span class="annottext">Parser Char
+-&gt; Parser Text CssDescriptor -&gt; Parser Text CssDescriptor
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; CssDescriptor
+</span><a href="Graphics.SvgTree.CssTypes.html#OfPseudoClass"><span class="hs-identifier hs-var">OfPseudoClass</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; CssDescriptor)
+-&gt; Parser Text Text -&gt; Parser Text CssDescriptor
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text
+</span><a href="Graphics.SvgTree.CssParser.html#ident"><span class="hs-identifier hs-var">ident</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-126"></span><span>        </span><span class="annot"><span class="annottext">Parser Text CssDescriptor -&gt; String -&gt; Parser Text CssDescriptor
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;pseudo&quot;</span></span><span>
+</span><span id="line-127"></span><span>  </span><span id="local-6989586621679487765"><span class="annot"><span class="annottext">hash :: Parser Text CssDescriptor
+</span><a href="#local-6989586621679487765"><span class="hs-identifier hs-var hs-var">hash</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'#'</span></span><span> </span><span class="annot"><span class="annottext">Parser Char
+-&gt; Parser Text CssDescriptor -&gt; Parser Text CssDescriptor
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; CssDescriptor
+</span><a href="Graphics.SvgTree.CssTypes.html#OfId"><span class="hs-identifier hs-var">OfId</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; CssDescriptor)
+-&gt; Parser Text Text -&gt; Parser Text CssDescriptor
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text
+</span><a href="Graphics.SvgTree.CssParser.html#ident"><span class="hs-identifier hs-var">ident</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-128"></span><span>      </span><span class="annot"><span class="annottext">Parser Text CssDescriptor -&gt; String -&gt; Parser Text CssDescriptor
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;hash&quot;</span></span><span>
+</span><span id="line-129"></span><span>  </span><span id="local-6989586621679487764"><span class="annot"><span class="annottext">classParser :: Parser Text CssDescriptor
+</span><a href="#local-6989586621679487764"><span class="hs-identifier hs-var hs-var">classParser</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'.'</span></span><span> </span><span class="annot"><span class="annottext">Parser Char
+-&gt; Parser Text CssDescriptor -&gt; Parser Text CssDescriptor
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; CssDescriptor
+</span><a href="Graphics.SvgTree.CssTypes.html#OfClass"><span class="hs-identifier hs-var">OfClass</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; CssDescriptor)
+-&gt; Parser Text Text -&gt; Parser Text CssDescriptor
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text
+</span><a href="Graphics.SvgTree.CssParser.html#ident"><span class="hs-identifier hs-var">ident</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-130"></span><span>              </span><span class="annot"><span class="annottext">Parser Text CssDescriptor -&gt; String -&gt; Parser Text CssDescriptor
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;classParser&quot;</span></span><span>
+</span><span id="line-131"></span><span>
+</span><span id="line-132"></span><span>  </span><span id="local-6989586621679487768"><span class="annot"><span class="annottext">elementName :: Parser Text CssDescriptor
+</span><a href="#local-6989586621679487768"><span class="hs-identifier hs-var hs-var">elementName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser Text CssDescriptor
+</span><a href="#local-6989586621679487759"><span class="hs-identifier hs-var">el</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text CssDescriptor -&gt; Parser () -&gt; Parser Text CssDescriptor
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser Text CssDescriptor -&gt; String -&gt; Parser Text CssDescriptor
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;elementName&quot;</span></span><span>
+</span><span id="line-133"></span><span>    </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679487759"><span class="annot"><span class="annottext">el :: Parser Text CssDescriptor
+</span><a href="#local-6989586621679487759"><span class="hs-identifier hs-var hs-var">el</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; CssDescriptor
+</span><a href="Graphics.SvgTree.CssTypes.html#OfName"><span class="hs-identifier hs-var">OfName</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; CssDescriptor)
+-&gt; Parser Text Text -&gt; Parser Text CssDescriptor
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text
+</span><a href="Graphics.SvgTree.CssParser.html#ident"><span class="hs-identifier hs-var">ident</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-134"></span><span>            </span><span class="annot"><span class="annottext">Parser Text CssDescriptor
+-&gt; Parser Text CssDescriptor -&gt; Parser Text CssDescriptor
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">CssDescriptor
+</span><a href="Graphics.SvgTree.CssTypes.html#AnyElem"><span class="hs-identifier hs-var">AnyElem</span></a></span><span> </span><span class="annot"><span class="annottext">CssDescriptor -&gt; Parser Char -&gt; Parser Text CssDescriptor
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'*'</span></span><span>
+</span><span id="line-135"></span><span>
+</span><span id="line-136"></span><span>  </span><span id="local-6989586621679487763"><span class="annot"><span class="annottext">attrib :: Parser Text CssDescriptor
+</span><a href="#local-6989586621679487763"><span class="hs-identifier hs-var hs-var">attrib</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser Text CssDescriptor -&gt; Parser Text CssDescriptor
+forall a. Parser a -&gt; Parser a
+</span><a href="Graphics.SvgTree.CssParser.html#bracket"><span class="hs-identifier hs-var">bracket</span></a></span><span>
+</span><span id="line-137"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; CssDescriptor
+</span><a href="Graphics.SvgTree.CssTypes.html#WithAttrib"><span class="hs-identifier hs-var">WithAttrib</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Text -&gt; CssDescriptor)
+-&gt; Parser Text Text -&gt; Parser Text (Text -&gt; CssDescriptor)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text
+</span><a href="Graphics.SvgTree.CssParser.html#ident"><span class="hs-identifier hs-var">ident</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text (Text -&gt; CssDescriptor)
+-&gt; Parser Text Text -&gt; Parser Text CssDescriptor
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'='</span></span><span> </span><span class="annot"><span class="annottext">Parser Char -&gt; Parser () -&gt; Parser ()
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser Text Text -&gt; Parser Text Text
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser Text Text
+</span><a href="Graphics.SvgTree.CssParser.html#ident"><span class="hs-identifier hs-var">ident</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text Text -&gt; Parser Text Text -&gt; Parser Text Text
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text
+</span><a href="Graphics.SvgTree.CssParser.html#str"><span class="hs-identifier hs-var">str</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-138"></span><span>           </span><span class="annot"><span class="annottext">Parser Text CssDescriptor -&gt; String -&gt; Parser Text CssDescriptor
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;attrib&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-139"></span><span>
+</span><span id="line-140"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#declaration"><span class="hs-identifier hs-type">declaration</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDeclaration"><span class="hs-identifier hs-type">CssDeclaration</span></a></span><span>
+</span><span id="line-141"></span><span id="declaration"><span class="annot"><span class="annottext">declaration :: Parser Text CssDeclaration
+</span><a href="Graphics.SvgTree.CssParser.html#declaration"><span class="hs-identifier hs-var hs-var">declaration</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-142"></span><span>  </span><span class="annot"><span class="annottext">Text -&gt; [[CssElement]] -&gt; CssDeclaration
+</span><a href="Graphics.SvgTree.CssTypes.html#CssDeclaration"><span class="hs-identifier hs-var">CssDeclaration</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; [[CssElement]] -&gt; CssDeclaration)
+-&gt; Parser Text Text
+-&gt; Parser Text ([[CssElement]] -&gt; CssDeclaration)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text
+</span><a href="#local-6989586621679487754"><span class="hs-identifier hs-var">property</span></a></span><span>
+</span><span id="line-143"></span><span>                 </span><span class="annot"><span class="annottext">Parser Text ([[CssElement]] -&gt; CssDeclaration)
+-&gt; Parser Text [[CssElement]] -&gt; Parser Text CssDeclaration
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">':'</span></span><span>
+</span><span id="line-144"></span><span>                      </span><span class="annot"><span class="annottext">Parser Char -&gt; Parser () -&gt; Parser ()
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><a href="Graphics.SvgTree.CssParser.html#cleanSpace"><span class="hs-identifier hs-var">cleanSpace</span></a></span><span>
+</span><span id="line-145"></span><span>                      </span><span class="annot"><span class="annottext">Parser ()
+-&gt; Parser Text [[CssElement]] -&gt; Parser Text [[CssElement]]
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text [CssElement] -&gt; Parser Text [[CssElement]]
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f [a]
+</span><span class="hs-identifier hs-var">many1</span></span><span> </span><span class="annot"><span class="annottext">Parser Text [CssElement]
+</span><a href="Graphics.SvgTree.CssParser.html#expr"><span class="hs-identifier hs-var">expr</span></a></span><span>
+</span><span id="line-146"></span><span>                      </span><span class="annot"><span class="annottext">Parser Text [[CssElement]]
+-&gt; Parser Text Text -&gt; Parser Text [[CssElement]]
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text
+</span><a href="#local-6989586621679487752"><span class="hs-identifier hs-var">prio</span></a></span><span>
+</span><span id="line-147"></span><span>                      </span><span class="hs-special">)</span><span>
+</span><span id="line-148"></span><span>                 </span><span class="annot"><span class="annottext">Parser Text CssDeclaration -&gt; String -&gt; Parser Text CssDeclaration
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;declaration&quot;</span></span><span>
+</span><span id="line-149"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-150"></span><span>    </span><span id="local-6989586621679487754"><span class="annot"><span class="annottext">property :: Parser Text Text
+</span><a href="#local-6989586621679487754"><span class="hs-identifier hs-var hs-var">property</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser Text Text
+</span><a href="Graphics.SvgTree.CssParser.html#ident"><span class="hs-identifier hs-var">ident</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text Text -&gt; Parser () -&gt; Parser Text Text
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><a href="Graphics.SvgTree.CssParser.html#cleanSpace"><span class="hs-identifier hs-var">cleanSpace</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Parser Text Text -&gt; String -&gt; Parser Text Text
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;property&quot;</span></span><span>
+</span><span id="line-151"></span><span>    </span><span id="local-6989586621679487752"><span class="annot"><span class="annottext">prio :: Parser Text Text
+</span><a href="#local-6989586621679487752"><span class="hs-identifier hs-var hs-var">prio</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text Text -&gt; Parser Text Text
+forall (f :: * -&gt; *) a. Alternative f =&gt; a -&gt; f a -&gt; f a
+</span><span class="hs-identifier hs-var">option</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="annot"><span class="annottext">(Parser Text Text -&gt; Parser Text Text)
+-&gt; Parser Text Text -&gt; Parser Text Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;!important&quot;</span></span><span>
+</span><span id="line-152"></span><span>
+</span><span id="line-153"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#operator"><span class="hs-identifier hs-type">operator</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssElement"><span class="hs-identifier hs-type">CssElement</span></a></span><span>
+</span><span id="line-154"></span><span id="operator"><span class="annot"><span class="annottext">operator :: Parser CssElement
+</span><a href="Graphics.SvgTree.CssParser.html#operator"><span class="hs-identifier hs-var hs-var">operator</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser CssElement -&gt; Parser CssElement
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser CssElement
+</span><a href="#local-6989586621679487750"><span class="hs-identifier hs-var">op</span></a></span><span> </span><span class="annot"><span class="annottext">Parser CssElement -&gt; Parser () -&gt; Parser CssElement
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span>
+</span><span id="line-155"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-156"></span><span>    </span><span id="local-6989586621679487750"><span class="annot"><span class="annottext">op :: Parser CssElement
+</span><a href="#local-6989586621679487750"><span class="hs-identifier hs-var hs-var">op</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CssElement
+</span><a href="Graphics.SvgTree.CssTypes.html#CssOpSlash"><span class="hs-identifier hs-var">CssOpSlash</span></a></span><span> </span><span class="annot"><span class="annottext">CssElement -&gt; Parser Char -&gt; Parser CssElement
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'/'</span></span><span>
+</span><span id="line-157"></span><span>      </span><span class="annot"><span class="annottext">Parser CssElement -&gt; Parser CssElement -&gt; Parser CssElement
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">CssElement
+</span><a href="Graphics.SvgTree.CssTypes.html#CssOpComa"><span class="hs-identifier hs-var">CssOpComa</span></a></span><span> </span><span class="annot"><span class="annottext">CssElement -&gt; Parser Char -&gt; Parser CssElement
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">','</span></span><span>
+</span><span id="line-158"></span><span>      </span><span class="annot"><span class="annottext">Parser CssElement -&gt; String -&gt; Parser CssElement
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;operator&quot;</span></span><span>
+</span><span id="line-159"></span><span>
+</span><span id="line-160"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#expr"><span class="hs-identifier hs-type">expr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssElement"><span class="hs-identifier hs-type">CssElement</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-161"></span><span id="expr"><span class="annot"><span class="annottext">expr :: Parser Text [CssElement]
+</span><a href="Graphics.SvgTree.CssParser.html#expr"><span class="hs-identifier hs-var hs-var">expr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="hs-glyph">:</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(CssElement -&gt; [CssElement] -&gt; [CssElement])
+-&gt; Parser CssElement -&gt; Parser Text ([CssElement] -&gt; [CssElement])
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser CssElement
+</span><a href="Graphics.SvgTree.CssParser.html#term"><span class="hs-identifier hs-var">term</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text ([CssElement] -&gt; [CssElement])
+-&gt; Parser Text [CssElement] -&gt; Parser Text [CssElement]
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[[CssElement]] -&gt; [CssElement]
+forall (t :: * -&gt; *) a. Foldable t =&gt; t [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">concat</span></span><span> </span><span class="annot"><span class="annottext">([[CssElement]] -&gt; [CssElement])
+-&gt; Parser Text [[CssElement]] -&gt; Parser Text [CssElement]
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text [CssElement] -&gt; Parser Text [[CssElement]]
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f [a]
+</span><span class="hs-identifier hs-var">many</span></span><span> </span><span class="annot"><span class="annottext">Parser Text [CssElement]
+</span><a href="#local-6989586621679487745"><span class="hs-identifier hs-var">termOp</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-162"></span><span>    </span><span class="annot"><span class="annottext">Parser Text [CssElement] -&gt; String -&gt; Parser Text [CssElement]
+forall i a. Parser i a -&gt; String -&gt; Parser i a
+</span><span class="hs-operator hs-var">&lt;?&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;expr&quot;</span></span><span>
+</span><span id="line-163"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-164"></span><span>    </span><span id="local-6989586621679487744"><span class="annot"><span class="annottext">op :: Parser Text (CssElement -&gt; [CssElement])
+</span><a href="#local-6989586621679487744"><span class="hs-identifier hs-var hs-var">op</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(CssElement -&gt; [CssElement])
+-&gt; Parser Text (CssElement -&gt; [CssElement])
+-&gt; Parser Text (CssElement -&gt; [CssElement])
+forall (f :: * -&gt; *) a. Alternative f =&gt; a -&gt; f a -&gt; f a
+</span><span class="hs-identifier hs-var">option</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CssElement -&gt; [CssElement] -&gt; [CssElement]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Parser Text (CssElement -&gt; [CssElement])
+ -&gt; Parser Text (CssElement -&gt; [CssElement]))
+-&gt; Parser Text (CssElement -&gt; [CssElement])
+-&gt; Parser Text (CssElement -&gt; [CssElement])
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679487743"><span class="annot"><span class="annottext">CssElement
+</span><a href="#local-6989586621679487743"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679487742"><span class="annot"><span class="annottext">CssElement
+</span><a href="#local-6989586621679487742"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">CssElement
+</span><a href="#local-6989586621679487743"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">CssElement
+</span><a href="#local-6989586621679487742"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(CssElement -&gt; CssElement -&gt; [CssElement])
+-&gt; Parser CssElement -&gt; Parser Text (CssElement -&gt; [CssElement])
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser CssElement
+</span><a href="Graphics.SvgTree.CssParser.html#operator"><span class="hs-identifier hs-var">operator</span></a></span><span>
+</span><span id="line-165"></span><span>    </span><span id="local-6989586621679487745"><span class="annot"><span class="annottext">termOp :: Parser Text [CssElement]
+</span><a href="#local-6989586621679487745"><span class="hs-identifier hs-var hs-var">termOp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(CssElement -&gt; [CssElement]) -&gt; CssElement -&gt; [CssElement]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">($)</span></span><span> </span><span class="annot"><span class="annottext">((CssElement -&gt; [CssElement]) -&gt; CssElement -&gt; [CssElement])
+-&gt; Parser Text (CssElement -&gt; [CssElement])
+-&gt; Parser Text (CssElement -&gt; [CssElement])
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text (CssElement -&gt; [CssElement])
+</span><a href="#local-6989586621679487744"><span class="hs-identifier hs-var">op</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text (CssElement -&gt; [CssElement])
+-&gt; Parser CssElement -&gt; Parser Text [CssElement]
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser CssElement
+</span><a href="Graphics.SvgTree.CssParser.html#term"><span class="hs-identifier hs-var">term</span></a></span><span>
+</span><span id="line-166"></span><span>
+</span><span id="line-167"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#dashArray"><span class="hs-identifier hs-type">dashArray</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Number"><span class="hs-identifier hs-type">Number</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-168"></span><span id="dashArray"><span class="annot"><span class="annottext">dashArray :: Parser [Number]
+</span><a href="Graphics.SvgTree.CssParser.html#dashArray"><span class="hs-identifier hs-var hs-var">dashArray</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser [Number] -&gt; Parser [Number]
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser Number
+</span><a href="Graphics.SvgTree.CssParser.html#complexNumber"><span class="hs-identifier hs-var">complexNumber</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Number -&gt; Parser Char -&gt; Parser [Number]
+forall (f :: * -&gt; *) a s. Alternative f =&gt; f a -&gt; f s -&gt; f [a]
+</span><span class="hs-operator hs-var">`sepBy1`</span></span><span> </span><span class="annot"><span class="annottext">Parser Char
+</span><a href="Graphics.SvgTree.CssParser.html#commaWsp"><span class="hs-identifier hs-var">commaWsp</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-169"></span><span>
+</span><span id="line-170"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#numberList"><span class="hs-identifier hs-type">numberList</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">]</span><span>
+</span><span id="line-171"></span><span id="numberList"><span class="annot"><span class="annottext">numberList :: Parser [Double]
+</span><a href="Graphics.SvgTree.CssParser.html#numberList"><span class="hs-identifier hs-var hs-var">numberList</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser [Double] -&gt; Parser [Double]
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser Double
+</span><a href="Graphics.SvgTree.CssParser.html#num"><span class="hs-identifier hs-var">num</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Double -&gt; Parser Char -&gt; Parser [Double]
+forall (f :: * -&gt; *) a s. Alternative f =&gt; f a -&gt; f s -&gt; f [a]
+</span><span class="hs-operator hs-var">`sepBy1`</span></span><span> </span><span class="annot"><span class="annottext">Parser Char
+</span><a href="Graphics.SvgTree.CssParser.html#commaWsp"><span class="hs-identifier hs-var">commaWsp</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-172"></span><span>
+</span><span id="line-173"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#complexNumber"><span class="hs-identifier hs-type">complexNumber</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Number"><span class="hs-identifier hs-type">Number</span></a></span><span>
+</span><span id="line-174"></span><span id="complexNumber"><span class="annot"><span class="annottext">complexNumber :: Parser Number
+</span><a href="Graphics.SvgTree.CssParser.html#complexNumber"><span class="hs-identifier hs-var hs-var">complexNumber</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-175"></span><span>    </span><span id="local-6989586621679487741"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487741"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Parser Double
+</span><a href="Graphics.SvgTree.CssParser.html#num"><span class="hs-identifier hs-var">num</span></a></span><span>
+</span><span id="line-176"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Percent"><span class="hs-identifier hs-var">Percent</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487741"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">100</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Number -&gt; Parser Char -&gt; Parser Number
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'%'</span></span><span class="hs-special">)</span><span>
+</span><span id="line-177"></span><span>        </span><span class="annot"><span class="annottext">Parser Number -&gt; Parser Number -&gt; Parser Number
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Em"><span class="hs-identifier hs-var">Em</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487741"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Number -&gt; Parser Text Text -&gt; Parser Number
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;em&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-178"></span><span>        </span><span class="annot"><span class="annottext">Parser Number -&gt; Parser Number -&gt; Parser Number
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Mm"><span class="hs-identifier hs-var">Mm</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487741"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Number -&gt; Parser Text Text -&gt; Parser Number
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;mm&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-179"></span><span>        </span><span class="annot"><span class="annottext">Parser Number -&gt; Parser Number -&gt; Parser Number
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Cm"><span class="hs-identifier hs-var">Cm</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487741"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Number -&gt; Parser Text Text -&gt; Parser Number
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;cm&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-180"></span><span>        </span><span class="annot"><span class="annottext">Parser Number -&gt; Parser Number -&gt; Parser Number
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Point"><span class="hs-identifier hs-var">Point</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487741"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Number -&gt; Parser Text Text -&gt; Parser Number
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;pt&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-181"></span><span>        </span><span class="annot"><span class="annottext">Parser Number -&gt; Parser Number -&gt; Parser Number
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Pc"><span class="hs-identifier hs-var">Pc</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487741"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Number -&gt; Parser Text Text -&gt; Parser Number
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;pc&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-182"></span><span>        </span><span class="annot"><span class="annottext">Parser Number -&gt; Parser Number -&gt; Parser Number
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Px"><span class="hs-identifier hs-var">Px</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487741"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Number -&gt; Parser Text Text -&gt; Parser Number
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;px&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-183"></span><span>        </span><span class="annot"><span class="annottext">Parser Number -&gt; Parser Number -&gt; Parser Number
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Inches"><span class="hs-identifier hs-var">Inches</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487741"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Number -&gt; Parser Text Text -&gt; Parser Number
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text Text
+</span><span class="hs-identifier hs-var">string</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;in&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-184"></span><span>        </span><span class="annot"><span class="annottext">Parser Number -&gt; Parser Number -&gt; Parser Number
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Number -&gt; Parser Number
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Num"><span class="hs-identifier hs-var">Num</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487741"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-185"></span><span>
+</span><span id="line-186"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#term"><span class="hs-identifier hs-type">term</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssElement"><span class="hs-identifier hs-type">CssElement</span></a></span><span>
+</span><span id="line-187"></span><span id="term"><span class="annot"><span class="annottext">term :: Parser CssElement
+</span><a href="Graphics.SvgTree.CssParser.html#term"><span class="hs-identifier hs-var hs-var">term</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CssElement -&gt; CssElement
+</span><a href="#local-6989586621679487731"><span class="hs-identifier hs-var">checkRgb</span></a></span><span> </span><span class="annot"><span class="annottext">(CssElement -&gt; CssElement)
+-&gt; Parser CssElement -&gt; Parser CssElement
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser CssElement
+</span><a href="#local-6989586621679487730"><span class="hs-identifier hs-var">function</span></a></span><span>
+</span><span id="line-188"></span><span>    </span><span class="annot"><span class="annottext">Parser CssElement -&gt; Parser CssElement -&gt; Parser CssElement
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Number -&gt; CssElement
+</span><a href="Graphics.SvgTree.CssTypes.html#CssNumber"><span class="hs-identifier hs-var">CssNumber</span></a></span><span> </span><span class="annot"><span class="annottext">(Number -&gt; CssElement) -&gt; Parser Number -&gt; Parser CssElement
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Number
+</span><a href="Graphics.SvgTree.CssParser.html#complexNumber"><span class="hs-identifier hs-var">complexNumber</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-189"></span><span>    </span><span class="annot"><span class="annottext">Parser CssElement -&gt; Parser CssElement -&gt; Parser CssElement
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; CssElement
+</span><a href="Graphics.SvgTree.CssTypes.html#CssString"><span class="hs-identifier hs-var">CssString</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; CssElement) -&gt; Parser Text Text -&gt; Parser CssElement
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text
+</span><a href="Graphics.SvgTree.CssParser.html#str"><span class="hs-identifier hs-var">str</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-190"></span><span>    </span><span class="annot"><span class="annottext">Parser CssElement -&gt; Parser CssElement -&gt; Parser CssElement
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; CssElement
+</span><a href="#local-6989586621679487727"><span class="hs-identifier hs-var">checkNamedColor</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; CssElement) -&gt; Parser Text Text -&gt; Parser CssElement
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text
+</span><a href="Graphics.SvgTree.CssParser.html#ident"><span class="hs-identifier hs-var">ident</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-191"></span><span>    </span><span class="annot"><span class="annottext">Parser CssElement -&gt; Parser CssElement -&gt; Parser CssElement
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; CssElement
+</span><a href="Graphics.SvgTree.CssTypes.html#CssColor"><span class="hs-identifier hs-var">CssColor</span></a></span><span> </span><span class="annot"><span class="annottext">(PixelRGBA8 -&gt; CssElement)
+-&gt; Parser Text PixelRGBA8 -&gt; Parser CssElement
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text PixelRGBA8
+</span><a href="Graphics.SvgTree.ColorParser.html#colorParser"><span class="hs-identifier hs-var">colorParser</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-192"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-193"></span><span>    </span><span id="local-6989586621679487725"><span class="annot"><span class="annottext">comma :: Parser Char
+</span><a href="#local-6989586621679487725"><span class="hs-identifier hs-var hs-var">comma</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span> </span><span class="annot"><span class="annottext">Parser () -&gt; Parser Char -&gt; Parser Char
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">','</span></span><span> </span><span class="annot"><span class="annottext">Parser Char -&gt; Parser () -&gt; Parser Char
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span>
+</span><span id="line-194"></span><span>    </span><span id="local-6989586621679487727"><span class="annot"><span class="annottext">checkNamedColor :: Text -&gt; CssElement
+</span><a href="#local-6989586621679487727"><span class="hs-identifier hs-var hs-var">checkNamedColor</span></a></span></span><span> </span><span id="local-6989586621679487724"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679487724"><span class="hs-identifier hs-var">n</span></a></span></span><span>
+</span><span id="line-195"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679487723"><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679487723"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Map Text PixelRGBA8 -&gt; Maybe PixelRGBA8
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">M.lookup</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679487724"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Map Text PixelRGBA8
+</span><a href="Graphics.SvgTree.NamedColors.html#svgNamedColors"><span class="hs-identifier hs-var">svgNamedColors</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; CssElement
+</span><a href="Graphics.SvgTree.CssTypes.html#CssColor"><span class="hs-identifier hs-var">CssColor</span></a></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679487723"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-196"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; CssElement
+</span><a href="Graphics.SvgTree.CssTypes.html#CssIdent"><span class="hs-identifier hs-var">CssIdent</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679487724"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-197"></span><span>
+</span><span id="line-198"></span><span>    </span><span id="local-6989586621679487720"><span class="annot"><span class="annottext">ref :: Parser Text Text
+</span><a href="#local-6989586621679487720"><span class="hs-identifier hs-var hs-var">ref</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'#'</span></span><span> </span><span class="annot"><span class="annottext">Parser Char -&gt; Parser Text Text -&gt; Parser Text Text
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text
+</span><a href="Graphics.SvgTree.CssParser.html#ident"><span class="hs-identifier hs-var">ident</span></a></span><span>
+</span><span id="line-199"></span><span>
+</span><span id="line-200"></span><span>    </span><span id="local-6989586621679487731"><span class="annot"><span class="annottext">checkRgb :: CssElement -&gt; CssElement
+</span><a href="#local-6989586621679487731"><span class="hs-identifier hs-var hs-var">checkRgb</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssFunction"><span class="hs-identifier hs-type">CssFunction</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;rgb&quot;</span></span><span>
+</span><span id="line-201"></span><span>                </span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssNumber"><span class="hs-identifier hs-type">CssNumber</span></a></span><span> </span><span id="local-6989586621679487718"><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679487718"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssNumber"><span class="hs-identifier hs-type">CssNumber</span></a></span><span> </span><span id="local-6989586621679487717"><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679487717"><span class="hs-identifier hs-var">g</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssNumber"><span class="hs-identifier hs-type">CssNumber</span></a></span><span> </span><span id="local-6989586621679487716"><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679487716"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-202"></span><span>        </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; CssElement
+</span><a href="Graphics.SvgTree.CssTypes.html#CssColor"><span class="hs-identifier hs-var">CssColor</span></a></span><span> </span><span class="annot"><span class="annottext">(PixelRGBA8 -&gt; CssElement) -&gt; PixelRGBA8 -&gt; CssElement
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; PixelRGBA8
+</span><span class="hs-identifier hs-var">PixelRGBA8</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Number -&gt; Pixel8
+forall p. Integral p =&gt; Number -&gt; p
+</span><a href="#local-6989586621679487714"><span class="hs-identifier hs-var">to</span></a></span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679487718"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Number -&gt; Pixel8
+forall p. Integral p =&gt; Number -&gt; p
+</span><a href="#local-6989586621679487714"><span class="hs-identifier hs-var">to</span></a></span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679487717"><span class="hs-identifier hs-var">g</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Number -&gt; Pixel8
+forall p. Integral p =&gt; Number -&gt; p
+</span><a href="#local-6989586621679487714"><span class="hs-identifier hs-var">to</span></a></span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679487716"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">255</span></span><span>
+</span><span id="line-203"></span><span>       </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679487713"><span class="annot"><span class="annottext">clamp :: Double -&gt; Double
+</span><a href="#local-6989586621679487713"><span class="hs-identifier hs-var hs-var">clamp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double) -&gt; (Double -&gt; Double) -&gt; Double -&gt; Double
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">min</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">255</span></span><span>
+</span><span id="line-204"></span><span>             </span><span id="local-6989586621679487714"><span class="annot"><span class="annottext">to :: Number -&gt; p
+</span><a href="#local-6989586621679487714"><span class="hs-identifier hs-var hs-var">to</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Num"><span class="hs-identifier hs-type">Num</span></a></span><span> </span><span id="local-6989586621679487710"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487710"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; p
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">floor</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; p) -&gt; Double -&gt; p
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679487713"><span class="hs-identifier hs-var">clamp</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487710"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-205"></span><span>             </span><span class="annot"><a href="#local-6989586621679487714"><span class="hs-identifier hs-var">to</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Px"><span class="hs-identifier hs-type">Px</span></a></span><span> </span><span id="local-6989586621679487708"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487708"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; p
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">floor</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; p) -&gt; Double -&gt; p
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679487713"><span class="hs-identifier hs-var">clamp</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487708"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-206"></span><span>             </span><span class="annot"><a href="#local-6989586621679487714"><span class="hs-identifier hs-var">to</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Percent"><span class="hs-identifier hs-type">Percent</span></a></span><span> </span><span id="local-6989586621679487707"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487707"><span class="hs-identifier hs-var">p</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; p
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">floor</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; p) -&gt; (Double -&gt; Double) -&gt; Double -&gt; p
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679487713"><span class="hs-identifier hs-var">clamp</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; p) -&gt; Double -&gt; p
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487707"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">255</span></span><span>
+</span><span id="line-207"></span><span>             </span><span class="annot"><a href="#local-6989586621679487714"><span class="hs-identifier hs-var">to</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Em"><span class="hs-identifier hs-type">Em</span></a></span><span> </span><span id="local-6989586621679487705"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487705"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">)</span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; p
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">floor</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; p) -&gt; Double -&gt; p
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679487713"><span class="hs-identifier hs-var">clamp</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487705"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-208"></span><span>             </span><span class="annot"><a href="#local-6989586621679487714"><span class="hs-identifier hs-var">to</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Pc"><span class="hs-identifier hs-type">Pc</span></a></span><span> </span><span id="local-6989586621679487704"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487704"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; p
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">floor</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; p) -&gt; Double -&gt; p
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679487713"><span class="hs-identifier hs-var">clamp</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487704"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-209"></span><span>             </span><span class="annot"><a href="#local-6989586621679487714"><span class="hs-identifier hs-var">to</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Mm"><span class="hs-identifier hs-type">Mm</span></a></span><span> </span><span id="local-6989586621679487703"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487703"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; p
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">floor</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; p) -&gt; Double -&gt; p
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679487713"><span class="hs-identifier hs-var">clamp</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487703"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-210"></span><span>             </span><span class="annot"><a href="#local-6989586621679487714"><span class="hs-identifier hs-var">to</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Cm"><span class="hs-identifier hs-type">Cm</span></a></span><span> </span><span id="local-6989586621679487702"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487702"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; p
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">floor</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; p) -&gt; Double -&gt; p
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679487713"><span class="hs-identifier hs-var">clamp</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487702"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-211"></span><span>             </span><span class="annot"><a href="#local-6989586621679487714"><span class="hs-identifier hs-var">to</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Point"><span class="hs-identifier hs-type">Point</span></a></span><span> </span><span id="local-6989586621679487701"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487701"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; p
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">floor</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; p) -&gt; Double -&gt; p
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679487713"><span class="hs-identifier hs-var">clamp</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487701"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-212"></span><span>             </span><span class="annot"><a href="#local-6989586621679487714"><span class="hs-identifier hs-var">to</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Inches"><span class="hs-identifier hs-type">Inches</span></a></span><span> </span><span id="local-6989586621679487700"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487700"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; p
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">floor</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; p) -&gt; Double -&gt; p
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679487713"><span class="hs-identifier hs-var">clamp</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679487700"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-213"></span><span>
+</span><span id="line-214"></span><span>    </span><span class="annot"><a href="#local-6989586621679487731"><span class="hs-identifier hs-var">checkRgb</span></a></span><span> </span><span id="local-6989586621679487699"><span class="annot"><span class="annottext">CssElement
+</span><a href="#local-6989586621679487699"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CssElement
+</span><a href="#local-6989586621679487699"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-215"></span><span>    </span><span id="local-6989586621679487698"><span class="annot"><span class="annottext">functionParam :: Parser CssElement
+</span><a href="#local-6989586621679487698"><span class="hs-identifier hs-var hs-var">functionParam</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; CssElement
+</span><a href="Graphics.SvgTree.CssTypes.html#CssReference"><span class="hs-identifier hs-var">CssReference</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; CssElement) -&gt; Parser Text Text -&gt; Parser CssElement
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text
+</span><a href="#local-6989586621679487720"><span class="hs-identifier hs-var">ref</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Parser CssElement -&gt; Parser CssElement -&gt; Parser CssElement
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser CssElement
+</span><a href="Graphics.SvgTree.CssParser.html#term"><span class="hs-identifier hs-var">term</span></a></span><span>
+</span><span id="line-216"></span><span>
+</span><span id="line-217"></span><span>    </span><span id="local-6989586621679487730"><span class="annot"><span class="annottext">function :: Parser CssElement
+</span><a href="#local-6989586621679487730"><span class="hs-identifier hs-var hs-var">function</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; [CssElement] -&gt; CssElement
+</span><a href="Graphics.SvgTree.CssTypes.html#CssFunction"><span class="hs-identifier hs-var">CssFunction</span></a></span><span>
+</span><span id="line-218"></span><span>       </span><span class="annot"><span class="annottext">(Text -&gt; [CssElement] -&gt; CssElement)
+-&gt; Parser Text Text -&gt; Parser Text ([CssElement] -&gt; CssElement)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text
+</span><a href="Graphics.SvgTree.CssParser.html#ident"><span class="hs-identifier hs-var">ident</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text ([CssElement] -&gt; CssElement)
+-&gt; Parser Char -&gt; Parser Text ([CssElement] -&gt; CssElement)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'('</span></span><span>
+</span><span id="line-219"></span><span>       </span><span class="annot"><span class="annottext">Parser Text ([CssElement] -&gt; CssElement)
+-&gt; Parser Text [CssElement] -&gt; Parser CssElement
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser CssElement
+</span><a href="#local-6989586621679487698"><span class="hs-identifier hs-var">functionParam</span></a></span><span> </span><span class="annot"><span class="annottext">Parser CssElement -&gt; Parser Char -&gt; Parser Text [CssElement]
+forall (f :: * -&gt; *) a s. Alternative f =&gt; f a -&gt; f s -&gt; f [a]
+</span><span class="hs-operator hs-var">`sepBy`</span></span><span> </span><span class="annot"><span class="annottext">Parser Char
+</span><a href="#local-6989586621679487725"><span class="hs-identifier hs-var">comma</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Parser CssElement -&gt; Parser Char -&gt; Parser CssElement
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Parser Char
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">')'</span></span><span> </span><span class="annot"><span class="annottext">Parser CssElement -&gt; Parser () -&gt; Parser CssElement
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser ()
+</span><span class="hs-identifier hs-var">skipSpace</span></span><span>
+</span><span id="line-220"></span><span>
+</span><span id="line-221"></span><span class="hs-comment">-- | Parse CSS text into rules.</span><span>
+</span><span id="line-222"></span><span class="annot"><a href="Graphics.SvgTree.CssParser.html#cssRulesOfText"><span class="hs-identifier hs-type">cssRulesOfText</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssRule"><span class="hs-identifier hs-type">CssRule</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-223"></span><span id="cssRulesOfText"><span class="annot"><span class="annottext">cssRulesOfText :: Text -&gt; [CssRule]
+</span><a href="Graphics.SvgTree.CssParser.html#cssRulesOfText"><span class="hs-identifier hs-var hs-var">cssRulesOfText</span></a></span></span><span> </span><span id="local-6989586621679487696"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679487696"><span class="hs-identifier hs-var">txt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Parser [CssRule] -&gt; Text -&gt; Either String [CssRule]
+forall a. Parser a -&gt; Text -&gt; Either String a
+</span><span class="hs-identifier hs-var">parseOnly</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser CssRule -&gt; Parser [CssRule]
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f [a]
+</span><span class="hs-identifier hs-var">many1</span></span><span> </span><span class="annot"><span class="annottext">Parser CssRule
+</span><a href="Graphics.SvgTree.CssParser.html#ruleSet"><span class="hs-identifier hs-var">ruleSet</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679487696"><span class="hs-identifier hs-var">txt</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-224"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-identifier">_</span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-225"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679487695"><span class="annot"><span class="annottext">[CssRule]
+</span><a href="#local-6989586621679487695"><span class="hs-identifier hs-var">rules</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[CssRule]
+</span><a href="#local-6989586621679487695"><span class="hs-identifier hs-var">rules</span></a></span><span>
+</span><span id="line-226"></span></pre></body></html>

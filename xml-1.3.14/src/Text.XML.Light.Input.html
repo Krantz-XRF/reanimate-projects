@@ -1,0 +1,410 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">--------------------------------------------------------------------</span><span>
+</span><span id="line-2"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-3"></span><span class="hs-comment">-- Module    : Text.XML.Light.Input</span><span>
+</span><span id="line-4"></span><span class="hs-comment">-- Copyright : (c) Galois, Inc. 2007</span><span>
+</span><span id="line-5"></span><span class="hs-comment">-- License   : BSD3</span><span>
+</span><span id="line-6"></span><span class="hs-comment">--</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- Maintainer: Iavor S. Diatchki &lt;diatchki@galois.com&gt;</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- Stability : provisional</span><span>
+</span><span id="line-9"></span><span class="hs-comment">-- Portability: portable</span><span>
+</span><span id="line-10"></span><span class="hs-comment">--</span><span>
+</span><span id="line-11"></span><span class="hs-comment">-- Lightweight XML parsing</span><span>
+</span><span id="line-12"></span><span class="hs-comment">--</span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.XML.Light.Input</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Input.html#parseXML"><span class="hs-identifier">parseXML</span></a></span><span class="hs-special">,</span><span class="annot"><a href="Text.XML.Light.Input.html#parseXMLDoc"><span class="hs-identifier">parseXMLDoc</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.Light.Lexer.html"><span class="hs-identifier">Text.XML.Light.Lexer</span></a></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html"><span class="hs-identifier">Text.XML.Light.Types</span></a></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.Light.Proc.html"><span class="hs-identifier">Text.XML.Light.Proc</span></a></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html"><span class="hs-identifier">Text.XML.Light.Output</span></a></span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Output.html#tagEnd"><span class="hs-identifier">tagEnd</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">isPrefixOf</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-comment">-- | parseXMLDoc, parse a XMLl document to maybe an element</span><span>
+</span><span id="line-24"></span><span id="local-6989586621679045103"><span class="annot"><a href="Text.XML.Light.Input.html#parseXMLDoc"><span class="hs-identifier hs-type">parseXMLDoc</span></a></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Lexer.html#XmlSource"><span class="hs-identifier hs-type">XmlSource</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679045103"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679045103"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Element"><span class="hs-identifier hs-type">Element</span></a></span></span><span>
+</span><span id="line-25"></span><span id="parseXMLDoc"><span class="annot"><span class="annottext">parseXMLDoc :: s -&gt; Maybe Element
+</span><a href="Text.XML.Light.Input.html#parseXMLDoc"><span class="hs-identifier hs-var hs-var">parseXMLDoc</span></a></span></span><span> </span><span id="local-6989586621679045102"><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679045102"><span class="hs-identifier hs-var">xs</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content] -&gt; Maybe Element
+</span><a href="#local-6989586621679045101"><span class="hs-identifier hs-var">strip</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">s -&gt; [Content]
+forall s. XmlSource s =&gt; s -&gt; [Content]
+</span><a href="Text.XML.Light.Input.html#parseXML"><span class="hs-identifier hs-var">parseXML</span></a></span><span> </span><span class="annot"><span class="annottext">s
+</span><a href="#local-6989586621679045102"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679045101"><span class="annot"><span class="annottext">strip :: [Content] -&gt; Maybe Element
+</span><a href="#local-6989586621679045101"><span class="hs-identifier hs-var hs-var">strip</span></a></span></span><span> </span><span id="local-6989586621679045100"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045100"><span class="hs-identifier hs-var">cs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">[Content] -&gt; [Element]
+</span><a href="Text.XML.Light.Proc.html#onlyElems"><span class="hs-identifier hs-var">onlyElems</span></a></span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045100"><span class="hs-identifier hs-var">cs</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-27"></span><span>                    </span><span id="local-6989586621679045098"><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679045098"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045097"><span class="annot"><span class="annottext">[Element]
+</span><a href="#local-6989586621679045097"><span class="hs-identifier hs-var">es</span></a></span></span><span>
+</span><span id="line-28"></span><span>                      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;?xml&quot;</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; [Char] -&gt; Bool
+forall a. Eq a =&gt; [a] -&gt; [a] -&gt; Bool
+</span><span class="hs-operator hs-var">`isPrefixOf`</span></span><span> </span><span class="annot"><span class="annottext">QName -&gt; [Char]
+</span><a href="Text.XML.Light.Types.html#qName"><span class="hs-identifier hs-var hs-var">qName</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Element -&gt; QName
+</span><a href="Text.XML.Light.Types.html#elName"><span class="hs-identifier hs-var hs-var">elName</span></a></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679045098"><span class="hs-identifier hs-var">e</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span>                          </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[Content] -&gt; Maybe Element
+</span><a href="#local-6989586621679045101"><span class="hs-identifier hs-var">strip</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Element -&gt; Content) -&gt; [Element] -&gt; [Content]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Element -&gt; Content
+</span><a href="Text.XML.Light.Types.html#Elem"><span class="hs-identifier hs-var">Elem</span></a></span><span> </span><span class="annot"><span class="annottext">[Element]
+</span><a href="#local-6989586621679045097"><span class="hs-identifier hs-var">es</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span>                      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Element -&gt; Maybe Element
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679045098"><span class="hs-identifier hs-var">e</span></a></span><span>
+</span><span id="line-31"></span><span>                    </span><span class="annot"><span class="annottext">[Element]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Element
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="hs-comment">-- | parseXML to a list of content chunks</span><span>
+</span><span id="line-34"></span><span id="local-6989586621679045136"><span class="annot"><a href="Text.XML.Light.Input.html#parseXML"><span class="hs-identifier hs-type">parseXML</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Lexer.html#XmlSource"><span class="hs-identifier hs-type">XmlSource</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679045136"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679045136"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span class="hs-special">]</span></span><span>
+</span><span id="line-35"></span><span id="parseXML"><span class="annot"><span class="annottext">parseXML :: s -&gt; [Content]
+</span><a href="Text.XML.Light.Input.html#parseXML"><span class="hs-identifier hs-var hs-var">parseXML</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Token] -&gt; [Content]
+</span><a href="Text.XML.Light.Input.html#parse"><span class="hs-identifier hs-var">parse</span></a></span><span> </span><span class="annot"><span class="annottext">([Token] -&gt; [Content]) -&gt; (s -&gt; [Token]) -&gt; s -&gt; [Content]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">s -&gt; [Token]
+forall source. XmlSource source =&gt; source -&gt; [Token]
+</span><a href="Text.XML.Light.Lexer.html#tokens"><span class="hs-identifier hs-var">tokens</span></a></span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-comment">------------------------------------------------------------------------</span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="annot"><a href="Text.XML.Light.Input.html#parse"><span class="hs-identifier hs-type">parse</span></a></span><span>      </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Lexer.html#Token"><span class="hs-identifier hs-type">Token</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-40"></span><span id="parse"><span class="annot"><span class="annottext">parse :: [Token] -&gt; [Content]
+</span><a href="Text.XML.Light.Input.html#parse"><span class="hs-identifier hs-var hs-var">parse</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-41"></span><span class="annot"><a href="Text.XML.Light.Input.html#parse"><span class="hs-identifier hs-var">parse</span></a></span><span> </span><span id="local-6989586621679045090"><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045090"><span class="hs-identifier hs-var">ts</span></a></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679045089"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045089"><span class="hs-identifier hs-var">es</span></a></span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">[QName]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span id="local-6989586621679045088"><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045088"><span class="hs-identifier hs-var">ts1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NSInfo -&gt; [QName] -&gt; [Token] -&gt; ([Content], [QName], [Token])
+</span><a href="Text.XML.Light.Input.html#nodes"><span class="hs-identifier hs-var">nodes</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span class="annot"><span class="annottext">Maybe [Char]
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045090"><span class="hs-identifier hs-var">ts</span></a></span><span>
+</span><span id="line-42"></span><span>              </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045089"><span class="hs-identifier hs-var">es</span></a></span><span> </span><span class="annot"><span class="annottext">[Content] -&gt; [Content] -&gt; [Content]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[Token] -&gt; [Content]
+</span><a href="Text.XML.Light.Input.html#parse"><span class="hs-identifier hs-var">parse</span></a></span><span> </span><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045088"><span class="hs-identifier hs-var">ts1</span></a></span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- Information about namespaces.</span><span>
+</span><span id="line-45"></span><span class="hs-comment">-- The first component is a map that associates prefixes to URIs,</span><span>
+</span><span id="line-46"></span><span class="hs-comment">-- the second is the URI for the default namespace, if one was provided.</span><span>
+</span><span id="line-47"></span><span class="hs-keyword">type</span><span> </span><span id="NSInfo"><span class="annot"><a href="Text.XML.Light.Input.html#NSInfo"><span class="hs-identifier hs-var">NSInfo</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-48"></span><span>
+</span><span id="line-49"></span><span class="annot"><a href="Text.XML.Light.Input.html#nodes"><span class="hs-identifier hs-type">nodes</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Input.html#NSInfo"><span class="hs-identifier hs-type">NSInfo</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Types.html#QName"><span class="hs-identifier hs-type">QName</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Lexer.html#Token"><span class="hs-identifier hs-type">Token</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Types.html#QName"><span class="hs-identifier hs-type">QName</span></a></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Lexer.html#Token"><span class="hs-identifier hs-type">Token</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span id="nodes"><span class="annot"><span class="annottext">nodes :: NSInfo -&gt; [QName] -&gt; [Token] -&gt; ([Content], [QName], [Token])
+</span><a href="Text.XML.Light.Input.html#nodes"><span class="hs-identifier hs-var hs-var">nodes</span></a></span></span><span> </span><span id="local-6989586621679045085"><span class="annot"><span class="annottext">NSInfo
+</span><a href="#local-6989586621679045085"><span class="hs-identifier hs-var">ns</span></a></span></span><span> </span><span id="local-6989586621679045084"><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045084"><span class="hs-identifier hs-var">ps</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Lexer.html#TokCRef"><span class="hs-identifier hs-type">TokCRef</span></a></span><span> </span><span id="local-6989586621679045082"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679045082"><span class="hs-identifier hs-var">ref</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045081"><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045081"><span class="hs-identifier hs-var">ts</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-52"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679045080"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045080"><span class="hs-identifier hs-var">es</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045079"><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045079"><span class="hs-identifier hs-var">qs</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045078"><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045078"><span class="hs-identifier hs-var">ts1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NSInfo -&gt; [QName] -&gt; [Token] -&gt; ([Content], [QName], [Token])
+</span><a href="Text.XML.Light.Input.html#nodes"><span class="hs-identifier hs-var">nodes</span></a></span><span> </span><span class="annot"><span class="annottext">NSInfo
+</span><a href="#local-6989586621679045085"><span class="hs-identifier hs-var">ns</span></a></span><span> </span><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045084"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045081"><span class="hs-identifier hs-var">ts</span></a></span><span>
+</span><span id="line-53"></span><span>  </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Char] -&gt; Content
+</span><a href="Text.XML.Light.Types.html#CRef"><span class="hs-identifier hs-var">CRef</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679045082"><span class="hs-identifier hs-var">ref</span></a></span><span> </span><span class="annot"><span class="annottext">Content -&gt; [Content] -&gt; [Content]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045080"><span class="hs-identifier hs-var">es</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045079"><span class="hs-identifier hs-var">qs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045078"><span class="hs-identifier hs-var">ts1</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-54"></span><span>
+</span><span id="line-55"></span><span class="annot"><a href="Text.XML.Light.Input.html#nodes"><span class="hs-identifier hs-var">nodes</span></a></span><span> </span><span id="local-6989586621679045076"><span class="annot"><span class="annottext">NSInfo
+</span><a href="#local-6989586621679045076"><span class="hs-identifier hs-var">ns</span></a></span></span><span> </span><span id="local-6989586621679045075"><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045075"><span class="hs-identifier hs-var">ps</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Lexer.html#TokText"><span class="hs-identifier hs-type">TokText</span></a></span><span> </span><span id="local-6989586621679045073"><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679045073"><span class="hs-identifier hs-var">txt</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045072"><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045072"><span class="hs-identifier hs-var">ts</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-56"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679045071"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045071"><span class="hs-identifier hs-var">es</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045070"><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045070"><span class="hs-identifier hs-var">qs</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045069"><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045069"><span class="hs-identifier hs-var">ts1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NSInfo -&gt; [QName] -&gt; [Token] -&gt; ([Content], [QName], [Token])
+</span><a href="Text.XML.Light.Input.html#nodes"><span class="hs-identifier hs-var">nodes</span></a></span><span> </span><span class="annot"><span class="annottext">NSInfo
+</span><a href="#local-6989586621679045076"><span class="hs-identifier hs-var">ns</span></a></span><span> </span><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045075"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045072"><span class="hs-identifier hs-var">ts</span></a></span><span>
+</span><span id="line-57"></span><span>      </span><span class="hs-special">(</span><span id="local-6989586621679045068"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679045068"><span class="hs-identifier hs-var">more</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045067"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045067"><span class="hs-identifier hs-var">es1</span></a></span></span><span class="hs-special">)</span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045071"><span class="hs-identifier hs-var">es</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-58"></span><span>                      </span><span class="annot"><a href="Text.XML.Light.Types.html#Text"><span class="hs-identifier hs-type">Text</span></a></span><span> </span><span id="local-6989586621679045065"><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679045065"><span class="hs-identifier hs-var">cd</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045064"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045064"><span class="hs-identifier hs-var">es1'</span></a></span></span><span>
+</span><span id="line-59"></span><span>                        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">CData -&gt; CDataKind
+</span><a href="Text.XML.Light.Types.html#cdVerbatim"><span class="hs-identifier hs-var hs-var">cdVerbatim</span></a></span><span> </span><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679045065"><span class="hs-identifier hs-var">cd</span></a></span><span> </span><span class="annot"><span class="annottext">CDataKind -&gt; CDataKind -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">CData -&gt; CDataKind
+</span><a href="Text.XML.Light.Types.html#cdVerbatim"><span class="hs-identifier hs-var hs-var">cdVerbatim</span></a></span><span> </span><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679045073"><span class="hs-identifier hs-var">txt</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CData -&gt; [Char]
+</span><a href="Text.XML.Light.Types.html#cdData"><span class="hs-identifier hs-var hs-var">cdData</span></a></span><span> </span><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679045065"><span class="hs-identifier hs-var">cd</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045064"><span class="hs-identifier hs-var">es1'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-60"></span><span>                      </span><span class="annot"><span class="annottext">[Content]
+</span><span class="hs-identifier">_</span></span><span>                                   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045071"><span class="hs-identifier hs-var">es</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span>  </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CData -&gt; Content
+</span><a href="Text.XML.Light.Types.html#Text"><span class="hs-identifier hs-var">Text</span></a></span><span> </span><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679045073"><span class="hs-identifier hs-var">txt</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cdData :: [Char]
+</span><a href="Text.XML.Light.Types.html#cdData"><span class="hs-identifier hs-var">cdData</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CData -&gt; [Char]
+</span><a href="Text.XML.Light.Types.html#cdData"><span class="hs-identifier hs-var hs-var">cdData</span></a></span><span> </span><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679045073"><span class="hs-identifier hs-var">txt</span></a></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; [Char] -&gt; [Char]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679045068"><span class="hs-identifier hs-var">more</span></a></span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Content -&gt; [Content] -&gt; [Content]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045067"><span class="hs-identifier hs-var">es1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045070"><span class="hs-identifier hs-var">qs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045069"><span class="hs-identifier hs-var">ts1</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-63"></span><span>
+</span><span id="line-64"></span><span class="annot"><a href="Text.XML.Light.Input.html#nodes"><span class="hs-identifier hs-var">nodes</span></a></span><span> </span><span id="local-6989586621679045061"><span class="annot"><span class="annottext">NSInfo
+</span><a href="#local-6989586621679045061"><span class="hs-identifier hs-var">cur_info</span></a></span></span><span> </span><span id="local-6989586621679045060"><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045060"><span class="hs-identifier hs-var">ps</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Lexer.html#TokStart"><span class="hs-identifier hs-type">TokStart</span></a></span><span> </span><span id="local-6989586621679045058"><span class="annot"><span class="annottext">Line
+</span><a href="#local-6989586621679045058"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679045057"><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045057"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679045056"><span class="annot"><span class="annottext">[Attr]
+</span><a href="#local-6989586621679045056"><span class="hs-keyword hs-var">as</span></a></span></span><span> </span><span id="local-6989586621679045055"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679045055"><span class="hs-identifier hs-var">empty</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045054"><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045054"><span class="hs-identifier hs-var">ts</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045053"><span class="hs-identifier hs-var">node</span></a></span><span> </span><span class="annot"><span class="annottext">Content -&gt; [Content] -&gt; [Content]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045052"><span class="hs-identifier hs-var">siblings</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045051"><span class="hs-identifier hs-var">open</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045050"><span class="hs-identifier hs-var">toks</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-65"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-66"></span><span>  </span><span id="local-6989586621679045049"><span class="annot"><span class="annottext">new_name :: QName
+</span><a href="#local-6989586621679045049"><span class="hs-identifier hs-var hs-var">new_name</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NSInfo -&gt; QName -&gt; QName
+</span><a href="Text.XML.Light.Input.html#annotName"><span class="hs-identifier hs-var">annotName</span></a></span><span> </span><span class="annot"><span class="annottext">NSInfo
+</span><a href="#local-6989586621679045047"><span class="hs-identifier hs-var">new_info</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045057"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-67"></span><span>  </span><span id="local-6989586621679045047"><span class="annot"><span class="annottext">new_info :: NSInfo
+</span><a href="#local-6989586621679045047"><span class="hs-identifier hs-var hs-var">new_info</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Attr -&gt; NSInfo -&gt; NSInfo) -&gt; NSInfo -&gt; [Attr] -&gt; NSInfo
+forall (t :: * -&gt; *) a b.
+Foldable t =&gt;
+(a -&gt; b -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldr</span></span><span> </span><span class="annot"><span class="annottext">Attr -&gt; NSInfo -&gt; NSInfo
+</span><a href="Text.XML.Light.Input.html#addNS"><span class="hs-identifier hs-var">addNS</span></a></span><span> </span><span class="annot"><span class="annottext">NSInfo
+</span><a href="#local-6989586621679045061"><span class="hs-identifier hs-var">cur_info</span></a></span><span> </span><span class="annot"><span class="annottext">[Attr]
+</span><a href="#local-6989586621679045056"><span class="hs-keyword hs-var">as</span></a></span><span>
+</span><span id="line-68"></span><span>  </span><span id="local-6989586621679045053"><span class="annot"><span class="annottext">node :: Content
+</span><a href="#local-6989586621679045053"><span class="hs-identifier hs-var hs-var">node</span></a></span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Element -&gt; Content
+</span><a href="Text.XML.Light.Types.html#Elem"><span class="hs-identifier hs-var">Elem</span></a></span><span> </span><span class="annot"><span class="annottext">Element :: QName -&gt; [Attr] -&gt; [Content] -&gt; Maybe Line -&gt; Element
+</span><a href="Text.XML.Light.Types.html#Element"><span class="hs-identifier hs-type">Element</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">elLine :: Maybe Line
+</span><a href="Text.XML.Light.Types.html#elLine"><span class="hs-identifier hs-var">elLine</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Line -&gt; Maybe Line
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Line
+</span><a href="#local-6989586621679045058"><span class="hs-identifier hs-var">p</span></a></span><span>
+</span><span id="line-69"></span><span>                           </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">elName :: QName
+</span><a href="Text.XML.Light.Types.html#elName"><span class="hs-identifier hs-var">elName</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045049"><span class="hs-identifier hs-var">new_name</span></a></span><span>
+</span><span id="line-70"></span><span>                           </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">elAttribs :: [Attr]
+</span><a href="Text.XML.Light.Types.html#elAttribs"><span class="hs-identifier hs-var">elAttribs</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Attr -&gt; Attr) -&gt; [Attr] -&gt; [Attr]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">NSInfo -&gt; Attr -&gt; Attr
+</span><a href="Text.XML.Light.Input.html#annotAttr"><span class="hs-identifier hs-var">annotAttr</span></a></span><span> </span><span class="annot"><span class="annottext">NSInfo
+</span><a href="#local-6989586621679045047"><span class="hs-identifier hs-var">new_info</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Attr]
+</span><a href="#local-6989586621679045056"><span class="hs-keyword hs-var">as</span></a></span><span>
+</span><span id="line-71"></span><span>                           </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">elContent :: [Content]
+</span><a href="Text.XML.Light.Types.html#elContent"><span class="hs-identifier hs-var">elContent</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045039"><span class="hs-identifier hs-var">children</span></a></span><span>
+</span><span id="line-72"></span><span>                           </span><span class="hs-special">}</span><span>
+</span><span id="line-73"></span><span>
+</span><span id="line-74"></span><span>  </span><span class="hs-special">(</span><span id="local-6989586621679045039"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045039"><span class="hs-identifier hs-var">children</span></a></span></span><span class="hs-special">,</span><span class="hs-special">(</span><span id="local-6989586621679045052"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045052"><span class="hs-identifier hs-var">siblings</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045051"><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045051"><span class="hs-identifier hs-var">open</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045050"><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045050"><span class="hs-identifier hs-var">toks</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-75"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679045055"><span class="hs-identifier hs-var">empty</span></a></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">NSInfo -&gt; [QName] -&gt; [Token] -&gt; ([Content], [QName], [Token])
+</span><a href="Text.XML.Light.Input.html#nodes"><span class="hs-identifier hs-var">nodes</span></a></span><span> </span><span class="annot"><span class="annottext">NSInfo
+</span><a href="#local-6989586621679045061"><span class="hs-identifier hs-var">cur_info</span></a></span><span> </span><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045060"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045054"><span class="hs-identifier hs-var">ts</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-76"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679045038"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045038"><span class="hs-identifier hs-var">es1</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045037"><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045037"><span class="hs-identifier hs-var">qs1</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045036"><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045036"><span class="hs-identifier hs-var">ts1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NSInfo -&gt; [QName] -&gt; [Token] -&gt; ([Content], [QName], [Token])
+</span><a href="Text.XML.Light.Input.html#nodes"><span class="hs-identifier hs-var">nodes</span></a></span><span> </span><span class="annot"><span class="annottext">NSInfo
+</span><a href="#local-6989586621679045047"><span class="hs-identifier hs-var">new_info</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045049"><span class="hs-identifier hs-var">new_name</span></a></span><span class="annot"><span class="annottext">QName -&gt; [QName] -&gt; [QName]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045060"><span class="hs-identifier hs-var">ps</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045054"><span class="hs-identifier hs-var">ts</span></a></span><span>
+</span><span id="line-77"></span><span>                  </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045038"><span class="hs-identifier hs-var">es1</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-78"></span><span>                      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045037"><span class="hs-identifier hs-var">qs1</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-79"></span><span>                        </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">NSInfo -&gt; [QName] -&gt; [Token] -&gt; ([Content], [QName], [Token])
+</span><a href="Text.XML.Light.Input.html#nodes"><span class="hs-identifier hs-var">nodes</span></a></span><span> </span><span class="annot"><span class="annottext">NSInfo
+</span><a href="#local-6989586621679045061"><span class="hs-identifier hs-var">cur_info</span></a></span><span> </span><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045060"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045036"><span class="hs-identifier hs-var">ts1</span></a></span><span>
+</span><span id="line-80"></span><span>                        </span><span class="annot"><span class="annottext">QName
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045035"><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045035"><span class="hs-identifier hs-var">qs3</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045035"><span class="hs-identifier hs-var">qs3</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045036"><span class="hs-identifier hs-var">ts1</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span class="annot"><a href="Text.XML.Light.Input.html#nodes"><span class="hs-identifier hs-var">nodes</span></a></span><span> </span><span id="local-6989586621679045034"><span class="annot"><span class="annottext">NSInfo
+</span><a href="#local-6989586621679045034"><span class="hs-identifier hs-var">ns</span></a></span></span><span> </span><span id="local-6989586621679045033"><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045033"><span class="hs-identifier hs-var">ps</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Lexer.html#TokEnd"><span class="hs-identifier hs-type">TokEnd</span></a></span><span> </span><span id="local-6989586621679045031"><span class="annot"><span class="annottext">Line
+</span><a href="#local-6989586621679045031"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679045030"><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045030"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045029"><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045029"><span class="hs-identifier hs-var">ts</span></a></span></span><span class="hs-special">)</span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679045028"><span class="annot"><span class="annottext">t1 :: QName
+</span><a href="#local-6989586621679045028"><span class="hs-identifier hs-var hs-var">t1</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NSInfo -&gt; QName -&gt; QName
+</span><a href="Text.XML.Light.Input.html#annotName"><span class="hs-identifier hs-var">annotName</span></a></span><span> </span><span class="annot"><span class="annottext">NSInfo
+</span><a href="#local-6989586621679045034"><span class="hs-identifier hs-var">ns</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045030"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-83"></span><span>                                </span><span class="hs-keyword">in</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">(QName -&gt; Bool) -&gt; [QName] -&gt; ([QName], [QName])
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; ([a], [a])
+</span><span class="hs-identifier hs-var">break</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045028"><span class="hs-identifier hs-var">t1</span></a></span><span> </span><span class="annot"><span class="annottext">QName -&gt; QName -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045033"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-84"></span><span>                                  </span><span class="hs-special">(</span><span id="local-6989586621679045026"><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045026"><span class="hs-keyword hs-var">as</span></a></span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">QName
+</span><span class="hs-identifier">_</span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">[QName]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045026"><span class="hs-keyword hs-var">as</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045029"><span class="hs-identifier hs-var">ts</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-85"></span><span>                                  </span><span class="hs-comment">-- Unknown closing tag. Insert as text.</span><span>
+</span><span id="line-86"></span><span>                                  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[QName]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-87"></span><span>                                    </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679045025"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045025"><span class="hs-identifier hs-var">es</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045024"><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045024"><span class="hs-identifier hs-var">qs</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045023"><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045023"><span class="hs-identifier hs-var">ts1</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NSInfo -&gt; [QName] -&gt; [Token] -&gt; ([Content], [QName], [Token])
+</span><a href="Text.XML.Light.Input.html#nodes"><span class="hs-identifier hs-var">nodes</span></a></span><span> </span><span class="annot"><span class="annottext">NSInfo
+</span><a href="#local-6989586621679045034"><span class="hs-identifier hs-var">ns</span></a></span><span> </span><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045033"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045029"><span class="hs-identifier hs-var">ts</span></a></span><span>
+</span><span id="line-88"></span><span>                                    </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CData -&gt; Content
+</span><a href="Text.XML.Light.Types.html#Text"><span class="hs-identifier hs-var">Text</span></a></span><span> </span><span class="annot"><span class="annottext">CData :: CDataKind -&gt; [Char] -&gt; Maybe Line -&gt; CData
+</span><a href="Text.XML.Light.Types.html#CData"><span class="hs-identifier hs-type">CData</span></a></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-89"></span><span>                                               </span><span class="annot"><span class="annottext">cdLine :: Maybe Line
+</span><a href="Text.XML.Light.Types.html#cdLine"><span class="hs-identifier hs-var">cdLine</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Line -&gt; Maybe Line
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Line
+</span><a href="#local-6989586621679045031"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-90"></span><span>                                               </span><span class="annot"><span class="annottext">cdVerbatim :: CDataKind
+</span><a href="Text.XML.Light.Types.html#cdVerbatim"><span class="hs-identifier hs-var">cdVerbatim</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CDataKind
+</span><a href="Text.XML.Light.Types.html#CDataText"><span class="hs-identifier hs-var">CDataText</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-91"></span><span>                                               </span><span class="annot"><span class="annottext">cdData :: [Char]
+</span><a href="Text.XML.Light.Types.html#cdData"><span class="hs-identifier hs-var">cdData</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">QName -&gt; [Char] -&gt; [Char]
+</span><a href="Text.XML.Light.Output.html#tagEnd"><span class="hs-identifier hs-var">tagEnd</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045030"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-92"></span><span>                                              </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Content -&gt; [Content] -&gt; [Content]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045025"><span class="hs-identifier hs-var">es</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045024"><span class="hs-identifier hs-var">qs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Token]
+</span><a href="#local-6989586621679045023"><span class="hs-identifier hs-var">ts1</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-93"></span><span>
+</span><span id="line-94"></span><span class="annot"><a href="Text.XML.Light.Input.html#nodes"><span class="hs-identifier hs-var">nodes</span></a></span><span> </span><span class="annot"><span class="annottext">NSInfo
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679045019"><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045019"><span class="hs-identifier hs-var">ps</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>                 </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span class="annot"><span class="annottext">[QName]
+</span><a href="#local-6989586621679045019"><span class="hs-identifier hs-var">ps</span></a></span><span class="hs-special">,</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-95"></span><span>
+</span><span id="line-96"></span><span>
+</span><span id="line-97"></span><span class="annot"><a href="Text.XML.Light.Input.html#annotName"><span class="hs-identifier hs-type">annotName</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Input.html#NSInfo"><span class="hs-identifier hs-type">NSInfo</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#QName"><span class="hs-identifier hs-type">QName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#QName"><span class="hs-identifier hs-type">QName</span></a></span><span>
+</span><span id="line-98"></span><span id="annotName"><span class="annot"><span class="annottext">annotName :: NSInfo -&gt; QName -&gt; QName
+</span><a href="Text.XML.Light.Input.html#annotName"><span class="hs-identifier hs-var hs-var">annotName</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679045018"><span class="annot"><span class="annottext">[([Char], [Char])]
+</span><a href="#local-6989586621679045018"><span class="hs-identifier hs-var">namespaces</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045017"><span class="annot"><span class="annottext">Maybe [Char]
+</span><a href="#local-6989586621679045017"><span class="hs-identifier hs-var">def_ns</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679045016"><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045016"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-99"></span><span>  </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045016"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">qURI :: Maybe [Char]
+</span><a href="Text.XML.Light.Types.html#qURI"><span class="hs-identifier hs-var">qURI</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe [Char]
+-&gt; ([Char] -&gt; Maybe [Char]) -&gt; Maybe [Char] -&gt; Maybe [Char]
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="annot"><span class="annottext">Maybe [Char]
+</span><a href="#local-6989586621679045017"><span class="hs-identifier hs-var">def_ns</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Char] -&gt; [([Char], [Char])] -&gt; Maybe [Char]
+forall a b. Eq a =&gt; a -&gt; [(a, b)] -&gt; Maybe b
+</span><span class="hs-operator hs-var">`lookup`</span></span><span> </span><span class="annot"><span class="annottext">[([Char], [Char])]
+</span><a href="#local-6989586621679045018"><span class="hs-identifier hs-var">namespaces</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">QName -&gt; Maybe [Char]
+</span><a href="Text.XML.Light.Types.html#qPrefix"><span class="hs-identifier hs-var hs-var">qPrefix</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045016"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span class="annot"><a href="Text.XML.Light.Input.html#annotAttr"><span class="hs-identifier hs-type">annotAttr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Input.html#NSInfo"><span class="hs-identifier hs-type">NSInfo</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Attr"><span class="hs-identifier hs-type">Attr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Attr"><span class="hs-identifier hs-type">Attr</span></a></span><span>
+</span><span id="line-102"></span><span id="annotAttr"><span class="annot"><span class="annottext">annotAttr :: NSInfo -&gt; Attr -&gt; Attr
+</span><a href="Text.XML.Light.Input.html#annotAttr"><span class="hs-identifier hs-var hs-var">annotAttr</span></a></span></span><span> </span><span id="local-6989586621679045011"><span class="annot"><span class="annottext">NSInfo
+</span><a href="#local-6989586621679045011"><span class="hs-identifier hs-var">ns</span></a></span></span><span> </span><span id="local-6989586621679045010"><span class="annot"><span class="annottext">a :: Attr
+</span><a href="#local-6989586621679045010"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Types.html#Attr"><span class="hs-identifier hs-type">Attr</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">attrKey :: Attr -&gt; QName
+</span><a href="Text.XML.Light.Types.html#attrKey"><span class="hs-identifier hs-var">attrKey</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="local-6989586621679045007"><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045007"><span class="hs-identifier hs-var">k</span></a></span></span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-103"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">QName -&gt; Maybe [Char]
+</span><a href="Text.XML.Light.Types.html#qPrefix"><span class="hs-identifier hs-var hs-var">qPrefix</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045007"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">QName -&gt; [Char]
+</span><a href="Text.XML.Light.Types.html#qName"><span class="hs-identifier hs-var hs-var">qName</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045007"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-104"></span><span>    </span><span class="hs-comment">-- Do not apply the default name-space to unqualified</span><span>
+</span><span id="line-105"></span><span>    </span><span class="hs-comment">-- attributes.  See Section 6.2 of &lt;http://www.w3.org/TR/REC-xml-names&gt;.</span><span>
+</span><span id="line-106"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe [Char]
+</span><span class="hs-identifier hs-var">Nothing</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Attr
+</span><a href="#local-6989586621679045010"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-107"></span><span>    </span><span class="annot"><span class="annottext">(Maybe [Char], [Char])
+</span><span class="hs-identifier">_</span></span><span>                 </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Attr
+</span><a href="#local-6989586621679045010"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">attrKey :: QName
+</span><a href="Text.XML.Light.Types.html#attrKey"><span class="hs-identifier hs-var">attrKey</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NSInfo -&gt; QName -&gt; QName
+</span><a href="Text.XML.Light.Input.html#annotName"><span class="hs-identifier hs-var">annotName</span></a></span><span> </span><span class="annot"><span class="annottext">NSInfo
+</span><a href="#local-6989586621679045011"><span class="hs-identifier hs-var">ns</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045007"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-108"></span><span>
+</span><span id="line-109"></span><span class="annot"><a href="Text.XML.Light.Input.html#addNS"><span class="hs-identifier hs-type">addNS</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Attr"><span class="hs-identifier hs-type">Attr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Input.html#NSInfo"><span class="hs-identifier hs-type">NSInfo</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Input.html#NSInfo"><span class="hs-identifier hs-type">NSInfo</span></a></span><span>
+</span><span id="line-110"></span><span id="addNS"><span class="annot"><span class="annottext">addNS :: Attr -&gt; NSInfo -&gt; NSInfo
+</span><a href="Text.XML.Light.Input.html#addNS"><span class="hs-identifier hs-var hs-var">addNS</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Types.html#Attr"><span class="hs-identifier hs-type">Attr</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">attrKey :: Attr -&gt; QName
+</span><a href="Text.XML.Light.Types.html#attrKey"><span class="hs-identifier hs-var">attrKey</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="local-6989586621679045006"><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045006"><span class="hs-identifier hs-var">key</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">attrVal :: Attr -&gt; [Char]
+</span><a href="Text.XML.Light.Types.html#attrVal"><span class="hs-identifier hs-var">attrVal</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="local-6989586621679045004"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679045004"><span class="hs-identifier hs-var">val</span></a></span></span><span> </span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679045003"><span class="annot"><span class="annottext">[([Char], [Char])]
+</span><a href="#local-6989586621679045003"><span class="hs-identifier hs-var">ns</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045002"><span class="annot"><span class="annottext">Maybe [Char]
+</span><a href="#local-6989586621679045002"><span class="hs-identifier hs-var">def</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-111"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">QName -&gt; Maybe [Char]
+</span><a href="Text.XML.Light.Types.html#qPrefix"><span class="hs-identifier hs-var hs-var">qPrefix</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045006"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">QName -&gt; [Char]
+</span><a href="Text.XML.Light.Types.html#qName"><span class="hs-identifier hs-var hs-var">qName</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679045006"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-112"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe [Char]
+</span><span class="hs-identifier hs-var">Nothing</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;xmlns&quot;</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[([Char], [Char])]
+</span><a href="#local-6989586621679045003"><span class="hs-identifier hs-var">ns</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679045004"><span class="hs-identifier hs-var">val</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Maybe [Char]
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Maybe [Char]
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679045004"><span class="hs-identifier hs-var">val</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-113"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;xmlns&quot;</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679045000"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679045000"><span class="hs-identifier hs-var">k</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679045000"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679045004"><span class="hs-identifier hs-var">val</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([Char], [Char]) -&gt; [([Char], [Char])] -&gt; [([Char], [Char])]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[([Char], [Char])]
+</span><a href="#local-6989586621679045003"><span class="hs-identifier hs-var">ns</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Maybe [Char]
+</span><a href="#local-6989586621679045002"><span class="hs-identifier hs-var">def</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-114"></span><span>    </span><span class="annot"><span class="annottext">(Maybe [Char], [Char])
+</span><span class="hs-identifier">_</span></span><span>                 </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[([Char], [Char])]
+</span><a href="#local-6989586621679045003"><span class="hs-identifier hs-var">ns</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Maybe [Char]
+</span><a href="#local-6989586621679045002"><span class="hs-identifier hs-var">def</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-115"></span></pre></body></html>

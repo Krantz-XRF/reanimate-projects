@@ -1,0 +1,1135 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE ApplicativeDo   #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE PatternSynonyms #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE RankNTypes      #-}</span><span>
+</span><span id="line-4"></span><span>
+</span><span id="line-5"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Scene.Sprite</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-6"></span><span>
+</span><span id="line-7"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">void</span></span><span class="hs-special">)</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Monad.ST</span></span><span>     </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">ST</span></span><span class="hs-special">)</span><span>
+</span><span id="line-9"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Bifunctor</span></span><span>       </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Bifunctor</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">first</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-10"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.STRef</span></span><span>           </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">STRef</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">modifySTRef</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">newSTRef</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">readSTRef</span></span><span class="hs-special">)</span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree</span></span><span>     </span><span class="hs-special">(</span><span class="hs-keyword">pattern</span><span> </span><span class="annot"><span class="hs-identifier">None</span></span><span class="hs-special">)</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Animation.html"><span class="hs-identifier">Reanimate.Animation</span></a></span><span>  </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Animation.html#Animation"><span class="hs-identifier">Animation</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Duration"><span class="hs-identifier">Duration</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier">SVG</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Sync"><span class="hs-identifier">Sync</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Animation.html#SyncStretch"><span class="hs-identifier">SyncStretch</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier">Time</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#dropA"><span class="hs-identifier">dropA</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-13"></span><span>                                       </span><span class="annot"><a href="Reanimate.Animation.html#duration"><span class="hs-identifier">duration</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#getAnimationFrame"><span class="hs-identifier">getAnimationFrame</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Effect.html"><span class="hs-identifier">Reanimate.Effect</span></a></span><span>     </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier">Effect</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#delayE"><span class="hs-identifier">delayE</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Scene.Core.html"><span class="hs-identifier">Reanimate.Scene.Core</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier">Scene</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Core.html#M"><span class="hs-identifier">M</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#ZIndex"><span class="hs-identifier">ZIndex</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#addGen"><span class="hs-identifier">addGen</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#fork"><span class="hs-identifier">fork</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#liftST"><span class="hs-identifier">liftST</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#queryNow"><span class="hs-identifier">queryNow</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#scene"><span class="hs-identifier">scene</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-16"></span><span>                                       </span><span class="annot"><a href="Reanimate.Scene.Core.html#wait"><span class="hs-identifier">wait</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Scene.Var.html"><span class="hs-identifier">Reanimate.Scene.Var</span></a></span><span>  </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier">Var</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#newVar"><span class="hs-identifier">newVar</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#readVar"><span class="hs-identifier">readVar</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#unpackVar"><span class="hs-identifier">unpackVar</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Transition.html"><span class="hs-identifier">Reanimate.Transition</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Transition.html#Transition"><span class="hs-identifier">Transition</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Transition.html#overlapT"><span class="hs-identifier">overlapT</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-comment">-- | Create and render a variable. The rendering will be born at the current timestamp</span><span>
+</span><span id="line-21"></span><span class="hs-comment">--   and will persist until the end of the scene.</span><span>
+</span><span id="line-22"></span><span class="hs-comment">--</span><span>
+</span><span id="line-23"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-24"></span><span class="hs-comment">--</span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-26"></span><span class="hs-comment">-- do var \&lt;- 'simpleVar' 'Reanimate.Svg.Constructors.mkCircle' 0</span><span>
+</span><span id="line-27"></span><span class="hs-comment">--    'Reanimate.Scene.tweenVar' var 2 $ \\val -&gt; 'Reanimate.fromToS' val ('Reanimate.Constants.screenHeight'/2)</span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-29"></span><span class="hs-comment">--</span><span>
+</span><span id="line-30"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_simpleVar.gif&gt;&gt;</span><span>
+</span><span id="line-31"></span><span id="local-6989586621679547060"><span id="local-6989586621679547061"><span class="annot"><a href="Reanimate.Scene.Sprite.html#simpleVar"><span class="hs-identifier hs-type">simpleVar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679547061"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679547061"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547060"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547060"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547061"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-32"></span><span id="simpleVar"><span class="annot"><span class="annottext">simpleVar :: (a -&gt; SVG) -&gt; a -&gt; Scene s (Var s a)
+</span><a href="Reanimate.Scene.Sprite.html#simpleVar"><span class="hs-identifier hs-var hs-var">simpleVar</span></a></span></span><span> </span><span id="local-6989586621679547058"><span class="annot"><span class="annottext">a -&gt; SVG
+</span><a href="#local-6989586621679547058"><span class="hs-identifier hs-var">render</span></a></span></span><span> </span><span id="local-6989586621679547057"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679547057"><span class="hs-identifier hs-var">def</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-33"></span><span>  </span><span id="local-6989586621679547056"><span class="annot"><span class="annottext">Var s a
+</span><a href="#local-6989586621679547056"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">a -&gt; Scene s (Var s a)
+forall a s. a -&gt; Scene s (Var s a)
+</span><a href="Reanimate.Scene.Var.html#newVar"><span class="hs-identifier hs-var">newVar</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679547057"><span class="hs-identifier hs-var">def</span></a></span><span>
+</span><span id="line-34"></span><span>  </span><span class="annot"><span class="annottext">Sprite s
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Frame s SVG -&gt; Scene s (Sprite s)
+forall s. Frame s SVG -&gt; Scene s (Sprite s)
+</span><a href="Reanimate.Scene.Sprite.html#newSprite"><span class="hs-identifier hs-var">newSprite</span></a></span><span> </span><span class="annot"><span class="annottext">(Frame s SVG -&gt; Scene s (Sprite s))
+-&gt; Frame s SVG -&gt; Scene s (Sprite s)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; SVG
+</span><a href="#local-6989586621679547058"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">(a -&gt; SVG) -&gt; Frame s a -&gt; Frame s SVG
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Var s a -&gt; Frame s a
+forall s a. Var s a -&gt; Frame s a
+</span><a href="Reanimate.Scene.Sprite.html#unVar"><span class="hs-identifier hs-var">unVar</span></a></span><span> </span><span class="annot"><span class="annottext">Var s a
+</span><a href="#local-6989586621679547056"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-35"></span><span>  </span><span class="hs-identifier">return</span><span> </span><span class="annot"><span class="annottext">Var s a
+</span><a href="#local-6989586621679547056"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-comment">-- | Helper function for filtering variables.</span><span>
+</span><span id="line-38"></span><span id="local-6989586621679547218"><span id="local-6989586621679547219"><span class="annot"><a href="Reanimate.Scene.Sprite.html#findVar"><span class="hs-identifier hs-type">findVar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679547219"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547218"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547219"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547218"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547218"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547219"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-39"></span><span id="findVar"><span class="annot"><span class="annottext">findVar :: (a -&gt; Bool) -&gt; [Var s a] -&gt; Scene s (Var s a)
+</span><a href="Reanimate.Scene.Sprite.html#findVar"><span class="hs-identifier hs-var hs-var">findVar</span></a></span></span><span> </span><span id="local-6989586621679547051"><span class="annot"><span class="annottext">a -&gt; Bool
+</span><a href="#local-6989586621679547051"><span class="hs-identifier hs-var">_cond</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Scene s (Var s a)
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;Variable not found.&quot;</span></span><span>
+</span><span id="line-40"></span><span class="annot"><a href="Reanimate.Scene.Sprite.html#findVar"><span class="hs-identifier hs-var">findVar</span></a></span><span> </span><span id="local-6989586621679547049"><span class="annot"><span class="annottext">a -&gt; Bool
+</span><a href="#local-6989586621679547049"><span class="hs-identifier hs-var">cond</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679547048"><span class="annot"><span class="annottext">Var s a
+</span><a href="#local-6989586621679547048"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679547047"><span class="annot"><span class="annottext">[Var s a]
+</span><a href="#local-6989586621679547047"><span class="hs-identifier hs-var">vs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-41"></span><span>  </span><span id="local-6989586621679547046"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679547046"><span class="hs-identifier hs-var">val</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Var s a -&gt; Scene s a
+forall s a. Var s a -&gt; Scene s a
+</span><a href="Reanimate.Scene.Var.html#readVar"><span class="hs-identifier hs-var">readVar</span></a></span><span> </span><span class="annot"><span class="annottext">Var s a
+</span><a href="#local-6989586621679547048"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-42"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">a -&gt; Bool
+</span><a href="#local-6989586621679547049"><span class="hs-identifier hs-var">cond</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679547046"><span class="hs-identifier hs-var">val</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Var s a -&gt; Scene s (Var s a)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Var s a
+</span><a href="#local-6989586621679547048"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">(a -&gt; Bool) -&gt; [Var s a] -&gt; Scene s (Var s a)
+forall a s. (a -&gt; Bool) -&gt; [Var s a] -&gt; Scene s (Var s a)
+</span><a href="Reanimate.Scene.Sprite.html#findVar"><span class="hs-identifier hs-var">findVar</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; Bool
+</span><a href="#local-6989586621679547049"><span class="hs-identifier hs-var">cond</span></a></span><span> </span><span class="annot"><span class="annottext">[Var s a]
+</span><a href="#local-6989586621679547047"><span class="hs-identifier hs-var">vs</span></a></span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- | Play an animation once and then remove it. This advances the clock by the duration of the</span><span>
+</span><span id="line-45"></span><span class="hs-comment">--   animation.</span><span>
+</span><span id="line-46"></span><span class="hs-comment">--</span><span>
+</span><span id="line-47"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-48"></span><span class="hs-comment">--</span><span>
+</span><span id="line-49"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-50"></span><span class="hs-comment">-- do 'play' 'Reanimate.Builtin.Documentation.drawBox'</span><span>
+</span><span id="line-51"></span><span class="hs-comment">--    'play' 'Reanimate.Builtin.Documentation.drawCircle'</span><span>
+</span><span id="line-52"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-53"></span><span class="hs-comment">--</span><span>
+</span><span id="line-54"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_play.gif&gt;&gt;</span><span>
+</span><span id="line-55"></span><span id="local-6989586621679547085"><span class="annot"><a href="Reanimate.Scene.Sprite.html#play"><span class="hs-identifier hs-type">play</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Animation"><span class="hs-identifier hs-type">Animation</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547085"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span><span>
+</span><span id="line-56"></span><span id="play"><span class="annot"><span class="annottext">play :: Animation -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#play"><span class="hs-identifier hs-var hs-var">play</span></a></span></span><span> </span><span id="local-6989586621679547044"><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679547044"><span class="hs-identifier hs-var">ani</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Animation -&gt; Scene s (Sprite s)
+forall s. Animation -&gt; Scene s (Sprite s)
+</span><a href="Reanimate.Scene.Sprite.html#newSpriteA"><span class="hs-identifier hs-var">newSpriteA</span></a></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679547044"><span class="hs-identifier hs-var">ani</span></a></span><span> </span><span class="annot"><span class="annottext">Scene s (Sprite s) -&gt; (Sprite s -&gt; Scene s ()) -&gt; Scene s ()
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Sprite s -&gt; Scene s ()
+forall s. Sprite s -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#destroySprite"><span class="hs-identifier hs-var">destroySprite</span></a></span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span class="hs-comment">-- | Sprites are animations with a given time of birth as well as a time of death.</span><span>
+</span><span id="line-59"></span><span class="hs-comment">--   They can be controlled using variables, tweening, and effects.</span><span>
+</span><span id="line-60"></span><span class="hs-keyword">data</span><span> </span><span id="Sprite"><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-var">Sprite</span></a></span></span><span> </span><span id="local-6989586621679547152"><span class="annot"><a href="#local-6989586621679547152"><span class="hs-identifier hs-type">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Sprite"><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-var">Sprite</span></a></span></span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">STRef</span></span><span> </span><span class="annot"><a href="#local-6989586621679547152"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Animation.html#Duration"><span class="hs-identifier hs-type">Duration</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ST</span></span><span> </span><span class="annot"><a href="#local-6989586621679547152"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Animation.html#Duration"><span class="hs-identifier hs-type">Duration</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#ZIndex"><span class="hs-identifier hs-type">ZIndex</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span class="hs-comment">-- | Sprite frame generator. Generates frames over time in a stateful environment.</span><span>
+</span><span id="line-63"></span><span class="hs-keyword">newtype</span><span> </span><span id="Frame"><span class="annot"><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-var">Frame</span></a></span></span><span> </span><span id="local-6989586621679547197"><span class="annot"><a href="#local-6989586621679547197"><span class="hs-identifier hs-type">s</span></a></span></span><span> </span><span id="local-6989586621679547196"><span class="annot"><a href="#local-6989586621679547196"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Frame"><span class="annot"><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-var">Frame</span></a></span></span><span> </span><span class="hs-special">{</span><span id="unFrame"><span class="annot"><span class="annottext">Frame s a -&gt; ST s (Time -&gt; Time -&gt; Time -&gt; a)
+</span><a href="Reanimate.Scene.Sprite.html#unFrame"><span class="hs-identifier hs-var hs-var">unFrame</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ST</span></span><span> </span><span class="annot"><a href="#local-6989586621679547197"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Duration"><span class="hs-identifier hs-type">Duration</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679547196"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span class="hs-special">}</span><span>
+</span><span id="line-64"></span><span>
+</span><span id="line-65"></span><span id="local-6989586621679547038"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679547035"><span class="annot"><span class="hs-identifier hs-type">Functor</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-type">Frame</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547038"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-66"></span><span>  </span><span id="local-6989586621679547033"><span class="annot"><span class="annottext">fmap :: (a -&gt; b) -&gt; Frame s a -&gt; Frame s b
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">fmap</span></span></span><span> </span><span id="local-6989586621679547032"><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679547032"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-type">Frame</span></a></span><span> </span><span id="local-6989586621679547031"><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; Time -&gt; a)
+</span><a href="#local-6989586621679547031"><span class="hs-identifier hs-var">gen</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; Time -&gt; b) -&gt; Frame s b
+forall s a. ST s (Time -&gt; Time -&gt; Time -&gt; a) -&gt; Frame s a
+</span><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-var">Frame</span></a></span><span> </span><span class="annot"><span class="annottext">(ST s (Time -&gt; Time -&gt; Time -&gt; b) -&gt; Frame s b)
+-&gt; ST s (Time -&gt; Time -&gt; Time -&gt; b) -&gt; Frame s b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-67"></span><span>    </span><span id="local-6989586621679547030"><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time -&gt; a
+</span><a href="#local-6989586621679547030"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; Time -&gt; a)
+</span><a href="#local-6989586621679547031"><span class="hs-identifier hs-var">gen</span></a></span><span>
+</span><span id="line-68"></span><span>    </span><span class="hs-identifier">return</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679547029"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547029"><span class="hs-identifier hs-var">real_t</span></a></span></span><span> </span><span id="local-6989586621679547028"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547028"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679547027"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547027"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679547032"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="annot"><span class="annottext">(a -&gt; b) -&gt; a -&gt; b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time -&gt; a
+</span><a href="#local-6989586621679547030"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547029"><span class="hs-identifier hs-var">real_t</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547028"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547027"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-69"></span><span>
+</span><span id="line-70"></span><span id="local-6989586621679547026"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679547017"><span id="local-6989586621679547019"><span id="local-6989586621679547021"><span class="annot"><span class="hs-identifier hs-type">Applicative</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-type">Frame</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547026"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-71"></span><span>  </span><span id="local-6989586621679547015"><span class="annot"><span class="annottext">pure :: a -&gt; Frame s a
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">pure</span></span></span><span> </span><span id="local-6989586621679547014"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679547014"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; Time -&gt; a) -&gt; Frame s a
+forall s a. ST s (Time -&gt; Time -&gt; Time -&gt; a) -&gt; Frame s a
+</span><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-var">Frame</span></a></span><span> </span><span class="annot"><span class="annottext">(ST s (Time -&gt; Time -&gt; Time -&gt; a) -&gt; Frame s a)
+-&gt; ST s (Time -&gt; Time -&gt; Time -&gt; a) -&gt; Frame s a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Time -&gt; Time -&gt; a) -&gt; ST s (Time -&gt; Time -&gt; Time -&gt; a)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="annot"><span class="annottext">Time
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679547014"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-72"></span><span>  </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-type">Frame</span></a></span><span> </span><span id="local-6989586621679547013"><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; Time -&gt; a -&gt; b)
+</span><a href="#local-6989586621679547013"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679547012"><span class="annot"><span class="annottext">&lt;*&gt; :: Frame s (a -&gt; b) -&gt; Frame s a -&gt; Frame s b
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">&lt;*&gt;</span></span></span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-type">Frame</span></a></span><span> </span><span id="local-6989586621679547011"><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; Time -&gt; a)
+</span><a href="#local-6989586621679547011"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; Time -&gt; b) -&gt; Frame s b
+forall s a. ST s (Time -&gt; Time -&gt; Time -&gt; a) -&gt; Frame s a
+</span><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-var">Frame</span></a></span><span> </span><span class="annot"><span class="annottext">(ST s (Time -&gt; Time -&gt; Time -&gt; b) -&gt; Frame s b)
+-&gt; ST s (Time -&gt; Time -&gt; Time -&gt; b) -&gt; Frame s b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-73"></span><span>    </span><span id="local-6989586621679547010"><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time -&gt; a -&gt; b
+</span><a href="#local-6989586621679547010"><span class="hs-identifier hs-var">m1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; Time -&gt; a -&gt; b)
+</span><a href="#local-6989586621679547013"><span class="hs-identifier hs-var">f</span></a></span><span>
+</span><span id="line-74"></span><span>    </span><span id="local-6989586621679547009"><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time -&gt; a
+</span><a href="#local-6989586621679547009"><span class="hs-identifier hs-var">m2</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; Time -&gt; a)
+</span><a href="#local-6989586621679547011"><span class="hs-identifier hs-var">g</span></a></span><span>
+</span><span id="line-75"></span><span>    </span><span class="hs-identifier">return</span><span> </span><span class="hs-operator">$</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679547008"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547008"><span class="hs-identifier hs-var">real_t</span></a></span></span><span> </span><span id="local-6989586621679547007"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547007"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679547006"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547006"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time -&gt; a -&gt; b
+</span><a href="#local-6989586621679547010"><span class="hs-identifier hs-var">m1</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547008"><span class="hs-identifier hs-var">real_t</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547007"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547006"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time -&gt; a
+</span><a href="#local-6989586621679547009"><span class="hs-identifier hs-var">m2</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547008"><span class="hs-identifier hs-var">real_t</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547007"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547006"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-76"></span><span>
+</span><span id="line-77"></span><span class="hs-comment">-- | Dereference a variable as a Sprite frame.</span><span>
+</span><span id="line-78"></span><span class="hs-comment">--</span><span>
+</span><span id="line-79"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-80"></span><span class="hs-comment">--</span><span>
+</span><span id="line-81"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-82"></span><span class="hs-comment">-- do v \&lt;- 'newVar' 0</span><span>
+</span><span id="line-83"></span><span class="hs-comment">--    'newSprite' $ 'Reanimate.Svg.Constructors.mkCircle' \&lt;$\&gt; 'unVar' v</span><span>
+</span><span id="line-84"></span><span class="hs-comment">--    'Reanimate.Scene.tweenVar' v 1 $ \\val -&gt; 'Reanimate.fromToS' val 3</span><span>
+</span><span id="line-85"></span><span class="hs-comment">--    'Reanimate.Scene.tweenVar' v 1 $ \\val -&gt; 'Reanimate.fromToS' val 0</span><span>
+</span><span id="line-86"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-87"></span><span class="hs-comment">--</span><span>
+</span><span id="line-88"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_unVar.gif&gt;&gt;</span><span>
+</span><span id="line-89"></span><span id="local-6989586621679547229"><span id="local-6989586621679547230"><span class="annot"><a href="Reanimate.Scene.Sprite.html#unVar"><span class="hs-identifier hs-type">unVar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547230"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547229"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-type">Frame</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547230"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547229"><span class="hs-identifier hs-type">a</span></a></span></span></span><span>
+</span><span id="line-90"></span><span id="unVar"><span class="annot"><span class="annottext">unVar :: Var s a -&gt; Frame s a
+</span><a href="Reanimate.Scene.Sprite.html#unVar"><span class="hs-identifier hs-var hs-var">unVar</span></a></span></span><span> </span><span id="local-6989586621679547005"><span class="annot"><span class="annottext">Var s a
+</span><a href="#local-6989586621679547005"><span class="hs-identifier hs-var">var</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; Time -&gt; a) -&gt; Frame s a
+forall s a. ST s (Time -&gt; Time -&gt; Time -&gt; a) -&gt; Frame s a
+</span><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-var">Frame</span></a></span><span> </span><span class="annot"><span class="annottext">(ST s (Time -&gt; Time -&gt; Time -&gt; a) -&gt; Frame s a)
+-&gt; ST s (Time -&gt; Time -&gt; Time -&gt; a) -&gt; Frame s a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-91"></span><span>  </span><span id="local-6989586621679547004"><span class="annot"><span class="annottext">Time -&gt; a
+</span><a href="#local-6989586621679547004"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Var s a -&gt; ST s (Time -&gt; a)
+forall s a. Var s a -&gt; ST s (Time -&gt; a)
+</span><a href="Reanimate.Scene.Var.html#unpackVar"><span class="hs-identifier hs-var">unpackVar</span></a></span><span> </span><span class="annot"><span class="annottext">Var s a
+</span><a href="#local-6989586621679547005"><span class="hs-identifier hs-var">var</span></a></span><span>
+</span><span id="line-92"></span><span>  </span><span class="hs-identifier">return</span><span> </span><span class="hs-operator">$</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679547003"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547003"><span class="hs-identifier hs-var">real_t</span></a></span></span><span> </span><span id="local-6989586621679547002"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547002"><span class="hs-identifier hs-var">_d</span></a></span></span><span> </span><span id="local-6989586621679547001"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547001"><span class="hs-identifier hs-var">_t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Time -&gt; a
+</span><a href="#local-6989586621679547004"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679547003"><span class="hs-identifier hs-var">real_t</span></a></span><span>
+</span><span id="line-93"></span><span>
+</span><span id="line-94"></span><span class="hs-comment">-- | Dereference seconds since sprite birth.</span><span>
+</span><span id="line-95"></span><span id="local-6989586621679547141"><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteT"><span class="hs-identifier hs-type">spriteT</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-type">Frame</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547141"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span></span><span>
+</span><span id="line-96"></span><span id="spriteT"><span class="annot"><span class="annottext">spriteT :: Frame s Time
+</span><a href="Reanimate.Scene.Sprite.html#spriteT"><span class="hs-identifier hs-var hs-var">spriteT</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; Time -&gt; Time) -&gt; Frame s Time
+forall s a. ST s (Time -&gt; Time -&gt; Time -&gt; a) -&gt; Frame s a
+</span><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-var">Frame</span></a></span><span> </span><span class="annot"><span class="annottext">(ST s (Time -&gt; Time -&gt; Time -&gt; Time) -&gt; Frame s Time)
+-&gt; ST s (Time -&gt; Time -&gt; Time -&gt; Time) -&gt; Frame s Time
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Time -&gt; Time -&gt; Time)
+-&gt; ST s (Time -&gt; Time -&gt; Time -&gt; Time)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679546999"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546999"><span class="hs-identifier hs-var">_real_t</span></a></span></span><span> </span><span id="local-6989586621679546998"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546998"><span class="hs-identifier hs-var">_d</span></a></span></span><span> </span><span id="local-6989586621679546997"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546997"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546997"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-97"></span><span>
+</span><span id="line-98"></span><span class="hs-comment">-- | Dereference duration of the current sprite.</span><span>
+</span><span id="line-99"></span><span id="local-6989586621679546996"><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteDuration"><span class="hs-identifier hs-type">spriteDuration</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-type">Frame</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546996"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Duration"><span class="hs-identifier hs-type">Duration</span></a></span></span><span>
+</span><span id="line-100"></span><span id="spriteDuration"><span class="annot"><span class="annottext">spriteDuration :: Frame s Time
+</span><a href="Reanimate.Scene.Sprite.html#spriteDuration"><span class="hs-identifier hs-var hs-var">spriteDuration</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; Time -&gt; Time) -&gt; Frame s Time
+forall s a. ST s (Time -&gt; Time -&gt; Time -&gt; a) -&gt; Frame s a
+</span><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-var">Frame</span></a></span><span> </span><span class="annot"><span class="annottext">(ST s (Time -&gt; Time -&gt; Time -&gt; Time) -&gt; Frame s Time)
+-&gt; ST s (Time -&gt; Time -&gt; Time -&gt; Time) -&gt; Frame s Time
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Time -&gt; Time -&gt; Time)
+-&gt; ST s (Time -&gt; Time -&gt; Time -&gt; Time)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679546994"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546994"><span class="hs-identifier hs-var">_real_t</span></a></span></span><span> </span><span id="local-6989586621679546993"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546993"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679546992"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546992"><span class="hs-identifier hs-var">_t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546993"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-101"></span><span>
+</span><span id="line-102"></span><span class="hs-comment">-- | Create new sprite defined by a frame generator. Unless otherwise specified using</span><span>
+</span><span id="line-103"></span><span class="hs-comment">--   'destroySprite', the sprite will die at the end of the scene.</span><span>
+</span><span id="line-104"></span><span class="hs-comment">--</span><span>
+</span><span id="line-105"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-106"></span><span class="hs-comment">--</span><span>
+</span><span id="line-107"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-108"></span><span class="hs-comment">-- do 'newSprite' $ 'Reanimate.Svg.Constructors.mkCircle' \&lt;$\&gt; 'spriteT' -- Circle sprite where radius=time.</span><span>
+</span><span id="line-109"></span><span class="hs-comment">--    'wait' 2</span><span>
+</span><span id="line-110"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-111"></span><span class="hs-comment">--</span><span>
+</span><span id="line-112"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_newSprite.gif&gt;&gt;</span><span>
+</span><span id="line-113"></span><span id="local-6989586621679547237"><span class="annot"><a href="Reanimate.Scene.Sprite.html#newSprite"><span class="hs-identifier hs-type">newSprite</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-type">Frame</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547237"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547237"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547237"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-114"></span><span id="newSprite"><span class="annot"><span class="annottext">newSprite :: Frame s SVG -&gt; Scene s (Sprite s)
+</span><a href="Reanimate.Scene.Sprite.html#newSprite"><span class="hs-identifier hs-var hs-var">newSprite</span></a></span></span><span> </span><span id="local-6989586621679546991"><span class="annot"><span class="annottext">Frame s SVG
+</span><a href="#local-6989586621679546991"><span class="hs-identifier hs-var">render</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-115"></span><span>  </span><span id="local-6989586621679546990"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546990"><span class="hs-identifier hs-var">now</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Scene s Time
+forall s. Scene s Time
+</span><a href="Reanimate.Scene.Core.html#queryNow"><span class="hs-identifier hs-var">queryNow</span></a></span><span>
+</span><span id="line-116"></span><span>  </span><span id="local-6989586621679546989"><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+</span><a href="#local-6989586621679546989"><span class="hs-identifier hs-var">ref</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ST s (STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+-&gt; Scene
+     s (STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+forall s a. ST s a -&gt; Scene s a
+</span><a href="Reanimate.Scene.Core.html#liftST"><span class="hs-identifier hs-var">liftST</span></a></span><span> </span><span class="annot"><span class="annottext">(ST s (STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+ -&gt; Scene
+      s (STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))))
+-&gt; ST
+     s (STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+-&gt; Scene
+     s (STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+-&gt; ST
+     s (STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+forall a s. a -&gt; ST s (STRef s a)
+</span><span class="hs-identifier hs-var">newSTRef</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))
+-&gt; ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">((Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))
+ -&gt; ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+-&gt; (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))
+-&gt; ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679546988"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546988"><span class="hs-identifier hs-var">_d</span></a></span></span><span> </span><span id="local-6989586621679546987"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546987"><span class="hs-identifier hs-var">_t</span></a></span></span><span> </span><span id="local-6989586621679546986"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546986"><span class="hs-identifier hs-var">svg</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546986"><span class="hs-identifier hs-var">svg</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">ZIndex
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-117"></span><span>  </span><span class="annot"><span class="annottext">Gen s -&gt; Scene s ()
+forall s. Gen s -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Core.html#addGen"><span class="hs-identifier hs-var">addGen</span></a></span><span> </span><span class="annot"><span class="annottext">(Gen s -&gt; Scene s ()) -&gt; Gen s -&gt; Scene s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-118"></span><span>    </span><span id="local-6989586621679546985"><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time -&gt; SVG
+</span><a href="#local-6989586621679546985"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Frame s SVG -&gt; ST s (Time -&gt; Time -&gt; Time -&gt; SVG)
+forall s a. Frame s a -&gt; ST s (Time -&gt; Time -&gt; Time -&gt; a)
+</span><a href="Reanimate.Scene.Sprite.html#unFrame"><span class="hs-identifier hs-var hs-var">unFrame</span></a></span><span> </span><span class="annot"><span class="annottext">Frame s SVG
+</span><a href="#local-6989586621679546991"><span class="hs-identifier hs-var">render</span></a></span><span>
+</span><span id="line-119"></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679546984"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546984"><span class="hs-identifier hs-var">spriteDur</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546983"><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))
+</span><a href="#local-6989586621679546983"><span class="hs-identifier hs-var">spriteEffectGen</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+-&gt; ST s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+forall s a. STRef s a -&gt; ST s a
+</span><span class="hs-identifier hs-var">readSTRef</span></span><span> </span><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+</span><a href="#local-6989586621679546989"><span class="hs-identifier hs-var">ref</span></a></span><span>
+</span><span id="line-120"></span><span>    </span><span id="local-6989586621679546982"><span class="annot"><span class="annottext">Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)
+</span><a href="#local-6989586621679546982"><span class="hs-identifier hs-var">spriteEffect</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))
+</span><a href="#local-6989586621679546983"><span class="hs-identifier hs-var">spriteEffectGen</span></a></span><span>
+</span><span id="line-121"></span><span>    </span><span class="hs-identifier">return</span><span> </span><span class="hs-operator">$</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679546981"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546981"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679546980"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546980"><span class="hs-identifier hs-var">absT</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-122"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679546979"><span class="annot"><span class="annottext">relD :: Time
+</span><a href="#local-6989586621679546979"><span class="hs-identifier hs-var hs-var">relD</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546984"><span class="hs-identifier hs-var">spriteDur</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546981"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546984"><span class="hs-identifier hs-var">spriteDur</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546990"><span class="hs-identifier hs-var">now</span></a></span><span>
+</span><span id="line-123"></span><span>          </span><span id="local-6989586621679546977"><span class="annot"><span class="annottext">relT :: Time
+</span><a href="#local-6989586621679546977"><span class="hs-identifier hs-var hs-var">relT</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546980"><span class="hs-identifier hs-var">absT</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546990"><span class="hs-identifier hs-var">now</span></a></span><span>
+</span><span id="line-124"></span><span>          </span><span class="hs-comment">-- Sprite is live [now;duration[</span><span>
+</span><span id="line-125"></span><span>          </span><span class="hs-comment">-- If we're at the end of a scene, sprites</span><span>
+</span><span id="line-126"></span><span>          </span><span class="hs-comment">-- are live: [now;duration]</span><span>
+</span><span id="line-127"></span><span>          </span><span class="hs-comment">-- This behavior is difficult to get right. See the 'bug_*' examples for</span><span>
+</span><span id="line-128"></span><span>          </span><span class="hs-comment">-- automated tests.</span><span>
+</span><span id="line-129"></span><span>          </span><span id="local-6989586621679546976"><span class="annot"><span class="annottext">inTimeSlice :: Bool
+</span><a href="#local-6989586621679546976"><span class="hs-identifier hs-var hs-var">inTimeSlice</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546977"><span class="hs-identifier hs-var">relT</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546977"><span class="hs-identifier hs-var">relT</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546979"><span class="hs-identifier hs-var">relD</span></a></span><span>
+</span><span id="line-130"></span><span>          </span><span id="local-6989586621679546974"><span class="annot"><span class="annottext">isLastFrame :: Bool
+</span><a href="#local-6989586621679546974"><span class="hs-identifier hs-var hs-var">isLastFrame</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546981"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546980"><span class="hs-identifier hs-var">absT</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546977"><span class="hs-identifier hs-var">relT</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546979"><span class="hs-identifier hs-var">relD</span></a></span><span>
+</span><span id="line-131"></span><span>       </span><span class="hs-keyword">in</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679546976"><span class="hs-identifier hs-var">inTimeSlice</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679546974"><span class="hs-identifier hs-var">isLastFrame</span></a></span><span>
+</span><span id="line-132"></span><span>            </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)
+</span><a href="#local-6989586621679546982"><span class="hs-identifier hs-var">spriteEffect</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546979"><span class="hs-identifier hs-var">relD</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546977"><span class="hs-identifier hs-var">relT</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time -&gt; SVG
+</span><a href="#local-6989586621679546985"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546980"><span class="hs-identifier hs-var">absT</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546979"><span class="hs-identifier hs-var">relD</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546977"><span class="hs-identifier hs-var">relT</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-133"></span><span>            </span><span class="hs-keyword">else</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SVG
+</span><span class="hs-identifier hs-var">None</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">ZIndex
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span>
+</span><span id="line-134"></span><span>  </span><span class="hs-identifier">return</span><span> </span><span class="hs-operator">$</span><span> </span><span class="annot"><span class="annottext">Time
+-&gt; STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+-&gt; Sprite s
+forall s.
+Time
+-&gt; STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+-&gt; Sprite s
+</span><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-var">Sprite</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546990"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+</span><a href="#local-6989586621679546989"><span class="hs-identifier hs-var">ref</span></a></span><span>
+</span><span id="line-135"></span><span>
+</span><span id="line-136"></span><span class="hs-comment">-- | Create new sprite defined by a frame generator. The sprite will die at</span><span>
+</span><span id="line-137"></span><span class="hs-comment">--   the end of the scene.</span><span>
+</span><span id="line-138"></span><span id="local-6989586621679546972"><span class="annot"><a href="Reanimate.Scene.Sprite.html#newSprite_"><span class="hs-identifier hs-type">newSprite_</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-type">Frame</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546972"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546972"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span><span>
+</span><span id="line-139"></span><span id="newSprite_"><span class="annot"><span class="annottext">newSprite_ :: Frame s SVG -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#newSprite_"><span class="hs-identifier hs-var hs-var">newSprite_</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Scene s (Sprite s) -&gt; Scene s ()
+forall (f :: * -&gt; *) a. Functor f =&gt; f a -&gt; f ()
+</span><span class="hs-identifier hs-var">void</span></span><span> </span><span class="annot"><span class="annottext">(Scene s (Sprite s) -&gt; Scene s ())
+-&gt; (Frame s SVG -&gt; Scene s (Sprite s)) -&gt; Frame s SVG -&gt; Scene s ()
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Frame s SVG -&gt; Scene s (Sprite s)
+forall s. Frame s SVG -&gt; Scene s (Sprite s)
+</span><a href="Reanimate.Scene.Sprite.html#newSprite"><span class="hs-identifier hs-var">newSprite</span></a></span><span>
+</span><span id="line-140"></span><span>
+</span><span id="line-141"></span><span class="hs-comment">-- | Create a new sprite from an animation. This advances the clock by the</span><span>
+</span><span id="line-142"></span><span class="hs-comment">--   duration of the animation. Unless otherwise specified using</span><span>
+</span><span id="line-143"></span><span class="hs-comment">--   'destroySprite', the sprite will die at the end of the scene.</span><span>
+</span><span id="line-144"></span><span class="hs-comment">--</span><span>
+</span><span id="line-145"></span><span class="hs-comment">--   Note: If the scene doesn't end immediately after the duration of the</span><span>
+</span><span id="line-146"></span><span class="hs-comment">--   animation, the animation will be stretched to match the lifetime of the</span><span>
+</span><span id="line-147"></span><span class="hs-comment">--   sprite. See 'newSpriteA'' and 'play'.</span><span>
+</span><span id="line-148"></span><span class="hs-comment">--</span><span>
+</span><span id="line-149"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-150"></span><span class="hs-comment">--</span><span>
+</span><span id="line-151"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-152"></span><span class="hs-comment">-- do 'fork' $ 'newSpriteA' 'Reanimate.Builtin.Documentation.drawCircle'</span><span>
+</span><span id="line-153"></span><span class="hs-comment">--    'play' 'Reanimate.Builtin.Documentation.drawBox'</span><span>
+</span><span id="line-154"></span><span class="hs-comment">--    'play' $ 'Reanimate.Animation.reverseA' 'Reanimate.Builtin.Documentation.drawBox'</span><span>
+</span><span id="line-155"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-156"></span><span class="hs-comment">--</span><span>
+</span><span id="line-157"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_newSpriteA.gif&gt;&gt;</span><span>
+</span><span id="line-158"></span><span id="local-6989586621679547215"><span class="annot"><a href="Reanimate.Scene.Sprite.html#newSpriteA"><span class="hs-identifier hs-type">newSpriteA</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Animation"><span class="hs-identifier hs-type">Animation</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547215"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547215"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-159"></span><span id="newSpriteA"><span class="annot"><span class="annottext">newSpriteA :: Animation -&gt; Scene s (Sprite s)
+</span><a href="Reanimate.Scene.Sprite.html#newSpriteA"><span class="hs-identifier hs-var hs-var">newSpriteA</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Sync -&gt; Animation -&gt; Scene s (Sprite s)
+forall s. Sync -&gt; Animation -&gt; Scene s (Sprite s)
+</span><a href="Reanimate.Scene.Sprite.html#newSpriteA%27"><span class="hs-identifier hs-var">newSpriteA'</span></a></span><span> </span><span class="annot"><span class="annottext">Sync
+</span><a href="Reanimate.Animation.html#SyncStretch"><span class="hs-identifier hs-var">SyncStretch</span></a></span><span>
+</span><span id="line-160"></span><span>
+</span><span id="line-161"></span><span class="hs-comment">-- | Create a new sprite from an animation and specify the synchronization policy. This advances</span><span>
+</span><span id="line-162"></span><span class="hs-comment">--   the clock by the duration of the animation.</span><span>
+</span><span id="line-163"></span><span class="hs-comment">--</span><span>
+</span><span id="line-164"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-165"></span><span class="hs-comment">--</span><span>
+</span><span id="line-166"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-167"></span><span class="hs-comment">-- do 'fork' $ 'newSpriteA'' 'Reanimate.Animation.SyncFreeze' 'Reanimate.Builtin.Documentation.drawCircle'</span><span>
+</span><span id="line-168"></span><span class="hs-comment">--    'play' 'Reanimate.Builtin.Documentation.drawBox'</span><span>
+</span><span id="line-169"></span><span class="hs-comment">--    'play' $ 'Reanimate.Animation.reverseA' 'Reanimate.Builtin.Documentation.drawBox'</span><span>
+</span><span id="line-170"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-171"></span><span class="hs-comment">--</span><span>
+</span><span id="line-172"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_newSpriteA'.gif&gt;&gt;</span><span>
+</span><span id="line-173"></span><span id="local-6989586621679547143"><span class="annot"><a href="Reanimate.Scene.Sprite.html#newSpriteA%27"><span class="hs-identifier hs-type">newSpriteA'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Sync"><span class="hs-identifier hs-type">Sync</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Animation"><span class="hs-identifier hs-type">Animation</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547143"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547143"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-174"></span><span id="newSpriteA%27"><span class="annot"><span class="annottext">newSpriteA' :: Sync -&gt; Animation -&gt; Scene s (Sprite s)
+</span><a href="Reanimate.Scene.Sprite.html#newSpriteA%27"><span class="hs-identifier hs-var hs-var">newSpriteA'</span></a></span></span><span> </span><span id="local-6989586621679546968"><span class="annot"><span class="annottext">Sync
+</span><a href="#local-6989586621679546968"><span class="hs-identifier hs-var">sync</span></a></span></span><span> </span><span id="local-6989586621679546967"><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679546967"><span class="hs-identifier hs-var">animation</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-175"></span><span>  </span><span class="annot"><span class="annottext">Frame s SVG -&gt; Scene s (Sprite s)
+forall s. Frame s SVG -&gt; Scene s (Sprite s)
+</span><a href="Reanimate.Scene.Sprite.html#newSprite"><span class="hs-identifier hs-var">newSprite</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Sync -&gt; Animation -&gt; Time -&gt; Time -&gt; SVG
+</span><a href="Reanimate.Animation.html#getAnimationFrame"><span class="hs-identifier hs-var">getAnimationFrame</span></a></span><span> </span><span class="annot"><span class="annottext">Sync
+</span><a href="#local-6989586621679546968"><span class="hs-identifier hs-var">sync</span></a></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679546967"><span class="hs-identifier hs-var">animation</span></a></span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Time -&gt; SVG) -&gt; Frame s Time -&gt; Frame s (Time -&gt; SVG)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Frame s Time
+forall s. Frame s Time
+</span><a href="Reanimate.Scene.Sprite.html#spriteT"><span class="hs-identifier hs-var">spriteT</span></a></span><span> </span><span class="annot"><span class="annottext">Frame s (Time -&gt; SVG) -&gt; Frame s Time -&gt; Frame s SVG
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Frame s Time
+forall s. Frame s Time
+</span><a href="Reanimate.Scene.Sprite.html#spriteDuration"><span class="hs-identifier hs-var">spriteDuration</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-176"></span><span>    </span><span class="annot"><span class="annottext">Scene s (Sprite s) -&gt; Scene s () -&gt; Scene s (Sprite s)
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Scene s ()
+forall s. Time -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Core.html#wait"><span class="hs-identifier hs-var">wait</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Animation -&gt; Time
+</span><a href="Reanimate.Animation.html#duration"><span class="hs-identifier hs-var">duration</span></a></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679546967"><span class="hs-identifier hs-var">animation</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-177"></span><span>
+</span><span id="line-178"></span><span class="hs-comment">-- | Create a sprite from a static SVG image.</span><span>
+</span><span id="line-179"></span><span class="hs-comment">--</span><span>
+</span><span id="line-180"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-181"></span><span class="hs-comment">--</span><span>
+</span><span id="line-182"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-183"></span><span class="hs-comment">-- do 'newSpriteSVG' $ 'Reanimate.Svg.Constructors.mkBackground' &quot;lightblue&quot;</span><span>
+</span><span id="line-184"></span><span class="hs-comment">--    'play' 'Reanimate.Builtin.Documentation.drawCircle'</span><span>
+</span><span id="line-185"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-186"></span><span class="hs-comment">--</span><span>
+</span><span id="line-187"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_newSpriteSVG.gif&gt;&gt;</span><span>
+</span><span id="line-188"></span><span id="local-6989586621679547137"><span class="annot"><a href="Reanimate.Scene.Sprite.html#newSpriteSVG"><span class="hs-identifier hs-type">newSpriteSVG</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547137"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547137"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-189"></span><span id="newSpriteSVG"><span class="annot"><span class="annottext">newSpriteSVG :: SVG -&gt; Scene s (Sprite s)
+</span><a href="Reanimate.Scene.Sprite.html#newSpriteSVG"><span class="hs-identifier hs-var hs-var">newSpriteSVG</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Frame s SVG -&gt; Scene s (Sprite s)
+forall s. Frame s SVG -&gt; Scene s (Sprite s)
+</span><a href="Reanimate.Scene.Sprite.html#newSprite"><span class="hs-identifier hs-var">newSprite</span></a></span><span> </span><span class="annot"><span class="annottext">(Frame s SVG -&gt; Scene s (Sprite s))
+-&gt; (SVG -&gt; Frame s SVG) -&gt; SVG -&gt; Scene s (Sprite s)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; Frame s SVG
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span>
+</span><span id="line-190"></span><span>
+</span><span id="line-191"></span><span class="hs-comment">-- | Create a permanent sprite from a static SVG image. Same as `newSpriteSVG`</span><span>
+</span><span id="line-192"></span><span class="hs-comment">--   but the sprite isn't returned and thus cannot be destroyed.</span><span>
+</span><span id="line-193"></span><span id="local-6989586621679546964"><span class="annot"><a href="Reanimate.Scene.Sprite.html#newSpriteSVG_"><span class="hs-identifier hs-type">newSpriteSVG_</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546964"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span><span>
+</span><span id="line-194"></span><span id="newSpriteSVG_"><span class="annot"><span class="annottext">newSpriteSVG_ :: SVG -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#newSpriteSVG_"><span class="hs-identifier hs-var hs-var">newSpriteSVG_</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Scene s (Sprite s) -&gt; Scene s ()
+forall (f :: * -&gt; *) a. Functor f =&gt; f a -&gt; f ()
+</span><span class="hs-identifier hs-var">void</span></span><span> </span><span class="annot"><span class="annottext">(Scene s (Sprite s) -&gt; Scene s ())
+-&gt; (SVG -&gt; Scene s (Sprite s)) -&gt; SVG -&gt; Scene s ()
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; Scene s (Sprite s)
+forall s. SVG -&gt; Scene s (Sprite s)
+</span><a href="Reanimate.Scene.Sprite.html#newSpriteSVG"><span class="hs-identifier hs-var">newSpriteSVG</span></a></span><span>
+</span><span id="line-195"></span><span>
+</span><span id="line-196"></span><span class="hs-comment">-- | Change the rendering of a sprite using data from a variable. If data from several variables</span><span>
+</span><span id="line-197"></span><span class="hs-comment">--   is needed, use a frame generator instead.</span><span>
+</span><span id="line-198"></span><span class="hs-comment">--</span><span>
+</span><span id="line-199"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-200"></span><span class="hs-comment">--</span><span>
+</span><span id="line-201"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-202"></span><span class="hs-comment">-- do s \&lt;- 'fork' $ 'newSpriteA' 'Reanimate.Builtin.Documentation.drawBox'</span><span>
+</span><span id="line-203"></span><span class="hs-comment">--    v \&lt;- 'newVar' 0</span><span>
+</span><span id="line-204"></span><span class="hs-comment">--    'applyVar' v s 'Reanimate.Svg.Constructors.rotate'</span><span>
+</span><span id="line-205"></span><span class="hs-comment">--    'Reanimate.Scene.tweenVar' v 2 $ \\val -&gt; 'Reanimate.fromToS' val 90</span><span>
+</span><span id="line-206"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-207"></span><span class="hs-comment">--</span><span>
+</span><span id="line-208"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_applyVar.gif&gt;&gt;</span><span>
+</span><span id="line-209"></span><span id="local-6989586621679547117"><span id="local-6989586621679547118"><span class="annot"><a href="Reanimate.Scene.Sprite.html#applyVar"><span class="hs-identifier hs-type">applyVar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547118"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547117"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547118"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679547117"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547118"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-210"></span><span id="applyVar"><span class="annot"><span class="annottext">applyVar :: Var s a -&gt; Sprite s -&gt; (a -&gt; SVG -&gt; SVG) -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#applyVar"><span class="hs-identifier hs-var hs-var">applyVar</span></a></span></span><span> </span><span id="local-6989586621679546961"><span class="annot"><span class="annottext">Var s a
+</span><a href="#local-6989586621679546961"><span class="hs-identifier hs-var">var</span></a></span></span><span> </span><span id="local-6989586621679546960"><span class="annot"><span class="annottext">Sprite s
+</span><a href="#local-6989586621679546960"><span class="hs-identifier hs-var">sprite</span></a></span></span><span> </span><span id="local-6989586621679546959"><span class="annot"><span class="annottext">a -&gt; SVG -&gt; SVG
+</span><a href="#local-6989586621679546959"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Sprite s -&gt; Frame s ((SVG, ZIndex) -&gt; (SVG, ZIndex)) -&gt; Scene s ()
+forall s.
+Sprite s -&gt; Frame s ((SVG, ZIndex) -&gt; (SVG, ZIndex)) -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#spriteModify"><span class="hs-identifier hs-var">spriteModify</span></a></span><span> </span><span class="annot"><span class="annottext">Sprite s
+</span><a href="#local-6989586621679546960"><span class="hs-identifier hs-var">sprite</span></a></span><span> </span><span class="annot"><span class="annottext">(Frame s ((SVG, ZIndex) -&gt; (SVG, ZIndex)) -&gt; Scene s ())
+-&gt; Frame s ((SVG, ZIndex) -&gt; (SVG, ZIndex)) -&gt; Scene s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-211"></span><span>  </span><span id="local-6989586621679546957"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546957"><span class="hs-identifier hs-var">varFn</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Var s a -&gt; Frame s a
+forall s a. Var s a -&gt; Frame s a
+</span><a href="Reanimate.Scene.Sprite.html#unVar"><span class="hs-identifier hs-var">unVar</span></a></span><span> </span><span class="annot"><span class="annottext">Var s a
+</span><a href="#local-6989586621679546961"><span class="hs-identifier hs-var">var</span></a></span><span>
+</span><span id="line-212"></span><span>  </span><span class="hs-identifier">return</span><span> </span><span class="hs-operator">$</span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (SVG, ZIndex) -&gt; (SVG, ZIndex)
+forall (p :: * -&gt; * -&gt; *) a b c.
+Bifunctor p =&gt;
+(a -&gt; b) -&gt; p a c -&gt; p b c
+</span><span class="hs-identifier hs-var">first</span></span><span> </span><span class="annot"><span class="annottext">((SVG -&gt; SVG) -&gt; (SVG, ZIndex) -&gt; (SVG, ZIndex))
+-&gt; (SVG -&gt; SVG) -&gt; (SVG, ZIndex) -&gt; (SVG, ZIndex)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; SVG -&gt; SVG
+</span><a href="#local-6989586621679546959"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546957"><span class="hs-identifier hs-var">varFn</span></a></span><span>
+</span><span id="line-213"></span><span>
+</span><span id="line-214"></span><span class="hs-comment">-- | Destroy a sprite, preventing it from being rendered in the future of the scene.</span><span>
+</span><span id="line-215"></span><span class="hs-comment">--   If 'destroySprite' is invoked multiple times, the earliest time-of-death is used.</span><span>
+</span><span id="line-216"></span><span class="hs-comment">--</span><span>
+</span><span id="line-217"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-218"></span><span class="hs-comment">--</span><span>
+</span><span id="line-219"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-220"></span><span class="hs-comment">-- do s &lt;- 'newSpriteSVG' $ 'Reanimate.Svg.Constructors.withFillOpacity' 1 $ 'Reanimate.Svg.Constructors.mkCircle' 1</span><span>
+</span><span id="line-221"></span><span class="hs-comment">--    'fork' $ 'wait' 1 \&gt;\&gt; 'destroySprite' s</span><span>
+</span><span id="line-222"></span><span class="hs-comment">--    'play' 'Reanimate.Builtin.Documentation.drawBox'</span><span>
+</span><span id="line-223"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-224"></span><span class="hs-comment">--</span><span>
+</span><span id="line-225"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_destroySprite.gif&gt;&gt;</span><span>
+</span><span id="line-226"></span><span id="local-6989586621679547212"><span class="annot"><a href="Reanimate.Scene.Sprite.html#destroySprite"><span class="hs-identifier hs-type">destroySprite</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547212"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547212"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span><span>
+</span><span id="line-227"></span><span id="destroySprite"><span class="annot"><span class="annottext">destroySprite :: Sprite s -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#destroySprite"><span class="hs-identifier hs-var hs-var">destroySprite</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679546956"><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+</span><a href="#local-6989586621679546956"><span class="hs-identifier hs-var">ref</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-228"></span><span>  </span><span id="local-6989586621679546955"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546955"><span class="hs-identifier hs-var">now</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Scene s Time
+forall s. Scene s Time
+</span><a href="Reanimate.Scene.Core.html#queryNow"><span class="hs-identifier hs-var">queryNow</span></a></span><span>
+</span><span id="line-229"></span><span>  </span><span class="annot"><span class="annottext">ST s () -&gt; Scene s ()
+forall s a. ST s a -&gt; Scene s a
+</span><a href="Reanimate.Scene.Core.html#liftST"><span class="hs-identifier hs-var">liftST</span></a></span><span> </span><span class="annot"><span class="annottext">(ST s () -&gt; Scene s ()) -&gt; ST s () -&gt; Scene s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-230"></span><span>    </span><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+-&gt; ((Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+    -&gt; (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+-&gt; ST s ()
+forall s a. STRef s a -&gt; (a -&gt; a) -&gt; ST s ()
+</span><span class="hs-identifier hs-var">modifySTRef</span></span><span> </span><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+</span><a href="#local-6989586621679546956"><span class="hs-identifier hs-var">ref</span></a></span><span> </span><span class="annot"><span class="annottext">(((Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+  -&gt; (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+ -&gt; ST s ())
+-&gt; ((Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+    -&gt; (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+-&gt; ST s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span class="hs-special">(</span><span id="local-6989586621679546954"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546954"><span class="hs-identifier hs-var">ttl</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546953"><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))
+</span><a href="#local-6989586621679546953"><span class="hs-identifier hs-var">render</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-231"></span><span>      </span><span class="hs-special">(</span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546954"><span class="hs-identifier hs-var">ttl</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546955"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">min</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546954"><span class="hs-identifier hs-var">ttl</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546955"><span class="hs-identifier hs-var">now</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))
+</span><a href="#local-6989586621679546953"><span class="hs-identifier hs-var">render</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-232"></span><span>
+</span><span id="line-233"></span><span class="hs-comment">-- | Low-level frame modifier.</span><span>
+</span><span id="line-234"></span><span id="local-6989586621679547134"><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteModify"><span class="hs-identifier hs-type">spriteModify</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547134"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier hs-type">Frame</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547134"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#ZIndex"><span class="hs-identifier hs-type">ZIndex</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#ZIndex"><span class="hs-identifier hs-type">ZIndex</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547134"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span><span>
+</span><span id="line-235"></span><span id="spriteModify"><span class="annot"><span class="annottext">spriteModify :: Sprite s -&gt; Frame s ((SVG, ZIndex) -&gt; (SVG, ZIndex)) -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#spriteModify"><span class="hs-identifier hs-var hs-var">spriteModify</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span id="local-6989586621679546951"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546951"><span class="hs-identifier hs-var">born</span></a></span></span><span> </span><span id="local-6989586621679546950"><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+</span><a href="#local-6989586621679546950"><span class="hs-identifier hs-var">ref</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679546949"><span class="annot"><span class="annottext">Frame s ((SVG, ZIndex) -&gt; (SVG, ZIndex))
+</span><a href="#local-6989586621679546949"><span class="hs-identifier hs-var">modFn</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ST s () -&gt; Scene s ()
+forall s a. ST s a -&gt; Scene s a
+</span><a href="Reanimate.Scene.Core.html#liftST"><span class="hs-identifier hs-var">liftST</span></a></span><span> </span><span class="annot"><span class="annottext">(ST s () -&gt; Scene s ()) -&gt; ST s () -&gt; Scene s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-236"></span><span>  </span><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+-&gt; ((Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+    -&gt; (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+-&gt; ST s ()
+forall s a. STRef s a -&gt; (a -&gt; a) -&gt; ST s ()
+</span><span class="hs-identifier hs-var">modifySTRef</span></span><span> </span><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+</span><a href="#local-6989586621679546950"><span class="hs-identifier hs-var">ref</span></a></span><span> </span><span class="annot"><span class="annottext">(((Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+  -&gt; (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+ -&gt; ST s ())
+-&gt; ((Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+    -&gt; (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+-&gt; ST s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span class="hs-special">(</span><span id="local-6989586621679546948"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546948"><span class="hs-identifier hs-var">ttl</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546947"><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))
+</span><a href="#local-6989586621679546947"><span class="hs-identifier hs-var">renderGen</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-237"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546948"><span class="hs-identifier hs-var">ttl</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-238"></span><span>      </span><span class="hs-keyword">do</span><span>
+</span><span id="line-239"></span><span>        </span><span id="local-6989586621679546946"><span class="annot"><span class="annottext">Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)
+</span><a href="#local-6989586621679546946"><span class="hs-identifier hs-var">render</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))
+</span><a href="#local-6989586621679546947"><span class="hs-identifier hs-var">renderGen</span></a></span><span>
+</span><span id="line-240"></span><span>        </span><span id="local-6989586621679546945"><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time -&gt; (SVG, ZIndex) -&gt; (SVG, ZIndex)
+</span><a href="#local-6989586621679546945"><span class="hs-identifier hs-var">modRender</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Frame s ((SVG, ZIndex) -&gt; (SVG, ZIndex))
+-&gt; ST s (Time -&gt; Time -&gt; Time -&gt; (SVG, ZIndex) -&gt; (SVG, ZIndex))
+forall s a. Frame s a -&gt; ST s (Time -&gt; Time -&gt; Time -&gt; a)
+</span><a href="Reanimate.Scene.Sprite.html#unFrame"><span class="hs-identifier hs-var hs-var">unFrame</span></a></span><span> </span><span class="annot"><span class="annottext">Frame s ((SVG, ZIndex) -&gt; (SVG, ZIndex))
+</span><a href="#local-6989586621679546949"><span class="hs-identifier hs-var">modFn</span></a></span><span>
+</span><span id="line-241"></span><span>        </span><span class="hs-identifier">return</span><span> </span><span class="hs-operator">$</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679546944"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546944"><span class="hs-identifier hs-var">relD</span></a></span></span><span> </span><span id="local-6989586621679546943"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546943"><span class="hs-identifier hs-var">relT</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-242"></span><span>          </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679546942"><span class="annot"><span class="annottext">absT :: Time
+</span><a href="#local-6989586621679546942"><span class="hs-identifier hs-var hs-var">absT</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546943"><span class="hs-identifier hs-var">relT</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546951"><span class="hs-identifier hs-var">born</span></a></span><span> </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time -&gt; (SVG, ZIndex) -&gt; (SVG, ZIndex)
+</span><a href="#local-6989586621679546945"><span class="hs-identifier hs-var">modRender</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546942"><span class="hs-identifier hs-var">absT</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546944"><span class="hs-identifier hs-var">relD</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546943"><span class="hs-identifier hs-var">relT</span></a></span><span> </span><span class="annot"><span class="annottext">((SVG, ZIndex) -&gt; (SVG, ZIndex))
+-&gt; (SVG -&gt; (SVG, ZIndex)) -&gt; SVG -&gt; (SVG, ZIndex)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)
+</span><a href="#local-6989586621679546946"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546944"><span class="hs-identifier hs-var">relD</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546943"><span class="hs-identifier hs-var">relT</span></a></span><span>
+</span><span id="line-243"></span><span>    </span><span class="hs-special">)</span><span>
+</span><span id="line-244"></span><span>
+</span><span id="line-245"></span><span class="hs-comment">-- | Map the SVG output of a sprite.</span><span>
+</span><span id="line-246"></span><span class="hs-comment">--</span><span>
+</span><span id="line-247"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-248"></span><span class="hs-comment">--</span><span>
+</span><span id="line-249"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-250"></span><span class="hs-comment">-- do s \&lt;- 'fork' $ 'newSpriteA' 'Reanimate.Builtin.Documentation.drawCircle'</span><span>
+</span><span id="line-251"></span><span class="hs-comment">--    'wait' 1</span><span>
+</span><span id="line-252"></span><span class="hs-comment">--    'spriteMap' s 'Reanimate.Svg.Constructors.flipYAxis'</span><span>
+</span><span id="line-253"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-254"></span><span class="hs-comment">--</span><span>
+</span><span id="line-255"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_spriteMap.gif&gt;&gt;</span><span>
+</span><span id="line-256"></span><span id="local-6989586621679546940"><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteMap"><span class="hs-identifier hs-type">spriteMap</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546940"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546940"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span><span>
+</span><span id="line-257"></span><span id="spriteMap"><span class="annot"><span class="annottext">spriteMap :: Sprite s -&gt; (SVG -&gt; SVG) -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#spriteMap"><span class="hs-identifier hs-var hs-var">spriteMap</span></a></span></span><span> </span><span id="local-6989586621679546938"><span class="annot"><span class="annottext">sprite :: Sprite s
+</span><a href="#local-6989586621679546938"><span class="hs-identifier hs-var">sprite</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span id="local-6989586621679546937"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546937"><span class="hs-identifier hs-var">born</span></a></span></span><span> </span><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679546936"><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="#local-6989586621679546936"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-258"></span><span>  </span><span id="local-6989586621679546935"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546935"><span class="hs-identifier hs-var">now</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Scene s Time
+forall s. Scene s Time
+</span><a href="Reanimate.Scene.Core.html#queryNow"><span class="hs-identifier hs-var">queryNow</span></a></span><span>
+</span><span id="line-259"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679546934"><span class="annot"><span class="annottext">tDelta :: Time
+</span><a href="#local-6989586621679546934"><span class="hs-identifier hs-var hs-var">tDelta</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546935"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546937"><span class="hs-identifier hs-var">born</span></a></span><span>
+</span><span id="line-260"></span><span>  </span><span class="annot"><span class="annottext">Sprite s -&gt; Frame s ((SVG, ZIndex) -&gt; (SVG, ZIndex)) -&gt; Scene s ()
+forall s.
+Sprite s -&gt; Frame s ((SVG, ZIndex) -&gt; (SVG, ZIndex)) -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#spriteModify"><span class="hs-identifier hs-var">spriteModify</span></a></span><span> </span><span class="annot"><span class="annottext">Sprite s
+</span><a href="#local-6989586621679546938"><span class="hs-identifier hs-var">sprite</span></a></span><span> </span><span class="annot"><span class="annottext">(Frame s ((SVG, ZIndex) -&gt; (SVG, ZIndex)) -&gt; Scene s ())
+-&gt; Frame s ((SVG, ZIndex) -&gt; (SVG, ZIndex)) -&gt; Scene s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-261"></span><span>    </span><span id="local-6989586621679546933"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546933"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Frame s Time
+forall s. Frame s Time
+</span><a href="Reanimate.Scene.Sprite.html#spriteT"><span class="hs-identifier hs-var">spriteT</span></a></span><span>
+</span><span id="line-262"></span><span>    </span><span class="hs-identifier">return</span><span> </span><span class="hs-operator">$</span><span> </span><span class="hs-glyph">\</span><span class="hs-special">(</span><span id="local-6989586621679546932"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546932"><span class="hs-identifier hs-var">svg</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546931"><span class="annot"><span class="annottext">ZIndex
+</span><a href="#local-6989586621679546931"><span class="hs-identifier hs-var">zindex</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-keyword">if</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546933"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546934"><span class="hs-identifier hs-var">tDelta</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546932"><span class="hs-identifier hs-var">svg</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="#local-6989586621679546936"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546932"><span class="hs-identifier hs-var">svg</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">ZIndex
+</span><a href="#local-6989586621679546931"><span class="hs-identifier hs-var">zindex</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-263"></span><span>
+</span><span id="line-264"></span><span class="hs-comment">-- | Modify the output of a sprite between @now@ and @now+duration@.</span><span>
+</span><span id="line-265"></span><span class="hs-comment">--</span><span>
+</span><span id="line-266"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-267"></span><span class="hs-comment">--</span><span>
+</span><span id="line-268"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-269"></span><span class="hs-comment">-- do s \&lt;- 'fork' $ 'newSpriteA' 'Reanimate.Builtin.Documentation.drawCircle'</span><span>
+</span><span id="line-270"></span><span class="hs-comment">--    'spriteTween' s 1 $ \\val -&gt; 'Reanimate.Svg.Constructors.translate' ('Reanimate.Constants.screenWidth'*0.3*val) 0</span><span>
+</span><span id="line-271"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-272"></span><span class="hs-comment">--</span><span>
+</span><span id="line-273"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_spriteTween.gif&gt;&gt;</span><span>
+</span><span id="line-274"></span><span id="local-6989586621679546930"><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteTween"><span class="hs-identifier hs-type">spriteTween</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546930"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Duration"><span class="hs-identifier hs-type">Duration</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546930"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span><span>
+</span><span id="line-275"></span><span id="spriteTween"><span class="annot"><span class="annottext">spriteTween :: Sprite s -&gt; Time -&gt; (Time -&gt; SVG -&gt; SVG) -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#spriteTween"><span class="hs-identifier hs-var hs-var">spriteTween</span></a></span></span><span> </span><span id="local-6989586621679546928"><span class="annot"><span class="annottext">sprite :: Sprite s
+</span><a href="#local-6989586621679546928"><span class="hs-identifier hs-var">sprite</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span id="local-6989586621679546927"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546927"><span class="hs-identifier hs-var">born</span></a></span></span><span> </span><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679546926"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546926"><span class="hs-identifier hs-var">dur</span></a></span></span><span> </span><span id="local-6989586621679546925"><span class="annot"><span class="annottext">Time -&gt; SVG -&gt; SVG
+</span><a href="#local-6989586621679546925"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-276"></span><span>  </span><span id="local-6989586621679546924"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546924"><span class="hs-identifier hs-var">now</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Scene s Time
+forall s. Scene s Time
+</span><a href="Reanimate.Scene.Core.html#queryNow"><span class="hs-identifier hs-var">queryNow</span></a></span><span>
+</span><span id="line-277"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679546923"><span class="annot"><span class="annottext">tDelta :: Time
+</span><a href="#local-6989586621679546923"><span class="hs-identifier hs-var hs-var">tDelta</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546924"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546927"><span class="hs-identifier hs-var">born</span></a></span><span>
+</span><span id="line-278"></span><span>  </span><span class="annot"><span class="annottext">Sprite s -&gt; Frame s ((SVG, ZIndex) -&gt; (SVG, ZIndex)) -&gt; Scene s ()
+forall s.
+Sprite s -&gt; Frame s ((SVG, ZIndex) -&gt; (SVG, ZIndex)) -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#spriteModify"><span class="hs-identifier hs-var">spriteModify</span></a></span><span> </span><span class="annot"><span class="annottext">Sprite s
+</span><a href="#local-6989586621679546928"><span class="hs-identifier hs-var">sprite</span></a></span><span> </span><span class="annot"><span class="annottext">(Frame s ((SVG, ZIndex) -&gt; (SVG, ZIndex)) -&gt; Scene s ())
+-&gt; Frame s ((SVG, ZIndex) -&gt; (SVG, ZIndex)) -&gt; Scene s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-279"></span><span>    </span><span id="local-6989586621679546922"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546922"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Frame s Time
+forall s. Frame s Time
+</span><a href="Reanimate.Scene.Sprite.html#spriteT"><span class="hs-identifier hs-var">spriteT</span></a></span><span>
+</span><span id="line-280"></span><span>    </span><span class="hs-identifier">return</span><span> </span><span class="hs-operator">$</span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (SVG, ZIndex) -&gt; (SVG, ZIndex)
+forall (p :: * -&gt; * -&gt; *) a b c.
+Bifunctor p =&gt;
+(a -&gt; b) -&gt; p a c -&gt; p b c
+</span><span class="hs-identifier hs-var">first</span></span><span> </span><span class="annot"><span class="annottext">((SVG -&gt; SVG) -&gt; (SVG, ZIndex) -&gt; (SVG, ZIndex))
+-&gt; (SVG -&gt; SVG) -&gt; (SVG, ZIndex) -&gt; (SVG, ZIndex)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679546921"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546921"><span class="hs-identifier hs-var">svg</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Time -&gt; SVG -&gt; SVG
+</span><a href="#local-6989586621679546925"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time -&gt; Time
+forall a. Ord a =&gt; a -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679546920"><span class="hs-identifier hs-var">clamp</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Time) -&gt; Time -&gt; Time
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546922"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546923"><span class="hs-identifier hs-var">tDelta</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546926"><span class="hs-identifier hs-var">dur</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546921"><span class="hs-identifier hs-var">svg</span></a></span><span>
+</span><span id="line-281"></span><span>  </span><span class="annot"><span class="annottext">Time -&gt; Scene s ()
+forall s. Time -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Core.html#wait"><span class="hs-identifier hs-var">wait</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546926"><span class="hs-identifier hs-var">dur</span></a></span><span>
+</span><span id="line-282"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-283"></span><span>    </span><span id="local-6989586621679546920"><span class="annot"><span class="annottext">clamp :: a -&gt; a -&gt; a -&gt; a
+</span><a href="#local-6989586621679546920"><span class="hs-identifier hs-var hs-var">clamp</span></a></span></span><span> </span><span id="local-6989586621679546918"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546918"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679546917"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546917"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span id="local-6989586621679546916"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546916"><span class="hs-identifier hs-var">v</span></a></span></span><span>
+</span><span id="line-284"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546916"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546918"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546918"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-285"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546916"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546917"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546917"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-286"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546916"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-287"></span><span>
+</span><span id="line-288"></span><span class="hs-comment">-- | Create a new variable and apply it to a sprite.</span><span>
+</span><span id="line-289"></span><span class="hs-comment">--</span><span>
+</span><span id="line-290"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-291"></span><span class="hs-comment">--</span><span>
+</span><span id="line-292"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-293"></span><span class="hs-comment">-- do s \&lt;- 'fork' $ 'newSpriteA' 'Reanimate.Builtin.Documentation.drawBox'</span><span>
+</span><span id="line-294"></span><span class="hs-comment">--    v \&lt;- 'spriteVar' s 0 'Reanimate.Svg.Constructors.rotate'</span><span>
+</span><span id="line-295"></span><span class="hs-comment">--    'Reanimate.Scene.tweenVar' v 2 $ \\val -&gt; 'Reanimate.fromToS' val 90</span><span>
+</span><span id="line-296"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-297"></span><span class="hs-comment">--</span><span>
+</span><span id="line-298"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_spriteVar.gif&gt;&gt;</span><span>
+</span><span id="line-299"></span><span id="local-6989586621679546913"><span id="local-6989586621679546914"><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteVar"><span class="hs-identifier hs-type">spriteVar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546914"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679546913"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679546913"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546914"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546914"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546913"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-300"></span><span id="spriteVar"><span class="annot"><span class="annottext">spriteVar :: Sprite s -&gt; a -&gt; (a -&gt; SVG -&gt; SVG) -&gt; Scene s (Var s a)
+</span><a href="Reanimate.Scene.Sprite.html#spriteVar"><span class="hs-identifier hs-var hs-var">spriteVar</span></a></span></span><span> </span><span id="local-6989586621679546911"><span class="annot"><span class="annottext">Sprite s
+</span><a href="#local-6989586621679546911"><span class="hs-identifier hs-var">sprite</span></a></span></span><span> </span><span id="local-6989586621679546910"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546910"><span class="hs-identifier hs-var">def</span></a></span></span><span> </span><span id="local-6989586621679546909"><span class="annot"><span class="annottext">a -&gt; SVG -&gt; SVG
+</span><a href="#local-6989586621679546909"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-301"></span><span>  </span><span id="local-6989586621679546908"><span class="annot"><span class="annottext">Var s a
+</span><a href="#local-6989586621679546908"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">a -&gt; Scene s (Var s a)
+forall a s. a -&gt; Scene s (Var s a)
+</span><a href="Reanimate.Scene.Var.html#newVar"><span class="hs-identifier hs-var">newVar</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546910"><span class="hs-identifier hs-var">def</span></a></span><span>
+</span><span id="line-302"></span><span>  </span><span class="annot"><span class="annottext">Var s a -&gt; Sprite s -&gt; (a -&gt; SVG -&gt; SVG) -&gt; Scene s ()
+forall s a. Var s a -&gt; Sprite s -&gt; (a -&gt; SVG -&gt; SVG) -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#applyVar"><span class="hs-identifier hs-var">applyVar</span></a></span><span> </span><span class="annot"><span class="annottext">Var s a
+</span><a href="#local-6989586621679546908"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">Sprite s
+</span><a href="#local-6989586621679546911"><span class="hs-identifier hs-var">sprite</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; SVG -&gt; SVG
+</span><a href="#local-6989586621679546909"><span class="hs-identifier hs-var">fn</span></a></span><span>
+</span><span id="line-303"></span><span>  </span><span class="hs-identifier">return</span><span> </span><span class="annot"><span class="annottext">Var s a
+</span><a href="#local-6989586621679546908"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-304"></span><span>
+</span><span id="line-305"></span><span class="hs-comment">-- | Apply an effect to a sprite.</span><span>
+</span><span id="line-306"></span><span class="hs-comment">--</span><span>
+</span><span id="line-307"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-308"></span><span class="hs-comment">--</span><span>
+</span><span id="line-309"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-310"></span><span class="hs-comment">-- do s &lt;- 'fork' $ 'newSpriteA' 'Reanimate.Builtin.Documentation.drawCircle'</span><span>
+</span><span id="line-311"></span><span class="hs-comment">--    'spriteE' s $ 'Reanimate.Effect.overBeginning' 1 'Reanimate.Effect.fadeInE'</span><span>
+</span><span id="line-312"></span><span class="hs-comment">--    'spriteE' s $ 'Reanimate.Effect.overEnding' 0.5 'Reanimate.Effect.fadeOutE'</span><span>
+</span><span id="line-313"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-314"></span><span class="hs-comment">--</span><span>
+</span><span id="line-315"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_spriteE.gif&gt;&gt;</span><span>
+</span><span id="line-316"></span><span id="local-6989586621679546907"><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteE"><span class="hs-identifier hs-type">spriteE</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546907"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546907"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span><span>
+</span><span id="line-317"></span><span id="spriteE"><span class="annot"><span class="annottext">spriteE :: Sprite s -&gt; Effect -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#spriteE"><span class="hs-identifier hs-var hs-var">spriteE</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span id="local-6989586621679546905"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546905"><span class="hs-identifier hs-var">born</span></a></span></span><span> </span><span id="local-6989586621679546904"><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+</span><a href="#local-6989586621679546904"><span class="hs-identifier hs-var">ref</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679546903"><span class="annot"><span class="annottext">Effect
+</span><a href="#local-6989586621679546903"><span class="hs-identifier hs-var">effect</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-318"></span><span>  </span><span id="local-6989586621679546902"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546902"><span class="hs-identifier hs-var">now</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Scene s Time
+forall s. Scene s Time
+</span><a href="Reanimate.Scene.Core.html#queryNow"><span class="hs-identifier hs-var">queryNow</span></a></span><span>
+</span><span id="line-319"></span><span>  </span><span class="annot"><span class="annottext">ST s () -&gt; Scene s ()
+forall s a. ST s a -&gt; Scene s a
+</span><a href="Reanimate.Scene.Core.html#liftST"><span class="hs-identifier hs-var">liftST</span></a></span><span> </span><span class="annot"><span class="annottext">(ST s () -&gt; Scene s ()) -&gt; ST s () -&gt; Scene s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-320"></span><span>    </span><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+-&gt; ((Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+    -&gt; (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+-&gt; ST s ()
+forall s a. STRef s a -&gt; (a -&gt; a) -&gt; ST s ()
+</span><span class="hs-identifier hs-var">modifySTRef</span></span><span> </span><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+</span><a href="#local-6989586621679546904"><span class="hs-identifier hs-var">ref</span></a></span><span> </span><span class="annot"><span class="annottext">(((Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+  -&gt; (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+ -&gt; ST s ())
+-&gt; ((Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+    -&gt; (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+-&gt; ST s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span class="hs-special">(</span><span id="local-6989586621679546901"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546901"><span class="hs-identifier hs-var">ttl</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546900"><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))
+</span><a href="#local-6989586621679546900"><span class="hs-identifier hs-var">renderGen</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-321"></span><span>      </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546901"><span class="hs-identifier hs-var">ttl</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-322"></span><span>        </span><span class="hs-keyword">do</span><span>
+</span><span id="line-323"></span><span>          </span><span id="local-6989586621679546899"><span class="annot"><span class="annottext">Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)
+</span><a href="#local-6989586621679546899"><span class="hs-identifier hs-var">render</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))
+</span><a href="#local-6989586621679546900"><span class="hs-identifier hs-var">renderGen</span></a></span><span>
+</span><span id="line-324"></span><span>          </span><span class="hs-identifier">return</span><span> </span><span class="hs-operator">$</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679546898"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546898"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679546897"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546897"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679546896"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546896"><span class="hs-identifier hs-var">svg</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-325"></span><span>            </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679546895"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546895"><span class="hs-identifier hs-var">svg'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546894"><span class="annot"><span class="annottext">ZIndex
+</span><a href="#local-6989586621679546894"><span class="hs-identifier hs-var">z</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)
+</span><a href="#local-6989586621679546899"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546898"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546897"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546896"><span class="hs-identifier hs-var">svg</span></a></span><span>
+</span><span id="line-326"></span><span>             </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Effect -&gt; Effect
+</span><a href="Reanimate.Effect.html#delayE"><span class="hs-identifier hs-var">delayE</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Time) -&gt; Time -&gt; Time
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546902"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546905"><span class="hs-identifier hs-var">born</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Effect
+</span><a href="#local-6989586621679546903"><span class="hs-identifier hs-var">effect</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546898"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546897"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546895"><span class="hs-identifier hs-var">svg'</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">ZIndex
+</span><a href="#local-6989586621679546894"><span class="hs-identifier hs-var">z</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-327"></span><span>      </span><span class="hs-special">)</span><span>
+</span><span id="line-328"></span><span>
+</span><span id="line-329"></span><span class="hs-comment">-- | Set new ZIndex of a sprite.</span><span>
+</span><span id="line-330"></span><span class="hs-comment">--</span><span>
+</span><span id="line-331"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-332"></span><span class="hs-comment">--</span><span>
+</span><span id="line-333"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-334"></span><span class="hs-comment">-- do s1 \&lt;- 'newSpriteSVG' $ 'Reanimate.Svg.Constructors.withFillOpacity' 1 $ 'Reanimate.Svg.Constructors.withFillColor' &quot;blue&quot; $ 'Reanimate.Svg.Constructors.mkCircle' 3</span><span>
+</span><span id="line-335"></span><span class="hs-comment">--    'newSpriteSVG' $ 'Reanimate.Svg.Constructors.withFillOpacity' 1 $ 'Reanimate.Svg.Constructors.withFillColor' &quot;red&quot; $ 'Reanimate.Svg.Constructors.mkRect' 8 3</span><span>
+</span><span id="line-336"></span><span class="hs-comment">--    'wait' 1</span><span>
+</span><span id="line-337"></span><span class="hs-comment">--    'spriteZ' s1 1</span><span>
+</span><span id="line-338"></span><span class="hs-comment">--    'wait' 1</span><span>
+</span><span id="line-339"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-340"></span><span class="hs-comment">--</span><span>
+</span><span id="line-341"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_spriteZ.gif&gt;&gt;</span><span>
+</span><span id="line-342"></span><span id="local-6989586621679546892"><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteZ"><span class="hs-identifier hs-type">spriteZ</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546892"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#ZIndex"><span class="hs-identifier hs-type">ZIndex</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546892"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span><span>
+</span><span id="line-343"></span><span id="spriteZ"><span class="annot"><span class="annottext">spriteZ :: Sprite s -&gt; ZIndex -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#spriteZ"><span class="hs-identifier hs-var hs-var">spriteZ</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier hs-type">Sprite</span></a></span><span> </span><span id="local-6989586621679546890"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546890"><span class="hs-identifier hs-var">born</span></a></span></span><span> </span><span id="local-6989586621679546889"><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+</span><a href="#local-6989586621679546889"><span class="hs-identifier hs-var">ref</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679546888"><span class="annot"><span class="annottext">ZIndex
+</span><a href="#local-6989586621679546888"><span class="hs-identifier hs-var">zindex</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-344"></span><span>  </span><span id="local-6989586621679546887"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546887"><span class="hs-identifier hs-var">now</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Scene s Time
+forall s. Scene s Time
+</span><a href="Reanimate.Scene.Core.html#queryNow"><span class="hs-identifier hs-var">queryNow</span></a></span><span>
+</span><span id="line-345"></span><span>  </span><span class="annot"><span class="annottext">ST s () -&gt; Scene s ()
+forall s a. ST s a -&gt; Scene s a
+</span><a href="Reanimate.Scene.Core.html#liftST"><span class="hs-identifier hs-var">liftST</span></a></span><span> </span><span class="annot"><span class="annottext">(ST s () -&gt; Scene s ()) -&gt; ST s () -&gt; Scene s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-346"></span><span>    </span><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+-&gt; ((Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+    -&gt; (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+-&gt; ST s ()
+forall s a. STRef s a -&gt; (a -&gt; a) -&gt; ST s ()
+</span><span class="hs-identifier hs-var">modifySTRef</span></span><span> </span><span class="annot"><span class="annottext">STRef s (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+</span><a href="#local-6989586621679546889"><span class="hs-identifier hs-var">ref</span></a></span><span> </span><span class="annot"><span class="annottext">(((Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+  -&gt; (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+ -&gt; ST s ())
+-&gt; ((Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)))
+    -&gt; (Time, ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))))
+-&gt; ST s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span class="hs-special">(</span><span id="local-6989586621679546886"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546886"><span class="hs-identifier hs-var">ttl</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546885"><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))
+</span><a href="#local-6989586621679546885"><span class="hs-identifier hs-var">renderGen</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-347"></span><span>      </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546886"><span class="hs-identifier hs-var">ttl</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-348"></span><span>        </span><span class="hs-keyword">do</span><span>
+</span><span id="line-349"></span><span>          </span><span id="local-6989586621679546884"><span class="annot"><span class="annottext">Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)
+</span><a href="#local-6989586621679546884"><span class="hs-identifier hs-var">render</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ST s (Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex))
+</span><a href="#local-6989586621679546885"><span class="hs-identifier hs-var">renderGen</span></a></span><span>
+</span><span id="line-350"></span><span>          </span><span class="hs-identifier">return</span><span> </span><span class="hs-operator">$</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679546883"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546883"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679546882"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546882"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679546881"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546881"><span class="hs-identifier hs-var">svg</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-351"></span><span>            </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679546880"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546880"><span class="hs-identifier hs-var">svg'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546879"><span class="annot"><span class="annottext">ZIndex
+</span><a href="#local-6989586621679546879"><span class="hs-identifier hs-var">z</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; SVG -&gt; (SVG, ZIndex)
+</span><a href="#local-6989586621679546884"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546883"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546882"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546881"><span class="hs-identifier hs-var">svg</span></a></span><span> </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546880"><span class="hs-identifier hs-var">svg'</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546882"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546887"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546890"><span class="hs-identifier hs-var">born</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">ZIndex
+</span><a href="#local-6989586621679546879"><span class="hs-identifier hs-var">z</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">ZIndex
+</span><a href="#local-6989586621679546888"><span class="hs-identifier hs-var">zindex</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-352"></span><span>      </span><span class="hs-special">)</span><span>
+</span><span id="line-353"></span><span>
+</span><span id="line-354"></span><span class="hs-comment">-- | Destroy all local sprites at the end of a scene.</span><span>
+</span><span id="line-355"></span><span class="hs-comment">--</span><span>
+</span><span id="line-356"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-357"></span><span class="hs-comment">--</span><span>
+</span><span id="line-358"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-359"></span><span class="hs-comment">-- do -- the rect lives through the entire 3s animation</span><span>
+</span><span id="line-360"></span><span class="hs-comment">--    'newSpriteSVG_' $ 'Reanimate.Svg.Constructors.translate' (-3) 0 $ 'Reanimate.Svg.Constructors.mkRect' 4 4</span><span>
+</span><span id="line-361"></span><span class="hs-comment">--    'wait' 1</span><span>
+</span><span id="line-362"></span><span class="hs-comment">--    'spriteScope' $ do</span><span>
+</span><span id="line-363"></span><span class="hs-comment">--      -- the circle only lives for 1 second.</span><span>
+</span><span id="line-364"></span><span class="hs-comment">--      local \&lt;- 'newSpriteSVG' $ 'Reanimate.Svg.Constructors.translate' 3 0 $ 'Reanimate.Svg.Constructors.mkCircle' 2</span><span>
+</span><span id="line-365"></span><span class="hs-comment">--      'spriteE' local $ 'Reanimate.Effect.overBeginning' 0.3 'Reanimate.Effect.fadeInE'</span><span>
+</span><span id="line-366"></span><span class="hs-comment">--      'spriteE' local $ 'Reanimate.Effect.overEnding' 0.3 'Reanimate.Effect.fadeOutE'</span><span>
+</span><span id="line-367"></span><span class="hs-comment">--      'wait' 1</span><span>
+</span><span id="line-368"></span><span class="hs-comment">--    'wait' 1</span><span>
+</span><span id="line-369"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-370"></span><span class="hs-comment">--</span><span>
+</span><span id="line-371"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_spriteScope.gif&gt;&gt;</span><span>
+</span><span id="line-372"></span><span id="local-6989586621679546877"><span id="local-6989586621679546878"><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteScope"><span class="hs-identifier hs-type">spriteScope</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546878"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546877"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546878"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546877"><span class="hs-identifier hs-type">a</span></a></span></span></span><span>
+</span><span id="line-373"></span><span id="spriteScope"><span class="annot"><span class="annottext">spriteScope :: Scene s a -&gt; Scene s a
+</span><a href="Reanimate.Scene.Sprite.html#spriteScope"><span class="hs-identifier hs-var hs-var">spriteScope</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Scene.Core.html#M"><span class="hs-identifier hs-type">M</span></a></span><span> </span><span id="local-6989586621679546875"><span class="annot"><span class="annottext">Time -&gt; ST s (a, Time, Time, [Gen s])
+</span><a href="#local-6989586621679546875"><span class="hs-identifier hs-var">action</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Time -&gt; ST s (a, Time, Time, [Gen s])) -&gt; Scene s a
+forall s a. (Time -&gt; ST s (a, Time, Time, [Gen s])) -&gt; Scene s a
+</span><a href="Reanimate.Scene.Core.html#M"><span class="hs-identifier hs-var">M</span></a></span><span> </span><span class="annot"><span class="annottext">((Time -&gt; ST s (a, Time, Time, [Gen s])) -&gt; Scene s a)
+-&gt; (Time -&gt; ST s (a, Time, Time, [Gen s])) -&gt; Scene s a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679546874"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546874"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-374"></span><span>  </span><span class="hs-special">(</span><span id="local-6989586621679546873"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546873"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546872"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546872"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546871"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546871"><span class="hs-identifier hs-var">p</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546870"><span class="annot"><span class="annottext">[Gen s]
+</span><a href="#local-6989586621679546870"><span class="hs-identifier hs-var">gens</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Time -&gt; ST s (a, Time, Time, [Gen s])
+</span><a href="#local-6989586621679546875"><span class="hs-identifier hs-var">action</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546874"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-375"></span><span>  </span><span class="annot"><span class="annottext">(a, Time, Time, [Gen s]) -&gt; ST s (a, Time, Time, [Gen s])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546873"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546872"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546871"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(Gen s -&gt; Gen s) -&gt; [Gen s] -&gt; [Gen s]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Gen s -&gt; Gen s
+forall (f :: * -&gt; *) t b p.
+(Functor f, Ord t, Num b) =&gt;
+t -&gt; f (t -&gt; t -&gt; (SVG, b)) -&gt; f (p -&gt; t -&gt; (SVG, b))
+</span><a href="#local-6989586621679546869"><span class="hs-identifier hs-var">genFn</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546874"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546872"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546871"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Gen s]
+</span><a href="#local-6989586621679546870"><span class="hs-identifier hs-var">gens</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-376"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-377"></span><span>    </span><span id="local-6989586621679546869"><span class="annot"><span class="annottext">genFn :: t -&gt; f (t -&gt; t -&gt; (SVG, b)) -&gt; f (p -&gt; t -&gt; (SVG, b))
+</span><a href="#local-6989586621679546869"><span class="hs-identifier hs-var hs-var">genFn</span></a></span></span><span> </span><span id="local-6989586621679546868"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679546868"><span class="hs-identifier hs-var">maxT</span></a></span></span><span> </span><span id="local-6989586621679546867"><span class="annot"><span class="annottext">f (t -&gt; t -&gt; (SVG, b))
+</span><a href="#local-6989586621679546867"><span class="hs-identifier hs-var">gen</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-378"></span><span>      </span><span id="local-6989586621679546866"><span class="annot"><span class="annottext">t -&gt; t -&gt; (SVG, b)
+</span><a href="#local-6989586621679546866"><span class="hs-identifier hs-var">frameGen</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">f (t -&gt; t -&gt; (SVG, b))
+</span><a href="#local-6989586621679546867"><span class="hs-identifier hs-var">gen</span></a></span><span>
+</span><span id="line-379"></span><span>      </span><span class="hs-identifier">return</span><span> </span><span class="hs-operator">$</span><span> </span><span class="hs-glyph">\</span><span class="annot"><span class="annottext">p
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679546865"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679546865"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-380"></span><span>        </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679546865"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679546868"><span class="hs-identifier hs-var">maxT</span></a></span><span>
+</span><span id="line-381"></span><span>          </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; (SVG, b)
+</span><a href="#local-6989586621679546866"><span class="hs-identifier hs-var">frameGen</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679546868"><span class="hs-identifier hs-var">maxT</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679546865"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-382"></span><span>          </span><span class="hs-keyword">else</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SVG
+</span><span class="hs-identifier hs-var">None</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">b
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span>
+</span><span id="line-383"></span><span>
+</span><span id="line-384"></span><span id="local-6989586621679547088"><span id="local-6989586621679547089"><span class="annot"><a href="Reanimate.Scene.Sprite.html#asAnimation"><span class="hs-identifier hs-type">asAnimation</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679547103"><span class="annot"><a href="#local-6989586621679547103"><span class="hs-identifier hs-type">s'</span></a></span></span><span class="hs-operator">.</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547103"><span class="hs-identifier hs-type">s'</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547089"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547088"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Animation"><span class="hs-identifier hs-type">Animation</span></a></span></span></span><span>
+</span><span id="line-385"></span><span id="asAnimation"><span class="annot"><span class="annottext">asAnimation :: (forall s'. Scene s' a) -&gt; Scene s Animation
+</span><a href="Reanimate.Scene.Sprite.html#asAnimation"><span class="hs-identifier hs-var hs-var">asAnimation</span></a></span></span><span> </span><span id="local-6989586621679546863"><span class="annot"><span class="annottext">forall s'. Scene s' a
+</span><a href="#local-6989586621679546863"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-386"></span><span>  </span><span id="local-6989586621679546862"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546862"><span class="hs-identifier hs-var">now</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Scene s Time
+forall s. Scene s Time
+</span><a href="Reanimate.Scene.Core.html#queryNow"><span class="hs-identifier hs-var">queryNow</span></a></span><span>
+</span><span id="line-387"></span><span>  </span><span class="hs-identifier">return</span><span> </span><span class="hs-operator">$</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Animation -&gt; Animation
+</span><a href="Reanimate.Animation.html#dropA"><span class="hs-identifier hs-var">dropA</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546862"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(forall s'. Scene s' a) -&gt; Animation
+forall a. (forall s. Scene s a) -&gt; Animation
+</span><a href="Reanimate.Scene.Core.html#scene"><span class="hs-identifier hs-var">scene</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Scene s ()
+forall s. Time -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Core.html#wait"><span class="hs-identifier hs-var">wait</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546862"><span class="hs-identifier hs-var">now</span></a></span><span> </span><span class="annot"><span class="annottext">Scene s () -&gt; Scene s a -&gt; Scene s a
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Scene s a
+forall s'. Scene s' a
+</span><a href="#local-6989586621679546863"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-388"></span><span>
+</span><span id="line-389"></span><span class="hs-comment">-- | Apply a transformation with a given overlap. This makes sure</span><span>
+</span><span id="line-390"></span><span class="hs-comment">--   to keep timestamps intact such that events can still be timed</span><span>
+</span><span id="line-391"></span><span class="hs-comment">--   by transcripts.</span><span>
+</span><span id="line-392"></span><span id="local-6989586621679546859"><span id="local-6989586621679546860"><span id="local-6989586621679546861"><span class="annot"><a href="Reanimate.Scene.Sprite.html#transitionO"><span class="hs-identifier hs-type">transitionO</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Transition.html#Transition"><span class="hs-identifier hs-type">Transition</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679547094"><span class="annot"><a href="#local-6989586621679547094"><span class="hs-identifier hs-type">s'</span></a></span></span><span class="hs-operator">.</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547094"><span class="hs-identifier hs-type">s'</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546861"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679547092"><span class="annot"><a href="#local-6989586621679547092"><span class="hs-identifier hs-type">s'</span></a></span></span><span class="hs-operator">.</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679547092"><span class="hs-identifier hs-type">s'</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546860"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier hs-type">Scene</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679546859"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span></span></span><span>
+</span><span id="line-393"></span><span id="transitionO"><span class="annot"><span class="annottext">transitionO :: Transition
+-&gt; Time
+-&gt; (forall s'. Scene s' a)
+-&gt; (forall s'. Scene s' b)
+-&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#transitionO"><span class="hs-identifier hs-var hs-var">transitionO</span></a></span></span><span> </span><span id="local-6989586621679546857"><span class="annot"><span class="annottext">Transition
+</span><a href="#local-6989586621679546857"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679546856"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546856"><span class="hs-identifier hs-var">o</span></a></span></span><span> </span><span id="local-6989586621679546855"><span class="annot"><span class="annottext">forall s'. Scene s' a
+</span><a href="#local-6989586621679546855"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679546854"><span class="annot"><span class="annottext">forall s'. Scene s' b
+</span><a href="#local-6989586621679546854"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-394"></span><span>  </span><span id="local-6989586621679546853"><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679546853"><span class="hs-identifier hs-var">aA</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(forall s'. Scene s' a) -&gt; Scene s Animation
+forall a s. (forall s'. Scene s' a) -&gt; Scene s Animation
+</span><a href="Reanimate.Scene.Sprite.html#asAnimation"><span class="hs-identifier hs-var">asAnimation</span></a></span><span> </span><span class="annot"><span class="annottext">forall s'. Scene s' a
+</span><a href="#local-6989586621679546855"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-395"></span><span>  </span><span id="local-6989586621679546852"><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679546852"><span class="hs-identifier hs-var">bA</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Scene s Animation -&gt; Scene s Animation
+forall s a. Scene s a -&gt; Scene s a
+</span><a href="Reanimate.Scene.Core.html#fork"><span class="hs-identifier hs-var">fork</span></a></span><span> </span><span class="annot"><span class="annottext">(Scene s Animation -&gt; Scene s Animation)
+-&gt; Scene s Animation -&gt; Scene s Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-396"></span><span>    </span><span class="annot"><span class="annottext">Time -&gt; Scene s ()
+forall s. Time -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Core.html#wait"><span class="hs-identifier hs-var">wait</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Animation -&gt; Time
+</span><a href="Reanimate.Animation.html#duration"><span class="hs-identifier hs-var">duration</span></a></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679546853"><span class="hs-identifier hs-var">aA</span></a></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546856"><span class="hs-identifier hs-var">o</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-397"></span><span>    </span><span class="annot"><span class="annottext">(forall s'. Scene s' b) -&gt; Scene s Animation
+forall a s. (forall s'. Scene s' a) -&gt; Scene s Animation
+</span><a href="Reanimate.Scene.Sprite.html#asAnimation"><span class="hs-identifier hs-var">asAnimation</span></a></span><span> </span><span class="annot"><span class="annottext">forall s'. Scene s' b
+</span><a href="#local-6989586621679546854"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-398"></span><span>  </span><span class="annot"><span class="annottext">Animation -&gt; Scene s ()
+forall s. Animation -&gt; Scene s ()
+</span><a href="Reanimate.Scene.Sprite.html#play"><span class="hs-identifier hs-var">play</span></a></span><span> </span><span class="annot"><span class="annottext">(Animation -&gt; Scene s ()) -&gt; Animation -&gt; Scene s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Transition -&gt; Transition
+</span><a href="Reanimate.Transition.html#overlapT"><span class="hs-identifier hs-var">overlapT</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679546856"><span class="hs-identifier hs-var">o</span></a></span><span> </span><span class="annot"><span class="annottext">Transition
+</span><a href="#local-6989586621679546857"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679546853"><span class="hs-identifier hs-var">aA</span></a></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679546852"><span class="hs-identifier hs-var">bA</span></a></span><span>
+</span><span id="line-399"></span></pre></body></html>

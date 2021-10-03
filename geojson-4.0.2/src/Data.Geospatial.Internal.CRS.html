@@ -1,0 +1,235 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE TemplateHaskell   #-}</span><span>
+</span><span id="line-3"></span><span class="hs-comment">-------------------------------------------------------------------</span><span>
+</span><span id="line-4"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-5"></span><span class="hs-comment">-- Module       : Data.Geospatial.Internal.CRS</span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- Copyright    : (C) 2014-2019 HS-GeoJSON Project</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- License      : BSD-style (see the file LICENSE.md)</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- Maintainer   : Andrew Newman</span><span>
+</span><span id="line-9"></span><span class="hs-comment">--</span><span>
+</span><span id="line-10"></span><span class="hs-comment">-- See Section 3 /Coordinate Reference System Objects/</span><span>
+</span><span id="line-11"></span><span class="hs-comment">-- in the GeoJSON Spec</span><span>
+</span><span id="line-12"></span><span class="hs-comment">--</span><span>
+</span><span id="line-13"></span><span class="hs-comment">-------------------------------------------------------------------</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Data.Geospatial.Internal.CRS</span><span> </span><span class="hs-special">(</span><span>
+</span><span id="line-15"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Types</span></span><span>
+</span><span id="line-16"></span><span>        </span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#CRSObject"><span class="hs-identifier">CRSObject</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Functions</span></span><span>
+</span><span id="line-18"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#defaultCRS"><span class="hs-identifier">defaultCRS</span></a></span><span>
+</span><span id="line-19"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Prisms</span></span><span>
+</span><span id="line-20"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#_NoCRS"><span class="hs-identifier">_NoCRS</span></a></span><span>
+</span><span id="line-21"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#_NamedCRS"><span class="hs-identifier">_NamedCRS</span></a></span><span>
+</span><span id="line-22"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#_EPSG"><span class="hs-identifier">_EPSG</span></a></span><span>
+</span><span id="line-23"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#_LinkedCRS"><span class="hs-identifier">_LinkedCRS</span></a></span><span>
+</span><span id="line-24"></span><span>    </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html"><span class="hs-identifier">Data.Geospatial.Internal.BasicTypes</span></a></span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Applicative</span></span><span>                 </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(&lt;$&gt;)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(&lt;*&gt;)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>                        </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">makePrisms</span></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>                       </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">mzero</span></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Aeson</span></span><span>                          </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">FromJSON</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Object</span></span><span class="hs-special">,</span><span>
+</span><span id="line-32"></span><span>                                                      </span><span class="annot"><span class="hs-identifier">ToJSON</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Value</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-33"></span><span>                                                      </span><span class="annot"><span class="hs-identifier">object</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(.:)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(.=)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Aeson.Types</span></span><span>                    </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Parser</span></span><span class="hs-special">)</span><span>
+</span><span id="line-35"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>                           </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-comment">-- | See Section 3 /Coordinate Reference System Objects/ in the GeoJSON Spec</span><span>
+</span><span id="line-38"></span><span class="hs-comment">-- `NoCRS` is required because no 'crs' attribute in a GeoJSON feature is NOT the same thing as</span><span>
+</span><span id="line-39"></span><span class="hs-comment">-- a null 'crs' attribute. no 'crs' value implies the default CRS, while a null CRS means</span><span>
+</span><span id="line-40"></span><span class="hs-comment">-- you cannot assume a CRS, null will mapped to `NoCRS` while a non-existent attribute will</span><span>
+</span><span id="line-41"></span><span class="hs-comment">-- be mapped to a `Nothing` `Maybe` value</span><span>
+</span><span id="line-42"></span><span class="hs-keyword">data</span><span> </span><span id="CRSObject"><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#CRSObject"><span class="hs-identifier hs-var">CRSObject</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-43"></span><span>        </span><span id="NoCRS"><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#NoCRS"><span class="hs-identifier hs-var">NoCRS</span></a></span></span><span>
+</span><span id="line-44"></span><span>    </span><span class="hs-glyph">|</span><span>   </span><span id="NamedCRS"><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#NamedCRS"><span class="hs-identifier hs-var">NamedCRS</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Name"><span class="hs-identifier hs-type">Name</span></a></span><span>
+</span><span id="line-45"></span><span>    </span><span class="hs-glyph">|</span><span>   </span><span id="EPSG"><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#EPSG"><span class="hs-identifier hs-var">EPSG</span></a></span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Code"><span class="hs-identifier hs-type">Code</span></a></span><span>
+</span><span id="line-46"></span><span>    </span><span class="hs-glyph">|</span><span>   </span><span id="LinkedCRS"><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#LinkedCRS"><span class="hs-identifier hs-var">LinkedCRS</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Href"><span class="hs-identifier hs-type">Href</span></a></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#FormatString"><span class="hs-identifier hs-type">FormatString</span></a></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679176633"><span id="local-6989586621679176635"><span id="local-6989586621679176637"><span class="annot"><span class="annottext">Int -&gt; CRSObject -&gt; ShowS
+[CRSObject] -&gt; ShowS
+CRSObject -&gt; String
+(Int -&gt; CRSObject -&gt; ShowS)
+-&gt; (CRSObject -&gt; String)
+-&gt; ([CRSObject] -&gt; ShowS)
+-&gt; Show CRSObject
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [CRSObject] -&gt; ShowS
+$cshowList :: [CRSObject] -&gt; ShowS
+show :: CRSObject -&gt; String
+$cshow :: CRSObject -&gt; String
+showsPrec :: Int -&gt; CRSObject -&gt; ShowS
+$cshowsPrec :: Int -&gt; CRSObject -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176628"><span id="local-6989586621679176630"><span class="annot"><span class="annottext">CRSObject -&gt; CRSObject -&gt; Bool
+(CRSObject -&gt; CRSObject -&gt; Bool)
+-&gt; (CRSObject -&gt; CRSObject -&gt; Bool) -&gt; Eq CRSObject
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: CRSObject -&gt; CRSObject -&gt; Bool
+$c/= :: CRSObject -&gt; CRSObject -&gt; Bool
+== :: CRSObject -&gt; CRSObject -&gt; Bool
+$c== :: CRSObject -&gt; CRSObject -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span id="_LinkedCRS"><span id="_EPSG"><span id="_NamedCRS"><span id="_NoCRS"><span class="hs-identifier">makePrisms</span><span> </span><span class="hs-special">''</span><span class="hs-identifier">CRSObject</span></span></span></span></span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span class="hs-comment">-- | The default CRS according to Section 3 /Coordinate Reference System Objects/ is WGS84 which I believe,</span><span>
+</span><span id="line-51"></span><span class="hs-comment">-- from &lt;http://spatialreference.org/ref/epsg/4326/&gt; which translates to this in JSON: &lt;http://spatialreference.org/ref/epsg/4326/json/&gt;)</span><span>
+</span><span id="line-52"></span><span class="hs-comment">-- is represented thus:</span><span>
+</span><span id="line-53"></span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#defaultCRS"><span class="hs-identifier hs-type">defaultCRS</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#CRSObject"><span class="hs-identifier hs-type">CRSObject</span></a></span><span>
+</span><span id="line-54"></span><span id="defaultCRS"><span class="annot"><span class="annottext">defaultCRS :: CRSObject
+</span><a href="Data.Geospatial.Internal.CRS.html#defaultCRS"><span class="hs-identifier hs-var hs-var">defaultCRS</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; CRSObject
+</span><a href="Data.Geospatial.Internal.CRS.html#EPSG"><span class="hs-identifier hs-var">EPSG</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4326</span></span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span class="hs-comment">-- instances</span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-59"></span><span class="hs-comment">-- decode CRS Objects from GeoJSON</span><span>
+</span><span id="line-60"></span><span class="hs-comment">--</span><span>
+</span><span id="line-61"></span><span class="hs-comment">-- Aeson doesnt decode &quot;null&quot; to `Null` unfortunately</span><span>
+</span><span id="line-62"></span><span class="hs-comment">--</span><span>
+</span><span id="line-63"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679176624"><span class="annot"><span class="hs-identifier hs-type">FromJSON</span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#CRSObject"><span class="hs-identifier hs-type">CRSObject</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-64"></span><span>    </span><span id="local-6989586621679176622"><span class="annot"><span class="annottext">parseJSON :: Value -&gt; Parser CRSObject
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">parseJSON</span></span></span><span> </span><span class="annot"><span class="annottext">Value
+</span><span class="hs-identifier hs-var">Null</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CRSObject -&gt; Parser CRSObject
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">CRSObject
+</span><a href="Data.Geospatial.Internal.CRS.html#NoCRS"><span class="hs-identifier hs-var">NoCRS</span></a></span><span>
+</span><span id="line-65"></span><span>    </span><span class="annot"><span class="hs-identifier hs-var">parseJSON</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span id="local-6989586621679176618"><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679176618"><span class="hs-identifier hs-var">obj</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-66"></span><span>        </span><span id="local-6989586621679176617"><span class="annot"><span class="annottext">Href
+</span><a href="#local-6989586621679176617"><span class="hs-identifier hs-var">crsType</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679176618"><span class="hs-identifier hs-var">obj</span></a></span><span> </span><span class="annot"><span class="annottext">Object -&gt; Href -&gt; Parser Href
+forall a. FromJSON a =&gt; Object -&gt; Href -&gt; Parser a
+</span><span class="hs-operator hs-var">.:</span></span><span> </span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;type&quot;</span></span><span>
+</span><span id="line-67"></span><span>        </span><span class="annot"><span class="annottext">Href -&gt; Object -&gt; Parser CRSObject
+</span><a href="Data.Geospatial.Internal.CRS.html#crsObjectFromAeson"><span class="hs-identifier hs-var">crsObjectFromAeson</span></a></span><span> </span><span class="annot"><span class="annottext">Href
+</span><a href="#local-6989586621679176617"><span class="hs-identifier hs-var">crsType</span></a></span><span> </span><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679176618"><span class="hs-identifier hs-var">obj</span></a></span><span>
+</span><span id="line-68"></span><span>    </span><span class="annot"><span class="hs-identifier hs-var">parseJSON</span></span><span> </span><span class="annot"><span class="annottext">Value
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser CRSObject
+forall (m :: * -&gt; *) a. MonadPlus m =&gt; m a
+</span><span class="hs-identifier hs-var">mzero</span></span><span>
+</span><span id="line-69"></span><span>
+</span><span id="line-70"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-71"></span><span class="hs-comment">-- encode CRS Objects to GeoJSON</span><span>
+</span><span id="line-72"></span><span class="hs-comment">--</span><span>
+</span><span id="line-73"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679176609"><span id="local-6989586621679176611"><span id="local-6989586621679176613"><span class="annot"><span class="hs-identifier hs-type">ToJSON</span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#CRSObject"><span class="hs-identifier hs-type">CRSObject</span></a></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-74"></span><span>    </span><span id="local-6989586621679176607"><span class="annot"><span class="annottext">toJSON :: CRSObject -&gt; Value
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">toJSON</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#NamedCRS"><span class="hs-identifier hs-type">NamedCRS</span></a></span><span> </span><span id="local-6989586621679176605"><span class="annot"><span class="annottext">Href
+</span><a href="#local-6989586621679176605"><span class="hs-identifier hs-var">name</span></a></span></span><span class="hs-special">)</span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Pair] -&gt; Value
+</span><span class="hs-identifier hs-var">object</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;type&quot;</span></span><span> </span><span class="annot"><span class="annottext">Href -&gt; Href -&gt; Pair
+forall kv v. (KeyValue kv, ToJSON v) =&gt; Href -&gt; v -&gt; kv
+</span><span class="hs-operator hs-var">.=</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;name&quot;</span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;properties&quot;</span></span><span> </span><span class="annot"><span class="annottext">Href -&gt; Value -&gt; Pair
+forall kv v. (KeyValue kv, ToJSON v) =&gt; Href -&gt; v -&gt; kv
+</span><span class="hs-operator hs-var">.=</span></span><span> </span><span class="annot"><span class="annottext">[Pair] -&gt; Value
+</span><span class="hs-identifier hs-var">object</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;name&quot;</span></span><span> </span><span class="annot"><span class="annottext">Href -&gt; Href -&gt; Pair
+forall kv v. (KeyValue kv, ToJSON v) =&gt; Href -&gt; v -&gt; kv
+</span><span class="hs-operator hs-var">.=</span></span><span> </span><span class="annot"><span class="annottext">Href
+</span><a href="#local-6989586621679176605"><span class="hs-identifier hs-var">name</span></a></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-75"></span><span>    </span><span class="annot"><span class="hs-identifier hs-var">toJSON</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#EPSG"><span class="hs-identifier hs-type">EPSG</span></a></span><span> </span><span id="local-6989586621679176604"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679176604"><span class="hs-identifier hs-var">code</span></a></span></span><span class="hs-special">)</span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Pair] -&gt; Value
+</span><span class="hs-identifier hs-var">object</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;type&quot;</span></span><span> </span><span class="annot"><span class="annottext">Href -&gt; Href -&gt; Pair
+forall kv v. (KeyValue kv, ToJSON v) =&gt; Href -&gt; v -&gt; kv
+</span><span class="hs-operator hs-var">.=</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;epsg&quot;</span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;properties&quot;</span></span><span> </span><span class="annot"><span class="annottext">Href -&gt; Value -&gt; Pair
+forall kv v. (KeyValue kv, ToJSON v) =&gt; Href -&gt; v -&gt; kv
+</span><span class="hs-operator hs-var">.=</span></span><span> </span><span class="annot"><span class="annottext">[Pair] -&gt; Value
+</span><span class="hs-identifier hs-var">object</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;code&quot;</span></span><span> </span><span class="annot"><span class="annottext">Href -&gt; Int -&gt; Pair
+forall kv v. (KeyValue kv, ToJSON v) =&gt; Href -&gt; v -&gt; kv
+</span><span class="hs-operator hs-var">.=</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679176604"><span class="hs-identifier hs-var">code</span></a></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-76"></span><span>    </span><span class="annot"><span class="hs-identifier hs-var">toJSON</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#LinkedCRS"><span class="hs-identifier hs-type">LinkedCRS</span></a></span><span> </span><span id="local-6989586621679176603"><span class="annot"><span class="annottext">Href
+</span><a href="#local-6989586621679176603"><span class="hs-identifier hs-var">href</span></a></span></span><span> </span><span id="local-6989586621679176602"><span class="annot"><span class="annottext">Href
+</span><a href="#local-6989586621679176602"><span class="hs-identifier hs-var">format</span></a></span></span><span class="hs-special">)</span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Pair] -&gt; Value
+</span><span class="hs-identifier hs-var">object</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;type&quot;</span></span><span> </span><span class="annot"><span class="annottext">Href -&gt; Href -&gt; Pair
+forall kv v. (KeyValue kv, ToJSON v) =&gt; Href -&gt; v -&gt; kv
+</span><span class="hs-operator hs-var">.=</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;link&quot;</span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;properties&quot;</span></span><span> </span><span class="annot"><span class="annottext">Href -&gt; Value -&gt; Pair
+forall kv v. (KeyValue kv, ToJSON v) =&gt; Href -&gt; v -&gt; kv
+</span><span class="hs-operator hs-var">.=</span></span><span> </span><span class="annot"><span class="annottext">[Pair] -&gt; Value
+</span><span class="hs-identifier hs-var">object</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;href&quot;</span></span><span> </span><span class="annot"><span class="annottext">Href -&gt; Href -&gt; Pair
+forall kv v. (KeyValue kv, ToJSON v) =&gt; Href -&gt; v -&gt; kv
+</span><span class="hs-operator hs-var">.=</span></span><span> </span><span class="annot"><span class="annottext">Href
+</span><a href="#local-6989586621679176603"><span class="hs-identifier hs-var">href</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;type&quot;</span></span><span> </span><span class="annot"><span class="annottext">Href -&gt; Href -&gt; Pair
+forall kv v. (KeyValue kv, ToJSON v) =&gt; Href -&gt; v -&gt; kv
+</span><span class="hs-operator hs-var">.=</span></span><span> </span><span class="annot"><span class="annottext">Href
+</span><a href="#local-6989586621679176602"><span class="hs-identifier hs-var">format</span></a></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-77"></span><span>    </span><span class="annot"><span class="hs-identifier hs-var">toJSON</span></span><span> </span><span class="annot"><span class="annottext">CRSObject
+</span><a href="Data.Geospatial.Internal.CRS.html#NoCRS"><span class="hs-identifier hs-var">NoCRS</span></a></span><span>                    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Value
+</span><span class="hs-identifier hs-var">Null</span></span><span>
+</span><span id="line-78"></span><span>
+</span><span id="line-79"></span><span class="hs-comment">-- helpers</span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span id="local-6989586621679176661"><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#crsPropertyFromAesonObj"><span class="hs-identifier hs-type">crsPropertyFromAesonObj</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">FromJSON</span></span><span> </span><span class="annot"><a href="#local-6989586621679176661"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="#local-6989586621679176661"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-82"></span><span id="crsPropertyFromAesonObj"><span class="annot"><span class="annottext">crsPropertyFromAesonObj :: Href -&gt; Object -&gt; Parser a
+</span><a href="Data.Geospatial.Internal.CRS.html#crsPropertyFromAesonObj"><span class="hs-identifier hs-var hs-var">crsPropertyFromAesonObj</span></a></span></span><span> </span><span id="local-6989586621679176600"><span class="annot"><span class="annottext">Href
+</span><a href="#local-6989586621679176600"><span class="hs-identifier hs-var">name</span></a></span></span><span> </span><span id="local-6989586621679176599"><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679176599"><span class="hs-identifier hs-var">obj</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-83"></span><span>    </span><span id="local-6989586621679176598"><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679176598"><span class="hs-identifier hs-var">props</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679176599"><span class="hs-identifier hs-var">obj</span></a></span><span> </span><span class="annot"><span class="annottext">Object -&gt; Href -&gt; Parser Object
+forall a. FromJSON a =&gt; Object -&gt; Href -&gt; Parser a
+</span><span class="hs-operator hs-var">.:</span></span><span> </span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;properties&quot;</span></span><span>
+</span><span id="line-84"></span><span>    </span><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679176598"><span class="hs-identifier hs-var">props</span></a></span><span> </span><span class="annot"><span class="annottext">Object -&gt; Href -&gt; Parser a
+forall a. FromJSON a =&gt; Object -&gt; Href -&gt; Parser a
+</span><span class="hs-operator hs-var">.:</span></span><span> </span><span class="annot"><span class="annottext">Href
+</span><a href="#local-6989586621679176600"><span class="hs-identifier hs-var">name</span></a></span><span>
+</span><span id="line-85"></span><span>
+</span><span id="line-86"></span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#crsObjectFromAeson"><span class="hs-identifier hs-type">crsObjectFromAeson</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#CRSObject"><span class="hs-identifier hs-type">CRSObject</span></a></span><span>
+</span><span id="line-87"></span><span id="crsObjectFromAeson"><span class="annot"><span class="annottext">crsObjectFromAeson :: Href -&gt; Object -&gt; Parser CRSObject
+</span><a href="Data.Geospatial.Internal.CRS.html#crsObjectFromAeson"><span class="hs-identifier hs-var hs-var">crsObjectFromAeson</span></a></span></span><span> </span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;name&quot;</span></span><span> </span><span id="local-6989586621679176597"><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679176597"><span class="hs-identifier hs-var">obj</span></a></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Href -&gt; CRSObject
+</span><a href="Data.Geospatial.Internal.CRS.html#NamedCRS"><span class="hs-identifier hs-var">NamedCRS</span></a></span><span> </span><span class="annot"><span class="annottext">(Href -&gt; CRSObject) -&gt; Parser Href -&gt; Parser CRSObject
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Href -&gt; Object -&gt; Parser Href
+forall a. FromJSON a =&gt; Href -&gt; Object -&gt; Parser a
+</span><a href="Data.Geospatial.Internal.CRS.html#crsPropertyFromAesonObj"><span class="hs-identifier hs-var">crsPropertyFromAesonObj</span></a></span><span> </span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;name&quot;</span></span><span> </span><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679176597"><span class="hs-identifier hs-var">obj</span></a></span><span>
+</span><span id="line-88"></span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#crsObjectFromAeson"><span class="hs-identifier hs-var">crsObjectFromAeson</span></a></span><span> </span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;epsg&quot;</span></span><span> </span><span id="local-6989586621679176596"><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679176596"><span class="hs-identifier hs-var">obj</span></a></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; CRSObject
+</span><a href="Data.Geospatial.Internal.CRS.html#EPSG"><span class="hs-identifier hs-var">EPSG</span></a></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; CRSObject) -&gt; Parser Int -&gt; Parser CRSObject
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Href -&gt; Object -&gt; Parser Int
+forall a. FromJSON a =&gt; Href -&gt; Object -&gt; Parser a
+</span><a href="Data.Geospatial.Internal.CRS.html#crsPropertyFromAesonObj"><span class="hs-identifier hs-var">crsPropertyFromAesonObj</span></a></span><span> </span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;code&quot;</span></span><span> </span><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679176596"><span class="hs-identifier hs-var">obj</span></a></span><span>
+</span><span id="line-89"></span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#crsObjectFromAeson"><span class="hs-identifier hs-var">crsObjectFromAeson</span></a></span><span> </span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;link&quot;</span></span><span> </span><span id="local-6989586621679176595"><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679176595"><span class="hs-identifier hs-var">obj</span></a></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Href -&gt; Href -&gt; CRSObject
+</span><a href="Data.Geospatial.Internal.CRS.html#LinkedCRS"><span class="hs-identifier hs-var">LinkedCRS</span></a></span><span> </span><span class="annot"><span class="annottext">(Href -&gt; Href -&gt; CRSObject)
+-&gt; Parser Href -&gt; Parser (Href -&gt; CRSObject)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Href -&gt; Object -&gt; Parser Href
+forall a. FromJSON a =&gt; Href -&gt; Object -&gt; Parser a
+</span><a href="Data.Geospatial.Internal.CRS.html#crsPropertyFromAesonObj"><span class="hs-identifier hs-var">crsPropertyFromAesonObj</span></a></span><span> </span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;href&quot;</span></span><span> </span><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679176595"><span class="hs-identifier hs-var">obj</span></a></span><span> </span><span class="annot"><span class="annottext">Parser (Href -&gt; CRSObject) -&gt; Parser Href -&gt; Parser CRSObject
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Href -&gt; Object -&gt; Parser Href
+forall a. FromJSON a =&gt; Href -&gt; Object -&gt; Parser a
+</span><a href="Data.Geospatial.Internal.CRS.html#crsPropertyFromAesonObj"><span class="hs-identifier hs-var">crsPropertyFromAesonObj</span></a></span><span> </span><span class="annot"><span class="annottext">Href
+</span><span class="hs-string">&quot;type&quot;</span></span><span> </span><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679176595"><span class="hs-identifier hs-var">obj</span></a></span><span>
+</span><span id="line-90"></span><span class="annot"><a href="Data.Geospatial.Internal.CRS.html#crsObjectFromAeson"><span class="hs-identifier hs-var">crsObjectFromAeson</span></a></span><span> </span><span class="annot"><span class="annottext">Href
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Object
+</span><span class="hs-identifier">_</span></span><span>          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser CRSObject
+forall (m :: * -&gt; *) a. MonadPlus m =&gt; m a
+</span><span class="hs-identifier hs-var">mzero</span></span><span>
+</span><span id="line-91"></span></pre></body></html>

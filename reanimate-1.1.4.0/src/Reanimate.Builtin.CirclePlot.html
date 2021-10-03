@@ -1,0 +1,136 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Module      : Reanimate.Builtin.CirclePlot
+Copyright   : Written by David Himmelstrup
+License     : Unlicense
+Maintainer  : lemmih@gmail.com
+Stability   : experimental
+Portability : POSIX
+
+Convenience module for rendering circle plots.
+
+-}</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Builtin.CirclePlot</span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Builtin.CirclePlot.html#circlePlot"><span class="hs-identifier">circlePlot</span></a></span><span>
+</span><span id="line-14"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Codec.Picture</span></span><span>       </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">PixelRGBA8</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">generateImage</span></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree</span></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Tree</span></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Constants.html"><span class="hs-identifier">Reanimate.Constants</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Constants.html#screenHeight"><span class="hs-identifier">screenHeight</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Raster.html"><span class="hs-identifier">Reanimate.Raster</span></a></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Raster.html#embedImage"><span class="hs-identifier">embedImage</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Svg.html"><span class="hs-identifier">Reanimate.Svg</span></a></span><span>       </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Svg.Constructors.html#flipYAxis"><span class="hs-identifier">flipYAxis</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.Constructors.html#scaleToHeight"><span class="hs-identifier">scaleToHeight</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span>
+</span><span id="line-22"></span><span class="hs-comment">-- | Circle plots are scaled to 'screenHeight'.</span><span>
+</span><span id="line-23"></span><span class="hs-comment">--</span><span>
+</span><span id="line-24"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-25"></span><span class="hs-comment">--</span><span>
+</span><span id="line-26"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- 'circlePlot' 500 $ \\ang r -&gt;</span><span>
+</span><span id="line-28"></span><span class="hs-comment">--   'Codec.Picture.Types.promotePixel' $ toRGB8 $ uncurryRGB sRGB $ hsv (ang/pi*180) r 1</span><span>
+</span><span id="line-29"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-30"></span><span class="hs-comment">--</span><span>
+</span><span id="line-31"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_circlePlot.gif&gt;&gt;</span><span>
+</span><span id="line-32"></span><span class="annot"><a href="Reanimate.Builtin.CirclePlot.html#circlePlot"><span class="hs-identifier hs-type">circlePlot</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-comment">-- ^ Number of diagonal pixels. Only affects quality, not size.</span><span>
+</span><span id="line-33"></span><span>           </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PixelRGBA8</span></span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span>              </span><span class="hs-comment">-- ^ Angle and radius in radians and percent respectively.</span><span>
+</span><span id="line-35"></span><span>           </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-36"></span><span id="circlePlot"><span class="annot"><span class="annottext">circlePlot :: Int -&gt; (Double -&gt; Double -&gt; PixelRGBA8) -&gt; Tree
+</span><a href="Reanimate.Builtin.CirclePlot.html#circlePlot"><span class="hs-identifier hs-var hs-var">circlePlot</span></a></span></span><span> </span><span id="local-6989586621679546774"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679546774"><span class="hs-identifier hs-var">density</span></a></span></span><span> </span><span id="local-6989586621679546773"><span class="annot"><span class="annottext">Double -&gt; Double -&gt; PixelRGBA8
+</span><a href="#local-6989586621679546773"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-37"></span><span>    </span><span class="annot"><span class="annottext">Double -&gt; Tree -&gt; Tree
+</span><a href="Reanimate.Svg.Constructors.html#scaleToHeight"><span class="hs-identifier hs-var">scaleToHeight</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+forall a. Fractional a =&gt; a
+</span><a href="Reanimate.Constants.html#screenHeight"><span class="hs-identifier hs-var">screenHeight</span></a></span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Tree -&gt; Tree
+</span><a href="Reanimate.Svg.Constructors.html#flipYAxis"><span class="hs-identifier hs-var">flipYAxis</span></a></span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-38"></span><span>    </span><span class="annot"><span class="annottext">Image PixelRGBA8 -&gt; Tree
+forall a. PngSavable a =&gt; Image a -&gt; Tree
+</span><a href="Reanimate.Raster.html#embedImage"><span class="hs-identifier hs-var">embedImage</span></a></span><span> </span><span class="annot"><span class="annottext">(Image PixelRGBA8 -&gt; Tree) -&gt; Image PixelRGBA8 -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Int -&gt; PixelRGBA8) -&gt; Int -&gt; Int -&gt; Image PixelRGBA8
+forall px. Pixel px =&gt; (Int -&gt; Int -&gt; px) -&gt; Int -&gt; Int -&gt; Image px
+</span><span class="hs-identifier hs-var">generateImage</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; PixelRGBA8
+forall a a. (Integral a, Integral a) =&gt; a -&gt; a -&gt; PixelRGBA8
+</span><a href="#local-6989586621679546772"><span class="hs-identifier hs-var">gen</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679546774"><span class="hs-identifier hs-var">density</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679546774"><span class="hs-identifier hs-var">density</span></a></span><span>
+</span><span id="line-39"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-40"></span><span>    </span><span id="local-6989586621679546771"><span class="annot"><span class="annottext">cN :: Double
+</span><a href="#local-6989586621679546771"><span class="hs-identifier hs-var hs-var">cN</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Double) -&gt; Int -&gt; Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679546774"><span class="hs-identifier hs-var">density</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Integral a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">`div`</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-41"></span><span>    </span><span id="local-6989586621679546772"><span class="annot"><span class="annottext">gen :: a -&gt; a -&gt; PixelRGBA8
+</span><a href="#local-6989586621679546772"><span class="hs-identifier hs-var hs-var">gen</span></a></span></span><span> </span><span id="local-6989586621679546769"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546769"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679546768"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546768"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-42"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679546767"><span class="annot"><span class="annottext">radius :: Double
+</span><a href="#local-6989586621679546767"><span class="hs-identifier hs-var hs-var">radius</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sqrt</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546769"><span class="hs-identifier hs-var">x</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679546771"><span class="hs-identifier hs-var">cN</span></a></span><span class="hs-special">)</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Floating a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">**</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546768"><span class="hs-identifier hs-var">y</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679546771"><span class="hs-identifier hs-var">cN</span></a></span><span class="hs-special">)</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Floating a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">**</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span>
+</span><span id="line-43"></span><span>          </span><span id="local-6989586621679546763"><span class="annot"><span class="annottext">ang :: Double
+</span><a href="#local-6989586621679546763"><span class="hs-identifier hs-var hs-var">ang</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. RealFloat a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">atan2</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546768"><span class="hs-identifier hs-var">y</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679546771"><span class="hs-identifier hs-var">cN</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679546769"><span class="hs-identifier hs-var">x</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679546771"><span class="hs-identifier hs-var">cN</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-44"></span><span>      </span><span class="hs-keyword">in</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679546767"><span class="hs-identifier hs-var">radius</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679546771"><span class="hs-identifier hs-var">cN</span></a></span><span>
+</span><span id="line-45"></span><span>        </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; PixelRGBA8
+</span><span class="hs-identifier hs-var">PixelRGBA8</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-46"></span><span>        </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; PixelRGBA8
+</span><a href="#local-6989586621679546773"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679546763"><span class="hs-identifier hs-var">ang</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679546767"><span class="hs-identifier hs-var">radius</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679546771"><span class="hs-identifier hs-var">cN</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-47"></span></pre></body></html>

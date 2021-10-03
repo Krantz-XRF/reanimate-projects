@@ -1,0 +1,213 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Module      : Reanimate
+Description : SVG-base animation library.
+Copyright   : Written by David Himmelstrup
+License     : Unlicense
+Maintainer  : lemmih@gmail.com
+Stability   : experimental
+Portability : POSIX
+
+Reanimate is an animation library based on SVGs. It is designed to act like glue
+between external components such as \'latex\', \'ffmpeg\', \'gnuplot\', \'diagrams\',
+and \'povray\'.
+
+= Canvas
+
+Reanimate uses its own internal, Cartesian coordinate system for animations,
+with a fixed canvas size of 16x9, where X and Y are real numbers. (0, 0) is
+located in the center of the canvas, with positive X going to the right, and
+positive Y going up. This means that e.g. (8, 4.5) is the top right corner
+and (-8, -4.5) is the bottom left corner. Note that this canvas size does not
+affect how large or small output resolution will be, although it /does/ affect
+aspect ratio.
+
+= Driver
+
+Reanimate features a web-based viewer which is opened by default if
+no other parameters are given. Key features:
+
+  * This viewer listens for changes to the source file and recompiles the
+    code automatically as needed.
+  * Animations are rendered with increasing fidelity until the frame
+    rate reaches 60 fps.
+  * Key commands for pausing, frame stepping, forward/rewind.
+    To pause press SPACE, to move -1\/+1\/-10\/+10 frames use LEFT\/RIGHT\/DOWN\/UP arrow keys.
+-}</span><span>
+</span><span id="line-36"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate</span><span>
+</span><span id="line-37"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Driver.html#reanimate"><span class="hs-identifier">reanimate</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-38"></span><span>    </span><span class="annot"><a href="Reanimate.Driver.Daemon.html#reanimateLive"><span class="hs-identifier">reanimateLive</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-39"></span><span>    </span><span class="annot"><a href="Reanimate.Driver.Daemon.html#reanimateLiveEntry"><span class="hs-identifier">reanimateLiveEntry</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-40"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Animations</span></span><span>
+</span><span id="line-41"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier">SVG</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-42"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier">Time</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-43"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#Duration"><span class="hs-identifier">Duration</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-44"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#Animation"><span class="hs-identifier">Animation</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-45"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#mkAnimation"><span class="hs-identifier">mkAnimation</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-46"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#animate"><span class="hs-identifier">animate</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-47"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#staticFrame"><span class="hs-identifier">staticFrame</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-48"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#duration"><span class="hs-identifier">duration</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-49"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#frameAt"><span class="hs-identifier">frameAt</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-50"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Composition</span></span><span>
+</span><span id="line-51"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#seqA"><span class="hs-identifier">seqA</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-52"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#parA"><span class="hs-identifier">parA</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-53"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#parLoopA"><span class="hs-identifier">parLoopA</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-54"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#parDropA"><span class="hs-identifier">parDropA</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-55"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#pause"><span class="hs-identifier">pause</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-56"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#andThen"><span class="hs-identifier">andThen</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-57"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#mapA"><span class="hs-identifier">mapA</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-58"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#pauseAtEnd"><span class="hs-identifier">pauseAtEnd</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-59"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#pauseAtBeginning"><span class="hs-identifier">pauseAtBeginning</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-60"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#pauseAround"><span class="hs-identifier">pauseAround</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-61"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#adjustDuration"><span class="hs-identifier">adjustDuration</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-62"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#setDuration"><span class="hs-identifier">setDuration</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-63"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#reverseA"><span class="hs-identifier">reverseA</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-64"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#playThenReverseA"><span class="hs-identifier">playThenReverseA</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-65"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#repeatA"><span class="hs-identifier">repeatA</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-66"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#freezeAtPercentage"><span class="hs-identifier">freezeAtPercentage</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-67"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#addStatic"><span class="hs-identifier">addStatic</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-68"></span><span>    </span><span class="annot"><a href="Reanimate.Animation.html#signalA"><span class="hs-identifier">signalA</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-69"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Easing functions</span></span><span>
+</span><span id="line-70"></span><span>    </span><span class="annot"><a href="Reanimate.Ease.html#Signal"><span class="hs-identifier">Signal</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-71"></span><span>    </span><span class="annot"><a href="Reanimate.Ease.html#constantS"><span class="hs-identifier">constantS</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-72"></span><span>    </span><span class="annot"><a href="Reanimate.Ease.html#fromToS"><span class="hs-identifier">fromToS</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-73"></span><span>    </span><span class="annot"><a href="Reanimate.Ease.html#reverseS"><span class="hs-identifier">reverseS</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-74"></span><span>    </span><span class="annot"><a href="Reanimate.Ease.html#curveS"><span class="hs-identifier">curveS</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-75"></span><span>    </span><span class="annot"><a href="Reanimate.Ease.html#powerS"><span class="hs-identifier">powerS</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-76"></span><span>    </span><span class="annot"><a href="Reanimate.Ease.html#bellS"><span class="hs-identifier">bellS</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-77"></span><span>    </span><span class="annot"><a href="Reanimate.Ease.html#oscillateS"><span class="hs-identifier">oscillateS</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-78"></span><span>    </span><span class="annot"><a href="Reanimate.Ease.html#cubicBezierS"><span class="hs-identifier">cubicBezierS</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-79"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Scenes</span></span><span>
+</span><span id="line-80"></span><span>    </span><span class="annot"><a href="Reanimate.Scene.Core.html#Scene"><span class="hs-identifier">Scene</span></a></span><span>
+</span><span id="line-81"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#ZIndex"><span class="hs-identifier">ZIndex</span></a></span><span>
+</span><span id="line-82"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#scene"><span class="hs-identifier">scene</span></a></span><span>             </span><span class="hs-comment">-- :: (forall s. Scene s a) -&gt; Animation</span><span>
+</span><span id="line-83"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#play"><span class="hs-identifier">play</span></a></span><span>              </span><span class="hs-comment">-- :: Animation -&gt; Scene s ()</span><span>
+</span><span id="line-84"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#fork"><span class="hs-identifier">fork</span></a></span><span>              </span><span class="hs-comment">-- :: Scene s a -&gt; Scene s a</span><span>
+</span><span id="line-85"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#queryNow"><span class="hs-identifier">queryNow</span></a></span><span>          </span><span class="hs-comment">-- :: Scene s Time</span><span>
+</span><span id="line-86"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#wait"><span class="hs-identifier">wait</span></a></span><span>              </span><span class="hs-comment">-- :: Duration -&gt; Scene s ()</span><span>
+</span><span id="line-87"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#waitUntil"><span class="hs-identifier">waitUntil</span></a></span><span>         </span><span class="hs-comment">-- :: Time -&gt; Scene s ()</span><span>
+</span><span id="line-88"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#waitOn"><span class="hs-identifier">waitOn</span></a></span><span>            </span><span class="hs-comment">-- :: Scene s a -&gt; Scene s a</span><span>
+</span><span id="line-89"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#adjustZ"><span class="hs-identifier">adjustZ</span></a></span><span>           </span><span class="hs-comment">-- :: (ZIndex -&gt; ZIndex) -&gt; Scene s a -&gt; Scene s a</span><span>
+</span><span id="line-90"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Core.html#withSceneDuration"><span class="hs-identifier">withSceneDuration</span></a></span><span> </span><span class="hs-comment">-- :: Scene s () -&gt; Scene s Duration</span><span>
+</span><span id="line-91"></span><span>  </span><span class="annot"><span class="hs-comment">-- *** Variables</span></span><span>
+</span><span id="line-92"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#Var"><span class="hs-identifier">Var</span></a></span><span>
+</span><span id="line-93"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#newVar"><span class="hs-identifier">newVar</span></a></span><span>            </span><span class="hs-comment">-- :: a -&gt; Scene s (Var s a)</span><span>
+</span><span id="line-94"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#readVar"><span class="hs-identifier">readVar</span></a></span><span>           </span><span class="hs-comment">-- :: Var s a -&gt; Scene s a</span><span>
+</span><span id="line-95"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#writeVar"><span class="hs-identifier">writeVar</span></a></span><span>          </span><span class="hs-comment">-- :: Var s a -&gt; a -&gt; Scene s ()</span><span>
+</span><span id="line-96"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#modifyVar"><span class="hs-identifier">modifyVar</span></a></span><span>         </span><span class="hs-comment">-- :: Var s a -&gt; (a -&gt; a) -&gt; Scene s ()</span><span>
+</span><span id="line-97"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Var.html#tweenVar"><span class="hs-identifier">tweenVar</span></a></span><span>          </span><span class="hs-comment">-- :: Var s a -&gt; Duration -&gt; (a -&gt; Time -&gt; a) -&gt; Scene s ()</span><span>
+</span><span id="line-98"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#simpleVar"><span class="hs-identifier">simpleVar</span></a></span><span>         </span><span class="hs-comment">-- :: (a -&gt; SVG) -&gt; a -&gt; Scene s (Var s a)</span><span>
+</span><span id="line-99"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#findVar"><span class="hs-identifier">findVar</span></a></span><span>           </span><span class="hs-comment">-- :: (a -&gt; Bool) -&gt; [Var s a] -&gt; Scene s (Var s a)</span><span>
+</span><span id="line-100"></span><span>  </span><span class="annot"><span class="hs-comment">-- *** Sprites</span></span><span>
+</span><span id="line-101"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Sprite"><span class="hs-identifier">Sprite</span></a></span><span>
+</span><span id="line-102"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#Frame"><span class="hs-identifier">Frame</span></a></span><span>
+</span><span id="line-103"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#unVar"><span class="hs-identifier">unVar</span></a></span><span>             </span><span class="hs-comment">-- :: Var s a -&gt; Frame s a</span><span>
+</span><span id="line-104"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteT"><span class="hs-identifier">spriteT</span></a></span><span>           </span><span class="hs-comment">-- :: Frame s Time</span><span>
+</span><span id="line-105"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteDuration"><span class="hs-identifier">spriteDuration</span></a></span><span>    </span><span class="hs-comment">-- :: Frame s Duration</span><span>
+</span><span id="line-106"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#newSprite"><span class="hs-identifier">newSprite</span></a></span><span>         </span><span class="hs-comment">-- :: Frame s SVG -&gt; Scene s (Sprite s)</span><span>
+</span><span id="line-107"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#newSprite_"><span class="hs-identifier">newSprite_</span></a></span><span>        </span><span class="hs-comment">-- :: Frame s SVG -&gt; Scene s ()</span><span>
+</span><span id="line-108"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#newSpriteA"><span class="hs-identifier">newSpriteA</span></a></span><span>        </span><span class="hs-comment">-- :: Animation -&gt; Scene s (Sprite s)</span><span>
+</span><span id="line-109"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#newSpriteA%27"><span class="hs-identifier">newSpriteA'</span></a></span><span>       </span><span class="hs-comment">-- :: Sync -&gt; Animation -&gt; Scene s (Sprite s)</span><span>
+</span><span id="line-110"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#newSpriteSVG"><span class="hs-identifier">newSpriteSVG</span></a></span><span>      </span><span class="hs-comment">-- :: SVG -&gt; Scene s (Sprite s)</span><span>
+</span><span id="line-111"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#newSpriteSVG_"><span class="hs-identifier">newSpriteSVG_</span></a></span><span>     </span><span class="hs-comment">-- :: SVG -&gt; Scene s ()</span><span>
+</span><span id="line-112"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#destroySprite"><span class="hs-identifier">destroySprite</span></a></span><span>     </span><span class="hs-comment">-- :: Sprite s -&gt; Scene s ()</span><span>
+</span><span id="line-113"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#applyVar"><span class="hs-identifier">applyVar</span></a></span><span>          </span><span class="hs-comment">-- :: Var s a -&gt; Sprite s -&gt; (a -&gt; SVG -&gt; SVG) -&gt; Scene s ()</span><span>
+</span><span id="line-114"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteModify"><span class="hs-identifier">spriteModify</span></a></span><span>      </span><span class="hs-comment">-- :: Sprite s -&gt; Frame s ((SVG,ZIndex) -&gt; (SVG, ZIndex)) -&gt; Scene s ()</span><span>
+</span><span id="line-115"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteMap"><span class="hs-identifier">spriteMap</span></a></span><span>         </span><span class="hs-comment">-- :: Sprite s -&gt; (SVG -&gt; SVG) -&gt; Scene s ()</span><span>
+</span><span id="line-116"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteTween"><span class="hs-identifier">spriteTween</span></a></span><span>       </span><span class="hs-comment">-- :: Sprite s -&gt; Duration -&gt; (Double -&gt; SVG -&gt; SVG) -&gt; Scene s ()</span><span>
+</span><span id="line-117"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteVar"><span class="hs-identifier">spriteVar</span></a></span><span>         </span><span class="hs-comment">-- :: Sprite s -&gt; a -&gt; (a -&gt; SVG -&gt; SVG) -&gt; Scene s (Var s a)</span><span>
+</span><span id="line-118"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteE"><span class="hs-identifier">spriteE</span></a></span><span>           </span><span class="hs-comment">-- :: Sprite s -&gt; Effect -&gt; Scene s ()</span><span>
+</span><span id="line-119"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteZ"><span class="hs-identifier">spriteZ</span></a></span><span>           </span><span class="hs-comment">-- :: Sprite s -&gt; ZIndex -&gt; Scene s ()</span><span>
+</span><span id="line-120"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Scene.Sprite.html#spriteScope"><span class="hs-identifier">spriteScope</span></a></span><span class="hs-special">,</span><span>      </span><span class="hs-comment">-- :: Scene s a -&gt; Scene s a</span><span>
+</span><span id="line-121"></span><span>
+</span><span id="line-122"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Effects</span></span><span>
+</span><span id="line-123"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier">Effect</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-124"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#overBeginning"><span class="hs-identifier">overBeginning</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-125"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#overEnding"><span class="hs-identifier">overEnding</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-126"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#overInterval"><span class="hs-identifier">overInterval</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-127"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#reverseE"><span class="hs-identifier">reverseE</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-128"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#delayE"><span class="hs-identifier">delayE</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-129"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#applyE"><span class="hs-identifier">applyE</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-130"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#constE"><span class="hs-identifier">constE</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-131"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#fadeInE"><span class="hs-identifier">fadeInE</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-132"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#fadeOutE"><span class="hs-identifier">fadeOutE</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-133"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#fadeLineInE"><span class="hs-identifier">fadeLineInE</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-134"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#fadeLineOutE"><span class="hs-identifier">fadeLineOutE</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-135"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#drawInE"><span class="hs-identifier">drawInE</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-136"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#drawOutE"><span class="hs-identifier">drawOutE</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-137"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#fillInE"><span class="hs-identifier">fillInE</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-138"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#scaleE"><span class="hs-identifier">scaleE</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-139"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#translateE"><span class="hs-identifier">translateE</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-140"></span><span>    </span><span class="annot"><a href="Reanimate.Effect.html#aroundCenterE"><span class="hs-identifier">aroundCenterE</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-141"></span><span>
+</span><span id="line-142"></span><span>    </span><span class="annot"><span class="hs-comment">-- * SVG</span></span><span>
+</span><span id="line-143"></span><span>    </span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Reanimate.Svg.Constructors.html"><span class="hs-identifier">Reanimate.Svg.Constructors</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-144"></span><span>    </span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Reanimate.Svg.LineCommand.html"><span class="hs-identifier">Reanimate.Svg.LineCommand</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-145"></span><span>    </span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Reanimate.Svg.BoundingBox.html"><span class="hs-identifier">Reanimate.Svg.BoundingBox</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-146"></span><span>    </span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Reanimate.Svg.html"><span class="hs-identifier">Reanimate.Svg</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-147"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Raster data</span></span><span>
+</span><span id="line-148"></span><span>    </span><span class="annot"><a href="Reanimate.Raster.html#mkImage"><span class="hs-identifier">mkImage</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-149"></span><span>    </span><span class="annot"><a href="Reanimate.Raster.html#embedImage"><span class="hs-identifier">embedImage</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-150"></span><span>    </span><span class="annot"><a href="Reanimate.Raster.html#embedDynamicImage"><span class="hs-identifier">embedDynamicImage</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-151"></span><span>    </span><span class="annot"><a href="Reanimate.Raster.html#embedPng"><span class="hs-identifier">embedPng</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-152"></span><span>    </span><span class="annot"><a href="Reanimate.Raster.html#raster"><span class="hs-identifier">raster</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-153"></span><span>    </span><span class="annot"><a href="Reanimate.Raster.html#rasterSized"><span class="hs-identifier">rasterSized</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-154"></span><span>    </span><span class="annot"><a href="Reanimate.Raster.html#svgAsPngFile"><span class="hs-identifier">svgAsPngFile</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-155"></span><span>    </span><span class="annot"><a href="Reanimate.Raster.html#svgAsPngFile%27"><span class="hs-identifier">svgAsPngFile'</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-156"></span><span>    </span><span class="annot"><a href="Reanimate.Raster.html#vectorize"><span class="hs-identifier">vectorize</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-157"></span><span>    </span><span class="annot"><a href="Reanimate.Raster.html#vectorize_"><span class="hs-identifier">vectorize_</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-158"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** External SVG providers</span></span><span>
+</span><span id="line-159"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#latex"><span class="hs-identifier">latex</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-160"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#latexAlign"><span class="hs-identifier">latexAlign</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-161"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#xelatex"><span class="hs-identifier">xelatex</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-162"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#ctex"><span class="hs-identifier">ctex</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-163"></span><span>    </span><span class="annot"><span class="hs-comment">-- * External 3D renderers</span></span><span>
+</span><span id="line-164"></span><span>    </span><span class="annot"><a href="Reanimate.Povray.html#povray"><span class="hs-identifier">povray</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-165"></span><span>    </span><span class="annot"><a href="Reanimate.Povray.html#povray%27"><span class="hs-identifier">povray'</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-166"></span><span>    </span><span class="annot"><a href="Reanimate.Blender.html#blender"><span class="hs-identifier">blender</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-167"></span><span>    </span><span class="annot"><a href="Reanimate.Blender.html#blender%27"><span class="hs-identifier">blender'</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-168"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Colormaps</span></span><span>
+</span><span id="line-169"></span><span>    </span><span class="annot"><a href="Reanimate.ColorMap.html#turbo"><span class="hs-identifier">turbo</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-170"></span><span>    </span><span class="annot"><a href="Reanimate.ColorMap.html#viridis"><span class="hs-identifier">viridis</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-171"></span><span>    </span><span class="annot"><a href="Reanimate.ColorMap.html#magma"><span class="hs-identifier">magma</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-172"></span><span>    </span><span class="annot"><a href="Reanimate.ColorMap.html#inferno"><span class="hs-identifier">inferno</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-173"></span><span>    </span><span class="annot"><a href="Reanimate.ColorMap.html#plasma"><span class="hs-identifier">plasma</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-174"></span><span>    </span><span class="annot"><a href="Reanimate.ColorMap.html#sinebow"><span class="hs-identifier">sinebow</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-175"></span><span>    </span><span class="annot"><a href="Reanimate.ColorMap.html#parula"><span class="hs-identifier">parula</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-176"></span><span>    </span><span class="annot"><a href="Reanimate.ColorMap.html#cividis"><span class="hs-identifier">cividis</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-177"></span><span>    </span><span class="annot"><a href="Reanimate.ColorMap.html#jet"><span class="hs-identifier">jet</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-178"></span><span>    </span><span class="annot"><a href="Reanimate.ColorMap.html#hsv"><span class="hs-identifier">hsv</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-179"></span><span>    </span><span class="annot"><a href="Reanimate.ColorMap.html#hsvMatlab"><span class="hs-identifier">hsvMatlab</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-180"></span><span>    </span><span class="annot"><a href="Reanimate.ColorMap.html#greyscale"><span class="hs-identifier">greyscale</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-181"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Constants</span></span><span>
+</span><span id="line-182"></span><span>    </span><span class="annot"><a href="Reanimate.Constants.html#screenWidth"><span class="hs-identifier">screenWidth</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-183"></span><span>    </span><span class="annot"><a href="Reanimate.Constants.html#screenHeight"><span class="hs-identifier">screenHeight</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-184"></span><span>    </span><span class="annot"><a href="Reanimate.Constants.html#screenTop"><span class="hs-identifier">screenTop</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-185"></span><span>    </span><span class="annot"><a href="Reanimate.Constants.html#screenBottom"><span class="hs-identifier">screenBottom</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-186"></span><span>    </span><span class="annot"><a href="Reanimate.Constants.html#screenLeft"><span class="hs-identifier">screenLeft</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-187"></span><span>    </span><span class="annot"><a href="Reanimate.Constants.html#screenRight"><span class="hs-identifier">screenRight</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-188"></span><span>    </span><span class="annot"><a href="Reanimate.Constants.html#defaultDPI"><span class="hs-identifier">defaultDPI</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-189"></span><span>    </span><span class="annot"><a href="Reanimate.Constants.html#defaultStrokeWidth"><span class="hs-identifier">defaultStrokeWidth</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-190"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Parameters</span></span><span>
+</span><span id="line-191"></span><span>    </span><span class="annot"><a href="Reanimate.Parameters.html#pFPS"><span class="hs-identifier">pFPS</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-192"></span><span>    </span><span class="annot"><a href="Reanimate.Parameters.html#pHeight"><span class="hs-identifier">pHeight</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-193"></span><span>    </span><span class="annot"><a href="Reanimate.Parameters.html#pWidth"><span class="hs-identifier">pWidth</span></a></span><span>
+</span><span id="line-194"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-195"></span><span>
+</span><span id="line-196"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Animation.html"><span class="hs-identifier">Reanimate.Animation</span></a></span><span>
+</span><span id="line-197"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Blender.html"><span class="hs-identifier">Reanimate.Blender</span></a></span><span>
+</span><span id="line-198"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.ColorMap.html"><span class="hs-identifier">Reanimate.ColorMap</span></a></span><span>
+</span><span id="line-199"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Constants.html"><span class="hs-identifier">Reanimate.Constants</span></a></span><span>
+</span><span id="line-200"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Driver.html"><span class="hs-identifier">Reanimate.Driver</span></a></span><span>
+</span><span id="line-201"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Driver.Daemon.html"><span class="hs-identifier">Reanimate.Driver.Daemon</span></a></span><span>
+</span><span id="line-202"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.LaTeX.html"><span class="hs-identifier">Reanimate.LaTeX</span></a></span><span>
+</span><span id="line-203"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Parameters.html"><span class="hs-identifier">Reanimate.Parameters</span></a></span><span>
+</span><span id="line-204"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Povray.html"><span class="hs-identifier">Reanimate.Povray</span></a></span><span>
+</span><span id="line-205"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Raster.html"><span class="hs-identifier">Reanimate.Raster</span></a></span><span>
+</span><span id="line-206"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Effect.html"><span class="hs-identifier">Reanimate.Effect</span></a></span><span>
+</span><span id="line-207"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Scene.html"><span class="hs-identifier">Reanimate.Scene</span></a></span><span>
+</span><span id="line-208"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Ease.html"><span class="hs-identifier">Reanimate.Ease</span></a></span><span>
+</span><span id="line-209"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Svg.html"><span class="hs-identifier">Reanimate.Svg</span></a></span><span>
+</span><span id="line-210"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Svg.BoundingBox.html"><span class="hs-identifier">Reanimate.Svg.BoundingBox</span></a></span><span>
+</span><span id="line-211"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Svg.Constructors.html"><span class="hs-identifier">Reanimate.Svg.Constructors</span></a></span><span>
+</span><span id="line-212"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Svg.LineCommand.html"><span class="hs-identifier">Reanimate.Svg.LineCommand</span></a></span><span>
+</span><span id="line-213"></span></pre></body></html>

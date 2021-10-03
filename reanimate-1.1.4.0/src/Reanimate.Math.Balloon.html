@@ -1,0 +1,943 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE MultiWayIf        #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-3"></span><span class="hs-comment">{-|
+Copyright   : Written by David Himmelstrup
+License     : Unlicense
+Maintainer  : lemmih@gmail.com
+Stability   : experimental
+Portability : POSIX
+-}</span><span>
+</span><span id="line-10"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Math.Balloon</span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Math.Balloon.html#balloon"><span class="hs-identifier">balloon</span></a></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Math.Balloon.html#balloon%27"><span class="hs-identifier">balloon'</span></a></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Vector</span></span><span>                </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">V</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree</span></span><span>           </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">drawAttributes</span></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Linear.V2</span></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Linear.Vector</span></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Animation.html"><span class="hs-identifier">Reanimate.Animation</span></a></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Math.Common.html"><span class="hs-identifier">Reanimate.Math.Common</span></a></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Math.Polygon.html"><span class="hs-identifier">Reanimate.Math.Polygon</span></a></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Morph.Common.html"><span class="hs-identifier">Reanimate.Morph.Common</span></a></span><span>     </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Morph.Common.html#toShapes"><span class="hs-identifier">toShapes</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Svg.Constructors.html"><span class="hs-identifier">Reanimate.Svg.Constructors</span></a></span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="hs-comment">-- import           Debug.Trace</span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- | Inflate SVG shapes like a balloon. This works by hiding corners</span><span>
+</span><span id="line-29"></span><span class="hs-comment">--   that are more than @t@ percent distant from the starting point</span><span>
+</span><span id="line-30"></span><span class="hs-comment">--   relative to the maximum diameter of the shape.</span><span>
+</span><span id="line-31"></span><span class="hs-comment">--</span><span>
+</span><span id="line-32"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-33"></span><span class="hs-comment">--</span><span>
+</span><span id="line-34"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-35"></span><span class="hs-comment">-- 'animate' $ 'balloon' ('scale' 8 $ 'center' $ 'Reanimate.LaTeX.latex' \&quot;X\&quot;)</span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-37"></span><span class="hs-comment">--</span><span>
+</span><span id="line-38"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_balloon.gif&gt;&gt;</span><span>
+</span><span id="line-39"></span><span class="annot"><a href="Reanimate.Math.Balloon.html#balloon"><span class="hs-identifier hs-type">balloon</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span><span id="balloon"><span class="annot"><span class="annottext">balloon :: SVG -&gt; Double -&gt; SVG
+</span><a href="Reanimate.Math.Balloon.html#balloon"><span class="hs-identifier hs-var hs-var">balloon</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; SVG -&gt; Double -&gt; SVG
+</span><a href="Reanimate.Math.Balloon.html#balloon%27"><span class="hs-identifier hs-var">balloon'</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.01</span></span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- | Same as @balloon'@ but with a given tolerance for converting</span><span>
+</span><span id="line-43"></span><span class="hs-comment">--   SVG shapes to polygons.</span><span>
+</span><span id="line-44"></span><span class="annot"><a href="Reanimate.Math.Balloon.html#balloon%27"><span class="hs-identifier hs-type">balloon'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-45"></span><span id="balloon%27"><span class="annot"><span class="annottext">balloon' :: Double -&gt; SVG -&gt; Double -&gt; SVG
+</span><a href="Reanimate.Math.Balloon.html#balloon%27"><span class="hs-identifier hs-var hs-var">balloon'</span></a></span></span><span> </span><span id="local-6989586621679545999"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545999"><span class="hs-identifier hs-var">tol</span></a></span></span><span> </span><span id="local-6989586621679545998"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679545998"><span class="hs-identifier hs-var">svg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679545997"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545997"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-46"></span><span>    </span><span class="annot"><span class="annottext">[SVG] -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#mkGroup"><span class="hs-identifier hs-var">mkGroup</span></a></span><span>
+</span><span id="line-47"></span><span>    </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; SVG
+</span><a href="#local-6989586621679545995"><span class="hs-identifier hs-var">polygonShape</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Polygon
+</span><a href="#local-6989586621679545994"><span class="hs-identifier hs-var">gen</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545997"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; (SVG -&gt; SVG) -&gt; SVG
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">(DrawAttributes -&gt; Identity DrawAttributes) -&gt; SVG -&gt; Identity SVG
+forall c. HasDrawAttributes c =&gt; Lens' c DrawAttributes
+</span><span class="hs-identifier hs-var">drawAttributes</span></span><span> </span><span class="annot"><span class="annottext">((DrawAttributes -&gt; Identity DrawAttributes)
+ -&gt; SVG -&gt; Identity SVG)
+-&gt; DrawAttributes -&gt; SVG -&gt; SVG
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">DrawAttributes
+</span><a href="#local-6989586621679545991"><span class="hs-identifier hs-var">attr</span></a></span><span>
+</span><span id="line-48"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679545991"><span class="annot"><span class="annottext">DrawAttributes
+</span><a href="#local-6989586621679545991"><span class="hs-identifier hs-var">attr</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679545994"><span class="annot"><span class="annottext">Double -&gt; Polygon
+</span><a href="#local-6989586621679545994"><span class="hs-identifier hs-var">gen</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[(DrawAttributes, Double -&gt; Polygon)]
+</span><a href="#local-6989586621679545990"><span class="hs-identifier hs-var">lst</span></a></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-49"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-50"></span><span>    </span><span class="annot"><a href="#local-6989586621679545995"><span class="hs-identifier hs-type">polygonShape</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Math.Polygon.html#Polygon"><span class="hs-identifier hs-type">Polygon</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span>
+</span><span id="line-51"></span><span>    </span><span id="local-6989586621679545995"><span class="annot"><span class="annottext">polygonShape :: Polygon -&gt; SVG
+</span><a href="#local-6989586621679545995"><span class="hs-identifier hs-var hs-var">polygonShape</span></a></span></span><span> </span><span id="local-6989586621679545989"><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545989"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[(Double, Double)] -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#mkLinePathClosed"><span class="hs-identifier hs-var">mkLinePathClosed</span></a></span><span>
+</span><span id="line-52"></span><span>      </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545987"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545986"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span id="local-6989586621679545987"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545987"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679545986"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545986"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(V2 Rational -&gt; V2 Double) -&gt; [V2 Rational] -&gt; [V2 Double]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Rational -&gt; Double) -&gt; V2 Rational -&gt; V2 Double
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">Rational -&gt; Double
+forall a b. (Real a, Fractional b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">realToFrac</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([V2 Rational] -&gt; [V2 Double]) -&gt; [V2 Rational] -&gt; [V2 Double]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Vector (V2 Rational) -&gt; [V2 Rational]
+forall a. Vector a -&gt; [a]
+</span><span class="hs-identifier hs-var">V.toList</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Vector (V2 Rational)
+forall a. APolygon a -&gt; Vector (V2 a)
+</span><a href="Reanimate.Math.Polygon.html#polygonPoints"><span class="hs-identifier hs-var hs-var">polygonPoints</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545989"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-53"></span><span>    </span><span id="local-6989586621679545990"><span class="annot"><span class="annottext">lst :: [(DrawAttributes, Double -&gt; Polygon)]
+</span><a href="#local-6989586621679545990"><span class="hs-identifier hs-var hs-var">lst</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-54"></span><span>      </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DrawAttributes
+</span><a href="#local-6989586621679545982"><span class="hs-identifier hs-var">attr</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Double -&gt; Polygon
+</span><a href="Reanimate.Math.Balloon.html#balloonP"><span class="hs-identifier hs-var">balloonP</span></a></span><span> </span><span class="annot"><span class="annottext">(Polygon -&gt; Double -&gt; Polygon) -&gt; Polygon -&gt; Double -&gt; Polygon
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Polygon
+</span><a href="Reanimate.Math.Balloon.html#shiftLongestDiameter"><span class="hs-identifier hs-var">shiftLongestDiameter</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545979"><span class="hs-identifier hs-var">poly</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-55"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679545982"><span class="annot"><span class="annottext">DrawAttributes
+</span><a href="#local-6989586621679545982"><span class="hs-identifier hs-var">attr</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679545979"><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545979"><span class="hs-identifier hs-var">poly</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Double -&gt; SVG -&gt; [(DrawAttributes, Polygon)]
+</span><a href="Reanimate.Morph.Common.html#toShapes"><span class="hs-identifier hs-var">toShapes</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545999"><span class="hs-identifier hs-var">tol</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679545998"><span class="hs-identifier hs-var">svg</span></a></span><span>
+</span><span id="line-56"></span><span>      </span><span class="hs-special">]</span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span class="hs-comment">-- x &lt;= 1</span><span>
+</span><span id="line-59"></span><span class="hs-comment">-- diameter (balloonP x p) = diameter p * x</span><span>
+</span><span id="line-60"></span><span class="annot"><a href="Reanimate.Math.Balloon.html#balloonP"><span class="hs-identifier hs-type">balloonP</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Math.Polygon.html#Polygon"><span class="hs-identifier hs-type">Polygon</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Math.Polygon.html#Polygon"><span class="hs-identifier hs-type">Polygon</span></a></span><span>
+</span><span id="line-61"></span><span id="balloonP"><span class="annot"><span class="annottext">balloonP :: Polygon -&gt; Double -&gt; Polygon
+</span><a href="Reanimate.Math.Balloon.html#balloonP"><span class="hs-identifier hs-var hs-var">balloonP</span></a></span></span><span> </span><span id="local-6989586621679545978"><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679545977"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545977"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-62"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679545976"><span class="annot"><span class="annottext">targetLength :: Double
+</span><a href="#local-6989586621679545976"><span class="hs-identifier hs-var hs-var">targetLength</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545975"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545977"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-63"></span><span>        </span><span id="local-6989586621679545973"><span class="annot"><span class="annottext">nodeVisible :: Int -&gt; Bool
+</span><a href="#local-6989586621679545973"><span class="hs-identifier hs-var hs-var">nodeVisible</span></a></span></span><span> </span><span id="local-6989586621679545972"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545972"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Vector Double
+</span><a href="#local-6989586621679545971"><span class="hs-identifier hs-var">ds</span></a></span><span> </span><span class="annot"><span class="annottext">Vector Double -&gt; Int -&gt; Double
+forall a. Vector a -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">V.!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545972"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545976"><span class="hs-identifier hs-var">targetLength</span></a></span><span>
+</span><span id="line-64"></span><span>        </span><span class="hs-comment">-- Move 'a' closer to 'target' such that the length from point 0 to 'a'</span><span>
+</span><span id="line-65"></span><span>        </span><span class="hs-comment">-- is targetLength.</span><span>
+</span><span id="line-66"></span><span>        </span><span class="annot"><a href="#local-6989586621679545968"><span class="hs-identifier hs-type">moveCloser</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Rational</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Rational</span></span><span>
+</span><span id="line-67"></span><span>        </span><span id="local-6989586621679545968"><span class="annot"><span class="annottext">moveCloser :: Int -&gt; V2 Rational -&gt; V2 Rational
+</span><a href="#local-6989586621679545968"><span class="hs-identifier hs-var hs-var">moveCloser</span></a></span></span><span> </span><span id="local-6989586621679545967"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545967"><span class="hs-identifier hs-var">target</span></a></span></span><span> </span><span id="local-6989586621679545966"><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545966"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-68"></span><span>          </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679545965"><span class="annot"><span class="annottext">targetDist :: Double
+</span><a href="#local-6989586621679545965"><span class="hs-identifier hs-var hs-var">targetDist</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Vector Double
+</span><a href="#local-6989586621679545971"><span class="hs-identifier hs-var">ds</span></a></span><span> </span><span class="annot"><span class="annottext">Vector Double -&gt; Int -&gt; Double
+forall a. Vector a -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">V.!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545967"><span class="hs-identifier hs-var">target</span></a></span><span>
+</span><span id="line-69"></span><span>              </span><span id="local-6989586621679545964"><span class="annot"><span class="annottext">aDist :: Double
+</span><a href="#local-6989586621679545964"><span class="hs-identifier hs-var hs-var">aDist</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">V2 Rational -&gt; V2 Rational -&gt; Double
+forall a. (Real a, Fractional a) =&gt; V2 a -&gt; V2 a -&gt; Double
+</span><a href="Reanimate.Math.Common.html#distance%27"><span class="hs-identifier hs-var">distance'</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545967"><span class="hs-identifier hs-var">target</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545966"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-70"></span><span>              </span><span id="local-6989586621679545961"><span class="annot"><span class="annottext">frac :: Rational
+</span><a href="#local-6989586621679545961"><span class="hs-identifier hs-var hs-var">frac</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Rational -&gt; Rational -&gt; Rational
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">min</span></span><span> </span><span class="annot"><span class="annottext">Rational
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">(Rational -&gt; Rational) -&gt; Rational -&gt; Rational
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Rational
+forall a b. (Real a, Fractional b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">realToFrac</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Rational) -&gt; Double -&gt; Rational
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545976"><span class="hs-identifier hs-var">targetLength</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545965"><span class="hs-identifier hs-var">targetDist</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545964"><span class="hs-identifier hs-var">aDist</span></a></span><span>
+</span><span id="line-71"></span><span>          </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Rational -&gt; V2 Rational -&gt; V2 Rational -&gt; V2 Rational
+forall (f :: * -&gt; *) a.
+(Additive f, Num a) =&gt;
+a -&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-identifier hs-var">lerp</span></span><span> </span><span class="annot"><span class="annottext">Rational
+</span><a href="#local-6989586621679545961"><span class="hs-identifier hs-var">frac</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545966"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545967"><span class="hs-identifier hs-var">target</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-72"></span><span>        </span><span id="local-6989586621679545957"><span class="annot"><span class="annottext">worker :: Int -&gt; [V2 Rational]
+</span><a href="#local-6989586621679545957"><span class="hs-identifier hs-var hs-var">worker</span></a></span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">]</span><span>
+</span><span id="line-73"></span><span>        </span><span class="annot"><a href="#local-6989586621679545957"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span id="local-6989586621679545956"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545956"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-74"></span><span>          </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679545955"><span class="annot"><span class="annottext">b :: Int
+</span><a href="#local-6989586621679545955"><span class="hs-identifier hs-var hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; Int
+forall a. APolygon a -&gt; Int -&gt; Int
+</span><a href="Reanimate.Math.Polygon.html#pNext"><span class="hs-identifier hs-var">pNext</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545956"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="hs-keyword">in</span><span>
+</span><span id="line-75"></span><span>          </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Bool
+</span><a href="#local-6989586621679545973"><span class="hs-identifier hs-var">nodeVisible</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545956"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Bool
+</span><a href="#local-6989586621679545973"><span class="hs-identifier hs-var">nodeVisible</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545955"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-76"></span><span>            </span><span class="hs-keyword">then</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545956"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545955"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-77"></span><span>            </span><span class="hs-keyword">else</span><span>
+</span><span id="line-78"></span><span>              </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; V2 Rational -&gt; V2 Rational -&gt; [Int] -&gt; [V2 Rational]
+forall t t.
+t -&gt; t -&gt; V2 Rational -&gt; V2 Rational -&gt; [Int] -&gt; [V2 Rational]
+</span><a href="#local-6989586621679545952"><span class="hs-identifier hs-var">chunkRight</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545956"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545955"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545956"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545955"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">([Int], [Int]) -&gt; [Int]
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="annot"><span class="annottext">(([Int], [Int]) -&gt; [Int]) -&gt; ([Int], [Int]) -&gt; [Int]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; ([Int], [Int])
+</span><a href="#local-6989586621679545951"><span class="hs-identifier hs-var">getFunnel</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545956"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545955"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[V2 Rational] -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span>
+</span><span id="line-79"></span><span>              </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; [V2 Rational]
+</span><a href="#local-6989586621679545950"><span class="hs-identifier hs-var">chunkCenter</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545956"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545955"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">[V2 Rational] -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span>
+</span><span id="line-80"></span><span>              </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; V2 Rational -&gt; V2 Rational -&gt; [Int] -&gt; [V2 Rational]
+forall t t.
+t -&gt; t -&gt; V2 Rational -&gt; V2 Rational -&gt; [Int] -&gt; [V2 Rational]
+</span><a href="#local-6989586621679545949"><span class="hs-identifier hs-var">chunkLeft</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545956"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545955"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545956"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545955"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">([Int], [Int]) -&gt; [Int]
+forall a b. (a, b) -&gt; b
+</span><span class="hs-identifier hs-var">snd</span></span><span> </span><span class="annot"><span class="annottext">(([Int], [Int]) -&gt; [Int]) -&gt; ([Int], [Int]) -&gt; [Int]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; ([Int], [Int])
+</span><a href="#local-6989586621679545951"><span class="hs-identifier hs-var">getFunnel</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545956"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545955"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-81"></span><span>        </span><span id="local-6989586621679545952"><span class="annot"><span class="annottext">chunkRight :: t -&gt; t -&gt; V2 Rational -&gt; V2 Rational -&gt; [Int] -&gt; [V2 Rational]
+</span><a href="#local-6989586621679545952"><span class="hs-identifier hs-var hs-var">chunkRight</span></a></span></span><span> </span><span id="local-6989586621679545948"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679545948"><span class="hs-identifier hs-var">ai</span></a></span></span><span> </span><span id="local-6989586621679545947"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679545947"><span class="hs-identifier hs-var">bi</span></a></span></span><span> </span><span id="local-6989586621679545946"><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545946"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679545945"><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545945"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679545944"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545944"><span class="hs-identifier hs-var">x</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679545943"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545943"><span class="hs-identifier hs-var">y</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679545942"><span class="annot"><span class="annottext">[Int]
+</span><a href="#local-6989586621679545942"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-82"></span><span>          </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">(V2 Rational, V2 Rational)
+-&gt; (V2 Rational, V2 Rational) -&gt; Maybe (V2 Rational)
+forall a.
+(Fractional a, Ord a) =&gt;
+(V2 a, V2 a) -&gt; (V2 a, V2 a) -&gt; Maybe (V2 a)
+</span><a href="Reanimate.Math.Common.html#rayIntersect"><span class="hs-identifier hs-var">rayIntersect</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545946"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545945"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545944"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545943"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-83"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679545940"><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545940"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-84"></span><span>              </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Bool
+</span><a href="#local-6989586621679545973"><span class="hs-identifier hs-var">nodeVisible</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545944"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-85"></span><span>                </span><span class="hs-keyword">then</span><span>
+</span><span id="line-86"></span><span>                    </span><span class="annot"><span class="annottext">(V2 Rational -&gt; V2 Rational) -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; V2 Rational -&gt; V2 Rational
+</span><a href="#local-6989586621679545968"><span class="hs-identifier hs-var">moveCloser</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545944"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Rational -&gt; V2 Rational -&gt; [V2 Rational]
+forall a (f :: * -&gt; *).
+(Enum a, Additive f, Fractional a) =&gt;
+f a -&gt; f a -&gt; [f a]
+</span><a href="#local-6989586621679545939"><span class="hs-identifier hs-var">split</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545946"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545940"><span class="hs-identifier hs-var">u</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[V2 Rational] -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span>
+</span><span id="line-87"></span><span>                    </span><span class="annot"><span class="annottext">t -&gt; t -&gt; V2 Rational -&gt; V2 Rational -&gt; [Int] -&gt; [V2 Rational]
+</span><a href="#local-6989586621679545952"><span class="hs-identifier hs-var">chunkRight</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679545948"><span class="hs-identifier hs-var">ai</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679545947"><span class="hs-identifier hs-var">bi</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545940"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545945"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545943"><span class="hs-identifier hs-var">y</span></a></span><span class="annot"><span class="annottext">Int -&gt; [Int] -&gt; [Int]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[Int]
+</span><a href="#local-6989586621679545942"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-88"></span><span>                </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; V2 Rational -&gt; V2 Rational -&gt; [Int] -&gt; [V2 Rational]
+</span><a href="#local-6989586621679545952"><span class="hs-identifier hs-var">chunkRight</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679545948"><span class="hs-identifier hs-var">ai</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679545947"><span class="hs-identifier hs-var">bi</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545940"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545945"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545943"><span class="hs-identifier hs-var">y</span></a></span><span class="annot"><span class="annottext">Int -&gt; [Int] -&gt; [Int]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[Int]
+</span><a href="#local-6989586621679545942"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-89"></span><span>            </span><span class="annot"><span class="annottext">Maybe (V2 Rational)
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-comment">-- error $ &quot;chunkRight: urk: &quot; ++ show (ai,bi,x,y)</span><span>
+</span><span id="line-90"></span><span>              </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Bool
+</span><a href="#local-6989586621679545973"><span class="hs-identifier hs-var">nodeVisible</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545944"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-91"></span><span>                </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">(V2 Rational -&gt; V2 Rational) -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; V2 Rational -&gt; V2 Rational
+</span><a href="#local-6989586621679545968"><span class="hs-identifier hs-var">moveCloser</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545944"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545946"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-92"></span><span>                </span><span class="hs-keyword">else</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-93"></span><span>        </span><span class="annot"><a href="#local-6989586621679545952"><span class="hs-identifier hs-var">chunkRight</span></a></span><span> </span><span id="local-6989586621679545938"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679545938"><span class="hs-identifier hs-var">_ai</span></a></span></span><span> </span><span id="local-6989586621679545937"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679545937"><span class="hs-identifier hs-var">_bi</span></a></span></span><span> </span><span id="local-6989586621679545936"><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545936"><span class="hs-identifier hs-var">_a</span></a></span></span><span> </span><span id="local-6989586621679545935"><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545935"><span class="hs-identifier hs-var">_b</span></a></span></span><span> </span><span class="annot"><span class="annottext">[Int]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-94"></span><span>        </span><span id="local-6989586621679545949"><span class="annot"><span class="annottext">chunkLeft :: t -&gt; t -&gt; V2 Rational -&gt; V2 Rational -&gt; [Int] -&gt; [V2 Rational]
+</span><a href="#local-6989586621679545949"><span class="hs-identifier hs-var hs-var">chunkLeft</span></a></span></span><span> </span><span id="local-6989586621679545934"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679545934"><span class="hs-identifier hs-var">ai</span></a></span></span><span> </span><span id="local-6989586621679545933"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679545933"><span class="hs-identifier hs-var">bi</span></a></span></span><span> </span><span id="local-6989586621679545932"><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545932"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679545931"><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545931"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679545930"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545930"><span class="hs-identifier hs-var">x</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679545929"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545929"><span class="hs-identifier hs-var">y</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679545928"><span class="annot"><span class="annottext">[Int]
+</span><a href="#local-6989586621679545928"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-95"></span><span>          </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">(V2 Rational, V2 Rational)
+-&gt; (V2 Rational, V2 Rational) -&gt; Maybe (V2 Rational)
+forall a.
+(Fractional a, Ord a) =&gt;
+(V2 a, V2 a) -&gt; (V2 a, V2 a) -&gt; Maybe (V2 a)
+</span><a href="Reanimate.Math.Common.html#rayIntersect"><span class="hs-identifier hs-var">rayIntersect</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545932"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545931"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545930"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545929"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-96"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679545927"><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545927"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-97"></span><span>              </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Bool
+</span><a href="#local-6989586621679545973"><span class="hs-identifier hs-var">nodeVisible</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545930"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-98"></span><span>                </span><span class="hs-keyword">then</span><span>
+</span><span id="line-99"></span><span>                    </span><span class="annot"><span class="annottext">t -&gt; t -&gt; V2 Rational -&gt; V2 Rational -&gt; [Int] -&gt; [V2 Rational]
+</span><a href="#local-6989586621679545949"><span class="hs-identifier hs-var">chunkLeft</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679545934"><span class="hs-identifier hs-var">ai</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679545933"><span class="hs-identifier hs-var">bi</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545932"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545927"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545929"><span class="hs-identifier hs-var">y</span></a></span><span class="annot"><span class="annottext">Int -&gt; [Int] -&gt; [Int]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[Int]
+</span><a href="#local-6989586621679545928"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[V2 Rational] -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span>
+</span><span id="line-100"></span><span>                    </span><span class="annot"><span class="annottext">(V2 Rational -&gt; V2 Rational) -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; V2 Rational -&gt; V2 Rational
+</span><a href="#local-6989586621679545968"><span class="hs-identifier hs-var">moveCloser</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545930"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Rational -&gt; V2 Rational -&gt; [V2 Rational]
+forall a (f :: * -&gt; *).
+(Enum a, Additive f, Fractional a) =&gt;
+f a -&gt; f a -&gt; [f a]
+</span><a href="#local-6989586621679545939"><span class="hs-identifier hs-var">split</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545927"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545931"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-101"></span><span>                </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; V2 Rational -&gt; V2 Rational -&gt; [Int] -&gt; [V2 Rational]
+</span><a href="#local-6989586621679545949"><span class="hs-identifier hs-var">chunkLeft</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679545934"><span class="hs-identifier hs-var">ai</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679545933"><span class="hs-identifier hs-var">bi</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545932"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545927"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545929"><span class="hs-identifier hs-var">y</span></a></span><span class="annot"><span class="annottext">Int -&gt; [Int] -&gt; [Int]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[Int]
+</span><a href="#local-6989586621679545928"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-102"></span><span>            </span><span class="annot"><span class="annottext">Maybe (V2 Rational)
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-comment">-- error $ &quot;chunkLeft: urk: &quot; ++ show (ai,bi, x,y)</span><span>
+</span><span id="line-103"></span><span>              </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Bool
+</span><a href="#local-6989586621679545973"><span class="hs-identifier hs-var">nodeVisible</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545930"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-104"></span><span>                </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">(V2 Rational -&gt; V2 Rational) -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; V2 Rational -&gt; V2 Rational
+</span><a href="#local-6989586621679545968"><span class="hs-identifier hs-var">moveCloser</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545930"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545931"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-105"></span><span>                </span><span class="hs-keyword">else</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-106"></span><span>        </span><span class="annot"><a href="#local-6989586621679545949"><span class="hs-identifier hs-var">chunkLeft</span></a></span><span> </span><span id="local-6989586621679545926"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679545926"><span class="hs-identifier hs-var">_ai</span></a></span></span><span> </span><span id="local-6989586621679545925"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679545925"><span class="hs-identifier hs-var">_bi</span></a></span></span><span> </span><span id="local-6989586621679545924"><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545924"><span class="hs-identifier hs-var">_a</span></a></span></span><span> </span><span id="local-6989586621679545923"><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545923"><span class="hs-identifier hs-var">_b</span></a></span></span><span> </span><span class="annot"><span class="annottext">[Int]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-107"></span><span>        </span><span id="local-6989586621679545950"><span class="annot"><span class="annottext">chunkCenter :: Int -&gt; Int -&gt; [V2 Rational]
+</span><a href="#local-6989586621679545950"><span class="hs-identifier hs-var hs-var">chunkCenter</span></a></span></span><span> </span><span id="local-6989586621679545922"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545922"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679545921"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545921"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-108"></span><span>          </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679545920"><span class="annot"><span class="annottext">[Int]
+</span><a href="#local-6989586621679545920"><span class="hs-identifier hs-var">aF</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679545919"><span class="annot"><span class="annottext">[Int]
+</span><a href="#local-6989586621679545919"><span class="hs-identifier hs-var">bF</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; ([Int], [Int])
+</span><a href="#local-6989586621679545951"><span class="hs-identifier hs-var">getFunnel</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545922"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545921"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-109"></span><span>              </span><span id="local-6989586621679545918"><span class="annot"><span class="annottext">aP :: V2 Rational
+</span><a href="#local-6989586621679545918"><span class="hs-identifier hs-var hs-var">aP</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545922"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-110"></span><span>              </span><span id="local-6989586621679545917"><span class="annot"><span class="annottext">bP :: V2 Rational
+</span><a href="#local-6989586621679545917"><span class="hs-identifier hs-var hs-var">bP</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545921"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="hs-keyword">in</span><span>
+</span><span id="line-111"></span><span>          </span><span class="hs-keyword">case</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Int] -&gt; [Int]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="annot"><span class="annottext">[Int]
+</span><a href="#local-6989586621679545920"><span class="hs-identifier hs-var">aF</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Int] -&gt; [Int]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="annot"><span class="annottext">[Int]
+</span><a href="#local-6989586621679545919"><span class="hs-identifier hs-var">bF</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-112"></span><span>            </span><span class="hs-special">(</span><span class="hs-special">[</span><span id="local-6989586621679545915"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545915"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Bool
+</span><a href="#local-6989586621679545973"><span class="hs-identifier hs-var">nodeVisible</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545915"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-113"></span><span>                </span><span class="annot"><span class="annottext">(V2 Rational -&gt; V2 Rational) -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; V2 Rational -&gt; V2 Rational
+</span><a href="#local-6989586621679545968"><span class="hs-identifier hs-var">moveCloser</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545915"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Rational -&gt; V2 Rational -&gt; [V2 Rational]
+forall a (f :: * -&gt; *).
+(Enum a, Additive f, Fractional a) =&gt;
+f a -&gt; f a -&gt; [f a]
+</span><a href="#local-6989586621679545939"><span class="hs-identifier hs-var">split</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545918"><span class="hs-identifier hs-var">aP</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545917"><span class="hs-identifier hs-var">bP</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-114"></span><span>            </span><span class="hs-special">(</span><span class="hs-special">[</span><span id="local-6989586621679545914"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545914"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679545913"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545913"><span class="hs-identifier hs-var">left</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">[Int]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Bool
+</span><a href="#local-6989586621679545973"><span class="hs-identifier hs-var">nodeVisible</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545914"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-115"></span><span>              </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">(V2 Rational, V2 Rational)
+-&gt; (V2 Rational, V2 Rational) -&gt; Maybe (V2 Rational)
+forall a.
+(Fractional a, Ord a) =&gt;
+(V2 a, V2 a) -&gt; (V2 a, V2 a) -&gt; Maybe (V2 a)
+</span><a href="Reanimate.Math.Common.html#rayIntersect"><span class="hs-identifier hs-var">rayIntersect</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545918"><span class="hs-identifier hs-var">aP</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545917"><span class="hs-identifier hs-var">bP</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545914"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545913"><span class="hs-identifier hs-var">left</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-116"></span><span>                </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679545912"><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545912"><span class="hs-identifier hs-var">v</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-117"></span><span>                  </span><span class="annot"><span class="annottext">(V2 Rational -&gt; V2 Rational) -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; V2 Rational -&gt; V2 Rational
+</span><a href="#local-6989586621679545968"><span class="hs-identifier hs-var">moveCloser</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545914"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Rational -&gt; V2 Rational -&gt; [V2 Rational]
+forall a (f :: * -&gt; *).
+(Enum a, Additive f, Fractional a) =&gt;
+f a -&gt; f a -&gt; [f a]
+</span><a href="#local-6989586621679545939"><span class="hs-identifier hs-var">split</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545918"><span class="hs-identifier hs-var">aP</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545912"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-118"></span><span>                </span><span class="annot"><span class="annottext">Maybe (V2 Rational)
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(V2 Rational -&gt; V2 Rational) -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; V2 Rational -&gt; V2 Rational
+</span><a href="#local-6989586621679545968"><span class="hs-identifier hs-var">moveCloser</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545914"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545918"><span class="hs-identifier hs-var">aP</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545917"><span class="hs-identifier hs-var">bP</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-119"></span><span>            </span><span class="hs-special">(</span><span id="local-6989586621679545911"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545911"><span class="hs-identifier hs-var">x</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679545910"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545910"><span class="hs-identifier hs-var">right</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">[Int]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Bool
+</span><a href="#local-6989586621679545973"><span class="hs-identifier hs-var">nodeVisible</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545911"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-120"></span><span>              </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">(V2 Rational, V2 Rational)
+-&gt; (V2 Rational, V2 Rational) -&gt; Maybe (V2 Rational)
+forall a.
+(Fractional a, Ord a) =&gt;
+(V2 a, V2 a) -&gt; (V2 a, V2 a) -&gt; Maybe (V2 a)
+</span><a href="Reanimate.Math.Common.html#rayIntersect"><span class="hs-identifier hs-var">rayIntersect</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545918"><span class="hs-identifier hs-var">aP</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545917"><span class="hs-identifier hs-var">bP</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545911"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545910"><span class="hs-identifier hs-var">right</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-121"></span><span>                </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679545909"><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545909"><span class="hs-identifier hs-var">u</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(V2 Rational -&gt; V2 Rational) -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; V2 Rational -&gt; V2 Rational
+</span><a href="#local-6989586621679545968"><span class="hs-identifier hs-var">moveCloser</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545911"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Rational -&gt; V2 Rational -&gt; [V2 Rational]
+forall a (f :: * -&gt; *).
+(Enum a, Additive f, Fractional a) =&gt;
+f a -&gt; f a -&gt; [f a]
+</span><a href="#local-6989586621679545939"><span class="hs-identifier hs-var">split</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545909"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545917"><span class="hs-identifier hs-var">bP</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-122"></span><span>                </span><span class="annot"><span class="annottext">Maybe (V2 Rational)
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(V2 Rational -&gt; V2 Rational) -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; V2 Rational -&gt; V2 Rational
+</span><a href="#local-6989586621679545968"><span class="hs-identifier hs-var">moveCloser</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545911"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545918"><span class="hs-identifier hs-var">aP</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545917"><span class="hs-identifier hs-var">bP</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-comment">-- error $ &quot;urk: &quot; ++ show (a,b, right)</span><span>
+</span><span id="line-123"></span><span>            </span><span class="hs-special">(</span><span id="local-6989586621679545908"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545908"><span class="hs-identifier hs-var">x</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679545907"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545907"><span class="hs-identifier hs-var">right</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">[Int]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679545906"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545906"><span class="hs-identifier hs-var">left</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">[Int]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Bool
+</span><a href="#local-6989586621679545973"><span class="hs-identifier hs-var">nodeVisible</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545908"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-124"></span><span>              </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">(V2 Rational, V2 Rational)
+-&gt; (V2 Rational, V2 Rational) -&gt; Maybe (V2 Rational)
+forall a.
+(Fractional a, Ord a) =&gt;
+(V2 a, V2 a) -&gt; (V2 a, V2 a) -&gt; Maybe (V2 a)
+</span><a href="Reanimate.Math.Common.html#rayIntersect"><span class="hs-identifier hs-var">rayIntersect</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545918"><span class="hs-identifier hs-var">aP</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545917"><span class="hs-identifier hs-var">bP</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545908"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545907"><span class="hs-identifier hs-var">right</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-125"></span><span>                </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679545905"><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545905"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-126"></span><span>                  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">(V2 Rational, V2 Rational)
+-&gt; (V2 Rational, V2 Rational) -&gt; Maybe (V2 Rational)
+forall a.
+(Fractional a, Ord a) =&gt;
+(V2 a, V2 a) -&gt; (V2 a, V2 a) -&gt; Maybe (V2 a)
+</span><a href="Reanimate.Math.Common.html#rayIntersect"><span class="hs-identifier hs-var">rayIntersect</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545918"><span class="hs-identifier hs-var">aP</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545917"><span class="hs-identifier hs-var">bP</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545908"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545906"><span class="hs-identifier hs-var">left</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-127"></span><span>                    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679545904"><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545904"><span class="hs-identifier hs-var">v</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(V2 Rational -&gt; V2 Rational) -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; V2 Rational -&gt; V2 Rational
+</span><a href="#local-6989586621679545968"><span class="hs-identifier hs-var">moveCloser</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545908"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Rational -&gt; V2 Rational -&gt; [V2 Rational]
+forall a (f :: * -&gt; *).
+(Enum a, Additive f, Fractional a) =&gt;
+f a -&gt; f a -&gt; [f a]
+</span><a href="#local-6989586621679545939"><span class="hs-identifier hs-var">split</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545905"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545904"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-128"></span><span>                    </span><span class="annot"><span class="annottext">Maybe (V2 Rational)
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(V2 Rational -&gt; V2 Rational) -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; V2 Rational -&gt; V2 Rational
+</span><a href="#local-6989586621679545968"><span class="hs-identifier hs-var">moveCloser</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545908"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545918"><span class="hs-identifier hs-var">aP</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545917"><span class="hs-identifier hs-var">bP</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-129"></span><span>                </span><span class="annot"><span class="annottext">Maybe (V2 Rational)
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(V2 Rational -&gt; V2 Rational) -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; V2 Rational -&gt; V2 Rational
+</span><a href="#local-6989586621679545968"><span class="hs-identifier hs-var">moveCloser</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545908"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545918"><span class="hs-identifier hs-var">aP</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">V2 Rational
+</span><a href="#local-6989586621679545917"><span class="hs-identifier hs-var">bP</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-130"></span><span>            </span><span class="annot"><span class="annottext">([Int], [Int])
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-131"></span><span>    </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Vector (V2 Rational) -&gt; Polygon
+forall a. PolyCtx a =&gt; Vector (V2 a) -&gt; APolygon a
+</span><a href="Reanimate.Math.Polygon.html#mkPolygon"><span class="hs-identifier hs-var">mkPolygon</span></a></span><span> </span><span class="annot"><span class="annottext">(Vector (V2 Rational) -&gt; Polygon)
+-&gt; Vector (V2 Rational) -&gt; Polygon
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[V2 Rational] -&gt; Vector (V2 Rational)
+forall a. [a] -&gt; Vector a
+</span><span class="hs-identifier hs-var">V.fromList</span></span><span> </span><span class="annot"><span class="annottext">([V2 Rational] -&gt; Vector (V2 Rational))
+-&gt; [V2 Rational] -&gt; Vector (V2 Rational)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[V2 Rational] -&gt; [V2 Rational]
+forall a. Eq a =&gt; [a] -&gt; [a]
+</span><a href="#local-6989586621679545901"><span class="hs-identifier hs-var">clearDups</span></a></span><span> </span><span class="annot"><span class="annottext">([V2 Rational] -&gt; [V2 Rational]) -&gt; [V2 Rational] -&gt; [V2 Rational]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-132"></span><span>        </span><span class="annot"><span class="annottext">(Int -&gt; [V2 Rational]) -&gt; [Int] -&gt; [V2 Rational]
+forall (t :: * -&gt; *) a b. Foldable t =&gt; (a -&gt; [b]) -&gt; t a -&gt; [b]
+</span><span class="hs-identifier hs-var">concatMap</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; [V2 Rational]
+</span><a href="#local-6989586621679545957"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Polygon -&gt; Int
+forall a. APolygon a -&gt; Int
+</span><a href="Reanimate.Math.Polygon.html#pSize"><span class="hs-identifier hs-var">pSize</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">]</span><span>
+</span><span id="line-133"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-134"></span><span>    </span><span id="local-6989586621679545901"><span class="annot"><span class="annottext">clearDups :: [a] -&gt; [a]
+</span><a href="#local-6989586621679545901"><span class="hs-identifier hs-var hs-var">clearDups</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679545898"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545898"><span class="hs-identifier hs-var">x</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679545897"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545897"><span class="hs-identifier hs-var">y</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679545896"><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679545896"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-135"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545898"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545897"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[a] -&gt; [a]
+</span><a href="#local-6989586621679545901"><span class="hs-identifier hs-var">clearDups</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545898"><span class="hs-identifier hs-var">x</span></a></span><span class="annot"><span class="annottext">a -&gt; [a] -&gt; [a]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679545896"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-136"></span><span>    </span><span class="annot"><a href="#local-6989586621679545901"><span class="hs-identifier hs-var">clearDups</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679545895"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545895"><span class="hs-identifier hs-var">x</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679545894"><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679545894"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545895"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; [a] -&gt; [a]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[a] -&gt; [a]
+</span><a href="#local-6989586621679545901"><span class="hs-identifier hs-var">clearDups</span></a></span><span> </span><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679545894"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-137"></span><span>    </span><span class="annot"><a href="#local-6989586621679545901"><span class="hs-identifier hs-var">clearDups</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-138"></span><span>
+</span><span id="line-139"></span><span>    </span><span id="local-6989586621679545893"><span class="annot"><span class="annottext">getParents :: Int -&gt; [Int]
+</span><a href="#local-6989586621679545893"><span class="hs-identifier hs-var hs-var">getParents</span></a></span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-140"></span><span>    </span><span class="annot"><a href="#local-6989586621679545893"><span class="hs-identifier hs-var">getParents</span></a></span><span> </span><span id="local-6989586621679545892"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545892"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-141"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679545891"><span class="annot"><span class="annottext">parent :: Int
+</span><a href="#local-6989586621679545891"><span class="hs-identifier hs-var hs-var">parent</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; Int -&gt; Int
+forall a. APolygon a -&gt; Int -&gt; Int -&gt; Int
+</span><a href="Reanimate.Math.Polygon.html#pParent"><span class="hs-identifier hs-var">pParent</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545892"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-142"></span><span>      </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545891"><span class="hs-identifier hs-var">parent</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; [Int] -&gt; [Int]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; [Int]
+</span><a href="#local-6989586621679545893"><span class="hs-identifier hs-var">getParents</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545891"><span class="hs-identifier hs-var">parent</span></a></span><span>
+</span><span id="line-143"></span><span>    </span><span id="local-6989586621679545951"><span class="annot"><span class="annottext">getFunnel :: Int -&gt; Int -&gt; ([Int], [Int])
+</span><a href="#local-6989586621679545951"><span class="hs-identifier hs-var hs-var">getFunnel</span></a></span></span><span> </span><span id="local-6989586621679545889"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545889"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679545888"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545888"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-144"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679545887"><span class="annot"><span class="annottext">aP :: [Int]
+</span><a href="#local-6989586621679545887"><span class="hs-identifier hs-var hs-var">aP</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; [Int]
+</span><a href="#local-6989586621679545893"><span class="hs-identifier hs-var">getParents</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545889"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-145"></span><span>          </span><span id="local-6989586621679545886"><span class="annot"><span class="annottext">bP :: [Int]
+</span><a href="#local-6989586621679545886"><span class="hs-identifier hs-var hs-var">bP</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; [Int]
+</span><a href="#local-6989586621679545893"><span class="hs-identifier hs-var">getParents</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545888"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="hs-keyword">in</span><span>
+</span><span id="line-146"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Int -&gt; Bool) -&gt; [Int] -&gt; [Int]
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; [a]
+</span><a href="Reanimate.Math.Balloon.html#takeUntil"><span class="hs-identifier hs-var">takeUntil</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; [Int] -&gt; Bool
+forall (t :: * -&gt; *) a. (Foldable t, Eq a) =&gt; a -&gt; t a -&gt; Bool
+</span><span class="hs-operator hs-var">`elem`</span></span><span> </span><span class="annot"><span class="annottext">[Int]
+</span><a href="#local-6989586621679545886"><span class="hs-identifier hs-var">bP</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Int]
+</span><a href="#local-6989586621679545887"><span class="hs-identifier hs-var">aP</span></a></span><span>
+</span><span id="line-147"></span><span>      </span><span class="hs-special">,</span><span class="annot"><span class="annottext">(Int -&gt; Bool) -&gt; [Int] -&gt; [Int]
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; [a]
+</span><a href="Reanimate.Math.Balloon.html#takeUntil"><span class="hs-identifier hs-var">takeUntil</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; [Int] -&gt; Bool
+forall (t :: * -&gt; *) a. (Foldable t, Eq a) =&gt; a -&gt; t a -&gt; Bool
+</span><span class="hs-operator hs-var">`elem`</span></span><span> </span><span class="annot"><span class="annottext">[Int]
+</span><a href="#local-6989586621679545887"><span class="hs-identifier hs-var">aP</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Int]
+</span><a href="#local-6989586621679545886"><span class="hs-identifier hs-var">bP</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-148"></span><span>    </span><span id="local-6989586621679545939"><span class="annot"><span class="annottext">split :: f a -&gt; f a -&gt; [f a]
+</span><a href="#local-6989586621679545939"><span class="hs-identifier hs-var hs-var">split</span></a></span></span><span> </span><span id="local-6989586621679545883"><span class="annot"><span class="annottext">f a
+</span><a href="#local-6989586621679545883"><span class="hs-identifier hs-var">aP</span></a></span></span><span> </span><span id="local-6989586621679545882"><span class="annot"><span class="annottext">f a
+</span><a href="#local-6989586621679545882"><span class="hs-identifier hs-var">bP</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-149"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679545881"><span class="annot"><span class="annottext">steps :: a
+</span><a href="#local-6989586621679545881"><span class="hs-identifier hs-var hs-var">steps</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-number">50</span></span><span> </span><span class="hs-keyword">in</span><span>
+</span><span id="line-150"></span><span>      </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">a -&gt; f a -&gt; f a -&gt; f a
+forall (f :: * -&gt; *) a.
+(Additive f, Num a) =&gt;
+a -&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-identifier hs-var">lerp</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545880"><span class="hs-identifier hs-var">t</span></a></span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545881"><span class="hs-identifier hs-var">steps</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">f a
+</span><a href="#local-6989586621679545882"><span class="hs-identifier hs-var">bP</span></a></span><span> </span><span class="annot"><span class="annottext">f a
+</span><a href="#local-6989586621679545883"><span class="hs-identifier hs-var">aP</span></a></span><span>
+</span><span id="line-151"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679545880"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545880"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">a
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">..</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545881"><span class="hs-identifier hs-var">steps</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-152"></span><span>      </span><span class="hs-special">]</span><span>
+</span><span id="line-153"></span><span>    </span><span id="local-6989586621679545975"><span class="annot"><span class="annottext">d :: Double
+</span><a href="#local-6989586621679545975"><span class="hs-identifier hs-var hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Vector Double -&gt; Double
+forall a. Ord a =&gt; Vector a -&gt; a
+</span><span class="hs-identifier hs-var">V.maximum</span></span><span> </span><span class="annot"><span class="annottext">Vector Double
+</span><a href="#local-6989586621679545971"><span class="hs-identifier hs-var">ds</span></a></span><span>
+</span><span id="line-154"></span><span>    </span><span id="local-6989586621679545971"><span class="annot"><span class="annottext">ds :: Vector Double
+</span><a href="#local-6989586621679545971"><span class="hs-identifier hs-var hs-var">ds</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Vector Double
+</span><a href="Reanimate.Math.Balloon.html#ssspDistances"><span class="hs-identifier hs-var">ssspDistances</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545978"><span class="hs-identifier hs-var">p</span></a></span><span>
+</span><span id="line-155"></span><span>
+</span><span id="line-156"></span><span id="local-6989586621679546011"><span class="annot"><a href="Reanimate.Math.Balloon.html#takeUntil"><span class="hs-identifier hs-type">takeUntil</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679546011"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679546011"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679546011"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span></span><span>
+</span><span id="line-157"></span><span id="takeUntil"><span class="annot"><span class="annottext">takeUntil :: (a -&gt; Bool) -&gt; [a] -&gt; [a]
+</span><a href="Reanimate.Math.Balloon.html#takeUntil"><span class="hs-identifier hs-var hs-var">takeUntil</span></a></span></span><span> </span><span id="local-6989586621679545877"><span class="annot"><span class="annottext">a -&gt; Bool
+</span><a href="#local-6989586621679545877"><span class="hs-identifier hs-var">_fn</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-158"></span><span class="annot"><a href="Reanimate.Math.Balloon.html#takeUntil"><span class="hs-identifier hs-var">takeUntil</span></a></span><span> </span><span id="local-6989586621679545876"><span class="annot"><span class="annottext">a -&gt; Bool
+</span><a href="#local-6989586621679545876"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679545875"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545875"><span class="hs-identifier hs-var">x</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679545874"><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679545874"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-159"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">a -&gt; Bool
+</span><a href="#local-6989586621679545876"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545875"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545875"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-160"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545875"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; [a] -&gt; [a]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">(a -&gt; Bool) -&gt; [a] -&gt; [a]
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; [a]
+</span><a href="Reanimate.Math.Balloon.html#takeUntil"><span class="hs-identifier hs-var">takeUntil</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; Bool
+</span><a href="#local-6989586621679545876"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679545874"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-161"></span><span>
+</span><span id="line-162"></span><span class="annot"><a href="Reanimate.Math.Balloon.html#diameter"><span class="hs-identifier hs-type">diameter</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Math.Polygon.html#Polygon"><span class="hs-identifier hs-type">Polygon</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-163"></span><span id="diameter"><span class="annot"><span class="annottext">diameter :: Polygon -&gt; Double
+</span><a href="Reanimate.Math.Balloon.html#diameter"><span class="hs-identifier hs-var hs-var">diameter</span></a></span></span><span> </span><span id="local-6989586621679545872"><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545872"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Vector Double -&gt; Double
+forall a. Ord a =&gt; Vector a -&gt; a
+</span><span class="hs-identifier hs-var">V.maximum</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Vector Double
+</span><a href="Reanimate.Math.Balloon.html#ssspDistances"><span class="hs-identifier hs-var">ssspDistances</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545872"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-164"></span><span>
+</span><span id="line-165"></span><span class="annot"><a href="Reanimate.Math.Balloon.html#shiftLongestDiameter"><span class="hs-identifier hs-type">shiftLongestDiameter</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Math.Polygon.html#Polygon"><span class="hs-identifier hs-type">Polygon</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Math.Polygon.html#Polygon"><span class="hs-identifier hs-type">Polygon</span></a></span><span>
+</span><span id="line-166"></span><span id="shiftLongestDiameter"><span class="annot"><span class="annottext">shiftLongestDiameter :: Polygon -&gt; Polygon
+</span><a href="Reanimate.Math.Balloon.html#shiftLongestDiameter"><span class="hs-identifier hs-var hs-var">shiftLongestDiameter</span></a></span></span><span> </span><span id="local-6989586621679545871"><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545871"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Polygon -&gt; [Polygon] -&gt; Polygon
+</span><a href="#local-6989586621679545870"><span class="hs-identifier hs-var">findBest</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545871"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; [Polygon]
+forall a. APolygon a -&gt; [APolygon a]
+</span><a href="Reanimate.Math.Polygon.html#pCycles"><span class="hs-identifier hs-var">pCycles</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545871"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-167"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-168"></span><span>    </span><span id="local-6989586621679545868"><span class="annot"><span class="annottext">margin :: Double
+</span><a href="#local-6989586621679545868"><span class="hs-identifier hs-var hs-var">margin</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.01</span></span><span>
+</span><span id="line-169"></span><span>    </span><span id="local-6989586621679545870"><span class="annot"><span class="annottext">findBest :: Double -&gt; Polygon -&gt; [Polygon] -&gt; Polygon
+</span><a href="#local-6989586621679545870"><span class="hs-identifier hs-var hs-var">findBest</span></a></span></span><span> </span><span id="local-6989586621679545867"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545867"><span class="hs-identifier hs-var">_score</span></a></span></span><span> </span><span id="local-6989586621679545866"><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545866"><span class="hs-identifier hs-var">elt</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545866"><span class="hs-identifier hs-var">elt</span></a></span><span>
+</span><span id="line-170"></span><span>    </span><span class="annot"><a href="#local-6989586621679545870"><span class="hs-identifier hs-var">findBest</span></a></span><span> </span><span id="local-6989586621679545865"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545865"><span class="hs-identifier hs-var">score</span></a></span></span><span> </span><span id="local-6989586621679545864"><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545864"><span class="hs-identifier hs-var">elt</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679545863"><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545863"><span class="hs-identifier hs-var">x</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679545862"><span class="annot"><span class="annottext">[Polygon]
+</span><a href="#local-6989586621679545862"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-171"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679545861"><span class="annot"><span class="annottext">newScore :: Double
+</span><a href="#local-6989586621679545861"><span class="hs-identifier hs-var hs-var">newScore</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Double
+</span><a href="Reanimate.Math.Balloon.html#diameter"><span class="hs-identifier hs-var">diameter</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545863"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-keyword">in</span><span>
+</span><span id="line-172"></span><span>      </span><span class="hs-keyword">if</span><span>
+</span><span id="line-173"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545861"><span class="hs-identifier hs-var">newScore</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545865"><span class="hs-identifier hs-var">score</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545865"><span class="hs-identifier hs-var">score</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545868"><span class="hs-identifier hs-var">margin</span></a></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Polygon -&gt; [Polygon] -&gt; Polygon
+</span><a href="#local-6989586621679545870"><span class="hs-identifier hs-var">findBest</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545861"><span class="hs-identifier hs-var">newScore</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545863"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">[Polygon]
+</span><a href="#local-6989586621679545862"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-174"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545865"><span class="hs-identifier hs-var">score</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545861"><span class="hs-identifier hs-var">newScore</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545861"><span class="hs-identifier hs-var">newScore</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545868"><span class="hs-identifier hs-var">margin</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Polygon -&gt; [Polygon] -&gt; Polygon
+</span><a href="#local-6989586621679545870"><span class="hs-identifier hs-var">findBest</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545865"><span class="hs-identifier hs-var">score</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545864"><span class="hs-identifier hs-var">elt</span></a></span><span> </span><span class="annot"><span class="annottext">[Polygon]
+</span><a href="#local-6989586621679545862"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-175"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Polygon -&gt; Bool
+forall a. (Num a, Ord a) =&gt; APolygon a -&gt; APolygon a -&gt; Bool
+</span><a href="#local-6989586621679545859"><span class="hs-identifier hs-var">isTopLeft</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545863"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545864"><span class="hs-identifier hs-var">elt</span></a></span><span>                    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Polygon -&gt; [Polygon] -&gt; Polygon
+</span><a href="#local-6989586621679545870"><span class="hs-identifier hs-var">findBest</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545861"><span class="hs-identifier hs-var">newScore</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545863"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">[Polygon]
+</span><a href="#local-6989586621679545862"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-176"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>                          </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Polygon -&gt; [Polygon] -&gt; Polygon
+</span><a href="#local-6989586621679545870"><span class="hs-identifier hs-var">findBest</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545865"><span class="hs-identifier hs-var">score</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545864"><span class="hs-identifier hs-var">elt</span></a></span><span> </span><span class="annot"><span class="annottext">[Polygon]
+</span><a href="#local-6989586621679545862"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-177"></span><span>    </span><span id="local-6989586621679545859"><span class="annot"><span class="annottext">isTopLeft :: APolygon a -&gt; APolygon a -&gt; Bool
+</span><a href="#local-6989586621679545859"><span class="hs-identifier hs-var hs-var">isTopLeft</span></a></span></span><span> </span><span id="local-6989586621679545858"><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545858"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679545857"><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545857"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-178"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">APolygon a -&gt; Int -&gt; V2 a
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545858"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="annot"><span class="annottext">V2 a -&gt; V2 a -&gt; V2 a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">APolygon a -&gt; Int -&gt; V2 a
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545857"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-179"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span id="local-6989586621679545856"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545856"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679545855"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545855"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545855"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545856"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-180"></span><span>
+</span><span id="line-181"></span><span class="hs-comment">-- Shortest distances from point 0 to all other points.</span><span>
+</span><span id="line-182"></span><span class="annot"><a href="Reanimate.Math.Balloon.html#ssspDistances"><span class="hs-identifier hs-type">ssspDistances</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Math.Polygon.html#Polygon"><span class="hs-identifier hs-type">Polygon</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">V.Vector</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-183"></span><span id="ssspDistances"><span class="annot"><span class="annottext">ssspDistances :: Polygon -&gt; Vector Double
+</span><a href="Reanimate.Math.Balloon.html#ssspDistances"><span class="hs-identifier hs-var hs-var">ssspDistances</span></a></span></span><span> </span><span id="local-6989586621679545854"><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545854"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Vector Double
+</span><a href="#local-6989586621679545853"><span class="hs-identifier hs-var">arr</span></a></span><span>
+</span><span id="line-184"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-185"></span><span>    </span><span id="local-6989586621679545853"><span class="annot"><span class="annottext">arr :: Vector Double
+</span><a href="#local-6989586621679545853"><span class="hs-identifier hs-var hs-var">arr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; (Int -&gt; Double) -&gt; Vector Double
+forall a. Int -&gt; (Int -&gt; a) -&gt; Vector a
+</span><span class="hs-identifier hs-var">V.generate</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int
+forall a. APolygon a -&gt; Int
+</span><a href="Reanimate.Math.Polygon.html#pSize"><span class="hs-identifier hs-var">pSize</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545854"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">((Int -&gt; Double) -&gt; Vector Double)
+-&gt; (Int -&gt; Double) -&gt; Vector Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679545851"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545851"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-186"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545851"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-187"></span><span>        </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-188"></span><span>        </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-189"></span><span>          </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679545850"><span class="annot"><span class="annottext">parent :: Int
+</span><a href="#local-6989586621679545850"><span class="hs-identifier hs-var hs-var">parent</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; Int -&gt; Int
+forall a. APolygon a -&gt; Int -&gt; Int -&gt; Int
+</span><a href="Reanimate.Math.Polygon.html#pParent"><span class="hs-identifier hs-var">pParent</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545854"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545851"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="hs-keyword">in</span><span>
+</span><span id="line-190"></span><span>          </span><span class="annot"><span class="annottext">Vector Double
+</span><a href="#local-6989586621679545853"><span class="hs-identifier hs-var">arr</span></a></span><span> </span><span class="annot"><span class="annottext">Vector Double -&gt; Int -&gt; Double
+forall a. Vector a -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">V.!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545850"><span class="hs-identifier hs-var">parent</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">V2 Rational -&gt; V2 Rational -&gt; Double
+forall a. (Real a, Fractional a) =&gt; V2 a -&gt; V2 a -&gt; Double
+</span><a href="Reanimate.Math.Common.html#distance%27"><span class="hs-identifier hs-var">distance'</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545854"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545851"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int -&gt; V2 Rational
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545854"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545850"><span class="hs-identifier hs-var">parent</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-191"></span></pre></body></html>

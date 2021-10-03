@@ -1,0 +1,733 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Module      : A3SAT.Animation.Effects
+Description : Animation effects for 3-SAT problem.
+Copyright   : (c) Xie Ruifeng, 2020
+License     : AGPL-3
+Maintainer  : krantz.xrf@outlook.com
+Stability   : experimental
+Portability : portable
+-}</span><span>
+</span><span id="line-10"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">A3SAT.Animation.Effects</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Reader.Class</span></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Foldable</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree</span></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate</span></span><span>
+</span><span id="line-21"></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="A3SAT.Animation.Config.html"><span class="hs-identifier">A3SAT.Animation.Config</span></a></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="A3SAT.Animation.Primitives.html"><span class="hs-identifier">A3SAT.Animation.Primitives</span></a></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="A3SAT.Expression.html"><span class="hs-identifier">A3SAT.Expression</span></a></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="A3SAT.Expression.Lens.html"><span class="hs-identifier">A3SAT.Expression.Lens</span></a></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Common.Animation.Effects</span></span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span class="hs-comment">-- |All animations of 3-SAT problems run in a 'Monad3SAT'.</span><span>
+</span><span id="line-30"></span><span class="hs-keyword">type</span><span> </span><span id="Monad3SAT"><span class="annot"><a href="A3SAT.Animation.Effects.html#Monad3SAT"><span class="hs-identifier hs-var">Monad3SAT</span></a></span></span><span> </span><span id="local-6989586621679185429"><span class="annot"><a href="#local-6989586621679185429"><span class="hs-identifier hs-type">m</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">MonadReader</span></span><span> </span><span class="annot"><a href="A3SAT.Animation.Config.html#Anim3SATConfig"><span class="hs-identifier hs-type">Anim3SATConfig</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185429"><span class="hs-identifier hs-type">m</span></a></span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- |Convert a 'Monad3SAT' action to an animation.</span><span>
+</span><span id="line-33"></span><span id="local-6989586621679185428"><span class="annot"><a href="A3SAT.Animation.Effects.html#exprAnimation"><span class="hs-identifier hs-type">exprAnimation</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A3SAT.Animation.Config.html#Anim3SATConfig"><span class="hs-identifier hs-type">Anim3SATConfig</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Animation.Config.html#Anim3SATConfig"><span class="hs-identifier hs-type">Anim3SATConfig</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185428"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185428"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-34"></span><span id="exprAnimation"><span class="annot"><span class="annottext">exprAnimation :: Anim3SATConfig -&gt; (Anim3SATConfig -&gt; a) -&gt; a
+</span><a href="A3SAT.Animation.Effects.html#exprAnimation"><span class="hs-identifier hs-var hs-var">exprAnimation</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Anim3SATConfig -&gt; (Anim3SATConfig -&gt; a) -&gt; a
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">(&amp;)</span></span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- |Prepare an expression.</span><span>
+</span><span id="line-37"></span><span id="local-6989586621679185523"><span class="annot"><a href="A3SAT.Animation.Effects.html#prepareExpr"><span class="hs-identifier hs-type">prepareExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A3SAT.Animation.Effects.html#Monad3SAT"><span class="hs-identifier hs-type">Monad3SAT</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185523"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="A3SAT.Expression.html#Expression"><span class="hs-identifier hs-type">Expression</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185523"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span class="hs-special">)</span></span><span>
+</span><span id="line-38"></span><span id="prepareExpr"><span class="annot"><span class="annottext">prepareExpr :: [Text] -&gt; Expression -&gt; m (LExpression SVG)
+</span><a href="A3SAT.Animation.Effects.html#prepareExpr"><span class="hs-identifier hs-var hs-var">prepareExpr</span></a></span></span><span> </span><span id="local-6989586621679185424"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679185424"><span class="hs-identifier hs-var">xs</span></a></span></span><span> </span><span id="local-6989586621679185423"><span class="annot"><span class="annottext">Expression
+</span><a href="#local-6989586621679185423"><span class="hs-identifier hs-var">e</span></a></span></span><span>
+</span><span id="line-39"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Anim3SATConfig -&gt; LExpression SVG) -&gt; m (LExpression SVG)
+forall r (m :: * -&gt; *) a. MonadReader r m =&gt; (r -&gt; a) -&gt; m a
+</span><span class="hs-identifier hs-var">reader</span></span><span> </span><span class="annot"><span class="annottext">((Anim3SATConfig -&gt; LExpression SVG) -&gt; m (LExpression SVG))
+-&gt; (Anim3SATConfig -&gt; LExpression SVG) -&gt; m (LExpression SVG)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679185421"><span class="annot"><span class="annottext">cfg :: Anim3SATConfig
+</span><a href="#local-6989586621679185421"><span class="hs-identifier hs-var">cfg</span></a></span></span><span class="hs-glyph">@</span><span class="annot"><a href="A3SAT.Animation.Config.html#Anim3SATConfig"><span class="hs-identifier hs-type">Anim3SATConfig</span></a></span><span class="hs-special">{</span><span id="local-6989586621679185414"><span id="local-6989586621679185415"><span id="local-6989586621679185416"><span id="local-6989586621679185417"><span id="local-6989586621679185418"><span id="local-6989586621679185419"><span class="annot"><span class="annottext">[Texture]
+Texture
+ColourStrategy
+_falseColour :: Anim3SATConfig -&gt; Texture
+_trueColour :: Anim3SATConfig -&gt; Texture
+_colourStrategy :: Anim3SATConfig -&gt; ColourStrategy
+_varColours :: Anim3SATConfig -&gt; [Texture]
+_operatorColour :: Anim3SATConfig -&gt; Texture
+_defaultTextColour :: Anim3SATConfig -&gt; Texture
+_falseColour :: Texture
+_trueColour :: Texture
+_colourStrategy :: ColourStrategy
+_varColours :: [Texture]
+_operatorColour :: Texture
+_defaultTextColour :: Texture
+</span><a href="A3SAT.Animation.Config.html#_falseColour"><span class="hs-glyph hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">..</span></a></span></span></span></span></span></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Expression
+</span><a href="#local-6989586621679185423"><span class="hs-identifier hs-var">e</span></a></span><span>
+</span><span id="line-40"></span><span>  </span><span class="annot"><span class="annottext">Expression -&gt; (Expression -&gt; LExpression SVG) -&gt; LExpression SVG
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">Lens' SVG SVG -&gt; [Texture] -&gt; LExpression SVG -&gt; LExpression SVG
+forall l.
+Lens' l SVG -&gt; [Texture] -&gt; LExpression l -&gt; LExpression l
+</span><a href="A3SAT.Animation.Primitives.html#colourVar"><span class="hs-identifier hs-var">colourVar</span></a></span><span> </span><span class="annot"><span class="annottext">forall a. a -&gt; a
+Lens' SVG SVG
+</span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Anim3SATConfig -&gt; [Texture]
+forall c. HasAnim3SATConfig c =&gt; c -&gt; [Texture]
+</span><a href="A3SAT.Animation.Config.html#getVarColours"><span class="hs-identifier hs-var">getVarColours</span></a></span><span> </span><span class="annot"><span class="annottext">Anim3SATConfig
+</span><a href="#local-6989586621679185421"><span class="hs-identifier hs-var">cfg</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-41"></span><span>  </span><span class="annot"><span class="annottext">(LExpression SVG -&gt; LExpression SVG)
+-&gt; (Expression -&gt; LExpression SVG) -&gt; Expression -&gt; LExpression SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; LExpression SVG -&gt; LExpression SVG
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Maybe Texture -&gt; Identity (Maybe Texture)) -&gt; SVG -&gt; Identity SVG
+forall c. HasDrawAttributes c =&gt; Lens' c (Maybe Texture)
+</span><span class="hs-identifier hs-var">fillColor</span></span><span> </span><span class="annot"><span class="annottext">((Maybe Texture -&gt; Identity (Maybe Texture))
+ -&gt; SVG -&gt; Identity SVG)
+-&gt; Maybe Texture -&gt; SVG -&gt; SVG
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Texture -&gt; Maybe Texture
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">Texture
+</span><a href="#local-6989586621679185418"><span class="hs-identifier hs-var">_operatorColour</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-42"></span><span>  </span><span class="annot"><span class="annottext">(LExpression SVG -&gt; LExpression SVG)
+-&gt; (Expression -&gt; LExpression SVG) -&gt; Expression -&gt; LExpression SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Expression -&gt; LExpression SVG
+forall l. [Text] -&gt; LExpression l -&gt; LExpression SVG
+</span><a href="A3SAT.Animation.Primitives.html#showSvg%27"><span class="hs-identifier hs-var">showSvg'</span></a></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679185424"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- |Render an expression as a static frame.</span><span>
+</span><span id="line-45"></span><span id="local-6989586621679185515"><span class="annot"><a href="A3SAT.Animation.Effects.html#snapshotExpr"><span class="hs-identifier hs-type">snapshotExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A3SAT.Animation.Effects.html#Monad3SAT"><span class="hs-identifier hs-type">Monad3SAT</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185515"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="A3SAT.Expression.html#Expression"><span class="hs-identifier hs-type">Expression</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185515"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span></span><span>
+</span><span id="line-46"></span><span id="snapshotExpr"><span class="annot"><span class="annottext">snapshotExpr :: [Text] -&gt; Expression -&gt; m SVG
+</span><a href="A3SAT.Animation.Effects.html#snapshotExpr"><span class="hs-identifier hs-var hs-var">snapshotExpr</span></a></span></span><span> </span><span id="local-6989586621679185399"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679185399"><span class="hs-identifier hs-var">xs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(LExpression SVG -&gt; SVG) -&gt; m (LExpression SVG) -&gt; m SVG
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">LExpression SVG -&gt; SVG
+</span><a href="A3SAT.Animation.Primitives.html#exprSvg"><span class="hs-identifier hs-var">exprSvg</span></a></span><span> </span><span class="annot"><span class="annottext">(m (LExpression SVG) -&gt; m SVG)
+-&gt; (Expression -&gt; m (LExpression SVG)) -&gt; Expression -&gt; m SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Expression -&gt; m (LExpression SVG)
+forall (m :: * -&gt; *).
+Monad3SAT m =&gt;
+[Text] -&gt; Expression -&gt; m (LExpression SVG)
+</span><a href="A3SAT.Animation.Effects.html#prepareExpr"><span class="hs-identifier hs-var">prepareExpr</span></a></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679185399"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span class="hs-comment">-- |Hold an expression static for some 'Time'.</span><span>
+</span><span id="line-49"></span><span id="local-6989586621679185511"><span class="annot"><a href="A3SAT.Animation.Effects.html#holdExpr"><span class="hs-identifier hs-type">holdExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A3SAT.Animation.Effects.html#Monad3SAT"><span class="hs-identifier hs-type">Monad3SAT</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185511"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="A3SAT.Expression.html#Expression"><span class="hs-identifier hs-type">Expression</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Time</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185511"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Animation</span></span></span><span>
+</span><span id="line-50"></span><span id="holdExpr"><span class="annot"><span class="annottext">holdExpr :: [Text] -&gt; Expression -&gt; Time -&gt; m Animation
+</span><a href="A3SAT.Animation.Effects.html#holdExpr"><span class="hs-identifier hs-var hs-var">holdExpr</span></a></span></span><span> </span><span id="local-6989586621679185396"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679185396"><span class="hs-identifier hs-var">xs</span></a></span></span><span> </span><span id="local-6989586621679185395"><span class="annot"><span class="annottext">Expression
+</span><a href="#local-6989586621679185395"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span id="local-6989586621679185394"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679185394"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time -&gt; SVG -&gt; Animation
+</span><span class="hs-identifier hs-var">staticFrame</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679185394"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; Animation) -&gt; m SVG -&gt; m Animation
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Expression -&gt; m SVG
+forall (m :: * -&gt; *). Monad3SAT m =&gt; [Text] -&gt; Expression -&gt; m SVG
+</span><a href="A3SAT.Animation.Effects.html#snapshotExpr"><span class="hs-identifier hs-var">snapshotExpr</span></a></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679185396"><span class="hs-identifier hs-var">xs</span></a></span><span> </span><span class="annot"><span class="annottext">Expression
+</span><a href="#local-6989586621679185395"><span class="hs-identifier hs-var">e</span></a></span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span class="hs-comment">-- |Hold an expression static for some 'Time', with some 'ColourStrategy'.</span><span>
+</span><span id="line-53"></span><span id="local-6989586621679185391"><span class="annot"><a href="A3SAT.Animation.Effects.html#holdExprWith"><span class="hs-identifier hs-type">holdExprWith</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A3SAT.Animation.Effects.html#Monad3SAT"><span class="hs-identifier hs-type">Monad3SAT</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185391"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="A3SAT.Animation.Config.html#ColourStrategy"><span class="hs-identifier hs-type">ColourStrategy</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="A3SAT.Expression.html#Expression"><span class="hs-identifier hs-type">Expression</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Time</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185391"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Animation</span></span></span><span>
+</span><span id="line-54"></span><span id="holdExprWith"><span class="annot"><span class="annottext">holdExprWith :: ColourStrategy -&gt; [Text] -&gt; Expression -&gt; Time -&gt; m Animation
+</span><a href="A3SAT.Animation.Effects.html#holdExprWith"><span class="hs-identifier hs-var hs-var">holdExprWith</span></a></span></span><span> </span><span id="local-6989586621679185389"><span class="annot"><span class="annottext">ColourStrategy
+</span><a href="#local-6989586621679185389"><span class="hs-identifier hs-var">strat</span></a></span></span><span> </span><span id="local-6989586621679185388"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679185388"><span class="hs-identifier hs-var">xs</span></a></span></span><span> </span><span id="local-6989586621679185387"><span class="annot"><span class="annottext">Expression
+</span><a href="#local-6989586621679185387"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Anim3SATConfig -&gt; Anim3SATConfig) -&gt; m Animation -&gt; m Animation
+forall r (m :: * -&gt; *) a. MonadReader r m =&gt; (r -&gt; r) -&gt; m a -&gt; m a
+</span><span class="hs-identifier hs-var">local</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(ColourStrategy -&gt; Identity ColourStrategy)
+-&gt; Anim3SATConfig -&gt; Identity Anim3SATConfig
+forall c. HasAnim3SATConfig c =&gt; Lens' c ColourStrategy
+</span><a href="A3SAT.Animation.Config.html#colourStrategy"><span class="hs-identifier hs-var">colourStrategy</span></a></span><span> </span><span class="annot"><span class="annottext">((ColourStrategy -&gt; Identity ColourStrategy)
+ -&gt; Anim3SATConfig -&gt; Identity Anim3SATConfig)
+-&gt; ColourStrategy -&gt; Anim3SATConfig -&gt; Anim3SATConfig
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">ColourStrategy
+</span><a href="#local-6989586621679185389"><span class="hs-identifier hs-var">strat</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(m Animation -&gt; m Animation)
+-&gt; (Time -&gt; m Animation) -&gt; Time -&gt; m Animation
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Expression -&gt; Time -&gt; m Animation
+forall (m :: * -&gt; *).
+Monad3SAT m =&gt;
+[Text] -&gt; Expression -&gt; Time -&gt; m Animation
+</span><a href="A3SAT.Animation.Effects.html#holdExpr"><span class="hs-identifier hs-var">holdExpr</span></a></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679185388"><span class="hs-identifier hs-var">xs</span></a></span><span> </span><span class="annot"><span class="annottext">Expression
+</span><a href="#local-6989586621679185387"><span class="hs-identifier hs-var">e</span></a></span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span class="hs-comment">-- |Highlight the variables with configured colours.</span><span>
+</span><span id="line-57"></span><span id="local-6989586621679185384"><span class="annot"><a href="A3SAT.Animation.Effects.html#highlightVars"><span class="hs-identifier hs-type">highlightVars</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A3SAT.Animation.Effects.html#Monad3SAT"><span class="hs-identifier hs-type">Monad3SAT</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185384"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="A3SAT.Expression.html#Expression"><span class="hs-identifier hs-type">Expression</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185384"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Animation</span></span></span><span>
+</span><span id="line-58"></span><span id="highlightVars"><span class="annot"><span class="annottext">highlightVars :: [Text] -&gt; Expression -&gt; m Animation
+</span><a href="A3SAT.Animation.Effects.html#highlightVars"><span class="hs-identifier hs-var hs-var">highlightVars</span></a></span></span><span> </span><span id="local-6989586621679185382"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679185382"><span class="hs-identifier hs-var">xs</span></a></span></span><span> </span><span id="local-6989586621679185381"><span class="annot"><span class="annottext">Expression
+</span><a href="#local-6989586621679185381"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-59"></span><span>  </span><span id="local-6989586621679185380"><span class="annot"><span class="annottext">LExpression SVG
+</span><a href="#local-6989586621679185380"><span class="hs-identifier hs-var">e'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Expression -&gt; m (LExpression SVG)
+forall (m :: * -&gt; *).
+Monad3SAT m =&gt;
+[Text] -&gt; Expression -&gt; m (LExpression SVG)
+</span><a href="A3SAT.Animation.Effects.html#prepareExpr"><span class="hs-identifier hs-var">prepareExpr</span></a></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679185382"><span class="hs-identifier hs-var">xs</span></a></span><span> </span><span class="annot"><span class="annottext">Expression
+</span><a href="#local-6989586621679185381"><span class="hs-identifier hs-var">e</span></a></span><span>
+</span><span id="line-60"></span><span>  </span><span class="annot"><a href="A3SAT.Animation.Config.html#Anim3SATConfig"><span class="hs-identifier hs-type">Anim3SATConfig</span></a></span><span class="hs-special">{</span><span id="local-6989586621679185374"><span id="local-6989586621679185375"><span id="local-6989586621679185376"><span id="local-6989586621679185377"><span id="local-6989586621679185378"><span id="local-6989586621679185379"><span class="annot"><span class="annottext">[Texture]
+Texture
+ColourStrategy
+_falseColour :: Texture
+_trueColour :: Texture
+_colourStrategy :: ColourStrategy
+_varColours :: [Texture]
+_operatorColour :: Texture
+_defaultTextColour :: Texture
+_falseColour :: Anim3SATConfig -&gt; Texture
+_trueColour :: Anim3SATConfig -&gt; Texture
+_colourStrategy :: Anim3SATConfig -&gt; ColourStrategy
+_varColours :: Anim3SATConfig -&gt; [Texture]
+_operatorColour :: Anim3SATConfig -&gt; Texture
+_defaultTextColour :: Anim3SATConfig -&gt; Texture
+</span><a href="#local-6989586621679185374"><span class="hs-glyph hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">..</span></a></span></span></span></span></span></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">m Anim3SATConfig
+forall r (m :: * -&gt; *). MonadReader r m =&gt; m r
+</span><span class="hs-identifier hs-var">ask</span></span><span>
+</span><span id="line-61"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679185372"><span class="annot"><span class="annottext">lerp :: Time -&gt; Texture -&gt; Texture
+</span><a href="#local-6989586621679185372"><span class="hs-identifier hs-var hs-var">lerp</span></a></span></span><span> </span><span id="local-6989586621679185371"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679185371"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679185370"><span class="annot"><span class="annottext">Texture
+</span><a href="#local-6989586621679185370"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Texture -&gt; Texture -&gt; Time -&gt; Texture
+</span><span class="hs-identifier hs-var">lerpColour</span></span><span> </span><span class="annot"><span class="annottext">Texture
+</span><a href="#local-6989586621679185379"><span class="hs-identifier hs-var">_defaultTextColour</span></a></span><span> </span><span class="annot"><span class="annottext">Texture
+</span><a href="#local-6989586621679185370"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679185371"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-62"></span><span>  </span><span class="annot"><span class="annottext">Animation -&gt; m Animation
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Animation -&gt; m Animation) -&gt; Animation -&gt; m Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Time -&gt; SVG) -&gt; Animation
+</span><span class="hs-identifier hs-var">animate</span></span><span> </span><span class="annot"><span class="annottext">((Time -&gt; SVG) -&gt; Animation) -&gt; (Time -&gt; SVG) -&gt; Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679185367"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679185367"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">LExpression SVG -&gt; SVG
+</span><a href="A3SAT.Animation.Primitives.html#exprSvg"><span class="hs-identifier hs-var">exprSvg</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Lens' SVG SVG -&gt; [Texture] -&gt; LExpression SVG -&gt; LExpression SVG
+forall l.
+Lens' l SVG -&gt; [Texture] -&gt; LExpression l -&gt; LExpression l
+</span><a href="A3SAT.Animation.Primitives.html#colourVar"><span class="hs-identifier hs-var">colourVar</span></a></span><span> </span><span class="annot"><span class="annottext">forall a. a -&gt; a
+Lens' SVG SVG
+</span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Texture -&gt; Texture) -&gt; [Texture] -&gt; [Texture]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Texture -&gt; Texture
+</span><a href="#local-6989586621679185372"><span class="hs-identifier hs-var">lerp</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679185367"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Texture]
+</span><a href="#local-6989586621679185377"><span class="hs-identifier hs-var">_varColours</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">LExpression SVG
+</span><a href="#local-6989586621679185380"><span class="hs-identifier hs-var">e'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-63"></span><span>
+</span><span id="line-64"></span><span class="hs-comment">-- |Apply the 'True'/'False' values, show the process.</span><span>
+</span><span id="line-65"></span><span id="local-6989586621679185366"><span class="annot"><a href="A3SAT.Animation.Effects.html#applyBoolValue"><span class="hs-identifier hs-type">applyBoolValue</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A3SAT.Animation.Effects.html#Monad3SAT"><span class="hs-identifier hs-type">Monad3SAT</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679185366"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="A3SAT.Expression.html#LExpression"><span class="hs-identifier hs-type">LExpression</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679185366"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Animation</span></span></span><span>
+</span><span id="line-66"></span><span id="applyBoolValue"><span class="annot"><span class="annottext">applyBoolValue :: [Bool] -&gt; LExpression SVG -&gt; m Animation
+</span><a href="A3SAT.Animation.Effects.html#applyBoolValue"><span class="hs-identifier hs-var hs-var">applyBoolValue</span></a></span></span><span> </span><span id="local-6989586621679185364"><span class="annot"><span class="annottext">[Bool]
+</span><a href="#local-6989586621679185364"><span class="hs-identifier hs-var">bs</span></a></span></span><span> </span><span id="local-6989586621679185363"><span class="annot"><span class="annottext">LExpression SVG
+</span><a href="#local-6989586621679185363"><span class="hs-identifier hs-var">expr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Anim3SATConfig -&gt; Animation) -&gt; m Animation
+forall r (m :: * -&gt; *) a. MonadReader r m =&gt; (r -&gt; a) -&gt; m a
+</span><span class="hs-identifier hs-var">reader</span></span><span> </span><span class="annot"><span class="annottext">((Anim3SATConfig -&gt; Animation) -&gt; m Animation)
+-&gt; (Anim3SATConfig -&gt; Animation) -&gt; m Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span class="annot"><a href="A3SAT.Animation.Config.html#Anim3SATConfig"><span class="hs-identifier hs-type">Anim3SATConfig</span></a></span><span class="hs-special">{</span><span id="local-6989586621679185357"><span id="local-6989586621679185358"><span id="local-6989586621679185359"><span id="local-6989586621679185360"><span id="local-6989586621679185361"><span id="local-6989586621679185362"><span class="annot"><span class="annottext">[Texture]
+Texture
+ColourStrategy
+_falseColour :: Texture
+_trueColour :: Texture
+_colourStrategy :: ColourStrategy
+_varColours :: [Texture]
+_operatorColour :: Texture
+_defaultTextColour :: Texture
+_falseColour :: Anim3SATConfig -&gt; Texture
+_trueColour :: Anim3SATConfig -&gt; Texture
+_colourStrategy :: Anim3SATConfig -&gt; ColourStrategy
+_varColours :: Anim3SATConfig -&gt; [Texture]
+_operatorColour :: Anim3SATConfig -&gt; Texture
+_defaultTextColour :: Anim3SATConfig -&gt; Texture
+</span><a href="#local-6989586621679185357"><span class="hs-glyph hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">..</span></a></span></span></span></span></span></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-67"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679185356"><span class="annot"><span class="annottext">tfColour :: Bool -&gt; Texture
+</span><a href="#local-6989586621679185356"><span class="hs-identifier hs-var hs-var">tfColour</span></a></span></span><span> </span><span id="local-6989586621679185355"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679185355"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679185355"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Texture
+</span><a href="#local-6989586621679185358"><span class="hs-identifier hs-var">_trueColour</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Texture
+</span><a href="#local-6989586621679185357"><span class="hs-identifier hs-var">_falseColour</span></a></span><span>
+</span><span id="line-68"></span><span>      </span><span id="local-6989586621679185354"><span class="annot"><span class="annottext">extendExpr :: Fix ExpressionF (b, c) -&gt; Fix ExpressionF (b, b, c, Animation)
+</span><a href="#local-6989586621679185354"><span class="hs-identifier hs-var hs-var">extendExpr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((b, c) -&gt; (b, b, c, Animation))
+-&gt; Fix ExpressionF (b, c) -&gt; Fix ExpressionF (b, b, c, Animation)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="hs-special">(</span><span id="local-6989586621679185353"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679185353"><span class="hs-identifier hs-var">v</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679185352"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679185352"><span class="hs-identifier hs-var">svg</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679185353"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679185353"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679185352"><span class="hs-identifier hs-var">svg</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Animation
+</span><span class="hs-identifier hs-var">pause</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-69"></span><span>      </span><span id="local-6989586621679185350"><span class="annot"><span class="annottext">shrinkExpr :: Fix ExpressionF (a, a, b, d) -&gt; Fix ExpressionF (a, b)
+</span><a href="#local-6989586621679185350"><span class="hs-identifier hs-var hs-var">shrinkExpr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((a, a, b, d) -&gt; (a, b))
+-&gt; Fix ExpressionF (a, a, b, d) -&gt; Fix ExpressionF (a, b)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679185349"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679185349"><span class="hs-identifier hs-var">v</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679185348"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679185348"><span class="hs-identifier hs-var">svg</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">d
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679185349"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679185348"><span class="hs-identifier hs-var">svg</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-70"></span><span>      </span><span id="local-6989586621679185347"><span class="annot"><span class="annottext">handleTerm :: Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+</span><a href="#local-6989586621679185347"><span class="hs-identifier hs-var hs-var">handleTerm</span></a></span></span><span> </span><span id="local-6989586621679185346"><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+</span><a href="#local-6989586621679185346"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+</span><a href="#local-6989586621679185346"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+    -&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">((Maybe Bool, Maybe Bool, SVG, Animation)
+ -&gt; Identity (Maybe Bool, Maybe Bool, SVG, Animation))
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Identity
+     (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+forall l. Lens' (LExpression l) l
+</span><a href="A3SAT.Expression.Lens.html#primaryLabel"><span class="hs-identifier hs-var">primaryLabel</span></a></span><span> </span><span class="annot"><span class="annottext">(((Maybe Bool, Maybe Bool, SVG, Animation)
+  -&gt; Identity (Maybe Bool, Maybe Bool, SVG, Animation))
+ -&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+ -&gt; Identity
+      (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)))
+-&gt; ((Maybe Bool, Maybe Bool, SVG, Animation)
+    -&gt; (Maybe Bool, Maybe Bool, SVG, Animation))
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+forall s t a b. ASetter s t a b -&gt; (a -&gt; b) -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">%~</span></span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; (Maybe Bool, Maybe Bool, SVG, Animation)
+forall (f :: * -&gt; *) s c d.
+(Functor f, Foldable f, Field3 s s SVG SVG) =&gt;
+f s
+-&gt; (Maybe Bool, Maybe Bool, c, d)
+-&gt; (Maybe Bool, Maybe Bool, c, Animation)
+</span><a href="#local-6989586621679185343"><span class="hs-identifier hs-var">handleLabel</span></a></span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+</span><a href="#local-6989586621679185346"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-71"></span><span>      </span><span id="local-6989586621679185343"><span class="annot"><span class="annottext">handleLabel :: f s
+-&gt; (Maybe Bool, Maybe Bool, c, d)
+-&gt; (Maybe Bool, Maybe Bool, c, Animation)
+</span><a href="#local-6989586621679185343"><span class="hs-identifier hs-var hs-var">handleLabel</span></a></span></span><span> </span><span id="local-6989586621679185342"><span class="annot"><span class="annottext">f s
+</span><a href="#local-6989586621679185342"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679185341"><span class="annot"><span class="annottext">Maybe Bool
+</span><a href="#local-6989586621679185341"><span class="hs-identifier hs-var">v</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679185340"><span class="annot"><span class="annottext">Maybe Bool
+</span><a href="#local-6989586621679185340"><span class="hs-identifier hs-var">v'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679185339"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679185339"><span class="hs-identifier hs-var">svg</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">d
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe Bool
+</span><a href="#local-6989586621679185341"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Maybe Bool
+</span><a href="#local-6989586621679185340"><span class="hs-identifier hs-var">v'</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679185339"><span class="hs-identifier hs-var">svg</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Maybe Bool -&gt; Maybe Bool -&gt; f SVG -&gt; Animation
+forall (f :: * -&gt; *).
+(Foldable f, Functor f) =&gt;
+Maybe Bool -&gt; Maybe Bool -&gt; f SVG -&gt; Animation
+</span><a href="#local-6989586621679185338"><span class="hs-identifier hs-var">colourAnim</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Bool
+</span><a href="#local-6989586621679185341"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Bool
+</span><a href="#local-6989586621679185340"><span class="hs-identifier hs-var">v'</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(s -&gt; SVG) -&gt; f s -&gt; f SVG
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Getting SVG s SVG -&gt; s -&gt; SVG
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting SVG s SVG
+forall s t a b. Field3 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_3</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">f s
+</span><a href="#local-6989586621679185342"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-72"></span><span>      </span><span id="local-6989586621679185338"><span class="annot"><span class="annottext">colourAnim :: Maybe Bool -&gt; Maybe Bool -&gt; f SVG -&gt; Animation
+</span><a href="#local-6989586621679185338"><span class="hs-identifier hs-var hs-var">colourAnim</span></a></span></span><span> </span><span id="local-6989586621679185335"><span class="annot"><span class="annottext">Maybe Bool
+</span><a href="#local-6989586621679185335"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span id="local-6989586621679185334"><span class="annot"><span class="annottext">Maybe Bool
+</span><a href="#local-6989586621679185334"><span class="hs-identifier hs-var">v'</span></a></span></span><span> </span><span id="local-6989586621679185333"><span class="annot"><span class="annottext">f SVG
+</span><a href="#local-6989586621679185333"><span class="hs-identifier hs-var">s</span></a></span></span><span>
+</span><span id="line-73"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Maybe Bool
+</span><a href="#local-6989586621679185335"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Bool -&gt; Maybe Bool -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">/=</span></span><span> </span><span class="annot"><span class="annottext">Maybe Bool
+</span><a href="#local-6989586621679185334"><span class="hs-identifier hs-var">v'</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">f Animation -&gt; Animation
+forall (f :: * -&gt; *). Foldable f =&gt; f Animation -&gt; Animation
+</span><span class="hs-identifier hs-var">parallel</span></span><span> </span><span class="annot"><span class="annottext">(f Animation -&gt; Animation) -&gt; f Animation -&gt; Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; Animation) -&gt; f SVG -&gt; f Animation
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Texture -&gt; SVG -&gt; Animation
+</span><a href="#local-6989586621679185330"><span class="hs-identifier hs-var">colourTrans</span></a></span><span> </span><span class="annot"><span class="annottext">(Texture -&gt; SVG -&gt; Animation) -&gt; Texture -&gt; SVG -&gt; Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Texture
+</span><a href="#local-6989586621679185356"><span class="hs-identifier hs-var">tfColour</span></a></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Texture) -&gt; Bool -&gt; Texture
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Maybe Bool -&gt; Bool
+forall a. HasCallStack =&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromJust</span></span><span> </span><span class="annot"><span class="annottext">Maybe Bool
+</span><a href="#local-6989586621679185334"><span class="hs-identifier hs-var">v'</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">f SVG
+</span><a href="#local-6989586621679185333"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-74"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Animation
+</span><span class="hs-identifier hs-var">pause</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-75"></span><span>      </span><span id="local-6989586621679185330"><span class="annot"><span class="annottext">colourTrans :: Texture -&gt; SVG -&gt; Animation
+</span><a href="#local-6989586621679185330"><span class="hs-identifier hs-var hs-var">colourTrans</span></a></span></span><span> </span><span id="local-6989586621679185328"><span class="annot"><span class="annottext">Texture
+</span><a href="#local-6989586621679185328"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679185327"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679185327"><span class="hs-identifier hs-var">svg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Time -&gt; SVG) -&gt; Animation
+</span><span class="hs-identifier hs-var">animate</span></span><span> </span><span class="annot"><span class="annottext">((Time -&gt; SVG) -&gt; Animation) -&gt; (Time -&gt; SVG) -&gt; Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679185326"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679185326"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679185327"><span class="hs-identifier hs-var">svg</span></a></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; (SVG -&gt; SVG) -&gt; SVG
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Texture -&gt; Identity (Maybe Texture)) -&gt; SVG -&gt; Identity SVG
+forall c. HasDrawAttributes c =&gt; Lens' c (Maybe Texture)
+</span><span class="hs-identifier hs-var">fillColor</span></span><span> </span><span class="annot"><span class="annottext">((Maybe Texture -&gt; Identity (Maybe Texture))
+ -&gt; SVG -&gt; Identity SVG)
+-&gt; (Maybe Texture -&gt; Maybe Texture) -&gt; SVG -&gt; SVG
+forall s t a b. ASetter s t a b -&gt; (a -&gt; b) -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">%~</span></span><span> </span><span class="annot"><span class="annottext">(Texture -&gt; Texture) -&gt; Maybe Texture -&gt; Maybe Texture
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679185325"><span class="annot"><span class="annottext">Texture
+</span><a href="#local-6989586621679185325"><span class="hs-identifier hs-var">c'</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Texture -&gt; Texture -&gt; Time -&gt; Texture
+</span><span class="hs-identifier hs-var">lerpColour</span></span><span> </span><span class="annot"><span class="annottext">Texture
+</span><a href="#local-6989586621679185325"><span class="hs-identifier hs-var">c'</span></a></span><span> </span><span class="annot"><span class="annottext">Texture
+</span><a href="#local-6989586621679185328"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679185326"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-76"></span><span>      </span><span id="local-6989586621679185324"><span class="annot"><span class="annottext">go :: (Animation, Fix ExpressionF (Maybe Bool, SVG))
+-&gt; (Word, Bool) -&gt; (Animation, Fix ExpressionF (Maybe Bool, SVG))
+</span><a href="#local-6989586621679185324"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679185323"><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679185323"><span class="hs-identifier hs-var">anim</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679185322"><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, SVG)
+</span><a href="#local-6989586621679185322"><span class="hs-identifier hs-var">e</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679185321"><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679185321"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679185320"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679185320"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-77"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679185319"><span class="annot"><span class="annottext">e' :: Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+</span><a href="#local-6989586621679185319"><span class="hs-identifier hs-var hs-var">e'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, SVG)
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+forall b c.
+Fix ExpressionF (b, c) -&gt; Fix ExpressionF (b, b, c, Animation)
+</span><a href="#local-6989586621679185354"><span class="hs-identifier hs-var">extendExpr</span></a></span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, SVG)
+</span><a href="#local-6989586621679185322"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+    -&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">ASetter
+  (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+  (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+  (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+  (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+-&gt; (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+    -&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+forall s t a b. ASetter s t a b -&gt; (a -&gt; b) -&gt; s -&gt; t
+</span><span class="hs-identifier hs-var">over</span></span><span> </span><span class="annot"><span class="annottext">ASetter
+  (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+  (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+  (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+  (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+forall l.
+(LExpression l -&gt; Identity (LExpression l))
+-&gt; LExpression l -&gt; Identity (LExpression l)
+</span><a href="#local-6989586621679185317"><span class="hs-identifier hs-var">asPoS</span></a></span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+</span><a href="#local-6989586621679185347"><span class="hs-identifier hs-var">handleTerm</span></a></span><span> </span><span class="annot"><span class="annottext">(Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+ -&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+-&gt; (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+    -&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Lens' (Maybe Bool, Maybe Bool, SVG, Animation) (Maybe Bool)
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+forall (f :: * -&gt; *) l.
+Applicative f =&gt;
+Lens' l (f Bool) -&gt; LExpression l -&gt; LExpression l
+</span><a href="A3SAT.Animation.Primitives.html#evalExprIdx"><span class="hs-identifier hs-var">evalExprIdx</span></a></span><span> </span><span class="annot"><span class="annottext">forall s t a b. Field2 s t a b =&gt; Lens s t a b
+Lens' (Maybe Bool, Maybe Bool, SVG, Animation) (Maybe Bool)
+</span><span class="hs-identifier hs-var">_2</span></span><span> </span><span class="annot"><span class="annottext">(Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+ -&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+-&gt; (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+    -&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+</span><a href="#local-6989586621679185314"><span class="hs-identifier hs-var">appNewVal</span></a></span><span>
+</span><span id="line-78"></span><span>            </span><span id="local-6989586621679185317"><span class="annot"><span class="annottext">asPoS :: (LExpression l -&gt; Identity (LExpression l))
+-&gt; LExpression l -&gt; Identity (LExpression l)
+</span><a href="#local-6989586621679185317"><span class="hs-identifier hs-var hs-var">asPoS</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(LExpression l -&gt; Identity (LExpression l))
+-&gt; LExpression l -&gt; Identity (LExpression l)
+forall l. Traversal' (LExpression l) (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#asProduct"><span class="hs-identifier hs-var">asProduct</span></a></span><span> </span><span class="annot"><span class="annottext">((LExpression l -&gt; Identity (LExpression l))
+ -&gt; LExpression l -&gt; Identity (LExpression l))
+-&gt; ((LExpression l -&gt; Identity (LExpression l))
+    -&gt; LExpression l -&gt; Identity (LExpression l))
+-&gt; (LExpression l -&gt; Identity (LExpression l))
+-&gt; LExpression l
+-&gt; Identity (LExpression l)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(LExpression l -&gt; Identity (LExpression l))
+-&gt; LExpression l -&gt; Identity (LExpression l)
+forall l. Traversal' (LExpression l) (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#transParen"><span class="hs-identifier hs-var">transParen</span></a></span><span> </span><span class="annot"><span class="annottext">((LExpression l -&gt; Identity (LExpression l))
+ -&gt; LExpression l -&gt; Identity (LExpression l))
+-&gt; ((LExpression l -&gt; Identity (LExpression l))
+    -&gt; LExpression l -&gt; Identity (LExpression l))
+-&gt; (LExpression l -&gt; Identity (LExpression l))
+-&gt; LExpression l
+-&gt; Identity (LExpression l)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(LExpression l -&gt; Identity (LExpression l))
+-&gt; LExpression l -&gt; Identity (LExpression l)
+forall l. Traversal' (LExpression l) (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#asSum"><span class="hs-identifier hs-var">asSum</span></a></span><span>
+</span><span id="line-79"></span><span>            </span><span id="local-6989586621679185314"><span class="annot"><span class="annottext">appNewVal :: Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+</span><a href="#local-6989586621679185314"><span class="hs-identifier hs-var hs-var">appNewVal</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ASetter' (Maybe Bool, Maybe Bool, SVG, Animation) (Maybe Bool)
+-&gt; [Any]
+-&gt; (Word -&gt; Bool)
+-&gt; (Any -&gt; Maybe Bool -&gt; Maybe Bool)
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+forall l b a.
+ASetter' l b
+-&gt; [a]
+-&gt; (Word -&gt; Bool)
+-&gt; (a -&gt; b -&gt; b)
+-&gt; LExpression l
+-&gt; LExpression l
+</span><a href="A3SAT.Animation.Primitives.html#mapVar"><span class="hs-identifier hs-var">mapVar</span></a></span><span> </span><span class="annot"><span class="annottext">ASetter' (Maybe Bool, Maybe Bool, SVG, Animation) (Maybe Bool)
+forall s t a b. Field2 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_2</span></span><span> </span><span class="annot"><span class="annottext">[Any]
+forall a. HasCallStack =&gt; a
+</span><span class="hs-identifier hs-var">undefined</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word -&gt; Word -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679185321"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="annot"><span class="annottext">Any
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Maybe Bool
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Maybe Bool
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679185320"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-80"></span><span>            </span><span id="local-6989586621679185308"><span class="annot"><span class="annottext">animVar :: Animation
+</span><a href="#local-6989586621679185308"><span class="hs-identifier hs-var hs-var">animVar</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF Animation -&gt; Animation
+forall (f :: * -&gt; *). Foldable f =&gt; f Animation -&gt; Animation
+</span><span class="hs-identifier hs-var">parallel</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">((Maybe Bool, Maybe Bool, SVG, Animation) -&gt; Animation)
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Fix ExpressionF Animation
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Getting
+  Animation (Maybe Bool, Maybe Bool, SVG, Animation) Animation
+-&gt; (Maybe Bool, Maybe Bool, SVG, Animation) -&gt; Animation
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting
+  Animation (Maybe Bool, Maybe Bool, SVG, Animation) Animation
+forall s t a b. Field4 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_4</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+</span><a href="#local-6989586621679185319"><span class="hs-identifier hs-var">e'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-81"></span><span>            </span><span id="local-6989586621679185306"><span class="annot"><span class="annottext">valueChanged :: (a, a, c, d) -&gt; Bool
+</span><a href="#local-6989586621679185306"><span class="hs-identifier hs-var hs-var">valueChanged</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679185305"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679185305"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679185304"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679185304"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">c
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">d
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679185305"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">/=</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679185304"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-82"></span><span>            </span><span id="local-6989586621679185303"><span class="annot"><span class="annottext">changedExpr :: [Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)]
+</span><a href="#local-6989586621679185303"><span class="hs-identifier hs-var hs-var">changedExpr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+</span><a href="#local-6989586621679185319"><span class="hs-identifier hs-var">e'</span></a></span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Getting
+     (Endo [Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)])
+     (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+     (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+-&gt; [Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)]
+forall s a. s -&gt; Getting (Endo [a]) s a -&gt; [a]
+</span><span class="hs-operator hs-var">^..</span></span><span> </span><span class="annot"><span class="annottext">Getting
+  (Endo [Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)])
+  (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+  (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+forall l. Traversal' (LExpression l) (LExpression l)
+</span><a href="A3SAT.Expression.Lens.html#asProduct"><span class="hs-identifier hs-var">asProduct</span></a></span><span> </span><span class="annot"><span class="annottext">Getting
+  (Endo [Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)])
+  (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+  (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+-&gt; Getting
+     (Endo [Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)])
+     (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+     (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+-&gt; Getting
+     (Endo [Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)])
+     (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+     (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation) -&gt; Bool)
+-&gt; Getting
+     (Endo [Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)])
+     (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+     (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+forall (p :: * -&gt; * -&gt; *) (f :: * -&gt; *) a.
+(Choice p, Applicative f) =&gt;
+(a -&gt; Bool) -&gt; Optic' p f a a
+</span><span class="hs-identifier hs-var">filtered</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Maybe Bool, Maybe Bool, SVG, Animation) -&gt; Bool
+forall a c d. Eq a =&gt; (a, a, c, d) -&gt; Bool
+</span><a href="#local-6989586621679185306"><span class="hs-identifier hs-var">valueChanged</span></a></span><span> </span><span class="annot"><span class="annottext">((Maybe Bool, Maybe Bool, SVG, Animation) -&gt; Bool)
+-&gt; (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+    -&gt; (Maybe Bool, Maybe Bool, SVG, Animation))
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Getting
+  (Maybe Bool, Maybe Bool, SVG, Animation)
+  (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+  (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; (Maybe Bool, Maybe Bool, SVG, Animation)
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting
+  (Maybe Bool, Maybe Bool, SVG, Animation)
+  (Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation))
+  (Maybe Bool, Maybe Bool, SVG, Animation)
+forall l. Lens' (LExpression l) l
+</span><a href="A3SAT.Expression.Lens.html#primaryLabel"><span class="hs-identifier hs-var">primaryLabel</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-83"></span><span>            </span><span id="local-6989586621679185300"><span class="annot"><span class="annottext">rectAnim :: Fix ExpressionF s -&gt; Animation
+</span><a href="#local-6989586621679185300"><span class="hs-identifier hs-var hs-var">rectAnim</span></a></span></span><span> </span><span id="local-6989586621679185299"><span class="annot"><span class="annottext">Fix ExpressionF s
+</span><a href="#local-6989586621679185299"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-84"></span><span>              </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679185298"><span class="annot"><span class="annottext">c :: Maybe Texture
+</span><a href="#local-6989586621679185298"><span class="hs-identifier hs-var hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Texture -&gt; Maybe Texture
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Texture -&gt; Maybe Texture) -&gt; Texture -&gt; Maybe Texture
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Texture
+</span><a href="#local-6989586621679185356"><span class="hs-identifier hs-var">tfColour</span></a></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Texture) -&gt; Bool -&gt; Texture
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Maybe Bool -&gt; Bool
+forall a. HasCallStack =&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromJust</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Bool -&gt; Bool) -&gt; Maybe Bool -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF s
+</span><a href="#local-6989586621679185299"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF s
+-&gt; Getting (Maybe Bool) (Fix ExpressionF s) (Maybe Bool)
+-&gt; Maybe Bool
+forall s a. s -&gt; Getting a s a -&gt; a
+</span><span class="hs-operator hs-var">^.</span></span><span> </span><span class="annot"><span class="annottext">(s -&gt; Const (Maybe Bool) s)
+-&gt; Fix ExpressionF s -&gt; Const (Maybe Bool) (Fix ExpressionF s)
+forall l. Lens' (LExpression l) l
+</span><a href="A3SAT.Expression.Lens.html#primaryLabel"><span class="hs-identifier hs-var">primaryLabel</span></a></span><span> </span><span class="annot"><span class="annottext">((s -&gt; Const (Maybe Bool) s)
+ -&gt; Fix ExpressionF s -&gt; Const (Maybe Bool) (Fix ExpressionF s))
+-&gt; ((Maybe Bool -&gt; Const (Maybe Bool) (Maybe Bool))
+    -&gt; s -&gt; Const (Maybe Bool) s)
+-&gt; Getting (Maybe Bool) (Fix ExpressionF s) (Maybe Bool)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Bool -&gt; Const (Maybe Bool) (Maybe Bool))
+-&gt; s -&gt; Const (Maybe Bool) s
+forall s t a b. Field2 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_2</span></span><span>
+</span><span id="line-85"></span><span>                  </span><span id="local-6989586621679185296"><span class="annot"><span class="annottext">rect :: SVG
+</span><a href="#local-6989586621679185296"><span class="hs-identifier hs-var hs-var">rect</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((Maybe Texture -&gt; Identity (Maybe Texture))
+ -&gt; SVG -&gt; Identity SVG)
+-&gt; Maybe Texture -&gt; SVG -&gt; SVG
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-identifier hs-var">set</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Texture -&gt; Identity (Maybe Texture)) -&gt; SVG -&gt; Identity SVG
+forall c. HasDrawAttributes c =&gt; Lens' c (Maybe Texture)
+</span><span class="hs-identifier hs-var">strokeColor</span></span><span> </span><span class="annot"><span class="annottext">Maybe Texture
+</span><a href="#local-6989586621679185298"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-86"></span><span>                       </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withFillOpacity</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-87"></span><span>                       </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withStrokeWidth</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time
+</span><span class="hs-identifier hs-var">defaultStrokeWidth</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">1.5</span></span><span class="hs-special">)</span><span>
+</span><span id="line-88"></span><span>                       </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">aroundCenter</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">scaleXY</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">1.05</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">1.3</span></span><span class="hs-special">)</span><span>
+</span><span id="line-89"></span><span>                       </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">LExpression SVG -&gt; SVG
+</span><a href="A3SAT.Animation.Primitives.html#mkBoundingRect"><span class="hs-identifier hs-var">mkBoundingRect</span></a></span><span>
+</span><span id="line-90"></span><span>                       </span><span class="annot"><span class="annottext">(LExpression SVG -&gt; SVG) -&gt; LExpression SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(s -&gt; SVG) -&gt; Fix ExpressionF s -&gt; LExpression SVG
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Getting SVG s SVG -&gt; s -&gt; SVG
+forall s (m :: * -&gt; *) a. MonadReader s m =&gt; Getting a s a -&gt; m a
+</span><span class="hs-identifier hs-var">view</span></span><span> </span><span class="annot"><span class="annottext">Getting SVG s SVG
+forall s t a b. Field3 s t a b =&gt; Lens s t a b
+</span><span class="hs-identifier hs-var">_3</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF s
+</span><a href="#local-6989586621679185299"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-91"></span><span>              </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Time -&gt; SVG) -&gt; Animation
+</span><span class="hs-identifier hs-var">animate</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; SVG -&gt; SVG
+</span><span class="hs-operator hs-var">`partialSvg`</span></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679185296"><span class="hs-identifier hs-var">rect</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-92"></span><span>            </span><span id="local-6989586621679185285"><span class="annot"><span class="annottext">animRect :: Animation
+</span><a href="#local-6989586621679185285"><span class="hs-identifier hs-var hs-var">animRect</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Time) -&gt; Animation -&gt; Animation
+</span><span class="hs-identifier hs-var">signalA</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Time -&gt; Time
+</span><span class="hs-identifier hs-var">curveS</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Animation -&gt; Animation) -&gt; Animation -&gt; Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Animation] -&gt; Animation
+forall (f :: * -&gt; *). Foldable f =&gt; f Animation -&gt; Animation
+</span><span class="hs-identifier hs-var">parallel</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+ -&gt; Animation)
+-&gt; [Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)]
+-&gt; [Animation]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Animation
+forall s.
+(Field2 s s (Maybe Bool) (Maybe Bool), Field3 s s SVG SVG) =&gt;
+Fix ExpressionF s -&gt; Animation
+</span><a href="#local-6989586621679185300"><span class="hs-identifier hs-var">rectAnim</span></a></span><span> </span><span class="annot"><span class="annottext">[Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)]
+</span><a href="#local-6989586621679185303"><span class="hs-identifier hs-var">changedExpr</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-93"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679185323"><span class="hs-identifier hs-var">anim</span></a></span><span> </span><span class="annot"><span class="annottext">Animation -&gt; Animation -&gt; Animation
+</span><span class="hs-operator hs-var">`andThen`</span></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679185308"><span class="hs-identifier hs-var">animVar</span></a></span><span> </span><span class="annot"><span class="annottext">Animation -&gt; Animation -&gt; Animation
+</span><span class="hs-operator hs-var">`andThen`</span></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679185285"><span class="hs-identifier hs-var">animRect</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+-&gt; Fix ExpressionF (Maybe Bool, SVG)
+forall a a b d.
+Fix ExpressionF (a, a, b, d) -&gt; Fix ExpressionF (a, b)
+</span><a href="#local-6989586621679185350"><span class="hs-identifier hs-var">shrinkExpr</span></a></span><span> </span><span class="annot"><span class="annottext">Fix ExpressionF (Maybe Bool, Maybe Bool, SVG, Animation)
+</span><a href="#local-6989586621679185319"><span class="hs-identifier hs-var">e'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-94"></span><span>  </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Animation, Fix ExpressionF (Maybe Bool, SVG)) -&gt; Animation
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="annot"><span class="annottext">((Animation, Fix ExpressionF (Maybe Bool, SVG)) -&gt; Animation)
+-&gt; (Animation, Fix ExpressionF (Maybe Bool, SVG)) -&gt; Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">((Animation, Fix ExpressionF (Maybe Bool, SVG))
+ -&gt; (Word, Bool) -&gt; (Animation, Fix ExpressionF (Maybe Bool, SVG)))
+-&gt; (Animation, Fix ExpressionF (Maybe Bool, SVG))
+-&gt; [(Word, Bool)]
+-&gt; (Animation, Fix ExpressionF (Maybe Bool, SVG))
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl'</span></span><span> </span><span class="annot"><span class="annottext">(Animation, Fix ExpressionF (Maybe Bool, SVG))
+-&gt; (Word, Bool) -&gt; (Animation, Fix ExpressionF (Maybe Bool, SVG))
+</span><a href="#local-6989586621679185324"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Animation
+</span><span class="hs-identifier hs-var">pause</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; (Maybe Bool, SVG))
+-&gt; LExpression SVG -&gt; Fix ExpressionF (Maybe Bool, SVG)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe Bool
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span class="hs-special">,</span><span> </span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">LExpression SVG
+</span><a href="#local-6989586621679185363"><span class="hs-identifier hs-var">expr</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Word] -&gt; [Bool] -&gt; [(Word, Bool)]
+forall a b. [a] -&gt; [b] -&gt; [(a, b)]
+</span><span class="hs-identifier hs-var">zip</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Word
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word</span></span><span> </span><span class="hs-glyph">..</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[Bool]
+</span><a href="#local-6989586621679185364"><span class="hs-identifier hs-var">bs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-95"></span></pre></body></html>

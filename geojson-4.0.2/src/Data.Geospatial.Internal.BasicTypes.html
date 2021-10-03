@@ -1,0 +1,783 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE DeriveAnyClass    #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE DeriveGeneric     #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-4"></span><span class="hs-pragma">{-# LANGUAGE TemplateHaskell   #-}</span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-comment">-------------------------------------------------------------------</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- Module       : Data.Geospatial.Internal.BasicTypes</span><span>
+</span><span id="line-9"></span><span class="hs-comment">-- Copyright    : (C) 2014-2019 HS-GeoJSON Project</span><span>
+</span><span id="line-10"></span><span class="hs-comment">-- License      : BSD-style (see the file LICENSE.md)</span><span>
+</span><span id="line-11"></span><span class="hs-comment">-- Maintainer   : Andrew Newman</span><span>
+</span><span id="line-12"></span><span class="hs-comment">--</span><span>
+</span><span id="line-13"></span><span class="hs-comment">-- Basic types for GeoJSON representations.</span><span>
+</span><span id="line-14"></span><span class="hs-comment">-------------------------------------------------------------------</span><span>
+</span><span id="line-15"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Data.Geospatial.Internal.BasicTypes</span><span> </span><span class="hs-special">(</span><span>
+</span><span id="line-16"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Coordinate types</span></span><span>
+</span><span id="line-17"></span><span>        </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Latitude"><span class="hs-identifier">Latitude</span></a></span><span>
+</span><span id="line-18"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Longitude"><span class="hs-identifier">Longitude</span></a></span><span>
+</span><span id="line-19"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Easting"><span class="hs-identifier">Easting</span></a></span><span>
+</span><span id="line-20"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Northing"><span class="hs-identifier">Northing</span></a></span><span>
+</span><span id="line-21"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Altitude"><span class="hs-identifier">Altitude</span></a></span><span>
+</span><span id="line-22"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPositionWithoutCRS"><span class="hs-identifier">GeoPositionWithoutCRS</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#retrieveXY"><span class="hs-identifier">retrieveXY</span></a></span><span>
+</span><span id="line-24"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXY"><span class="hs-identifier">PointXY</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZ"><span class="hs-identifier">PointXYZ</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZM"><span class="hs-identifier">PointXYZM</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#DoubleArray"><span class="hs-identifier">DoubleArray</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#HasGeoPositionWithoutCRS"><span class="hs-identifier">HasGeoPositionWithoutCRS</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span>    </span><span class="annot"><span class="hs-comment">-- * CRS Reference types</span></span><span>
+</span><span id="line-30"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Name"><span class="hs-identifier">Name</span></a></span><span>
+</span><span id="line-31"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Code"><span class="hs-identifier">Code</span></a></span><span>
+</span><span id="line-32"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Href"><span class="hs-identifier">Href</span></a></span><span>
+</span><span id="line-33"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#FormatString"><span class="hs-identifier">FormatString</span></a></span><span>
+</span><span id="line-34"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#ProjectionType"><span class="hs-identifier">ProjectionType</span></a></span><span>
+</span><span id="line-35"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Feature Types</span></span><span>
+</span><span id="line-36"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#BoundingBoxWithoutCRS"><span class="hs-identifier">BoundingBoxWithoutCRS</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-37"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#FeatureID"><span class="hs-identifier">FeatureID</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span>    </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-39"></span><span>
+</span><span id="line-40"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.DeepSeq</span></span><span>
+</span><span id="line-41"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Lens.TH</span></span><span>  </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">makeClassy</span></span><span class="hs-special">)</span><span>
+</span><span id="line-42"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson</span></span><span>       </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Aeson</span></span><span>
+</span><span id="line-43"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson.Types</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">AesonTypes</span></span><span>
+</span><span id="line-44"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>       </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">DataMaybe</span></span><span>
+</span><span id="line-45"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Scientific</span></span><span>  </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Scientific</span></span><span>
+</span><span id="line-46"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>        </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Text</span></span><span>
+</span><span id="line-47"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Vector</span></span><span>      </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Vector</span></span><span>
+</span><span id="line-48"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">GHC.Generics</span></span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span class="hs-keyword">type</span><span> </span><span id="Latitude"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Latitude"><span class="hs-identifier hs-var">Latitude</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-51"></span><span class="hs-keyword">type</span><span> </span><span id="Longitude"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Longitude"><span class="hs-identifier hs-var">Longitude</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-52"></span><span class="hs-keyword">type</span><span> </span><span id="Easting"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Easting"><span class="hs-identifier hs-var">Easting</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-53"></span><span class="hs-keyword">type</span><span> </span><span id="Northing"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Northing"><span class="hs-identifier hs-var">Northing</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-54"></span><span class="hs-keyword">type</span><span> </span><span id="Altitude"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Altitude"><span class="hs-identifier hs-var">Altitude</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span id="local-6989586621679176512"><span id="local-6989586621679176513"></span></span><span class="hs-keyword">newtype</span><span> </span><span id="DoubleArray"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#DoubleArray"><span class="hs-identifier hs-var">DoubleArray</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="DoubleArray"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#DoubleArray"><span class="hs-identifier hs-var">DoubleArray</span></a></span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">]</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679176507"><span id="local-6989586621679176509"><span class="annot"><span class="annottext">DoubleArray -&gt; DoubleArray -&gt; Bool
+(DoubleArray -&gt; DoubleArray -&gt; Bool)
+-&gt; (DoubleArray -&gt; DoubleArray -&gt; Bool) -&gt; Eq DoubleArray
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: DoubleArray -&gt; DoubleArray -&gt; Bool
+$c/= :: DoubleArray -&gt; DoubleArray -&gt; Bool
+== :: DoubleArray -&gt; DoubleArray -&gt; Bool
+$c== :: DoubleArray -&gt; DoubleArray -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176500"><span id="local-6989586621679176502"><span id="local-6989586621679176504"><span class="annot"><span class="annottext">Int -&gt; DoubleArray -&gt; ShowS
+[DoubleArray] -&gt; ShowS
+DoubleArray -&gt; String
+(Int -&gt; DoubleArray -&gt; ShowS)
+-&gt; (DoubleArray -&gt; String)
+-&gt; ([DoubleArray] -&gt; ShowS)
+-&gt; Show DoubleArray
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [DoubleArray] -&gt; ShowS
+$cshowList :: [DoubleArray] -&gt; ShowS
+show :: DoubleArray -&gt; String
+$cshow :: DoubleArray -&gt; String
+showsPrec :: Int -&gt; DoubleArray -&gt; ShowS
+$cshowsPrec :: Int -&gt; DoubleArray -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(forall x. DoubleArray -&gt; Rep DoubleArray x)
+-&gt; (forall x. Rep DoubleArray x -&gt; DoubleArray)
+-&gt; Generic DoubleArray
+forall x. Rep DoubleArray x -&gt; DoubleArray
+forall x. DoubleArray -&gt; Rep DoubleArray x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep DoubleArray x -&gt; DoubleArray
+$cfrom :: forall x. DoubleArray -&gt; Rep DoubleArray x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176494"><span class="annot"><span class="annottext">DoubleArray -&gt; ()
+(DoubleArray -&gt; ()) -&gt; NFData DoubleArray
+forall a. (a -&gt; ()) -&gt; NFData a
+rnf :: DoubleArray -&gt; ()
+$crnf :: DoubleArray -&gt; ()
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">NFData</span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176489"><span id="local-6989586621679176491"><span class="annot"><span class="annottext">Value -&gt; Parser [DoubleArray]
+Value -&gt; Parser DoubleArray
+(Value -&gt; Parser DoubleArray)
+-&gt; (Value -&gt; Parser [DoubleArray]) -&gt; FromJSON DoubleArray
+forall a.
+(Value -&gt; Parser a) -&gt; (Value -&gt; Parser [a]) -&gt; FromJSON a
+parseJSONList :: Value -&gt; Parser [DoubleArray]
+$cparseJSONList :: Value -&gt; Parser [DoubleArray]
+parseJSON :: Value -&gt; Parser DoubleArray
+$cparseJSON :: Value -&gt; Parser DoubleArray
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Aeson.FromJSON</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176480"><span id="local-6989586621679176482"><span id="local-6989586621679176484"><span id="local-6989586621679176486"><span class="annot"><span class="annottext">[DoubleArray] -&gt; Encoding
+[DoubleArray] -&gt; Value
+DoubleArray -&gt; Encoding
+DoubleArray -&gt; Value
+(DoubleArray -&gt; Value)
+-&gt; (DoubleArray -&gt; Encoding)
+-&gt; ([DoubleArray] -&gt; Value)
+-&gt; ([DoubleArray] -&gt; Encoding)
+-&gt; ToJSON DoubleArray
+forall a.
+(a -&gt; Value)
+-&gt; (a -&gt; Encoding)
+-&gt; ([a] -&gt; Value)
+-&gt; ([a] -&gt; Encoding)
+-&gt; ToJSON a
+toEncodingList :: [DoubleArray] -&gt; Encoding
+$ctoEncodingList :: [DoubleArray] -&gt; Encoding
+toJSONList :: [DoubleArray] -&gt; Value
+$ctoJSONList :: [DoubleArray] -&gt; Value
+toEncoding :: DoubleArray -&gt; Encoding
+$ctoEncoding :: DoubleArray -&gt; Encoding
+toJSON :: DoubleArray -&gt; Value
+$ctoJSON :: DoubleArray -&gt; Value
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Aeson.ToJSON</span></span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span class="hs-comment">-- | (`GeoPositionWithoutCRS` is a catch all for indeterminate CRSs and for expression of positions</span><span>
+</span><span id="line-59"></span><span class="hs-comment">-- before a CRS has been determined</span><span>
+</span><span id="line-60"></span><span class="hs-comment">--</span><span>
+</span><span id="line-61"></span><span id="local-6989586621679176477"><span id="local-6989586621679176478"></span></span><span class="hs-keyword">data</span><span> </span><span id="PointXY"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXY"><span class="hs-identifier hs-var">PointXY</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="PointXY"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXY"><span class="hs-identifier hs-var">PointXY</span></a></span></span><span>
+</span><span id="line-62"></span><span>    </span><span class="hs-special">{</span><span> </span><span id="_xyX"><span class="annot"><span class="annottext">PointXY -&gt; Double
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#_xyX"><span class="hs-identifier hs-var hs-var">_xyX</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-63"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="_xyY"><span class="annot"><span class="annottext">PointXY -&gt; Double
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#_xyY"><span class="hs-identifier hs-var hs-var">_xyY</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-64"></span><span>    </span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679176468"><span id="local-6989586621679176470"><span id="local-6989586621679176472"><span class="annot"><span class="annottext">Int -&gt; PointXY -&gt; ShowS
+[PointXY] -&gt; ShowS
+PointXY -&gt; String
+(Int -&gt; PointXY -&gt; ShowS)
+-&gt; (PointXY -&gt; String) -&gt; ([PointXY] -&gt; ShowS) -&gt; Show PointXY
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [PointXY] -&gt; ShowS
+$cshowList :: [PointXY] -&gt; ShowS
+show :: PointXY -&gt; String
+$cshow :: PointXY -&gt; String
+showsPrec :: Int -&gt; PointXY -&gt; ShowS
+$cshowsPrec :: Int -&gt; PointXY -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176464"><span id="local-6989586621679176466"><span class="annot"><span class="annottext">PointXY -&gt; PointXY -&gt; Bool
+(PointXY -&gt; PointXY -&gt; Bool)
+-&gt; (PointXY -&gt; PointXY -&gt; Bool) -&gt; Eq PointXY
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: PointXY -&gt; PointXY -&gt; Bool
+$c/= :: PointXY -&gt; PointXY -&gt; Bool
+== :: PointXY -&gt; PointXY -&gt; Bool
+$c== :: PointXY -&gt; PointXY -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(forall x. PointXY -&gt; Rep PointXY x)
+-&gt; (forall x. Rep PointXY x -&gt; PointXY) -&gt; Generic PointXY
+forall x. Rep PointXY x -&gt; PointXY
+forall x. PointXY -&gt; Rep PointXY x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep PointXY x -&gt; PointXY
+$cfrom :: forall x. PointXY -&gt; Rep PointXY x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176460"><span class="annot"><span class="annottext">PointXY -&gt; ()
+(PointXY -&gt; ()) -&gt; NFData PointXY
+forall a. (a -&gt; ()) -&gt; NFData a
+rnf :: PointXY -&gt; ()
+$crnf :: PointXY -&gt; ()
+</span><a href="#local-6989586621679176460"><span class="hs-identifier hs-var hs-var hs-var hs-var">NFData</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-65"></span><span>
+</span><span id="line-66"></span><span id="local-6989586621679176458"><span id="local-6989586621679176459"></span></span><span class="hs-keyword">data</span><span> </span><span id="PointXYZ"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZ"><span class="hs-identifier hs-var">PointXYZ</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="PointXYZ"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZ"><span class="hs-identifier hs-var">PointXYZ</span></a></span></span><span>
+</span><span id="line-67"></span><span>    </span><span class="hs-special">{</span><span> </span><span id="_xyzX"><span class="annot"><span class="annottext">PointXYZ -&gt; Double
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#_xyzX"><span class="hs-identifier hs-var hs-var">_xyzX</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-68"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="_xyzY"><span class="annot"><span class="annottext">PointXYZ -&gt; Double
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#_xyzY"><span class="hs-identifier hs-var hs-var">_xyzY</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-69"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="_xyzZ"><span class="annot"><span class="annottext">PointXYZ -&gt; Double
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#_xyzZ"><span class="hs-identifier hs-var hs-var">_xyzZ</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-70"></span><span>    </span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679176448"><span id="local-6989586621679176450"><span id="local-6989586621679176452"><span class="annot"><span class="annottext">Int -&gt; PointXYZ -&gt; ShowS
+[PointXYZ] -&gt; ShowS
+PointXYZ -&gt; String
+(Int -&gt; PointXYZ -&gt; ShowS)
+-&gt; (PointXYZ -&gt; String) -&gt; ([PointXYZ] -&gt; ShowS) -&gt; Show PointXYZ
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [PointXYZ] -&gt; ShowS
+$cshowList :: [PointXYZ] -&gt; ShowS
+show :: PointXYZ -&gt; String
+$cshow :: PointXYZ -&gt; String
+showsPrec :: Int -&gt; PointXYZ -&gt; ShowS
+$cshowsPrec :: Int -&gt; PointXYZ -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176444"><span id="local-6989586621679176446"><span class="annot"><span class="annottext">PointXYZ -&gt; PointXYZ -&gt; Bool
+(PointXYZ -&gt; PointXYZ -&gt; Bool)
+-&gt; (PointXYZ -&gt; PointXYZ -&gt; Bool) -&gt; Eq PointXYZ
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: PointXYZ -&gt; PointXYZ -&gt; Bool
+$c/= :: PointXYZ -&gt; PointXYZ -&gt; Bool
+== :: PointXYZ -&gt; PointXYZ -&gt; Bool
+$c== :: PointXYZ -&gt; PointXYZ -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(forall x. PointXYZ -&gt; Rep PointXYZ x)
+-&gt; (forall x. Rep PointXYZ x -&gt; PointXYZ) -&gt; Generic PointXYZ
+forall x. Rep PointXYZ x -&gt; PointXYZ
+forall x. PointXYZ -&gt; Rep PointXYZ x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep PointXYZ x -&gt; PointXYZ
+$cfrom :: forall x. PointXYZ -&gt; Rep PointXYZ x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176440"><span class="annot"><span class="annottext">PointXYZ -&gt; ()
+(PointXYZ -&gt; ()) -&gt; NFData PointXYZ
+forall a. (a -&gt; ()) -&gt; NFData a
+rnf :: PointXYZ -&gt; ()
+$crnf :: PointXYZ -&gt; ()
+</span><a href="#local-6989586621679176440"><span class="hs-identifier hs-var hs-var hs-var hs-var">NFData</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-71"></span><span>
+</span><span id="line-72"></span><span id="local-6989586621679176438"><span id="local-6989586621679176439"></span></span><span class="hs-keyword">data</span><span> </span><span id="PointXYZM"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZM"><span class="hs-identifier hs-var">PointXYZM</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="PointXYZM"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZM"><span class="hs-identifier hs-var">PointXYZM</span></a></span></span><span>
+</span><span id="line-73"></span><span>    </span><span class="hs-special">{</span><span> </span><span id="_xyzmX"><span class="annot"><span class="annottext">PointXYZM -&gt; Double
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#_xyzmX"><span class="hs-identifier hs-var hs-var">_xyzmX</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-74"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="_xyzmY"><span class="annot"><span class="annottext">PointXYZM -&gt; Double
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#_xyzmY"><span class="hs-identifier hs-var hs-var">_xyzmY</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-75"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="_xyzmZ"><span class="annot"><span class="annottext">PointXYZM -&gt; Double
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#_xyzmZ"><span class="hs-identifier hs-var hs-var">_xyzmZ</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-76"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="_xyzmM"><span class="annot"><span class="annottext">PointXYZM -&gt; Double
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#_xyzmM"><span class="hs-identifier hs-var hs-var">_xyzmM</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-77"></span><span>    </span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679176427"><span id="local-6989586621679176429"><span id="local-6989586621679176431"><span class="annot"><span class="annottext">Int -&gt; PointXYZM -&gt; ShowS
+[PointXYZM] -&gt; ShowS
+PointXYZM -&gt; String
+(Int -&gt; PointXYZM -&gt; ShowS)
+-&gt; (PointXYZM -&gt; String)
+-&gt; ([PointXYZM] -&gt; ShowS)
+-&gt; Show PointXYZM
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [PointXYZM] -&gt; ShowS
+$cshowList :: [PointXYZM] -&gt; ShowS
+show :: PointXYZM -&gt; String
+$cshow :: PointXYZM -&gt; String
+showsPrec :: Int -&gt; PointXYZM -&gt; ShowS
+$cshowsPrec :: Int -&gt; PointXYZM -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176423"><span id="local-6989586621679176425"><span class="annot"><span class="annottext">PointXYZM -&gt; PointXYZM -&gt; Bool
+(PointXYZM -&gt; PointXYZM -&gt; Bool)
+-&gt; (PointXYZM -&gt; PointXYZM -&gt; Bool) -&gt; Eq PointXYZM
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: PointXYZM -&gt; PointXYZM -&gt; Bool
+$c/= :: PointXYZM -&gt; PointXYZM -&gt; Bool
+== :: PointXYZM -&gt; PointXYZM -&gt; Bool
+$c== :: PointXYZM -&gt; PointXYZM -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(forall x. PointXYZM -&gt; Rep PointXYZM x)
+-&gt; (forall x. Rep PointXYZM x -&gt; PointXYZM) -&gt; Generic PointXYZM
+forall x. Rep PointXYZM x -&gt; PointXYZM
+forall x. PointXYZM -&gt; Rep PointXYZM x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep PointXYZM x -&gt; PointXYZM
+$cfrom :: forall x. PointXYZM -&gt; Rep PointXYZM x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176419"><span class="annot"><span class="annottext">PointXYZM -&gt; ()
+(PointXYZM -&gt; ()) -&gt; NFData PointXYZM
+forall a. (a -&gt; ()) -&gt; NFData a
+rnf :: PointXYZM -&gt; ()
+$crnf :: PointXYZM -&gt; ()
+</span><a href="#local-6989586621679176419"><span class="hs-identifier hs-var hs-var hs-var hs-var">NFData</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-78"></span><span>
+</span><span id="line-79"></span><span id="local-6989586621679176417"><span id="local-6989586621679176418"></span></span><span class="hs-keyword">data</span><span> </span><span id="GeoPositionWithoutCRS"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPositionWithoutCRS"><span class="hs-identifier hs-var">GeoPositionWithoutCRS</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="GeoEmpty"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoEmpty"><span class="hs-identifier hs-var">GeoEmpty</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="GeoPointXY"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPointXY"><span class="hs-identifier hs-var">GeoPointXY</span></a></span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXY"><span class="hs-identifier hs-type">PointXY</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="GeoPointXYZ"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPointXYZ"><span class="hs-identifier hs-var">GeoPointXYZ</span></a></span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZ"><span class="hs-identifier hs-type">PointXYZ</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="GeoPointXYZM"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPointXYZM"><span class="hs-identifier hs-var">GeoPointXYZM</span></a></span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZM"><span class="hs-identifier hs-type">PointXYZM</span></a></span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679176407"><span id="local-6989586621679176409"><span id="local-6989586621679176411"><span class="annot"><span class="annottext">Int -&gt; GeoPositionWithoutCRS -&gt; ShowS
+[GeoPositionWithoutCRS] -&gt; ShowS
+GeoPositionWithoutCRS -&gt; String
+(Int -&gt; GeoPositionWithoutCRS -&gt; ShowS)
+-&gt; (GeoPositionWithoutCRS -&gt; String)
+-&gt; ([GeoPositionWithoutCRS] -&gt; ShowS)
+-&gt; Show GeoPositionWithoutCRS
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [GeoPositionWithoutCRS] -&gt; ShowS
+$cshowList :: [GeoPositionWithoutCRS] -&gt; ShowS
+show :: GeoPositionWithoutCRS -&gt; String
+$cshow :: GeoPositionWithoutCRS -&gt; String
+showsPrec :: Int -&gt; GeoPositionWithoutCRS -&gt; ShowS
+$cshowsPrec :: Int -&gt; GeoPositionWithoutCRS -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176403"><span id="local-6989586621679176405"><span class="annot"><span class="annottext">GeoPositionWithoutCRS -&gt; GeoPositionWithoutCRS -&gt; Bool
+(GeoPositionWithoutCRS -&gt; GeoPositionWithoutCRS -&gt; Bool)
+-&gt; (GeoPositionWithoutCRS -&gt; GeoPositionWithoutCRS -&gt; Bool)
+-&gt; Eq GeoPositionWithoutCRS
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: GeoPositionWithoutCRS -&gt; GeoPositionWithoutCRS -&gt; Bool
+$c/= :: GeoPositionWithoutCRS -&gt; GeoPositionWithoutCRS -&gt; Bool
+== :: GeoPositionWithoutCRS -&gt; GeoPositionWithoutCRS -&gt; Bool
+$c== :: GeoPositionWithoutCRS -&gt; GeoPositionWithoutCRS -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(forall x. GeoPositionWithoutCRS -&gt; Rep GeoPositionWithoutCRS x)
+-&gt; (forall x. Rep GeoPositionWithoutCRS x -&gt; GeoPositionWithoutCRS)
+-&gt; Generic GeoPositionWithoutCRS
+forall x. Rep GeoPositionWithoutCRS x -&gt; GeoPositionWithoutCRS
+forall x. GeoPositionWithoutCRS -&gt; Rep GeoPositionWithoutCRS x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep GeoPositionWithoutCRS x -&gt; GeoPositionWithoutCRS
+$cfrom :: forall x. GeoPositionWithoutCRS -&gt; Rep GeoPositionWithoutCRS x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176399"><span class="annot"><span class="annottext">GeoPositionWithoutCRS -&gt; ()
+(GeoPositionWithoutCRS -&gt; ()) -&gt; NFData GeoPositionWithoutCRS
+forall a. (a -&gt; ()) -&gt; NFData a
+rnf :: GeoPositionWithoutCRS -&gt; ()
+$crnf :: GeoPositionWithoutCRS -&gt; ()
+</span><a href="#local-6989586621679176399"><span class="hs-identifier hs-var hs-var hs-var hs-var">NFData</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span id="geoPositionWithoutCRS"><span id="local-6989586621679176397"><span id="local-6989586621679176560"><span id="HasGeoPositionWithoutCRS"><span class="hs-identifier">makeClassy</span><span> </span><span class="hs-special">''</span><span class="hs-identifier">GeoPositionWithoutCRS</span></span></span></span></span><span>
+</span><span id="line-82"></span><span>
+</span><span id="line-83"></span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#_toDoubleArray"><span class="hs-identifier hs-type">_toDoubleArray</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPositionWithoutCRS"><span class="hs-identifier hs-type">GeoPositionWithoutCRS</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">]</span><span>
+</span><span id="line-84"></span><span id="_toDoubleArray"><span class="annot"><span class="annottext">_toDoubleArray :: GeoPositionWithoutCRS -&gt; [Double]
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#_toDoubleArray"><span class="hs-identifier hs-var hs-var">_toDoubleArray</span></a></span></span><span> </span><span class="annot"><span class="annottext">GeoPositionWithoutCRS
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#GeoEmpty"><span class="hs-identifier hs-var">GeoEmpty</span></a></span><span>                           </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-85"></span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#_toDoubleArray"><span class="hs-identifier hs-var">_toDoubleArray</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPointXY"><span class="hs-identifier hs-type">GeoPointXY</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXY"><span class="hs-identifier hs-type">PointXY</span></a></span><span> </span><span id="local-6989586621679176393"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176393"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679176392"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176392"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176393"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176392"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-86"></span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#_toDoubleArray"><span class="hs-identifier hs-var">_toDoubleArray</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPointXYZ"><span class="hs-identifier hs-type">GeoPointXYZ</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZ"><span class="hs-identifier hs-type">PointXYZ</span></a></span><span> </span><span id="local-6989586621679176391"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176391"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679176390"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176390"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span id="local-6989586621679176389"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176389"><span class="hs-identifier hs-var">z</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176391"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176390"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176389"><span class="hs-identifier hs-var">z</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-87"></span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#_toDoubleArray"><span class="hs-identifier hs-var">_toDoubleArray</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPointXYZM"><span class="hs-identifier hs-type">GeoPointXYZM</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZM"><span class="hs-identifier hs-type">PointXYZM</span></a></span><span> </span><span id="local-6989586621679176388"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176388"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679176387"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176387"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span id="local-6989586621679176386"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176386"><span class="hs-identifier hs-var">z</span></a></span></span><span> </span><span id="local-6989586621679176385"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176385"><span class="hs-identifier hs-var">m</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176388"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176387"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176386"><span class="hs-identifier hs-var">z</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176385"><span class="hs-identifier hs-var">m</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-88"></span><span>
+</span><span id="line-89"></span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#_toGeoPoint"><span class="hs-identifier hs-type">_toGeoPoint</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#DoubleArray"><span class="hs-identifier hs-type">DoubleArray</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPositionWithoutCRS"><span class="hs-identifier hs-type">GeoPositionWithoutCRS</span></a></span><span>
+</span><span id="line-90"></span><span id="_toGeoPoint"><span class="annot"><span class="annottext">_toGeoPoint :: DoubleArray -&gt; Maybe GeoPositionWithoutCRS
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#_toGeoPoint"><span class="hs-identifier hs-var hs-var">_toGeoPoint</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#DoubleArray"><span class="hs-identifier hs-type">DoubleArray</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">GeoPositionWithoutCRS -&gt; Maybe GeoPositionWithoutCRS
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">GeoPositionWithoutCRS
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#GeoEmpty"><span class="hs-identifier hs-var">GeoEmpty</span></a></span><span>
+</span><span id="line-91"></span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#_toGeoPoint"><span class="hs-identifier hs-var">_toGeoPoint</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#DoubleArray"><span class="hs-identifier hs-type">DoubleArray</span></a></span><span> </span><span class="hs-special">[</span><span id="local-6989586621679176383"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176383"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176382"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176382"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">]</span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">GeoPositionWithoutCRS -&gt; Maybe GeoPositionWithoutCRS
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(GeoPositionWithoutCRS -&gt; Maybe GeoPositionWithoutCRS)
+-&gt; GeoPositionWithoutCRS -&gt; Maybe GeoPositionWithoutCRS
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">PointXY -&gt; GeoPositionWithoutCRS
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPointXY"><span class="hs-identifier hs-var">GeoPointXY</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; PointXY
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#PointXY"><span class="hs-identifier hs-var">PointXY</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176383"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176382"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-92"></span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#_toGeoPoint"><span class="hs-identifier hs-var">_toGeoPoint</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#DoubleArray"><span class="hs-identifier hs-type">DoubleArray</span></a></span><span> </span><span class="hs-special">[</span><span id="local-6989586621679176381"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176381"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176380"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176380"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176379"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176379"><span class="hs-identifier hs-var">z</span></a></span></span><span class="hs-special">]</span><span class="hs-special">)</span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">GeoPositionWithoutCRS -&gt; Maybe GeoPositionWithoutCRS
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(GeoPositionWithoutCRS -&gt; Maybe GeoPositionWithoutCRS)
+-&gt; GeoPositionWithoutCRS -&gt; Maybe GeoPositionWithoutCRS
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">PointXYZ -&gt; GeoPositionWithoutCRS
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPointXYZ"><span class="hs-identifier hs-var">GeoPointXYZ</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; PointXYZ
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZ"><span class="hs-identifier hs-var">PointXYZ</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176381"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176380"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176379"><span class="hs-identifier hs-var">z</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-93"></span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#_toGeoPoint"><span class="hs-identifier hs-var">_toGeoPoint</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#DoubleArray"><span class="hs-identifier hs-type">DoubleArray</span></a></span><span> </span><span class="hs-special">[</span><span id="local-6989586621679176378"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176378"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176377"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176377"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176376"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176376"><span class="hs-identifier hs-var">z</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176375"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176375"><span class="hs-identifier hs-var">m</span></a></span></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">GeoPositionWithoutCRS -&gt; Maybe GeoPositionWithoutCRS
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(GeoPositionWithoutCRS -&gt; Maybe GeoPositionWithoutCRS)
+-&gt; GeoPositionWithoutCRS -&gt; Maybe GeoPositionWithoutCRS
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">PointXYZM -&gt; GeoPositionWithoutCRS
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPointXYZM"><span class="hs-identifier hs-var">GeoPointXYZM</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; Double -&gt; PointXYZM
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZM"><span class="hs-identifier hs-var">PointXYZM</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176378"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176377"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176376"><span class="hs-identifier hs-var">z</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176375"><span class="hs-identifier hs-var">m</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-94"></span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#_toGeoPoint"><span class="hs-identifier hs-var">_toGeoPoint</span></a></span><span> </span><span class="annot"><span class="annottext">DoubleArray
+</span><span class="hs-identifier">_</span></span><span>                          </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe GeoPositionWithoutCRS
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-95"></span><span>
+</span><span id="line-96"></span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#retrieveXY"><span class="hs-identifier hs-type">retrieveXY</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPositionWithoutCRS"><span class="hs-identifier hs-type">GeoPositionWithoutCRS</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXY"><span class="hs-identifier hs-type">PointXY</span></a></span><span>
+</span><span id="line-97"></span><span id="retrieveXY"><span class="annot"><span class="annottext">retrieveXY :: GeoPositionWithoutCRS -&gt; PointXY
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#retrieveXY"><span class="hs-identifier hs-var hs-var">retrieveXY</span></a></span></span><span> </span><span id="local-6989586621679176374"><span class="annot"><span class="annottext">GeoPositionWithoutCRS
+</span><a href="#local-6989586621679176374"><span class="hs-identifier hs-var">position</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-98"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">GeoPositionWithoutCRS
+</span><a href="#local-6989586621679176374"><span class="hs-identifier hs-var">position</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-99"></span><span>    </span><span class="annot"><span class="annottext">GeoPositionWithoutCRS
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#GeoEmpty"><span class="hs-identifier hs-var">GeoEmpty</span></a></span><span>                             </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">PointXY
+forall a. HasCallStack =&gt; a
+</span><span class="hs-identifier hs-var">undefined</span></span><span> </span><span class="hs-comment">-- TODO - Fix - represent this like WKB - NaN value</span><span>
+</span><span id="line-100"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPointXY"><span class="hs-identifier hs-type">GeoPointXY</span></a></span><span> </span><span id="local-6989586621679176372"><span class="annot"><span class="annottext">PointXY
+</span><a href="#local-6989586621679176372"><span class="hs-identifier hs-var">p</span></a></span></span><span class="hs-special">)</span><span>                       </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">PointXY
+</span><a href="#local-6989586621679176372"><span class="hs-identifier hs-var">p</span></a></span><span>
+</span><span id="line-101"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPointXYZ"><span class="hs-identifier hs-type">GeoPointXYZ</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZ"><span class="hs-identifier hs-type">PointXYZ</span></a></span><span> </span><span id="local-6989586621679176371"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176371"><span class="hs-identifier hs-var">pX</span></a></span></span><span> </span><span id="local-6989586621679176370"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176370"><span class="hs-identifier hs-var">pY</span></a></span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; PointXY
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#PointXY"><span class="hs-identifier hs-var">PointXY</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176371"><span class="hs-identifier hs-var">pX</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176370"><span class="hs-identifier hs-var">pY</span></a></span><span>
+</span><span id="line-102"></span><span>    </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPointXYZM"><span class="hs-identifier hs-type">GeoPointXYZM</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZM"><span class="hs-identifier hs-type">PointXYZM</span></a></span><span> </span><span id="local-6989586621679176369"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176369"><span class="hs-identifier hs-var">pX</span></a></span></span><span> </span><span id="local-6989586621679176368"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176368"><span class="hs-identifier hs-var">pY</span></a></span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; PointXY
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#PointXY"><span class="hs-identifier hs-var">PointXY</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176369"><span class="hs-identifier hs-var">pX</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176368"><span class="hs-identifier hs-var">pY</span></a></span><span>
+</span><span id="line-103"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#retrieveXY"><span class="hs-pragma hs-type">retrieveXY</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-104"></span><span>
+</span><span id="line-105"></span><span class="hs-comment">-- instances</span><span>
+</span><span id="line-106"></span><span>
+</span><span id="line-107"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679176361"><span id="local-6989586621679176363"><span id="local-6989586621679176365"><span class="annot"><span class="hs-identifier hs-type">Aeson.ToJSON</span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPositionWithoutCRS"><span class="hs-identifier hs-type">GeoPositionWithoutCRS</span></a></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-108"></span><span>  </span><span class="hs-comment">--  toJSON :: a -&gt; Value</span><span>
+</span><span id="line-109"></span><span>  </span><span id="local-6989586621679176360"><span class="annot"><span class="annottext">toJSON :: GeoPositionWithoutCRS -&gt; Value
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">toJSON</span></span></span><span> </span><span id="local-6989586621679176358"><span class="annot"><span class="annottext">GeoPositionWithoutCRS
+</span><a href="#local-6989586621679176358"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Double] -&gt; Value
+forall a. ToJSON a =&gt; a -&gt; Value
+</span><span class="hs-identifier hs-var">Aeson.toJSON</span></span><span> </span><span class="annot"><span class="annottext">([Double] -&gt; Value) -&gt; [Double] -&gt; Value
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">GeoPositionWithoutCRS -&gt; [Double]
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#_toDoubleArray"><span class="hs-identifier hs-var">_toDoubleArray</span></a></span><span> </span><span class="annot"><span class="annottext">GeoPositionWithoutCRS
+</span><a href="#local-6989586621679176358"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-110"></span><span>
+</span><span id="line-111"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679176355"><span class="annot"><span class="hs-identifier hs-type">Aeson.FromJSON</span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPositionWithoutCRS"><span class="hs-identifier hs-type">GeoPositionWithoutCRS</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-112"></span><span class="hs-comment">--  parseJSON :: Value -&gt; Parser a</span><span>
+</span><span id="line-113"></span><span>  </span><span id="local-6989586621679176354"><span class="annot"><span class="annottext">parseJSON :: Value -&gt; Parser GeoPositionWithoutCRS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">parseJSON</span></span></span><span> </span><span id="local-6989586621679176352"><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679176352"><span class="hs-identifier hs-var">o</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-114"></span><span>    </span><span id="local-6989586621679176351"><span class="annot"><span class="annottext">DoubleArray
+</span><a href="#local-6989586621679176351"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Value -&gt; Parser DoubleArray
+forall a. FromJSON a =&gt; Value -&gt; Parser a
+</span><span class="hs-identifier hs-var">Aeson.parseJSON</span></span><span> </span><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679176352"><span class="hs-identifier hs-var">o</span></a></span><span>
+</span><span id="line-115"></span><span>    </span><span class="annot"><span class="annottext">Parser GeoPositionWithoutCRS
+-&gt; (GeoPositionWithoutCRS -&gt; Parser GeoPositionWithoutCRS)
+-&gt; Maybe GeoPositionWithoutCRS
+-&gt; Parser GeoPositionWithoutCRS
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">DataMaybe.maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Parser GeoPositionWithoutCRS
+forall (m :: * -&gt; *) a. MonadFail m =&gt; String -&gt; m a
+</span><span class="hs-identifier hs-var">fail</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Illegal coordinates&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">GeoPositionWithoutCRS -&gt; Parser GeoPositionWithoutCRS
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">DoubleArray -&gt; Maybe GeoPositionWithoutCRS
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#_toGeoPoint"><span class="hs-identifier hs-var">_toGeoPoint</span></a></span><span> </span><span class="annot"><span class="annottext">DoubleArray
+</span><a href="#local-6989586621679176351"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-116"></span><span>
+</span><span id="line-117"></span><span class="hs-keyword">type</span><span> </span><span id="Name"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Name"><span class="hs-identifier hs-var">Name</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text.Text</span></span><span>
+</span><span id="line-118"></span><span class="hs-keyword">type</span><span> </span><span id="Code"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Code"><span class="hs-identifier hs-var">Code</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-119"></span><span class="hs-keyword">type</span><span> </span><span id="Href"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#Href"><span class="hs-identifier hs-var">Href</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text.Text</span></span><span>
+</span><span id="line-120"></span><span class="hs-keyword">type</span><span> </span><span id="FormatString"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#FormatString"><span class="hs-identifier hs-var">FormatString</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text.Text</span></span><span>
+</span><span id="line-121"></span><span class="hs-keyword">type</span><span> </span><span id="ProjectionType"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#ProjectionType"><span class="hs-identifier hs-var">ProjectionType</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text.Text</span></span><span>
+</span><span id="line-122"></span><span>
+</span><span id="line-123"></span><span class="hs-comment">-- Feature Types</span><span>
+</span><span id="line-124"></span><span>
+</span><span id="line-125"></span><span id="local-6989586621679176348"><span id="local-6989586621679176349"></span></span><span class="hs-keyword">data</span><span> </span><span id="FeatureID"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#FeatureID"><span class="hs-identifier hs-var">FeatureID</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-126"></span><span>        </span><span id="FeatureIDText"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#FeatureIDText"><span class="hs-identifier hs-var">FeatureIDText</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text.Text</span></span><span>
+</span><span id="line-127"></span><span>    </span><span class="hs-glyph">|</span><span>   </span><span id="FeatureIDNumber"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#FeatureIDNumber"><span class="hs-identifier hs-var">FeatureIDNumber</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679176340"><span id="local-6989586621679176342"><span id="local-6989586621679176344"><span class="annot"><span class="annottext">Int -&gt; FeatureID -&gt; ShowS
+[FeatureID] -&gt; ShowS
+FeatureID -&gt; String
+(Int -&gt; FeatureID -&gt; ShowS)
+-&gt; (FeatureID -&gt; String)
+-&gt; ([FeatureID] -&gt; ShowS)
+-&gt; Show FeatureID
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [FeatureID] -&gt; ShowS
+$cshowList :: [FeatureID] -&gt; ShowS
+show :: FeatureID -&gt; String
+$cshow :: FeatureID -&gt; String
+showsPrec :: Int -&gt; FeatureID -&gt; ShowS
+$cshowsPrec :: Int -&gt; FeatureID -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176336"><span id="local-6989586621679176338"><span class="annot"><span class="annottext">FeatureID -&gt; FeatureID -&gt; Bool
+(FeatureID -&gt; FeatureID -&gt; Bool)
+-&gt; (FeatureID -&gt; FeatureID -&gt; Bool) -&gt; Eq FeatureID
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: FeatureID -&gt; FeatureID -&gt; Bool
+$c/= :: FeatureID -&gt; FeatureID -&gt; Bool
+== :: FeatureID -&gt; FeatureID -&gt; Bool
+$c== :: FeatureID -&gt; FeatureID -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(forall x. FeatureID -&gt; Rep FeatureID x)
+-&gt; (forall x. Rep FeatureID x -&gt; FeatureID) -&gt; Generic FeatureID
+forall x. Rep FeatureID x -&gt; FeatureID
+forall x. FeatureID -&gt; Rep FeatureID x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep FeatureID x -&gt; FeatureID
+$cfrom :: forall x. FeatureID -&gt; Rep FeatureID x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176332"><span class="annot"><span class="annottext">FeatureID -&gt; ()
+(FeatureID -&gt; ()) -&gt; NFData FeatureID
+forall a. (a -&gt; ()) -&gt; NFData a
+rnf :: FeatureID -&gt; ()
+$crnf :: FeatureID -&gt; ()
+</span><a href="#local-6989586621679176332"><span class="hs-identifier hs-var hs-var hs-var hs-var">NFData</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-128"></span><span>
+</span><span id="line-129"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679176329"><span class="annot"><span class="hs-identifier hs-type">Aeson.FromJSON</span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#FeatureID"><span class="hs-identifier hs-type">FeatureID</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-130"></span><span>    </span><span id="local-6989586621679176328"><span class="annot"><span class="annottext">parseJSON :: Value -&gt; Parser FeatureID
+</span><a href="#local-6989586621679176328"><span class="hs-identifier hs-var hs-var hs-var hs-var">parseJSON</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Aeson.Number</span></span><span> </span><span id="local-6989586621679176326"><span class="annot"><span class="annottext">Scientific
+</span><a href="#local-6989586621679176326"><span class="hs-identifier hs-var">nID</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-131"></span><span>        </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe Int
+</span><a href="#local-6989586621679176325"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-132"></span><span>            </span><span class="annot"><span class="annottext">Maybe Int
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; Parser FeatureID
+forall (m :: * -&gt; *) a. MonadFail m =&gt; String -&gt; m a
+</span><span class="hs-identifier hs-var">fail</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Not an integer value&quot;</span></span><span>
+</span><span id="line-133"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679176324"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679176324"><span class="hs-identifier hs-var">z</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">FeatureID -&gt; Parser FeatureID
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(FeatureID -&gt; Parser FeatureID) -&gt; FeatureID -&gt; Parser FeatureID
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; FeatureID
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#FeatureIDNumber"><span class="hs-identifier hs-var">FeatureIDNumber</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679176324"><span class="hs-identifier hs-var">z</span></a></span><span>
+</span><span id="line-134"></span><span>        </span><span class="hs-keyword">where</span><span>
+</span><span id="line-135"></span><span>            </span><span id="local-6989586621679176325"><span class="annot"><span class="annottext">x :: Maybe Int
+</span><a href="#local-6989586621679176325"><span class="hs-identifier hs-var hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Scientific -&gt; Maybe Int
+forall i. (Integral i, Bounded i) =&gt; Scientific -&gt; Maybe i
+</span><span class="hs-identifier hs-var">Scientific.toBoundedInteger</span></span><span> </span><span class="annot"><span class="annottext">Scientific
+</span><a href="#local-6989586621679176326"><span class="hs-identifier hs-var">nID</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-136"></span><span>    </span><span class="annot"><span class="hs-identifier hs-var">parseJSON</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Aeson.String</span></span><span> </span><span id="local-6989586621679176321"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679176321"><span class="hs-identifier hs-var">sID</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FeatureID -&gt; Parser FeatureID
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(FeatureID -&gt; Parser FeatureID) -&gt; FeatureID -&gt; Parser FeatureID
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; FeatureID
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#FeatureIDText"><span class="hs-identifier hs-var">FeatureIDText</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679176321"><span class="hs-identifier hs-var">sID</span></a></span><span>
+</span><span id="line-137"></span><span>    </span><span class="annot"><span class="hs-identifier hs-var">parseJSON</span></span><span> </span><span class="annot"><span class="annottext">Value
+</span><span class="hs-identifier">_</span></span><span>                  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Parser FeatureID
+forall (m :: * -&gt; *) a. MonadFail m =&gt; String -&gt; m a
+</span><span class="hs-identifier hs-var">fail</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;unknown id type&quot;</span></span><span>
+</span><span id="line-138"></span><span>
+</span><span id="line-139"></span><span>
+</span><span id="line-140"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679176314"><span id="local-6989586621679176316"><span id="local-6989586621679176318"><span class="annot"><span class="hs-identifier hs-type">Aeson.ToJSON</span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#FeatureID"><span class="hs-identifier hs-type">FeatureID</span></a></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-141"></span><span>    </span><span id="local-6989586621679176313"><span class="annot"><span class="annottext">toJSON :: FeatureID -&gt; Value
+</span><a href="#local-6989586621679176313"><span class="hs-identifier hs-var hs-var hs-var hs-var">toJSON</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#FeatureIDText"><span class="hs-identifier hs-type">FeatureIDText</span></a></span><span> </span><span id="local-6989586621679176312"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679176312"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">)</span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Value
+</span><span class="hs-identifier hs-var">Aeson.String</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679176312"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-142"></span><span>    </span><span class="annot"><span class="hs-identifier hs-var">toJSON</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#FeatureIDNumber"><span class="hs-identifier hs-type">FeatureIDNumber</span></a></span><span> </span><span id="local-6989586621679176311"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679176311"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Scientific -&gt; Value
+</span><span class="hs-identifier hs-var">Aeson.Number</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Integer -&gt; Scientific
+forall a. Num a =&gt; Integer -&gt; a
+</span><span class="hs-identifier hs-var">fromInteger</span></span><span> </span><span class="annot"><span class="annottext">(Integer -&gt; Scientific) -&gt; Integer -&gt; Scientific
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Integer
+forall a. Integral a =&gt; a -&gt; Integer
+</span><span class="hs-identifier hs-var">toInteger</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679176311"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Scientific.Scientific</span></span><span class="hs-special">)</span><span>
+</span><span id="line-143"></span><span>
+</span><span id="line-144"></span><span>
+</span><span id="line-145"></span><span class="hs-comment">-- | See Section 4 /Bounding Boxes/ of the GeoJSON spec,</span><span>
+</span><span id="line-146"></span><span class="hs-comment">-- The length of the list/array must be 2*n where n is the dimensionality of the position type for the CRS</span><span>
+</span><span id="line-147"></span><span class="hs-comment">-- with min values first followed by the max values, wich both the min/max sets following the same axis order as the CRS,</span><span>
+</span><span id="line-148"></span><span class="hs-comment">-- e.g for WGS84: minLongitude, minLatitude, maxLongitude, maxLatitude</span><span>
+</span><span id="line-149"></span><span class="hs-comment">-- The spec mentions that it can be part of a geometry object too but doesnt give an example,</span><span>
+</span><span id="line-150"></span><span class="hs-comment">-- This implementation will ignore bboxes on Geometry objects, they can be added if required.</span><span>
+</span><span id="line-151"></span><span id="local-6989586621679176309"><span id="local-6989586621679176310"></span></span><span class="hs-keyword">data</span><span> </span><span id="BoundingBoxWithoutCRS"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#BoundingBoxWithoutCRS"><span class="hs-identifier hs-var">BoundingBoxWithoutCRS</span></a></span></span><span>
+</span><span id="line-152"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="BoundingBoxWithoutCRSXY"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#BoundingBoxWithoutCRSXY"><span class="hs-identifier hs-var">BoundingBoxWithoutCRSXY</span></a></span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXY"><span class="hs-identifier hs-type">PointXY</span></a></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXY"><span class="hs-identifier hs-type">PointXY</span></a></span><span>
+</span><span id="line-153"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="BoundingBoxWithoutCRSXYZ"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#BoundingBoxWithoutCRSXYZ"><span class="hs-identifier hs-var">BoundingBoxWithoutCRSXYZ</span></a></span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZ"><span class="hs-identifier hs-type">PointXYZ</span></a></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZ"><span class="hs-identifier hs-type">PointXYZ</span></a></span><span>
+</span><span id="line-154"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="BoundingBoxWithoutCRSXYZM"><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#BoundingBoxWithoutCRSXYZM"><span class="hs-identifier hs-var">BoundingBoxWithoutCRSXYZM</span></a></span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZM"><span class="hs-identifier hs-type">PointXYZM</span></a></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZM"><span class="hs-identifier hs-type">PointXYZM</span></a></span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679176302"><span id="local-6989586621679176304"><span class="annot"><span class="annottext">BoundingBoxWithoutCRS -&gt; BoundingBoxWithoutCRS -&gt; Bool
+(BoundingBoxWithoutCRS -&gt; BoundingBoxWithoutCRS -&gt; Bool)
+-&gt; (BoundingBoxWithoutCRS -&gt; BoundingBoxWithoutCRS -&gt; Bool)
+-&gt; Eq BoundingBoxWithoutCRS
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: BoundingBoxWithoutCRS -&gt; BoundingBoxWithoutCRS -&gt; Bool
+$c/= :: BoundingBoxWithoutCRS -&gt; BoundingBoxWithoutCRS -&gt; Bool
+== :: BoundingBoxWithoutCRS -&gt; BoundingBoxWithoutCRS -&gt; Bool
+$c== :: BoundingBoxWithoutCRS -&gt; BoundingBoxWithoutCRS -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176296"><span id="local-6989586621679176298"><span id="local-6989586621679176300"><span class="annot"><span class="annottext">Int -&gt; BoundingBoxWithoutCRS -&gt; ShowS
+[BoundingBoxWithoutCRS] -&gt; ShowS
+BoundingBoxWithoutCRS -&gt; String
+(Int -&gt; BoundingBoxWithoutCRS -&gt; ShowS)
+-&gt; (BoundingBoxWithoutCRS -&gt; String)
+-&gt; ([BoundingBoxWithoutCRS] -&gt; ShowS)
+-&gt; Show BoundingBoxWithoutCRS
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [BoundingBoxWithoutCRS] -&gt; ShowS
+$cshowList :: [BoundingBoxWithoutCRS] -&gt; ShowS
+show :: BoundingBoxWithoutCRS -&gt; String
+$cshow :: BoundingBoxWithoutCRS -&gt; String
+showsPrec :: Int -&gt; BoundingBoxWithoutCRS -&gt; ShowS
+$cshowsPrec :: Int -&gt; BoundingBoxWithoutCRS -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(forall x. BoundingBoxWithoutCRS -&gt; Rep BoundingBoxWithoutCRS x)
+-&gt; (forall x. Rep BoundingBoxWithoutCRS x -&gt; BoundingBoxWithoutCRS)
+-&gt; Generic BoundingBoxWithoutCRS
+forall x. Rep BoundingBoxWithoutCRS x -&gt; BoundingBoxWithoutCRS
+forall x. BoundingBoxWithoutCRS -&gt; Rep BoundingBoxWithoutCRS x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep BoundingBoxWithoutCRS x -&gt; BoundingBoxWithoutCRS
+$cfrom :: forall x. BoundingBoxWithoutCRS -&gt; Rep BoundingBoxWithoutCRS x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176292"><span class="annot"><span class="annottext">BoundingBoxWithoutCRS -&gt; ()
+(BoundingBoxWithoutCRS -&gt; ()) -&gt; NFData BoundingBoxWithoutCRS
+forall a. (a -&gt; ()) -&gt; NFData a
+rnf :: BoundingBoxWithoutCRS -&gt; ()
+$crnf :: BoundingBoxWithoutCRS -&gt; ()
+</span><a href="#local-6989586621679176292"><span class="hs-identifier hs-var hs-var hs-var hs-var">NFData</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-155"></span><span>
+</span><span id="line-156"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679176289"><span class="annot"><span class="hs-identifier hs-type">Aeson.FromJSON</span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#BoundingBoxWithoutCRS"><span class="hs-identifier hs-type">BoundingBoxWithoutCRS</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-157"></span><span>  </span><span id="local-6989586621679176288"><span class="annot"><span class="annottext">parseJSON :: Value -&gt; Parser BoundingBoxWithoutCRS
+</span><a href="#local-6989586621679176288"><span class="hs-identifier hs-var hs-var hs-var hs-var">parseJSON</span></a></span></span><span> </span><span id="local-6989586621679176287"><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679176287"><span class="hs-identifier hs-var">json</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-158"></span><span>    </span><span id="local-6989586621679176286"><span class="annot"><span class="annottext">[Double]
+</span><a href="#local-6989586621679176286"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Value -&gt; Parser [Double]
+forall a. FromJSON a =&gt; Value -&gt; Parser a
+</span><span class="hs-identifier hs-var">AesonTypes.parseJSON</span></span><span> </span><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679176287"><span class="hs-identifier hs-var">json</span></a></span><span>
+</span><span id="line-159"></span><span>    </span><span class="annot"><span class="annottext">Parser BoundingBoxWithoutCRS
+-&gt; (BoundingBoxWithoutCRS -&gt; Parser BoundingBoxWithoutCRS)
+-&gt; Maybe BoundingBoxWithoutCRS
+-&gt; Parser BoundingBoxWithoutCRS
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">DataMaybe.maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Parser BoundingBoxWithoutCRS
+forall (m :: * -&gt; *) a. MonadFail m =&gt; String -&gt; m a
+</span><span class="hs-identifier hs-var">fail</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Invalid bounding box&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">BoundingBoxWithoutCRS -&gt; Parser BoundingBoxWithoutCRS
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Double] -&gt; Maybe BoundingBoxWithoutCRS
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#_toBoundingBoxWithoutCRS"><span class="hs-identifier hs-var">_toBoundingBoxWithoutCRS</span></a></span><span> </span><span class="annot"><span class="annottext">[Double]
+</span><a href="#local-6989586621679176286"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-160"></span><span>
+</span><span id="line-161"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679176278"><span id="local-6989586621679176280"><span id="local-6989586621679176282"><span class="annot"><span class="hs-identifier hs-type">Aeson.ToJSON</span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#BoundingBoxWithoutCRS"><span class="hs-identifier hs-type">BoundingBoxWithoutCRS</span></a></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-162"></span><span>  </span><span id="local-6989586621679176277"><span class="annot"><span class="annottext">toJSON :: BoundingBoxWithoutCRS -&gt; Value
+</span><a href="#local-6989586621679176277"><span class="hs-identifier hs-var hs-var hs-var hs-var">toJSON</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#BoundingBoxWithoutCRSXY"><span class="hs-identifier hs-type">BoundingBoxWithoutCRSXY</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXY"><span class="hs-identifier hs-type">PointXY</span></a></span><span> </span><span id="local-6989586621679176276"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176276"><span class="hs-identifier hs-var">bbMinX</span></a></span></span><span> </span><span id="local-6989586621679176275"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176275"><span class="hs-identifier hs-var">bbMinY</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXY"><span class="hs-identifier hs-type">PointXY</span></a></span><span> </span><span id="local-6989586621679176274"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176274"><span class="hs-identifier hs-var">bbMaxX</span></a></span></span><span> </span><span id="local-6989586621679176273"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176273"><span class="hs-identifier hs-var">bbMaxY</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-163"></span><span>    </span><span class="annot"><span class="annottext">Array -&gt; Value
+</span><span class="hs-identifier hs-var">Aeson.Array</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Value] -&gt; Array
+forall a. [a] -&gt; Vector a
+</span><span class="hs-identifier hs-var">Vector.fromList</span></span><span> </span><span class="annot"><span class="annottext">([Value] -&gt; Array) -&gt; [Value] -&gt; Array
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Value) -&gt; [Double] -&gt; [Value]
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Scientific -&gt; Value
+</span><span class="hs-identifier hs-var">Aeson.Number</span></span><span> </span><span class="annot"><span class="annottext">(Scientific -&gt; Value) -&gt; (Double -&gt; Scientific) -&gt; Double -&gt; Value
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Scientific
+forall a. RealFloat a =&gt; a -&gt; Scientific
+</span><span class="hs-identifier hs-var">Scientific.fromFloatDigits</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176276"><span class="hs-identifier hs-var">bbMinX</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176275"><span class="hs-identifier hs-var">bbMinY</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176274"><span class="hs-identifier hs-var">bbMaxX</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176273"><span class="hs-identifier hs-var">bbMaxY</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-164"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">toJSON</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#BoundingBoxWithoutCRSXYZ"><span class="hs-identifier hs-type">BoundingBoxWithoutCRSXYZ</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZ"><span class="hs-identifier hs-type">PointXYZ</span></a></span><span> </span><span id="local-6989586621679176268"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176268"><span class="hs-identifier hs-var">bbMinX</span></a></span></span><span> </span><span id="local-6989586621679176267"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176267"><span class="hs-identifier hs-var">bbMinY</span></a></span></span><span> </span><span id="local-6989586621679176266"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176266"><span class="hs-identifier hs-var">bbMinZ</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZ"><span class="hs-identifier hs-type">PointXYZ</span></a></span><span> </span><span id="local-6989586621679176265"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176265"><span class="hs-identifier hs-var">bbMaxX</span></a></span></span><span> </span><span id="local-6989586621679176264"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176264"><span class="hs-identifier hs-var">bbMaxY</span></a></span></span><span> </span><span id="local-6989586621679176263"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176263"><span class="hs-identifier hs-var">bbMaxZ</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-165"></span><span>    </span><span class="annot"><span class="annottext">Array -&gt; Value
+</span><span class="hs-identifier hs-var">Aeson.Array</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Value] -&gt; Array
+forall a. [a] -&gt; Vector a
+</span><span class="hs-identifier hs-var">Vector.fromList</span></span><span> </span><span class="annot"><span class="annottext">([Value] -&gt; Array) -&gt; [Value] -&gt; Array
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Value) -&gt; [Double] -&gt; [Value]
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Scientific -&gt; Value
+</span><span class="hs-identifier hs-var">Aeson.Number</span></span><span> </span><span class="annot"><span class="annottext">(Scientific -&gt; Value) -&gt; (Double -&gt; Scientific) -&gt; Double -&gt; Value
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Scientific
+forall a. RealFloat a =&gt; a -&gt; Scientific
+</span><span class="hs-identifier hs-var">Scientific.fromFloatDigits</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176268"><span class="hs-identifier hs-var">bbMinX</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176267"><span class="hs-identifier hs-var">bbMinY</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176266"><span class="hs-identifier hs-var">bbMinZ</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176265"><span class="hs-identifier hs-var">bbMaxX</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176264"><span class="hs-identifier hs-var">bbMaxY</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176263"><span class="hs-identifier hs-var">bbMaxZ</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-166"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">toJSON</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#BoundingBoxWithoutCRSXYZM"><span class="hs-identifier hs-type">BoundingBoxWithoutCRSXYZM</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZM"><span class="hs-identifier hs-type">PointXYZM</span></a></span><span> </span><span id="local-6989586621679176262"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176262"><span class="hs-identifier hs-var">bbMinX</span></a></span></span><span> </span><span id="local-6989586621679176261"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176261"><span class="hs-identifier hs-var">bbMinY</span></a></span></span><span> </span><span id="local-6989586621679176260"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176260"><span class="hs-identifier hs-var">bbMinZ</span></a></span></span><span> </span><span id="local-6989586621679176259"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176259"><span class="hs-identifier hs-var">bbMinM</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZM"><span class="hs-identifier hs-type">PointXYZM</span></a></span><span> </span><span id="local-6989586621679176258"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176258"><span class="hs-identifier hs-var">bbMaxX</span></a></span></span><span> </span><span id="local-6989586621679176257"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176257"><span class="hs-identifier hs-var">bbMaxY</span></a></span></span><span> </span><span id="local-6989586621679176256"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176256"><span class="hs-identifier hs-var">bbMaxZ</span></a></span></span><span> </span><span id="local-6989586621679176255"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176255"><span class="hs-identifier hs-var">bbMaxM</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-167"></span><span>    </span><span class="annot"><span class="annottext">Array -&gt; Value
+</span><span class="hs-identifier hs-var">Aeson.Array</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Value] -&gt; Array
+forall a. [a] -&gt; Vector a
+</span><span class="hs-identifier hs-var">Vector.fromList</span></span><span> </span><span class="annot"><span class="annottext">([Value] -&gt; Array) -&gt; [Value] -&gt; Array
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Value) -&gt; [Double] -&gt; [Value]
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Scientific -&gt; Value
+</span><span class="hs-identifier hs-var">Aeson.Number</span></span><span> </span><span class="annot"><span class="annottext">(Scientific -&gt; Value) -&gt; (Double -&gt; Scientific) -&gt; Double -&gt; Value
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Scientific
+forall a. RealFloat a =&gt; a -&gt; Scientific
+</span><span class="hs-identifier hs-var">Scientific.fromFloatDigits</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176262"><span class="hs-identifier hs-var">bbMinX</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176261"><span class="hs-identifier hs-var">bbMinY</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176260"><span class="hs-identifier hs-var">bbMinZ</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176259"><span class="hs-identifier hs-var">bbMinM</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176258"><span class="hs-identifier hs-var">bbMaxX</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176257"><span class="hs-identifier hs-var">bbMaxY</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176256"><span class="hs-identifier hs-var">bbMaxZ</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176255"><span class="hs-identifier hs-var">bbMaxM</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-168"></span><span>
+</span><span id="line-169"></span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#_toBoundingBoxWithoutCRS"><span class="hs-identifier hs-type">_toBoundingBoxWithoutCRS</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#BoundingBoxWithoutCRS"><span class="hs-identifier hs-type">BoundingBoxWithoutCRS</span></a></span><span>
+</span><span id="line-170"></span><span id="_toBoundingBoxWithoutCRS"><span class="annot"><span class="annottext">_toBoundingBoxWithoutCRS :: [Double] -&gt; Maybe BoundingBoxWithoutCRS
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#_toBoundingBoxWithoutCRS"><span class="hs-identifier hs-var hs-var">_toBoundingBoxWithoutCRS</span></a></span></span><span> </span><span class="hs-special">[</span><span id="local-6989586621679176254"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176254"><span class="hs-identifier hs-var">bbMinX</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176253"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176253"><span class="hs-identifier hs-var">bbMinY</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176252"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176252"><span class="hs-identifier hs-var">bbMaxX</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176251"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176251"><span class="hs-identifier hs-var">bbMaxY</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-171"></span><span>  </span><span class="annot"><span class="annottext">BoundingBoxWithoutCRS -&gt; Maybe BoundingBoxWithoutCRS
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(BoundingBoxWithoutCRS -&gt; Maybe BoundingBoxWithoutCRS)
+-&gt; BoundingBoxWithoutCRS -&gt; Maybe BoundingBoxWithoutCRS
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">PointXY -&gt; PointXY -&gt; BoundingBoxWithoutCRS
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#BoundingBoxWithoutCRSXY"><span class="hs-identifier hs-var">BoundingBoxWithoutCRSXY</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; PointXY
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#PointXY"><span class="hs-identifier hs-var">PointXY</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176254"><span class="hs-identifier hs-var">bbMinX</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176253"><span class="hs-identifier hs-var">bbMinY</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; PointXY
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#PointXY"><span class="hs-identifier hs-var">PointXY</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176252"><span class="hs-identifier hs-var">bbMaxX</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176251"><span class="hs-identifier hs-var">bbMaxY</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-172"></span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#_toBoundingBoxWithoutCRS"><span class="hs-identifier hs-var">_toBoundingBoxWithoutCRS</span></a></span><span> </span><span class="hs-special">[</span><span id="local-6989586621679176250"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176250"><span class="hs-identifier hs-var">bbMinX</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176249"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176249"><span class="hs-identifier hs-var">bbMinY</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176248"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176248"><span class="hs-identifier hs-var">bbMinZ</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176247"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176247"><span class="hs-identifier hs-var">bbMaxX</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176246"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176246"><span class="hs-identifier hs-var">bbMaxY</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176245"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176245"><span class="hs-identifier hs-var">bbMaxZ</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-173"></span><span>  </span><span class="annot"><span class="annottext">BoundingBoxWithoutCRS -&gt; Maybe BoundingBoxWithoutCRS
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(BoundingBoxWithoutCRS -&gt; Maybe BoundingBoxWithoutCRS)
+-&gt; BoundingBoxWithoutCRS -&gt; Maybe BoundingBoxWithoutCRS
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">PointXYZ -&gt; PointXYZ -&gt; BoundingBoxWithoutCRS
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#BoundingBoxWithoutCRSXYZ"><span class="hs-identifier hs-var">BoundingBoxWithoutCRSXYZ</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; PointXYZ
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZ"><span class="hs-identifier hs-var">PointXYZ</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176250"><span class="hs-identifier hs-var">bbMinX</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176249"><span class="hs-identifier hs-var">bbMinY</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176248"><span class="hs-identifier hs-var">bbMinZ</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; PointXYZ
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZ"><span class="hs-identifier hs-var">PointXYZ</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176247"><span class="hs-identifier hs-var">bbMaxX</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176246"><span class="hs-identifier hs-var">bbMaxY</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176245"><span class="hs-identifier hs-var">bbMaxZ</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-174"></span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#_toBoundingBoxWithoutCRS"><span class="hs-identifier hs-var">_toBoundingBoxWithoutCRS</span></a></span><span> </span><span class="hs-special">[</span><span id="local-6989586621679176244"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176244"><span class="hs-identifier hs-var">bbMinX</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176243"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176243"><span class="hs-identifier hs-var">bbMinY</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176242"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176242"><span class="hs-identifier hs-var">bbMinZ</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176241"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176241"><span class="hs-identifier hs-var">bbMinM</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176240"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176240"><span class="hs-identifier hs-var">bbMaxX</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176239"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176239"><span class="hs-identifier hs-var">bbMaxY</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176238"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176238"><span class="hs-identifier hs-var">bbMaxZ</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176237"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176237"><span class="hs-identifier hs-var">bbMaxM</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-175"></span><span>  </span><span class="annot"><span class="annottext">BoundingBoxWithoutCRS -&gt; Maybe BoundingBoxWithoutCRS
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(BoundingBoxWithoutCRS -&gt; Maybe BoundingBoxWithoutCRS)
+-&gt; BoundingBoxWithoutCRS -&gt; Maybe BoundingBoxWithoutCRS
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">PointXYZM -&gt; PointXYZM -&gt; BoundingBoxWithoutCRS
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#BoundingBoxWithoutCRSXYZM"><span class="hs-identifier hs-var">BoundingBoxWithoutCRSXYZM</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; Double -&gt; PointXYZM
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZM"><span class="hs-identifier hs-var">PointXYZM</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176244"><span class="hs-identifier hs-var">bbMinX</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176243"><span class="hs-identifier hs-var">bbMinY</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176242"><span class="hs-identifier hs-var">bbMinZ</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176241"><span class="hs-identifier hs-var">bbMinM</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double -&gt; Double -&gt; PointXYZM
+</span><a href="Data.Geospatial.Internal.BasicTypes.html#PointXYZM"><span class="hs-identifier hs-var">PointXYZM</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176240"><span class="hs-identifier hs-var">bbMaxX</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176239"><span class="hs-identifier hs-var">bbMaxY</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176238"><span class="hs-identifier hs-var">bbMaxZ</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679176237"><span class="hs-identifier hs-var">bbMaxM</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-176"></span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#_toBoundingBoxWithoutCRS"><span class="hs-identifier hs-var">_toBoundingBoxWithoutCRS</span></a></span><span> </span><span class="annot"><span class="annottext">[Double]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-177"></span><span>  </span><span class="annot"><span class="annottext">Maybe BoundingBoxWithoutCRS
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-178"></span></pre></body></html>

@@ -1,0 +1,329 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE BangPatterns #-}</span><span>
+</span><span id="line-2"></span><span class="hs-comment">{-|
+  2D transformation matrices capable of translating, scaling,
+  rotating, and skewing.
+-}</span><span>
+</span><span id="line-6"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Transform</span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Transform.html#identity"><span class="hs-identifier">identity</span></a></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Transform.html#transformPoint"><span class="hs-identifier">transformPoint</span></a></span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Transform.html#mkMatrix"><span class="hs-identifier">mkMatrix</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Transform.html#toTransformation"><span class="hs-identifier">toTransformation</span></a></span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-12"></span><span>
+</span><span id="line-13"></span><span class="hs-comment">-- XXX: Use Linear.Matrix instead of Data.Matrix to drop the 'matrix' dependency.</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">foldl'</span></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Matrix</span></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Matrix</span></span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Matrix</span></span><span>      </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">M</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>       </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">fromMaybe</span></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Coord</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">RPoint</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Transformation</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Linear.V2</span></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">V2</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">V2</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-comment">-- | Identity matrix.</span><span>
+</span><span id="line-22"></span><span class="hs-comment">--</span><span>
+</span><span id="line-23"></span><span class="hs-comment">--   @transformPoints identity x = x@</span><span>
+</span><span id="line-24"></span><span class="annot"><a href="Reanimate.Transform.html#identity"><span class="hs-identifier hs-type">identity</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Matrix</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span>
+</span><span id="line-25"></span><span id="identity"><span class="annot"><span class="annottext">identity :: Matrix Coord
+</span><a href="Reanimate.Transform.html#identity"><span class="hs-identifier hs-var hs-var">identity</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Matrix Coord
+forall a. Num a =&gt; Int -&gt; Matrix a
+</span><span class="hs-identifier hs-var">M.identity</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="annot"><a href="Reanimate.Transform.html#fromList"><span class="hs-identifier hs-type">fromList</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Matrix</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span>
+</span><span id="line-28"></span><span id="fromList"><span class="annot"><span class="annottext">fromList :: [Coord] -&gt; Matrix Coord
+</span><a href="Reanimate.Transform.html#fromList"><span class="hs-identifier hs-var hs-var">fromList</span></a></span></span><span> </span><span class="hs-special">[</span><span id="local-6989586621679541538"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541538"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679541537"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541537"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679541536"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541536"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679541535"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541535"><span class="hs-identifier hs-var">d</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679541534"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541534"><span class="hs-identifier hs-var">e</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679541533"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541533"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; [Coord] -&gt; Matrix Coord
+forall a. Int -&gt; Int -&gt; [a] -&gt; Matrix a
+</span><span class="hs-identifier hs-var">M.fromList</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541538"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541536"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541534"><span class="hs-identifier hs-var">e</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541537"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541535"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541533"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">1</span></span><span class="hs-special">]</span><span>
+</span><span id="line-29"></span><span class="annot"><a href="Reanimate.Transform.html#fromList"><span class="hs-identifier hs-var">fromList</span></a></span><span> </span><span class="annot"><span class="annottext">[Coord]
+</span><span class="hs-identifier">_</span></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Matrix Coord
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;Reanimate.Transform.fromList: bad input&quot;</span></span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- | Apply a transformation matrix to a 2D point.</span><span>
+</span><span id="line-32"></span><span class="annot"><a href="Reanimate.Transform.html#transformPoint"><span class="hs-identifier hs-type">transformPoint</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Matrix</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">RPoint</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">RPoint</span></span><span>
+</span><span id="line-33"></span><span id="transformPoint"><span class="annot"><span class="annottext">transformPoint :: Matrix Coord -&gt; RPoint -&gt; RPoint
+</span><a href="Reanimate.Transform.html#transformPoint"><span class="hs-identifier hs-var hs-var">transformPoint</span></a></span></span><span> </span><span id="local-6989586621679541530"><span class="annot"><span class="annottext">Matrix Coord
+</span><a href="#local-6989586621679541530"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span id="local-6989586621679541529"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541529"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679541528"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541528"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; RPoint
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541527"><span class="hs-identifier hs-var">a</span></a></span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541529"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541524"><span class="hs-identifier hs-var">c</span></a></span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541528"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541523"><span class="hs-identifier hs-var">e</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541522"><span class="hs-identifier hs-var">b</span></a></span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541529"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541521"><span class="hs-identifier hs-var">d</span></a></span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541528"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541520"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-35"></span><span>    </span><span class="hs-glyph">!</span><span id="local-6989586621679541527"><span class="annot"><span class="annottext">a :: Coord
+</span><a href="#local-6989586621679541527"><span class="hs-identifier hs-var hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Matrix Coord -&gt; Coord
+forall a. Int -&gt; Int -&gt; Matrix a -&gt; a
+</span><span class="hs-identifier hs-var">M.unsafeGet</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Matrix Coord
+</span><a href="#local-6989586621679541530"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-36"></span><span>    </span><span class="hs-glyph">!</span><span id="local-6989586621679541524"><span class="annot"><span class="annottext">c :: Coord
+</span><a href="#local-6989586621679541524"><span class="hs-identifier hs-var hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Matrix Coord -&gt; Coord
+forall a. Int -&gt; Int -&gt; Matrix a -&gt; a
+</span><span class="hs-identifier hs-var">M.unsafeGet</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Matrix Coord
+</span><a href="#local-6989586621679541530"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-37"></span><span>    </span><span class="hs-glyph">!</span><span id="local-6989586621679541523"><span class="annot"><span class="annottext">e :: Coord
+</span><a href="#local-6989586621679541523"><span class="hs-identifier hs-var hs-var">e</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Matrix Coord -&gt; Coord
+forall a. Int -&gt; Int -&gt; Matrix a -&gt; a
+</span><span class="hs-identifier hs-var">M.unsafeGet</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span> </span><span class="annot"><span class="annottext">Matrix Coord
+</span><a href="#local-6989586621679541530"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-38"></span><span>    </span><span class="hs-glyph">!</span><span id="local-6989586621679541522"><span class="annot"><span class="annottext">b :: Coord
+</span><a href="#local-6989586621679541522"><span class="hs-identifier hs-var hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Matrix Coord -&gt; Coord
+forall a. Int -&gt; Int -&gt; Matrix a -&gt; a
+</span><span class="hs-identifier hs-var">M.unsafeGet</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Matrix Coord
+</span><a href="#local-6989586621679541530"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-39"></span><span>    </span><span class="hs-glyph">!</span><span id="local-6989586621679541521"><span class="annot"><span class="annottext">d :: Coord
+</span><a href="#local-6989586621679541521"><span class="hs-identifier hs-var hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Matrix Coord -&gt; Coord
+forall a. Int -&gt; Int -&gt; Matrix a -&gt; a
+</span><span class="hs-identifier hs-var">M.unsafeGet</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Matrix Coord
+</span><a href="#local-6989586621679541530"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-40"></span><span>    </span><span class="hs-glyph">!</span><span id="local-6989586621679541520"><span class="annot"><span class="annottext">f :: Coord
+</span><a href="#local-6989586621679541520"><span class="hs-identifier hs-var hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Matrix Coord -&gt; Coord
+forall a. Int -&gt; Int -&gt; Matrix a -&gt; a
+</span><span class="hs-identifier hs-var">M.unsafeGet</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span> </span><span class="annot"><span class="annottext">Matrix Coord
+</span><a href="#local-6989586621679541530"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-41"></span><span>    </span><span class="hs-comment">-- (a:c:e:b:d:f:_) = M.toList m</span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="hs-comment">-- | Convert multiple SVG transformations into a single transformation matrix.</span><span>
+</span><span id="line-44"></span><span class="annot"><a href="Reanimate.Transform.html#mkMatrix"><span class="hs-identifier hs-type">mkMatrix</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Transformation</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Matrix</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span>
+</span><span id="line-45"></span><span id="mkMatrix"><span class="annot"><span class="annottext">mkMatrix :: Maybe [Transformation] -&gt; Matrix Coord
+</span><a href="Reanimate.Transform.html#mkMatrix"><span class="hs-identifier hs-var hs-var">mkMatrix</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe [Transformation]
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Matrix Coord
+</span><a href="Reanimate.Transform.html#identity"><span class="hs-identifier hs-var">identity</span></a></span><span>
+</span><span id="line-46"></span><span class="annot"><a href="Reanimate.Transform.html#mkMatrix"><span class="hs-identifier hs-var">mkMatrix</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679541518"><span class="annot"><span class="annottext">[Transformation]
+</span><a href="#local-6989586621679541518"><span class="hs-identifier hs-var">ts</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Matrix Coord -&gt; Matrix Coord -&gt; Matrix Coord)
+-&gt; Matrix Coord -&gt; [Matrix Coord] -&gt; Matrix Coord
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl'</span></span><span> </span><span class="annot"><span class="annottext">Matrix Coord -&gt; Matrix Coord -&gt; Matrix Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">(*)</span></span><span> </span><span class="annot"><span class="annottext">Matrix Coord
+</span><a href="Reanimate.Transform.html#identity"><span class="hs-identifier hs-var">identity</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Transformation -&gt; Matrix Coord)
+-&gt; [Transformation] -&gt; [Matrix Coord]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Transformation -&gt; Matrix Coord
+</span><a href="Reanimate.Transform.html#transformationMatrix"><span class="hs-identifier hs-var">transformationMatrix</span></a></span><span> </span><span class="annot"><span class="annottext">[Transformation]
+</span><a href="#local-6989586621679541518"><span class="hs-identifier hs-var">ts</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span class="hs-comment">-- | Convert an SVG transformation into a transformation matrix.</span><span>
+</span><span id="line-49"></span><span class="annot"><a href="Reanimate.Transform.html#transformationMatrix"><span class="hs-identifier hs-type">transformationMatrix</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Transformation</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Matrix</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span>
+</span><span id="line-50"></span><span id="transformationMatrix"><span class="annot"><span class="annottext">transformationMatrix :: Transformation -&gt; Matrix Coord
+</span><a href="Reanimate.Transform.html#transformationMatrix"><span class="hs-identifier hs-var hs-var">transformationMatrix</span></a></span></span><span> </span><span id="local-6989586621679541516"><span class="annot"><span class="annottext">Transformation
+</span><a href="#local-6989586621679541516"><span class="hs-identifier hs-var">transformation</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-51"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Transformation
+</span><a href="#local-6989586621679541516"><span class="hs-identifier hs-var">transformation</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-52"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">TransformMatrix</span></span><span> </span><span id="local-6989586621679541514"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541514"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679541513"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541513"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span id="local-6989586621679541512"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541512"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679541511"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541511"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679541510"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541510"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span id="local-6989586621679541509"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541509"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[Coord] -&gt; Matrix Coord
+</span><a href="Reanimate.Transform.html#fromList"><span class="hs-identifier hs-var">fromList</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541514"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541513"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541512"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541511"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541510"><span class="hs-identifier hs-var">e</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541509"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-53"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Translate</span></span><span> </span><span id="local-6989586621679541507"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541507"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679541506"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541506"><span class="hs-identifier hs-var">y</span></a></span></span><span>               </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Matrix Coord
+</span><a href="#local-6989586621679541505"><span class="hs-identifier hs-var">translate</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541507"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541506"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-54"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Scale</span></span><span> </span><span id="local-6989586621679541503"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541503"><span class="hs-identifier hs-var">sx</span></a></span></span><span> </span><span id="local-6989586621679541502"><span class="annot"><span class="annottext">Maybe Coord
+</span><a href="#local-6989586621679541502"><span class="hs-identifier hs-var">mbSy</span></a></span></span><span>               </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[Coord] -&gt; Matrix Coord
+</span><a href="Reanimate.Transform.html#fromList"><span class="hs-identifier hs-var">fromList</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541503"><span class="hs-identifier hs-var">sx</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord -&gt; Maybe Coord -&gt; Coord
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541503"><span class="hs-identifier hs-var">sx</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Coord
+</span><a href="#local-6989586621679541502"><span class="hs-identifier hs-var">mbSy</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span class="hs-special">]</span><span>
+</span><span id="line-55"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Rotate</span></span><span> </span><span id="local-6989586621679541500"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541500"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe (Coord, Coord)
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>            </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Matrix Coord
+</span><a href="#local-6989586621679541499"><span class="hs-identifier hs-var">rotate</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541500"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-56"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Rotate</span></span><span> </span><span id="local-6989586621679541498"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541498"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679541497"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541497"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679541496"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541496"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Matrix Coord
+</span><a href="#local-6989586621679541505"><span class="hs-identifier hs-var">translate</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541497"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541496"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Matrix Coord -&gt; Matrix Coord -&gt; Matrix Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Matrix Coord
+</span><a href="#local-6989586621679541499"><span class="hs-identifier hs-var">rotate</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541498"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Matrix Coord -&gt; Matrix Coord -&gt; Matrix Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Matrix Coord
+</span><a href="#local-6989586621679541505"><span class="hs-identifier hs-var">translate</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541497"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541496"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-57"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">SkewX</span></span><span> </span><span id="local-6989586621679541494"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541494"><span class="hs-identifier hs-var">a</span></a></span></span><span>                     </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[Coord] -&gt; Matrix Coord
+</span><a href="Reanimate.Transform.html#fromList"><span class="hs-identifier hs-var">fromList</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord -&gt; Coord
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">tan</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541494"><span class="hs-identifier hs-var">a</span></a></span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Coord
+forall a. Floating a =&gt; a
+</span><span class="hs-identifier hs-var">pi</span></span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">180</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span class="hs-special">]</span><span>
+</span><span id="line-58"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">SkewY</span></span><span> </span><span id="local-6989586621679541489"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541489"><span class="hs-identifier hs-var">a</span></a></span></span><span>                     </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[Coord] -&gt; Matrix Coord
+</span><a href="Reanimate.Transform.html#fromList"><span class="hs-identifier hs-var">fromList</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord -&gt; Coord
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">tan</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541489"><span class="hs-identifier hs-var">a</span></a></span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Coord
+forall a. Floating a =&gt; a
+</span><span class="hs-identifier hs-var">pi</span></span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">180</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span class="hs-special">]</span><span>
+</span><span id="line-59"></span><span>    </span><span class="annot"><span class="annottext">Transformation
+</span><span class="hs-identifier hs-var">TransformUnknown</span></span><span>            </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Matrix Coord
+</span><a href="Reanimate.Transform.html#identity"><span class="hs-identifier hs-var">identity</span></a></span><span>
+</span><span id="line-60"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-61"></span><span>    </span><span id="local-6989586621679541505"><span class="annot"><span class="annottext">translate :: Coord -&gt; Coord -&gt; Matrix Coord
+</span><a href="#local-6989586621679541505"><span class="hs-identifier hs-var hs-var">translate</span></a></span></span><span> </span><span id="local-6989586621679541487"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541487"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679541486"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541486"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Coord] -&gt; Matrix Coord
+</span><a href="Reanimate.Transform.html#fromList"><span class="hs-identifier hs-var">fromList</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541487"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541486"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-62"></span><span>    </span><span id="local-6989586621679541499"><span class="annot"><span class="annottext">rotate :: Coord -&gt; Matrix Coord
+</span><a href="#local-6989586621679541499"><span class="hs-identifier hs-var hs-var">rotate</span></a></span></span><span> </span><span id="local-6989586621679541485"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541485"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Coord] -&gt; Matrix Coord
+</span><a href="Reanimate.Transform.html#fromList"><span class="hs-identifier hs-var">fromList</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Coord -&gt; Coord
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">cos</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541483"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord -&gt; Coord
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sin</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541483"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">,</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Coord -&gt; Coord
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sin</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541483"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord -&gt; Coord
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">cos</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541483"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span class="hs-special">]</span><span>
+</span><span id="line-63"></span><span>      </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679541483"><span class="annot"><span class="annottext">r :: Coord
+</span><a href="#local-6989586621679541483"><span class="hs-identifier hs-var hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541485"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Coord
+forall a. Floating a =&gt; a
+</span><span class="hs-identifier hs-var">pi</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">180</span></span><span>
+</span><span id="line-64"></span><span>
+</span><span id="line-65"></span><span class="hs-comment">-- | Convert a transformation matrix back into an SVG transformation.</span><span>
+</span><span id="line-66"></span><span class="annot"><a href="Reanimate.Transform.html#toTransformation"><span class="hs-identifier hs-type">toTransformation</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Matrix</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Transformation</span></span><span>
+</span><span id="line-67"></span><span id="toTransformation"><span class="annot"><span class="annottext">toTransformation :: Matrix Coord -&gt; Transformation
+</span><a href="Reanimate.Transform.html#toTransformation"><span class="hs-identifier hs-var hs-var">toTransformation</span></a></span></span><span> </span><span id="local-6989586621679541481"><span class="annot"><span class="annottext">Matrix Coord
+</span><a href="#local-6989586621679541481"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coord
+-&gt; Coord -&gt; Coord -&gt; Coord -&gt; Coord -&gt; Coord -&gt; Transformation
+</span><span class="hs-identifier hs-var">TransformMatrix</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541480"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541479"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541478"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541477"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541476"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541475"><span class="hs-identifier hs-var">f</span></a></span><span>
+</span><span id="line-68"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-69"></span><span>    </span><span class="hs-special">[</span><span id="local-6989586621679541480"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541480"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679541478"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541478"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679541476"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541476"><span class="hs-identifier hs-var">e</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679541479"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541479"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679541477"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541477"><span class="hs-identifier hs-var">d</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679541475"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679541475"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-identifier">_</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Matrix Coord -&gt; [Coord]
+forall a. Matrix a -&gt; [a]
+</span><span class="hs-identifier hs-var">M.toList</span></span><span> </span><span class="annot"><span class="annottext">Matrix Coord
+</span><a href="#local-6989586621679541481"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-70"></span></pre></body></html>

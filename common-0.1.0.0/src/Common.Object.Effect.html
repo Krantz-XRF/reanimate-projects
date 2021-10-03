@@ -1,0 +1,894 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Module      : Common.Object.Effect
+Description : Effects on objects.
+Copyright   : (c) Xie Ruifeng, 2020
+License     : AGPL-3
+Maintainer  : krantz.xrf@outlook.com
+Stability   : experimental
+Portability : portable
+-}</span><span>
+</span><span id="line-10"></span><span class="hs-pragma">{-# LANGUAGE BlockArguments  #-}</span><span>
+</span><span id="line-11"></span><span class="hs-pragma">{-# LANGUAGE TemplateHaskell #-}</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Common.Object.Effect</span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">(</span><span>
+</span><span id="line-14"></span><span>  </span><span class="annot"><span class="hs-comment">-- * Partial Boxes</span></span><span>
+</span><span id="line-15"></span><span>  </span><span class="annot"><span class="hs-comment">-- ** Data Type, Accessor</span></span><span>
+</span><span id="line-16"></span><span>    </span><span class="annot"><a href="Common.Object.Effect.html#Box"><span class="hs-identifier">Box</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Common.Object.Effect.html#boxWidth"><span class="hs-identifier">boxWidth</span></a></span><span>
+</span><span id="line-18"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Common.Object.Effect.html#boxHeight"><span class="hs-identifier">boxHeight</span></a></span><span>
+</span><span id="line-19"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Common.Object.Effect.html#boxStart"><span class="hs-identifier">boxStart</span></a></span><span>
+</span><span id="line-20"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Common.Object.Effect.html#boxEnd"><span class="hs-identifier">boxEnd</span></a></span><span>
+</span><span id="line-21"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Common.Object.Effect.html#boxStroke"><span class="hs-identifier">boxStroke</span></a></span><span>
+</span><span id="line-22"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Common.Object.Effect.html#boxColour"><span class="hs-identifier">boxColour</span></a></span><span>
+</span><span id="line-23"></span><span>  </span><span class="annot"><span class="hs-comment">-- ** Scene API</span></span><span>
+</span><span id="line-24"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Common.Object.Effect.html#oBoxNewOver"><span class="hs-identifier">oBoxNewOver</span></a></span><span>
+</span><span id="line-25"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Common.Object.Effect.html#oBoxNewOverMany"><span class="hs-identifier">oBoxNewOverMany</span></a></span><span>
+</span><span id="line-26"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Common.Object.Effect.html#oBoxGrow"><span class="hs-identifier">oBoxGrow</span></a></span><span>
+</span><span id="line-27"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Common.Object.Effect.html#oBoxErase"><span class="hs-identifier">oBoxErase</span></a></span><span>
+</span><span id="line-28"></span><span>  </span><span class="annot"><span class="hs-comment">-- * Primitives</span></span><span>
+</span><span id="line-29"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Common.Object.Effect.html#partialBox"><span class="hs-identifier">partialBox</span></a></span><span>
+</span><span id="line-30"></span><span>  </span><span class="hs-special">,</span><span class="annot"><a href="Common.Object.Effect.html#oWiggle"><span class="hs-identifier">oWiggle</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Common.Linear.html"><span class="hs-identifier">Common.Linear</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Linear.html#Linear"><span class="hs-identifier">Linear</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Linear.html#lerp"><span class="hs-identifier">lerp</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">fromJust</span></span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Linear</span></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">V2</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">V2</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Common.Animation.Effects.html"><span class="hs-identifier">Common.Animation.Effects</span></a></span><span>
+</span><span id="line-37"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Common.Object.Transform.html"><span class="hs-identifier">Common.Object.Transform</span></a></span><span>  </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Transform.html#readGroupTrans"><span class="hs-identifier">readGroupTrans</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>
+</span><span id="line-40"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Codec.Picture.Types</span></span><span>
+</span><span id="line-43"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree.Types</span></span><span>
+</span><span id="line-44"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate</span></span><span>
+</span><span id="line-45"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate.Scene</span></span><span>
+</span><span id="line-46"></span><span>
+</span><span id="line-47"></span><span class="hs-keyword">data</span><span> </span><span id="VertexInfo"><span class="annot"><a href="Common.Object.Effect.html#VertexInfo"><span class="hs-identifier hs-var">VertexInfo</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="VertexInfo"><span class="annot"><a href="Common.Object.Effect.html#VertexInfo"><span class="hs-identifier hs-var">VertexInfo</span></a></span></span><span>
+</span><span id="line-48"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="vertexPosition"><span class="annot"><span class="annottext">VertexInfo -&gt; V2 Coord
+</span><a href="Common.Object.Effect.html#vertexPosition"><span class="hs-identifier hs-var hs-var">vertexPosition</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span>
+</span><span id="line-49"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="overallLength"><span class="annot"><span class="annottext">VertexInfo -&gt; Coord
+</span><a href="Common.Object.Effect.html#overallLength"><span class="hs-identifier hs-var hs-var">overallLength</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span>
+</span><span id="line-50"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="lastLength"><span class="annot"><span class="annottext">VertexInfo -&gt; Coord
+</span><a href="Common.Object.Effect.html#lastLength"><span class="hs-identifier hs-var hs-var">lastLength</span></a></span></span><span>     </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span>
+</span><span id="line-51"></span><span>  </span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233142"><span id="local-6989586621679233144"><span id="local-6989586621679233146"><span class="annot"><span class="annottext">Int -&gt; VertexInfo -&gt; ShowS
+[VertexInfo] -&gt; ShowS
+VertexInfo -&gt; String
+(Int -&gt; VertexInfo -&gt; ShowS)
+-&gt; (VertexInfo -&gt; String)
+-&gt; ([VertexInfo] -&gt; ShowS)
+-&gt; Show VertexInfo
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [VertexInfo] -&gt; ShowS
+$cshowList :: [VertexInfo] -&gt; ShowS
+show :: VertexInfo -&gt; String
+$cshow :: VertexInfo -&gt; String
+showsPrec :: Int -&gt; VertexInfo -&gt; ShowS
+$cshowsPrec :: Int -&gt; VertexInfo -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233137"><span id="local-6989586621679233139"><span class="annot"><span class="annottext">VertexInfo -&gt; VertexInfo -&gt; Bool
+(VertexInfo -&gt; VertexInfo -&gt; Bool)
+-&gt; (VertexInfo -&gt; VertexInfo -&gt; Bool) -&gt; Eq VertexInfo
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: VertexInfo -&gt; VertexInfo -&gt; Bool
+$c/= :: VertexInfo -&gt; VertexInfo -&gt; Bool
+== :: VertexInfo -&gt; VertexInfo -&gt; Bool
+$c== :: VertexInfo -&gt; VertexInfo -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="hs-comment">-- |Draw a partial box, provided a starting point and an ending point.</span><span>
+</span><span id="line-54"></span><span class="annot"><a href="Common.Object.Effect.html#partialBox"><span class="hs-identifier hs-type">partialBox</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span>
+</span><span id="line-55"></span><span id="partialBox"><span class="annot"><span class="annottext">partialBox :: Coord -&gt; Coord -&gt; Coord -&gt; Coord -&gt; SVG
+</span><a href="Common.Object.Effect.html#partialBox"><span class="hs-identifier hs-var hs-var">partialBox</span></a></span></span><span> </span><span id="local-6989586621679233135"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233135"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span id="local-6989586621679233134"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233134"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span id="local-6989586621679233133"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233133"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span id="local-6989586621679233132"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233132"><span class="hs-identifier hs-var">rt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coord -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withFillOpacity</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679233130"><span class="hs-identifier hs-var">tree</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-56"></span><span>  </span><span id="local-6989586621679233129"><span class="annot"><span class="annottext">vertices :: [V2 Coord]
+</span><a href="#local-6989586621679233129"><span class="hs-identifier hs-var hs-var">vertices</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; V2 Coord
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233128"><span class="hs-identifier hs-var">w'</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233127"><span class="hs-identifier hs-var">h'</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; V2 Coord
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233128"><span class="hs-identifier hs-var">w'</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233127"><span class="hs-identifier hs-var">h'</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; V2 Coord
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233128"><span class="hs-identifier hs-var">w'</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233127"><span class="hs-identifier hs-var">h'</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; V2 Coord
+forall a. a -&gt; a -&gt; V2 a
+</span><span class="hs-identifier hs-var">V2</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233128"><span class="hs-identifier hs-var">w'</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233127"><span class="hs-identifier hs-var">h'</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-57"></span><span>  </span><span id="local-6989586621679233126"><span class="annot"><span class="annottext">info :: [VertexInfo]
+</span><a href="#local-6989586621679233126"><span class="hs-identifier hs-var hs-var">info</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(V2 Coord -&gt; Coord -&gt; Coord -&gt; VertexInfo)
+-&gt; [V2 Coord] -&gt; [Coord] -&gt; [Coord] -&gt; [VertexInfo]
+forall a b c d. (a -&gt; b -&gt; c -&gt; d) -&gt; [a] -&gt; [b] -&gt; [c] -&gt; [d]
+</span><span class="hs-identifier hs-var">zipWith3</span></span><span> </span><span class="annot"><span class="annottext">V2 Coord -&gt; Coord -&gt; Coord -&gt; VertexInfo
+</span><a href="Common.Object.Effect.html#VertexInfo"><span class="hs-identifier hs-var">VertexInfo</span></a></span><span>
+</span><span id="line-58"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[V2 Coord] -&gt; [V2 Coord]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">cycle</span></span><span> </span><span class="annot"><span class="annottext">[V2 Coord]
+</span><a href="#local-6989586621679233129"><span class="hs-identifier hs-var">vertices</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-59"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Coord -&gt; Coord -&gt; Coord) -&gt; Coord -&gt; [Coord] -&gt; [Coord]
+forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">scanl</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">(+)</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Coord] -&gt; [Coord]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">cycle</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233135"><span class="hs-identifier hs-var">w</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233134"><span class="hs-identifier hs-var">h</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-60"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Coord] -&gt; [Coord]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">cycle</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233135"><span class="hs-identifier hs-var">w</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233134"><span class="hs-identifier hs-var">h</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-61"></span><span>  </span><span id="local-6989586621679233121"><span class="annot"><span class="annottext">rest :: [(VertexInfo, VertexInfo)]
+</span><a href="#local-6989586621679233121"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span id="local-6989586621679233120"><span class="annot"><span class="annottext">(VertexInfo, VertexInfo)
+</span><a href="#local-6989586621679233120"><span class="hs-identifier hs-var">p0</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span class="annot"><span class="annottext">[(VertexInfo, VertexInfo)]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((VertexInfo, VertexInfo) -&gt; Bool)
+-&gt; [(VertexInfo, VertexInfo)] -&gt; [(VertexInfo, VertexInfo)]
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">dropWhile</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233118"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Coord -&gt; Bool)
+-&gt; ((VertexInfo, VertexInfo) -&gt; Coord)
+-&gt; (VertexInfo, VertexInfo)
+-&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">VertexInfo -&gt; Coord
+</span><a href="Common.Object.Effect.html#overallLength"><span class="hs-identifier hs-var hs-var">overallLength</span></a></span><span> </span><span class="annot"><span class="annottext">(VertexInfo -&gt; Coord)
+-&gt; ((VertexInfo, VertexInfo) -&gt; VertexInfo)
+-&gt; (VertexInfo, VertexInfo)
+-&gt; Coord
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo) -&gt; VertexInfo
+forall a b. (a, b) -&gt; b
+</span><span class="hs-identifier hs-var">snd</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([(VertexInfo, VertexInfo)] -&gt; [(VertexInfo, VertexInfo)])
+-&gt; [(VertexInfo, VertexInfo)] -&gt; [(VertexInfo, VertexInfo)]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[VertexInfo] -&gt; [VertexInfo] -&gt; [(VertexInfo, VertexInfo)]
+forall a b. [a] -&gt; [b] -&gt; [(a, b)]
+</span><span class="hs-identifier hs-var">zip</span></span><span> </span><span class="annot"><span class="annottext">[VertexInfo]
+</span><a href="#local-6989586621679233126"><span class="hs-identifier hs-var">info</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[VertexInfo] -&gt; [VertexInfo]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">tail</span></span><span> </span><span class="annot"><span class="annottext">[VertexInfo]
+</span><a href="#local-6989586621679233126"><span class="hs-identifier hs-var">info</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-62"></span><span>  </span><span id="local-6989586621679233115"><span class="annot"><span class="annottext">x0r :: Coord
+</span><a href="#local-6989586621679233115"><span class="hs-identifier hs-var hs-var">x0r</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233118"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">VertexInfo -&gt; Coord
+</span><a href="Common.Object.Effect.html#overallLength"><span class="hs-identifier hs-var hs-var">overallLength</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo) -&gt; VertexInfo
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo)
+</span><a href="#local-6989586621679233120"><span class="hs-identifier hs-var">p0</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">VertexInfo -&gt; Coord
+</span><a href="Common.Object.Effect.html#lastLength"><span class="hs-identifier hs-var hs-var">lastLength</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo) -&gt; VertexInfo
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo)
+</span><a href="#local-6989586621679233120"><span class="hs-identifier hs-var">p0</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-63"></span><span>  </span><span id="local-6989586621679233113"><span class="annot"><span class="annottext">x0 :: V2 Coord
+</span><a href="#local-6989586621679233113"><span class="hs-identifier hs-var hs-var">x0</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(V2 Coord -&gt; V2 Coord -&gt; V2 Coord)
+-&gt; (V2 Coord, V2 Coord) -&gt; V2 Coord
+forall a b c. (a -&gt; b -&gt; c) -&gt; (a, b) -&gt; c
+</span><span class="hs-identifier hs-var">uncurry</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord -&gt; V2 Coord -&gt; V2 Coord -&gt; V2 Coord
+forall a. Linear a =&gt; Coord -&gt; a -&gt; a -&gt; a
+</span><a href="Common.Linear.html#lerp"><span class="hs-identifier hs-var">lerp</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233115"><span class="hs-identifier hs-var">x0r</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">((V2 Coord, V2 Coord) -&gt; V2 Coord)
+-&gt; (V2 Coord, V2 Coord) -&gt; V2 Coord
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(VertexInfo -&gt; V2 Coord)
+-&gt; (VertexInfo -&gt; V2 Coord)
+-&gt; (VertexInfo, VertexInfo)
+-&gt; (V2 Coord, V2 Coord)
+forall (p :: * -&gt; * -&gt; *) a b c d.
+Bifunctor p =&gt;
+(a -&gt; b) -&gt; (c -&gt; d) -&gt; p a c -&gt; p b d
+</span><span class="hs-identifier hs-var">bimap</span></span><span> </span><span class="annot"><span class="annottext">VertexInfo -&gt; V2 Coord
+</span><a href="Common.Object.Effect.html#vertexPosition"><span class="hs-identifier hs-var hs-var">vertexPosition</span></a></span><span> </span><span class="annot"><span class="annottext">VertexInfo -&gt; V2 Coord
+</span><a href="Common.Object.Effect.html#vertexPosition"><span class="hs-identifier hs-var hs-var">vertexPosition</span></a></span><span> </span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo)
+</span><a href="#local-6989586621679233120"><span class="hs-identifier hs-var">p0</span></a></span><span>
+</span><span id="line-64"></span><span>  </span><span class="hs-special">(</span><span id="local-6989586621679233110"><span class="annot"><span class="annottext">[(VertexInfo, VertexInfo)]
+</span><a href="#local-6989586621679233110"><span class="hs-identifier hs-var">body</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233109"><span class="annot"><span class="annottext">(VertexInfo, VertexInfo)
+</span><a href="#local-6989586621679233109"><span class="hs-identifier hs-var">pt</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span class="annot"><span class="annottext">[(VertexInfo, VertexInfo)]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((VertexInfo, VertexInfo) -&gt; Bool)
+-&gt; [(VertexInfo, VertexInfo)]
+-&gt; ([(VertexInfo, VertexInfo)], [(VertexInfo, VertexInfo)])
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; ([a], [a])
+</span><span class="hs-identifier hs-var">span</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233107"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Coord -&gt; Bool)
+-&gt; ((VertexInfo, VertexInfo) -&gt; Coord)
+-&gt; (VertexInfo, VertexInfo)
+-&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">VertexInfo -&gt; Coord
+</span><a href="Common.Object.Effect.html#overallLength"><span class="hs-identifier hs-var hs-var">overallLength</span></a></span><span> </span><span class="annot"><span class="annottext">(VertexInfo -&gt; Coord)
+-&gt; ((VertexInfo, VertexInfo) -&gt; VertexInfo)
+-&gt; (VertexInfo, VertexInfo)
+-&gt; Coord
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo) -&gt; VertexInfo
+forall a b. (a, b) -&gt; b
+</span><span class="hs-identifier hs-var">snd</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[(VertexInfo, VertexInfo)]
+</span><a href="#local-6989586621679233121"><span class="hs-identifier hs-var">rest</span></a></span><span>
+</span><span id="line-65"></span><span>  </span><span id="local-6989586621679233106"><span class="annot"><span class="annottext">intermediate :: [V2 Coord]
+</span><a href="#local-6989586621679233106"><span class="hs-identifier hs-var hs-var">intermediate</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((VertexInfo, VertexInfo) -&gt; V2 Coord)
+-&gt; [(VertexInfo, VertexInfo)] -&gt; [V2 Coord]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">VertexInfo -&gt; V2 Coord
+</span><a href="Common.Object.Effect.html#vertexPosition"><span class="hs-identifier hs-var hs-var">vertexPosition</span></a></span><span> </span><span class="annot"><span class="annottext">(VertexInfo -&gt; V2 Coord)
+-&gt; ((VertexInfo, VertexInfo) -&gt; VertexInfo)
+-&gt; (VertexInfo, VertexInfo)
+-&gt; V2 Coord
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo) -&gt; VertexInfo
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; [(VertexInfo, VertexInfo)] -&gt; [(VertexInfo, VertexInfo)]
+forall a. Int -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">drop</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">[(VertexInfo, VertexInfo)]
+</span><a href="#local-6989586621679233110"><span class="hs-identifier hs-var">body</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-66"></span><span>  </span><span id="local-6989586621679233104"><span class="annot"><span class="annottext">xtr :: Coord
+</span><a href="#local-6989586621679233104"><span class="hs-identifier hs-var hs-var">xtr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233107"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">VertexInfo -&gt; Coord
+</span><a href="Common.Object.Effect.html#overallLength"><span class="hs-identifier hs-var hs-var">overallLength</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo) -&gt; VertexInfo
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo)
+</span><a href="#local-6989586621679233109"><span class="hs-identifier hs-var">pt</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">VertexInfo -&gt; Coord
+</span><a href="Common.Object.Effect.html#lastLength"><span class="hs-identifier hs-var hs-var">lastLength</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo) -&gt; VertexInfo
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo)
+</span><a href="#local-6989586621679233109"><span class="hs-identifier hs-var">pt</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-67"></span><span>  </span><span id="local-6989586621679233103"><span class="annot"><span class="annottext">xt :: V2 Coord
+</span><a href="#local-6989586621679233103"><span class="hs-identifier hs-var hs-var">xt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(V2 Coord -&gt; V2 Coord -&gt; V2 Coord)
+-&gt; (V2 Coord, V2 Coord) -&gt; V2 Coord
+forall a b c. (a -&gt; b -&gt; c) -&gt; (a, b) -&gt; c
+</span><span class="hs-identifier hs-var">uncurry</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord -&gt; V2 Coord -&gt; V2 Coord -&gt; V2 Coord
+forall a. Linear a =&gt; Coord -&gt; a -&gt; a -&gt; a
+</span><a href="Common.Linear.html#lerp"><span class="hs-identifier hs-var">lerp</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233104"><span class="hs-identifier hs-var">xtr</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">((V2 Coord, V2 Coord) -&gt; V2 Coord)
+-&gt; (V2 Coord, V2 Coord) -&gt; V2 Coord
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(VertexInfo -&gt; V2 Coord)
+-&gt; (VertexInfo -&gt; V2 Coord)
+-&gt; (VertexInfo, VertexInfo)
+-&gt; (V2 Coord, V2 Coord)
+forall (p :: * -&gt; * -&gt; *) a b c d.
+Bifunctor p =&gt;
+(a -&gt; b) -&gt; (c -&gt; d) -&gt; p a c -&gt; p b d
+</span><span class="hs-identifier hs-var">bimap</span></span><span> </span><span class="annot"><span class="annottext">VertexInfo -&gt; V2 Coord
+</span><a href="Common.Object.Effect.html#vertexPosition"><span class="hs-identifier hs-var hs-var">vertexPosition</span></a></span><span> </span><span class="annot"><span class="annottext">VertexInfo -&gt; V2 Coord
+</span><a href="Common.Object.Effect.html#vertexPosition"><span class="hs-identifier hs-var hs-var">vertexPosition</span></a></span><span> </span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo)
+</span><a href="#local-6989586621679233109"><span class="hs-identifier hs-var">pt</span></a></span><span>
+</span><span id="line-68"></span><span>  </span><span id="local-6989586621679233102"><span class="annot"><span class="annottext">preXt :: V2 Coord
+</span><a href="#local-6989586621679233102"><span class="hs-identifier hs-var hs-var">preXt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">VertexInfo -&gt; V2 Coord
+</span><a href="Common.Object.Effect.html#vertexPosition"><span class="hs-identifier hs-var hs-var">vertexPosition</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo) -&gt; VertexInfo
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo)
+</span><a href="#local-6989586621679233109"><span class="hs-identifier hs-var">pt</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-69"></span><span>  </span><span id="local-6989586621679233101"><span class="annot"><span class="annottext">tailPath :: [V2 Coord]
+</span><a href="#local-6989586621679233101"><span class="hs-identifier hs-var hs-var">tailPath</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">VertexInfo -&gt; Coord
+</span><a href="Common.Object.Effect.html#overallLength"><span class="hs-identifier hs-var hs-var">overallLength</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo) -&gt; VertexInfo
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="annot"><span class="annottext">(VertexInfo, VertexInfo)
+</span><a href="#local-6989586621679233109"><span class="hs-identifier hs-var">pt</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233118"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">V2 Coord
+</span><a href="#local-6989586621679233102"><span class="hs-identifier hs-var">preXt</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">V2 Coord
+</span><a href="#local-6989586621679233103"><span class="hs-identifier hs-var">xt</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">V2 Coord
+</span><a href="#local-6989586621679233103"><span class="hs-identifier hs-var">xt</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-70"></span><span>  </span><span id="local-6989586621679233099"><span class="annot"><span class="annottext">paths :: [PathCommand]
+</span><a href="#local-6989586621679233099"><span class="hs-identifier hs-var hs-var">paths</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Origin -&gt; [V2 Coord] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">MoveTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginAbsolute</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">V2 Coord
+</span><a href="#local-6989586621679233113"><span class="hs-identifier hs-var">x0</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-71"></span><span>        </span><span class="annot"><span class="annottext">PathCommand -&gt; [PathCommand] -&gt; [PathCommand]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">(V2 Coord -&gt; PathCommand) -&gt; [V2 Coord] -&gt; [PathCommand]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Origin -&gt; [V2 Coord] -&gt; PathCommand
+</span><span class="hs-identifier hs-var">LineTo</span></span><span> </span><span class="annot"><span class="annottext">Origin
+</span><span class="hs-identifier hs-var">OriginAbsolute</span></span><span> </span><span class="annot"><span class="annottext">([V2 Coord] -&gt; PathCommand)
+-&gt; (V2 Coord -&gt; [V2 Coord]) -&gt; V2 Coord -&gt; PathCommand
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">V2 Coord -&gt; [V2 Coord]
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[V2 Coord]
+</span><a href="#local-6989586621679233106"><span class="hs-identifier hs-var">intermediate</span></a></span><span> </span><span class="annot"><span class="annottext">[V2 Coord] -&gt; [V2 Coord] -&gt; [V2 Coord]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[V2 Coord]
+</span><a href="#local-6989586621679233101"><span class="hs-identifier hs-var">tailPath</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-72"></span><span>  </span><span id="local-6989586621679233130"><span class="annot"><span class="annottext">tree :: SVG
+</span><a href="#local-6989586621679233130"><span class="hs-identifier hs-var hs-var">tree</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Path -&gt; SVG
+</span><span class="hs-identifier hs-var">pathTree</span></span><span> </span><span class="annot"><span class="annottext">Path
+forall a. WithDefaultSvg a =&gt; a
+</span><span class="hs-identifier hs-var">defaultSvg</span></span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">_pathDefinition :: [PathCommand]
+</span><span class="hs-identifier hs-var">_pathDefinition</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[PathCommand]
+</span><a href="#local-6989586621679233099"><span class="hs-identifier hs-var">paths</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-73"></span><span>  </span><span id="local-6989586621679233118"><span class="annot"><span class="annottext">s :: Coord
+</span><a href="#local-6989586621679233118"><span class="hs-identifier hs-var hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233133"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233135"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233134"><span class="hs-identifier hs-var">h</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-74"></span><span>  </span><span id="local-6989586621679233107"><span class="annot"><span class="annottext">t :: Coord
+</span><a href="#local-6989586621679233107"><span class="hs-identifier hs-var hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233132"><span class="hs-identifier hs-var">rt</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233135"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233134"><span class="hs-identifier hs-var">h</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-75"></span><span>  </span><span id="local-6989586621679233128"><span class="annot"><span class="annottext">w' :: Coord
+</span><a href="#local-6989586621679233128"><span class="hs-identifier hs-var hs-var">w'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233135"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">2</span></span><span>
+</span><span id="line-76"></span><span>  </span><span id="local-6989586621679233127"><span class="annot"><span class="annottext">h' :: Coord
+</span><a href="#local-6989586621679233127"><span class="hs-identifier hs-var hs-var">h'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233134"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">2</span></span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span class="hs-comment">-- |A potentialy partial box.</span><span>
+</span><span id="line-79"></span><span class="hs-keyword">data</span><span> </span><span id="Box"><span class="annot"><a href="Common.Object.Effect.html#Box"><span class="hs-identifier hs-var">Box</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Box"><span class="annot"><a href="Common.Object.Effect.html#Box"><span class="hs-identifier hs-var">Box</span></a></span></span><span>
+</span><span id="line-80"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="_boxWidth"><span class="annot"><span class="annottext">Box -&gt; Coord
+</span><a href="Common.Object.Effect.html#_boxWidth"><span class="hs-identifier hs-var hs-var">_boxWidth</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span>
+</span><span id="line-81"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="_boxHeight"><span class="annot"><span class="annottext">Box -&gt; Coord
+</span><a href="Common.Object.Effect.html#_boxHeight"><span class="hs-identifier hs-var hs-var">_boxHeight</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span>
+</span><span id="line-82"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="_boxStart"><span class="annot"><span class="annottext">Box -&gt; Coord
+</span><a href="Common.Object.Effect.html#_boxStart"><span class="hs-identifier hs-var hs-var">_boxStart</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-83"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="_boxEnd"><span class="annot"><span class="annottext">Box -&gt; Coord
+</span><a href="Common.Object.Effect.html#_boxEnd"><span class="hs-identifier hs-var hs-var">_boxEnd</span></a></span></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-84"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="_boxStroke"><span class="annot"><span class="annottext">Box -&gt; Coord
+</span><a href="Common.Object.Effect.html#_boxStroke"><span class="hs-identifier hs-var hs-var">_boxStroke</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span>
+</span><span id="line-85"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="_boxColour"><span class="annot"><span class="annottext">Box -&gt; PixelRGBA8
+</span><a href="Common.Object.Effect.html#_boxColour"><span class="hs-identifier hs-var hs-var">_boxColour</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PixelRGBA8</span></span><span>
+</span><span id="line-86"></span><span>  </span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233079"><span id="local-6989586621679233081"><span id="local-6989586621679233083"><span class="annot"><span class="annottext">Int -&gt; Box -&gt; ShowS
+[Box] -&gt; ShowS
+Box -&gt; String
+(Int -&gt; Box -&gt; ShowS)
+-&gt; (Box -&gt; String) -&gt; ([Box] -&gt; ShowS) -&gt; Show Box
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Box] -&gt; ShowS
+$cshowList :: [Box] -&gt; ShowS
+show :: Box -&gt; String
+$cshow :: Box -&gt; String
+showsPrec :: Int -&gt; Box -&gt; ShowS
+$cshowsPrec :: Int -&gt; Box -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233075"><span id="local-6989586621679233077"><span class="annot"><span class="annottext">Box -&gt; Box -&gt; Bool
+(Box -&gt; Box -&gt; Bool) -&gt; (Box -&gt; Box -&gt; Bool) -&gt; Eq Box
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: Box -&gt; Box -&gt; Bool
+$c/= :: Box -&gt; Box -&gt; Bool
+== :: Box -&gt; Box -&gt; Bool
+$c== :: Box -&gt; Box -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-87"></span><span>
+</span><span id="line-88"></span><span id="boxColour"><span id="boxStroke"><span id="boxEnd"><span id="boxStart"><span id="boxHeight"><span id="boxWidth"><span class="hs-identifier">makeLenses</span><span> </span><span class="hs-special">'</span><span class="hs-identifier">Box</span></span></span></span></span></span></span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Renderable</span></span><span> </span><span class="annot"><a href="Common.Object.Effect.html#Box"><span class="hs-identifier hs-type">Box</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-91"></span><span>  </span><span id="local-6989586621679233072"><span class="annot"><span class="annottext">toSVG :: Box -&gt; SVG
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">toSVG</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Effect.html#Box"><span class="hs-identifier hs-type">Box</span></a></span><span> </span><span id="local-6989586621679233070"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233070"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span id="local-6989586621679233069"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233069"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span id="local-6989586621679233068"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233068"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span id="local-6989586621679233067"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233067"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679233066"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233066"><span class="hs-identifier hs-var">width</span></a></span></span><span> </span><span id="local-6989586621679233065"><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679233065"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-92"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withStrokeColorPixel</span></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679233065"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-93"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withStrokeWidth</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233066"><span class="hs-identifier hs-var">width</span></a></span><span>
+</span><span id="line-94"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord -&gt; Coord -&gt; SVG
+</span><a href="Common.Object.Effect.html#partialBox"><span class="hs-identifier hs-var">partialBox</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233070"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233069"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233068"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233067"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-95"></span><span>
+</span><span id="line-96"></span><span class="annot"><a href="Common.Object.Effect.html#boxMargin"><span class="hs-identifier hs-type">boxMargin</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span>
+</span><span id="line-97"></span><span id="boxMargin"><span class="annot"><span class="annottext">boxMargin :: Coord
+</span><a href="Common.Object.Effect.html#boxMargin"><span class="hs-identifier hs-var hs-var">boxMargin</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0.2</span></span><span>
+</span><span id="line-98"></span><span>
+</span><span id="line-99"></span><span class="annot"><a href="Common.Object.Effect.html#boxStrokeWidth"><span class="hs-identifier hs-type">boxStrokeWidth</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coord</span></span><span>
+</span><span id="line-100"></span><span id="boxStrokeWidth"><span class="annot"><span class="annottext">boxStrokeWidth :: Coord
+</span><a href="Common.Object.Effect.html#boxStrokeWidth"><span class="hs-identifier hs-var hs-var">boxStrokeWidth</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0.03</span></span><span>
+</span><span id="line-101"></span><span>
+</span><span id="line-102"></span><span class="hs-comment">-- |Create a new box around the target.</span><span>
+</span><span id="line-103"></span><span id="local-6989586621679233059"><span id="local-6989586621679233060"><span class="annot"><a href="Common.Object.Effect.html#oBoxNewOver"><span class="hs-identifier hs-type">oBoxNewOver</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span class="annot"><a href="#local-6989586621679233060"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233059"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PixelRGBA8</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Scene</span></span><span> </span><span class="annot"><a href="#local-6989586621679233060"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span class="annot"><a href="#local-6989586621679233060"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="Common.Object.Effect.html#Box"><span class="hs-identifier hs-type">Box</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-104"></span><span id="oBoxNewOver"><span class="annot"><span class="annottext">oBoxNewOver :: Object s a -&gt; PixelRGBA8 -&gt; Scene s (Object s Box)
+</span><a href="Common.Object.Effect.html#oBoxNewOver"><span class="hs-identifier hs-var hs-var">oBoxNewOver</span></a></span></span><span> </span><span id="local-6989586621679233058"><span class="annot"><span class="annottext">Object s a
+</span><a href="#local-6989586621679233058"><span class="hs-identifier hs-var">target</span></a></span></span><span> </span><span id="local-6989586621679233057"><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679233057"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-105"></span><span>  </span><span id="local-6989586621679233056"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233056"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Object s a -&gt; Getting Coord (ObjectData a) Coord -&gt; Scene s Coord
+forall s a b. Object s a -&gt; Getting b (ObjectData a) b -&gt; Scene s b
+</span><span class="hs-identifier hs-var">oRead</span></span><span> </span><span class="annot"><span class="annottext">Object s a
+</span><a href="#local-6989586621679233058"><span class="hs-identifier hs-var">target</span></a></span><span> </span><span class="annot"><span class="annottext">Getting Coord (ObjectData a) Coord
+forall a. Getter (ObjectData a) Coord
+</span><span class="hs-identifier hs-var">oBBWidth</span></span><span>
+</span><span id="line-106"></span><span>  </span><span id="local-6989586621679233053"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233053"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Object s a -&gt; Getting Coord (ObjectData a) Coord -&gt; Scene s Coord
+forall s a b. Object s a -&gt; Getting b (ObjectData a) b -&gt; Scene s b
+</span><span class="hs-identifier hs-var">oRead</span></span><span> </span><span class="annot"><span class="annottext">Object s a
+</span><a href="#local-6989586621679233058"><span class="hs-identifier hs-var">target</span></a></span><span> </span><span class="annot"><span class="annottext">Getting Coord (ObjectData a) Coord
+forall a. Getter (ObjectData a) Coord
+</span><span class="hs-identifier hs-var">oBBHeight</span></span><span>
+</span><span id="line-107"></span><span>  </span><span id="local-6989586621679233051"><span class="annot"><span class="annottext">V2 Coord
+</span><a href="#local-6989586621679233051"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Object s a
+-&gt; Getting (V2 Coord) (ObjectData a) (V2 Coord)
+-&gt; Scene s (V2 Coord)
+forall s a b. Object s a -&gt; Getting b (ObjectData a) b -&gt; Scene s b
+</span><span class="hs-identifier hs-var">oRead</span></span><span> </span><span class="annot"><span class="annottext">Object s a
+</span><a href="#local-6989586621679233058"><span class="hs-identifier hs-var">target</span></a></span><span> </span><span class="annot"><span class="annottext">Getting (V2 Coord) (ObjectData a) (V2 Coord)
+forall a. Lens' (ObjectData a) (V2 Coord)
+</span><span class="hs-identifier hs-var">oTranslate</span></span><span>
+</span><span id="line-108"></span><span>  </span><span id="local-6989586621679233049"><span class="annot"><span class="annottext">Object s Box
+</span><a href="#local-6989586621679233049"><span class="hs-identifier hs-var">res</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Box -&gt; Scene s (Object s Box)
+forall a s. Renderable a =&gt; a -&gt; Scene s (Object s a)
+</span><span class="hs-identifier hs-var">oNew</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord -&gt; Coord -&gt; Coord -&gt; PixelRGBA8 -&gt; Box
+</span><a href="Common.Object.Effect.html#Box"><span class="hs-identifier hs-var">Box</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233056"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="Common.Object.Effect.html#boxMargin"><span class="hs-identifier hs-var">boxMargin</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233053"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="Common.Object.Effect.html#boxMargin"><span class="hs-identifier hs-var">boxMargin</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="Common.Object.Effect.html#boxStrokeWidth"><span class="hs-identifier hs-var">boxStrokeWidth</span></a></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679233057"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-109"></span><span>  </span><span class="annot"><span class="annottext">Object s Box -&gt; (ObjectData Box -&gt; ObjectData Box) -&gt; Scene s ()
+forall s a.
+Object s a -&gt; (ObjectData a -&gt; ObjectData a) -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oModify</span></span><span> </span><span class="annot"><span class="annottext">Object s Box
+</span><a href="#local-6989586621679233049"><span class="hs-identifier hs-var">res</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(V2 Coord -&gt; Identity (V2 Coord))
+-&gt; ObjectData Box -&gt; Identity (ObjectData Box)
+forall a. Lens' (ObjectData a) (V2 Coord)
+</span><span class="hs-identifier hs-var">oTranslate</span></span><span> </span><span class="annot"><span class="annottext">((V2 Coord -&gt; Identity (V2 Coord))
+ -&gt; ObjectData Box -&gt; Identity (ObjectData Box))
+-&gt; V2 Coord -&gt; ObjectData Box -&gt; ObjectData Box
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">V2 Coord
+</span><a href="#local-6989586621679233051"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-110"></span><span>  </span><span class="annot"><span class="annottext">Object s Box -&gt; Scene s (Object s Box)
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">Object s Box
+</span><a href="#local-6989586621679233049"><span class="hs-identifier hs-var">res</span></a></span><span>
+</span><span id="line-111"></span><span>
+</span><span id="line-112"></span><span class="hs-keyword">newtype</span><span> </span><span id="BB"><span class="annot"><a href="Common.Object.Effect.html#BB"><span class="hs-identifier hs-var">BB</span></a></span></span><span> </span><span id="local-6989586621679233221"><span class="annot"><a href="#local-6989586621679233221"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="BB"><span class="annot"><a href="Common.Object.Effect.html#BB"><span class="hs-identifier hs-var">BB</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679233221"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679233221"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679233221"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679233221"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span id="local-6989586621679233039"><span id="local-6989586621679233041"><span id="local-6989586621679233043"><span class="annot"><span class="annottext">Int -&gt; BB a -&gt; ShowS
+[BB a] -&gt; ShowS
+BB a -&gt; String
+(Int -&gt; BB a -&gt; ShowS)
+-&gt; (BB a -&gt; String) -&gt; ([BB a] -&gt; ShowS) -&gt; Show (BB a)
+forall a. Show a =&gt; Int -&gt; BB a -&gt; ShowS
+forall a. Show a =&gt; [BB a] -&gt; ShowS
+forall a. Show a =&gt; BB a -&gt; String
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [BB a] -&gt; ShowS
+$cshowList :: forall a. Show a =&gt; [BB a] -&gt; ShowS
+show :: BB a -&gt; String
+$cshow :: forall a. Show a =&gt; BB a -&gt; String
+showsPrec :: Int -&gt; BB a -&gt; ShowS
+$cshowsPrec :: forall a. Show a =&gt; Int -&gt; BB a -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span>
+</span><span id="line-113"></span><span>
+</span><span id="line-114"></span><span id="local-6989586621679233038"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679233033"><span id="local-6989586621679233035"><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Ord</span></span><span> </span><span class="annot"><a href="#local-6989586621679233038"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Num</span></span><span> </span><span class="annot"><a href="#local-6989586621679233038"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Semigroup</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Effect.html#BB"><span class="hs-identifier hs-type">BB</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233038"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-115"></span><span>  </span><span class="annot"><a href="Common.Object.Effect.html#BB"><span class="hs-identifier hs-type">BB</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233031"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233031"><span class="hs-identifier hs-var">x1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233030"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233030"><span class="hs-identifier hs-var">y1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233029"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233029"><span class="hs-identifier hs-var">w1</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233028"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233028"><span class="hs-identifier hs-var">h1</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679233027"><span class="annot"><span class="annottext">&lt;&gt; :: BB a -&gt; BB a -&gt; BB a
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">&lt;&gt;</span></span></span><span> </span><span class="annot"><a href="Common.Object.Effect.html#BB"><span class="hs-identifier hs-type">BB</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679233026"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233026"><span class="hs-identifier hs-var">x2</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233025"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233025"><span class="hs-identifier hs-var">y2</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233024"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233024"><span class="hs-identifier hs-var">w2</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233023"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233023"><span class="hs-identifier hs-var">h2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(a, a, a, a) -&gt; BB a
+forall a. (a, a, a, a) -&gt; BB a
+</span><a href="Common.Object.Effect.html#BB"><span class="hs-identifier hs-var">BB</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233022"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233021"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233020"><span class="hs-identifier hs-var">w</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233019"><span class="hs-identifier hs-var">h</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-116"></span><span>    </span><span id="local-6989586621679233022"><span class="annot"><span class="annottext">x :: a
+</span><a href="#local-6989586621679233022"><span class="hs-identifier hs-var hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">min</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233031"><span class="hs-identifier hs-var">x1</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233026"><span class="hs-identifier hs-var">x2</span></a></span><span>
+</span><span id="line-117"></span><span>    </span><span id="local-6989586621679233021"><span class="annot"><span class="annottext">y :: a
+</span><a href="#local-6989586621679233021"><span class="hs-identifier hs-var hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">min</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233030"><span class="hs-identifier hs-var">y1</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233025"><span class="hs-identifier hs-var">y2</span></a></span><span>
+</span><span id="line-118"></span><span>    </span><span id="local-6989586621679233020"><span class="annot"><span class="annottext">w :: a
+</span><a href="#local-6989586621679233020"><span class="hs-identifier hs-var hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233031"><span class="hs-identifier hs-var">x1</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233029"><span class="hs-identifier hs-var">w1</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233026"><span class="hs-identifier hs-var">x2</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233024"><span class="hs-identifier hs-var">w2</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233022"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-119"></span><span>    </span><span id="local-6989586621679233019"><span class="annot"><span class="annottext">h :: a
+</span><a href="#local-6989586621679233019"><span class="hs-identifier hs-var hs-var">h</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Ord a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">max</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233030"><span class="hs-identifier hs-var">y1</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233028"><span class="hs-identifier hs-var">h1</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233025"><span class="hs-identifier hs-var">y2</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233023"><span class="hs-identifier hs-var">h2</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679233021"><span class="hs-identifier hs-var">y</span></a></span></span><span>
+</span><span id="line-120"></span><span>
+</span><span id="line-121"></span><span id="local-6989586621679233201"><span id="local-6989586621679233202"><span class="annot"><a href="Common.Object.Effect.html#readRealBox"><span class="hs-identifier hs-type">readRealBox</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span class="annot"><a href="#local-6989586621679233202"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233201"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Scene</span></span><span> </span><span class="annot"><a href="#local-6989586621679233202"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.Effect.html#BB"><span class="hs-identifier hs-type">BB</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-122"></span><span id="readRealBox"><span class="annot"><span class="annottext">readRealBox :: Object s a -&gt; Scene s (BB Coord)
+</span><a href="Common.Object.Effect.html#readRealBox"><span class="hs-identifier hs-var hs-var">readRealBox</span></a></span></span><span> </span><span id="local-6989586621679233015"><span class="annot"><span class="annottext">Object s a
+</span><a href="#local-6989586621679233015"><span class="hs-identifier hs-var">obj</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-123"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">V2</span></span><span> </span><span id="local-6989586621679233014"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233014"><span class="hs-identifier hs-var">x0</span></a></span></span><span> </span><span id="local-6989586621679233013"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233013"><span class="hs-identifier hs-var">y0</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Object s a
+-&gt; Getting (V2 Coord) (ObjectData a) (V2 Coord)
+-&gt; Scene s (V2 Coord)
+forall s a b. Object s a -&gt; Getting b (ObjectData a) b -&gt; Scene s b
+</span><span class="hs-identifier hs-var">oRead</span></span><span> </span><span class="annot"><span class="annottext">Object s a
+</span><a href="#local-6989586621679233015"><span class="hs-identifier hs-var">obj</span></a></span><span> </span><span class="annot"><span class="annottext">Getting (V2 Coord) (ObjectData a) (V2 Coord)
+forall a. Lens' (ObjectData a) (V2 Coord)
+</span><span class="hs-identifier hs-var">oTranslate</span></span><span>
+</span><span id="line-124"></span><span>  </span><span class="hs-special">(</span><span id="local-6989586621679233012"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233012"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233011"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233011"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233010"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233010"><span class="hs-identifier hs-var">w</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233009"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233009"><span class="hs-identifier hs-var">h</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Object s a
+-&gt; Getting
+     (Coord, Coord, Coord, Coord)
+     (ObjectData a)
+     (Coord, Coord, Coord, Coord)
+-&gt; Scene s (Coord, Coord, Coord, Coord)
+forall s a b. Object s a -&gt; Getting b (ObjectData a) b -&gt; Scene s b
+</span><span class="hs-identifier hs-var">oRead</span></span><span> </span><span class="annot"><span class="annottext">Object s a
+</span><a href="#local-6989586621679233015"><span class="hs-identifier hs-var">obj</span></a></span><span> </span><span class="annot"><span class="annottext">Getting
+  (Coord, Coord, Coord, Coord)
+  (ObjectData a)
+  (Coord, Coord, Coord, Coord)
+forall a. Getter (ObjectData a) (Coord, Coord, Coord, Coord)
+</span><span class="hs-identifier hs-var">oBB</span></span><span>
+</span><span id="line-125"></span><span>  </span><span class="annot"><span class="annottext">BB Coord -&gt; Scene s (BB Coord)
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Coord, Coord, Coord, Coord) -&gt; BB Coord
+forall a. (a, a, a, a) -&gt; BB a
+</span><a href="Common.Object.Effect.html#BB"><span class="hs-identifier hs-var">BB</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233014"><span class="hs-identifier hs-var">x0</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233012"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233013"><span class="hs-identifier hs-var">y0</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233011"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233010"><span class="hs-identifier hs-var">w</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233009"><span class="hs-identifier hs-var">h</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span id="local-6989586621679233195"><span id="local-6989586621679233196"><span id="local-6989586621679233197"><span class="annot"><a href="Common.Object.Effect.html#readWidthHeight"><span class="hs-identifier hs-type">readWidthHeight</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversable</span></span><span> </span><span class="annot"><a href="#local-6989586621679233197"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679233197"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span class="annot"><a href="#local-6989586621679233196"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679233195"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Scene</span></span><span> </span><span class="annot"><a href="#local-6989586621679233196"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span></span></span></span><span>
+</span><span id="line-128"></span><span id="readWidthHeight"><span class="annot"><span class="annottext">readWidthHeight :: t (Object s a) -&gt; Scene s (Coord, Coord)
+</span><a href="Common.Object.Effect.html#readWidthHeight"><span class="hs-identifier hs-var hs-var">readWidthHeight</span></a></span></span><span> </span><span id="local-6989586621679233006"><span class="annot"><span class="annottext">t (Object s a)
+</span><a href="#local-6989586621679233006"><span class="hs-identifier hs-var">xs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-129"></span><span>  </span><span class="annot"><a href="Common.Object.Effect.html#BB"><span class="hs-identifier hs-type">BB</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233005"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233005"><span class="hs-identifier hs-var">w</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679233004"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233004"><span class="hs-identifier hs-var">h</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Maybe (BB Coord) -&gt; BB Coord
+forall a. HasCallStack =&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromJust</span></span><span> </span><span class="annot"><span class="annottext">(Maybe (BB Coord) -&gt; BB Coord)
+-&gt; (t (BB Coord) -&gt; Maybe (BB Coord)) -&gt; t (BB Coord) -&gt; BB Coord
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(BB Coord -&gt; Maybe (BB Coord)) -&gt; t (BB Coord) -&gt; Maybe (BB Coord)
+forall (t :: * -&gt; *) m a.
+(Foldable t, Monoid m) =&gt;
+(a -&gt; m) -&gt; t a -&gt; m
+</span><span class="hs-identifier hs-var">foldMap</span></span><span> </span><span class="annot"><span class="annottext">BB Coord -&gt; Maybe (BB Coord)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(t (BB Coord) -&gt; BB Coord)
+-&gt; Scene s (t (BB Coord)) -&gt; Scene s (BB Coord)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">(Object s a -&gt; Scene s (BB Coord))
+-&gt; t (Object s a) -&gt; Scene s (t (BB Coord))
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Traversable t, Monad m) =&gt;
+(a -&gt; m b) -&gt; t a -&gt; m (t b)
+</span><span class="hs-identifier hs-var">mapM</span></span><span> </span><span class="annot"><span class="annottext">Object s a -&gt; Scene s (BB Coord)
+forall s a. Object s a -&gt; Scene s (BB Coord)
+</span><a href="Common.Object.Effect.html#readRealBox"><span class="hs-identifier hs-var">readRealBox</span></a></span><span> </span><span class="annot"><span class="annottext">t (Object s a)
+</span><a href="#local-6989586621679233006"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-130"></span><span>  </span><span class="annot"><span class="annottext">(Coord, Coord) -&gt; Scene s (Coord, Coord)
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233005"><span class="hs-identifier hs-var">w</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679233004"><span class="hs-identifier hs-var">h</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-131"></span><span>
+</span><span id="line-132"></span><span class="hs-comment">-- |Create a new box around a target group.</span><span>
+</span><span id="line-133"></span><span id="local-6989586621679232998"><span id="local-6989586621679232999"><span id="local-6989586621679233000"><span class="annot"><a href="Common.Object.Effect.html#oBoxNewOverMany"><span class="hs-identifier hs-type">oBoxNewOverMany</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversable</span></span><span> </span><span class="annot"><a href="#local-6989586621679233000"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679233000"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span class="annot"><a href="#local-6989586621679232999"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679232998"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PixelRGBA8</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Scene</span></span><span> </span><span class="annot"><a href="#local-6989586621679232999"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span class="annot"><a href="#local-6989586621679232999"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="Common.Object.Effect.html#Box"><span class="hs-identifier hs-type">Box</span></a></span><span class="hs-special">)</span></span></span></span><span>
+</span><span id="line-134"></span><span id="oBoxNewOverMany"><span class="annot"><span class="annottext">oBoxNewOverMany :: t (Object s a) -&gt; PixelRGBA8 -&gt; Scene s (Object s Box)
+</span><a href="Common.Object.Effect.html#oBoxNewOverMany"><span class="hs-identifier hs-var hs-var">oBoxNewOverMany</span></a></span></span><span> </span><span id="local-6989586621679232997"><span class="annot"><span class="annottext">t (Object s a)
+</span><a href="#local-6989586621679232997"><span class="hs-identifier hs-var">targets</span></a></span></span><span> </span><span id="local-6989586621679232996"><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679232996"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-135"></span><span>  </span><span class="hs-special">(</span><span id="local-6989586621679232995"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232995"><span class="hs-identifier hs-var">w</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679232994"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232994"><span class="hs-identifier hs-var">h</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">t (Object s a) -&gt; Scene s (Coord, Coord)
+forall (t :: * -&gt; *) s a.
+Traversable t =&gt;
+t (Object s a) -&gt; Scene s (Coord, Coord)
+</span><a href="Common.Object.Effect.html#readWidthHeight"><span class="hs-identifier hs-var">readWidthHeight</span></a></span><span> </span><span class="annot"><span class="annottext">t (Object s a)
+</span><a href="#local-6989586621679232997"><span class="hs-identifier hs-var">targets</span></a></span><span>
+</span><span id="line-136"></span><span>  </span><span id="local-6989586621679232993"><span class="annot"><span class="annottext">V2 Coord
+</span><a href="#local-6989586621679232993"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">t (Object s a) -&gt; Scene s (V2 Coord)
+forall (t :: * -&gt; *) s a.
+Traversable t =&gt;
+t (Object s a) -&gt; Scene s (V2 Coord)
+</span><a href="Common.Object.Transform.html#readGroupTrans"><span class="hs-identifier hs-var">readGroupTrans</span></a></span><span> </span><span class="annot"><span class="annottext">t (Object s a)
+</span><a href="#local-6989586621679232997"><span class="hs-identifier hs-var">targets</span></a></span><span>
+</span><span id="line-137"></span><span>  </span><span id="local-6989586621679232992"><span class="annot"><span class="annottext">Object s Box
+</span><a href="#local-6989586621679232992"><span class="hs-identifier hs-var">res</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Box -&gt; Scene s (Object s Box)
+forall a s. Renderable a =&gt; a -&gt; Scene s (Object s a)
+</span><span class="hs-identifier hs-var">oNew</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord -&gt; Coord -&gt; Coord -&gt; PixelRGBA8 -&gt; Box
+</span><a href="Common.Object.Effect.html#Box"><span class="hs-identifier hs-var">Box</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232995"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="Common.Object.Effect.html#boxMargin"><span class="hs-identifier hs-var">boxMargin</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232994"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="Common.Object.Effect.html#boxMargin"><span class="hs-identifier hs-var">boxMargin</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="Common.Object.Effect.html#boxStrokeWidth"><span class="hs-identifier hs-var">boxStrokeWidth</span></a></span><span> </span><span class="annot"><span class="annottext">PixelRGBA8
+</span><a href="#local-6989586621679232996"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-138"></span><span>  </span><span class="annot"><span class="annottext">Object s Box -&gt; (ObjectData Box -&gt; ObjectData Box) -&gt; Scene s ()
+forall s a.
+Object s a -&gt; (ObjectData a -&gt; ObjectData a) -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oModify</span></span><span> </span><span class="annot"><span class="annottext">Object s Box
+</span><a href="#local-6989586621679232992"><span class="hs-identifier hs-var">res</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(V2 Coord -&gt; Identity (V2 Coord))
+-&gt; ObjectData Box -&gt; Identity (ObjectData Box)
+forall a. Lens' (ObjectData a) (V2 Coord)
+</span><span class="hs-identifier hs-var">oTranslate</span></span><span> </span><span class="annot"><span class="annottext">((V2 Coord -&gt; Identity (V2 Coord))
+ -&gt; ObjectData Box -&gt; Identity (ObjectData Box))
+-&gt; V2 Coord -&gt; ObjectData Box -&gt; ObjectData Box
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">V2 Coord
+</span><a href="#local-6989586621679232993"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-139"></span><span>  </span><span class="annot"><span class="annottext">Object s Box -&gt; Scene s (Object s Box)
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">Object s Box
+</span><a href="#local-6989586621679232992"><span class="hs-identifier hs-var">res</span></a></span><span>
+</span><span id="line-140"></span><span>
+</span><span id="line-141"></span><span class="hs-comment">-- |Grow the 'Box'.</span><span>
+</span><span id="line-142"></span><span id="local-6989586621679232991"><span class="annot"><a href="Common.Object.Effect.html#oBoxGrow"><span class="hs-identifier hs-type">oBoxGrow</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Duration</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span class="annot"><a href="#local-6989586621679232991"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="Common.Object.Effect.html#Box"><span class="hs-identifier hs-type">Box</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Scene</span></span><span> </span><span class="annot"><a href="#local-6989586621679232991"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span><span>
+</span><span id="line-143"></span><span id="oBoxGrow"><span class="annot"><span class="annottext">oBoxGrow :: Coord -&gt; Object s Box -&gt; Scene s ()
+</span><a href="Common.Object.Effect.html#oBoxGrow"><span class="hs-identifier hs-var hs-var">oBoxGrow</span></a></span></span><span> </span><span id="local-6989586621679232989"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232989"><span class="hs-identifier hs-var">dt</span></a></span></span><span> </span><span id="local-6989586621679232988"><span class="annot"><span class="annottext">Object s Box
+</span><a href="#local-6989586621679232988"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Object s Box -&gt; Scene s ()
+forall s a. Object s a -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oShow</span></span><span> </span><span class="annot"><span class="annottext">Object s Box
+</span><a href="#local-6989586621679232988"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Scene s () -&gt; Scene s () -&gt; Scene s ()
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f b
+</span><span class="hs-operator hs-var">*&gt;</span></span><span> </span><span class="annot"><span class="annottext">Object s Box
+-&gt; Coord
+-&gt; (Coord -&gt; ObjectData Box -&gt; ObjectData Box)
+-&gt; Scene s ()
+forall s a.
+Object s a
+-&gt; Coord -&gt; (Coord -&gt; ObjectData a -&gt; ObjectData a) -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oTween</span></span><span> </span><span class="annot"><span class="annottext">Object s Box
+</span><a href="#local-6989586621679232988"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232989"><span class="hs-identifier hs-var">dt</span></a></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679232985"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232985"><span class="hs-identifier hs-var">t'</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679232984"><span class="annot"><span class="annottext">t :: Coord
+</span><a href="#local-6989586621679232984"><span class="hs-identifier hs-var hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232985"><span class="hs-identifier hs-var">t'</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232989"><span class="hs-identifier hs-var">dt</span></a></span><span> </span><span class="hs-keyword">in</span><span>
+</span><span id="line-144"></span><span>  </span><span class="annot"><span class="annottext">(Box -&gt; Identity Box)
+-&gt; ObjectData Box -&gt; Identity (ObjectData Box)
+forall a. Renderable a =&gt; Lens' (ObjectData a) a
+</span><span class="hs-identifier hs-var">oValue</span></span><span> </span><span class="annot"><span class="annottext">((Box -&gt; Identity Box)
+ -&gt; ObjectData Box -&gt; Identity (ObjectData Box))
+-&gt; (Box -&gt; Box) -&gt; ObjectData Box -&gt; ObjectData Box
+forall s t a b. ASetter s t a b -&gt; (a -&gt; b) -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">%~</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Coord -&gt; Identity Coord) -&gt; Box -&gt; Identity Box
+Lens' Box Coord
+</span><a href="Common.Object.Effect.html#boxStart"><span class="hs-identifier hs-var">boxStart</span></a></span><span> </span><span class="annot"><span class="annottext">((Coord -&gt; Identity Coord) -&gt; Box -&gt; Identity Box)
+-&gt; Coord -&gt; Box -&gt; Box
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0.5</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0.6</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232984"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Box -&gt; Box) -&gt; (Box -&gt; Box) -&gt; Box -&gt; Box
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Coord -&gt; Identity Coord) -&gt; Box -&gt; Identity Box
+Lens' Box Coord
+</span><a href="Common.Object.Effect.html#boxEnd"><span class="hs-identifier hs-var">boxEnd</span></a></span><span> </span><span class="annot"><span class="annottext">((Coord -&gt; Identity Coord) -&gt; Box -&gt; Identity Box)
+-&gt; Coord -&gt; Box -&gt; Box
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0.5</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">1.6</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232984"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-145"></span><span>
+</span><span id="line-146"></span><span class="hs-comment">-- |Erase the 'Box'.</span><span>
+</span><span id="line-147"></span><span id="local-6989586621679232981"><span class="annot"><a href="Common.Object.Effect.html#oBoxErase"><span class="hs-identifier hs-type">oBoxErase</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Duration</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span class="annot"><a href="#local-6989586621679232981"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="Common.Object.Effect.html#Box"><span class="hs-identifier hs-type">Box</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Scene</span></span><span> </span><span class="annot"><a href="#local-6989586621679232981"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span><span>
+</span><span id="line-148"></span><span id="oBoxErase"><span class="annot"><span class="annottext">oBoxErase :: Coord -&gt; Object s Box -&gt; Scene s ()
+</span><a href="Common.Object.Effect.html#oBoxErase"><span class="hs-identifier hs-var hs-var">oBoxErase</span></a></span></span><span> </span><span id="local-6989586621679232980"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232980"><span class="hs-identifier hs-var">dt</span></a></span></span><span> </span><span id="local-6989586621679232979"><span class="annot"><span class="annottext">Object s Box
+</span><a href="#local-6989586621679232979"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-149"></span><span>  </span><span class="annot"><span class="annottext">Object s Box
+-&gt; Coord
+-&gt; (Coord -&gt; ObjectData Box -&gt; ObjectData Box)
+-&gt; Scene s ()
+forall s a.
+Object s a
+-&gt; Coord -&gt; (Coord -&gt; ObjectData a -&gt; ObjectData a) -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oTween</span></span><span> </span><span class="annot"><span class="annottext">Object s Box
+</span><a href="#local-6989586621679232979"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232980"><span class="hs-identifier hs-var">dt</span></a></span><span> </span><span class="annot"><span class="annottext">((Coord -&gt; ObjectData Box -&gt; ObjectData Box) -&gt; Scene s ())
+-&gt; (Coord -&gt; ObjectData Box -&gt; ObjectData Box) -&gt; Scene s ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679232978"><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232978"><span class="hs-identifier hs-var">t'</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679232977"><span class="annot"><span class="annottext">t :: Coord
+</span><a href="#local-6989586621679232977"><span class="hs-identifier hs-var hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232978"><span class="hs-identifier hs-var">t'</span></a></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232980"><span class="hs-identifier hs-var">dt</span></a></span><span> </span><span class="hs-keyword">in</span><span>
+</span><span id="line-150"></span><span>    </span><span class="annot"><span class="annottext">(Box -&gt; Identity Box)
+-&gt; ObjectData Box -&gt; Identity (ObjectData Box)
+forall a. Renderable a =&gt; Lens' (ObjectData a) a
+</span><span class="hs-identifier hs-var">oValue</span></span><span> </span><span class="annot"><span class="annottext">((Box -&gt; Identity Box)
+ -&gt; ObjectData Box -&gt; Identity (ObjectData Box))
+-&gt; (Box -&gt; Box) -&gt; ObjectData Box -&gt; ObjectData Box
+forall s t a b. ASetter s t a b -&gt; (a -&gt; b) -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">%~</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Coord -&gt; Identity Coord) -&gt; Box -&gt; Identity Box
+Lens' Box Coord
+</span><a href="Common.Object.Effect.html#boxStart"><span class="hs-identifier hs-var">boxStart</span></a></span><span> </span><span class="annot"><span class="annottext">((Coord -&gt; Identity Coord) -&gt; Box -&gt; Identity Box)
+-&gt; Coord -&gt; Box -&gt; Box
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0.5</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">1.6</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232977"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Box -&gt; Box) -&gt; (Box -&gt; Box) -&gt; Box -&gt; Box
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Coord -&gt; Identity Coord) -&gt; Box -&gt; Identity Box
+Lens' Box Coord
+</span><a href="Common.Object.Effect.html#boxEnd"><span class="hs-identifier hs-var">boxEnd</span></a></span><span> </span><span class="annot"><span class="annottext">((Coord -&gt; Identity Coord) -&gt; Box -&gt; Identity Box)
+-&gt; Coord -&gt; Box -&gt; Box
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">1.5</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0.6</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; Coord -&gt; Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><a href="#local-6989586621679232977"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-151"></span><span>  </span><span class="annot"><span class="annottext">Object s Box -&gt; Scene s ()
+forall s a. Object s a -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oHide</span></span><span> </span><span class="annot"><span class="annottext">Object s Box
+</span><a href="#local-6989586621679232979"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-152"></span><span>
+</span><span id="line-153"></span><span class="hs-comment">-- |Wiggle the 'Object'.</span><span>
+</span><span id="line-154"></span><span id="local-6989586621679232973"><span id="local-6989586621679232974"><span id="local-6989586621679232975"><span class="annot"><a href="Common.Object.Effect.html#oWiggle"><span class="hs-identifier hs-type">oWiggle</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversable</span></span><span> </span><span class="annot"><a href="#local-6989586621679232975"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679232975"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span class="annot"><a href="#local-6989586621679232974"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679232973"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Scene</span></span><span> </span><span class="annot"><a href="#local-6989586621679232974"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span></span></span><span>
+</span><span id="line-155"></span><span id="oWiggle"><span class="annot"><span class="annottext">oWiggle :: t (Object s a) -&gt; Scene s ()
+</span><a href="Common.Object.Effect.html#oWiggle"><span class="hs-identifier hs-var hs-var">oWiggle</span></a></span></span><span> </span><span id="local-6989586621679232972"><span class="annot"><span class="annottext">t (Object s a)
+</span><a href="#local-6989586621679232972"><span class="hs-identifier hs-var">xs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-156"></span><span>  </span><span id="local-6989586621679232971"><span class="annot"><span class="annottext">V2 Coord
+</span><a href="#local-6989586621679232971"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">t (Object s a) -&gt; Scene s (V2 Coord)
+forall (t :: * -&gt; *) s a.
+Traversable t =&gt;
+t (Object s a) -&gt; Scene s (V2 Coord)
+</span><a href="Common.Object.Transform.html#readGroupTrans"><span class="hs-identifier hs-var">readGroupTrans</span></a></span><span> </span><span class="annot"><span class="annottext">t (Object s a)
+</span><a href="#local-6989586621679232972"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-157"></span><span>  </span><span class="annot"><span class="annottext">t (Object s a) -&gt; (Object s a -&gt; Scene s ()) -&gt; Scene s ()
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Foldable t, Monad m) =&gt;
+t a -&gt; (a -&gt; m b) -&gt; m ()
+</span><span class="hs-identifier hs-var">forM_</span></span><span> </span><span class="annot"><span class="annottext">t (Object s a)
+</span><a href="#local-6989586621679232972"><span class="hs-identifier hs-var">xs</span></a></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679232969"><span class="annot"><span class="annottext">Object s a
+</span><a href="#local-6989586621679232969"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-158"></span><span>    </span><span id="local-6989586621679232968"><span class="annot"><span class="annottext">V2 Coord
+</span><a href="#local-6989586621679232968"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Object s a
+-&gt; Getting (V2 Coord) (ObjectData a) (V2 Coord)
+-&gt; Scene s (V2 Coord)
+forall s a b. Object s a -&gt; Getting b (ObjectData a) b -&gt; Scene s b
+</span><span class="hs-identifier hs-var">oRead</span></span><span> </span><span class="annot"><span class="annottext">Object s a
+</span><a href="#local-6989586621679232969"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Getting (V2 Coord) (ObjectData a) (V2 Coord)
+forall a. Lens' (ObjectData a) (V2 Coord)
+</span><span class="hs-identifier hs-var">oTranslate</span></span><span>
+</span><span id="line-159"></span><span>    </span><span class="annot"><span class="annottext">Object s a -&gt; (SVG -&gt; Animation) -&gt; Scene s ()
+forall s a. Object s a -&gt; (SVG -&gt; Animation) -&gt; Scene s ()
+</span><span class="hs-identifier hs-var">oShowWith</span></span><span> </span><span class="annot"><span class="annottext">Object s a
+</span><a href="#local-6989586621679232969"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Effect -&gt; Animation -&gt; Animation
+</span><span class="hs-identifier hs-var">applyE</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Coord -&gt; Effect -&gt; Effect
+</span><a href="Common.Animation.Effects.html#aroundE"><span class="hs-identifier hs-var">aroundE</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">V2 Coord
+</span><a href="#local-6989586621679232971"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">V2 Coord -&gt; V2 Coord -&gt; V2 Coord
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">V2 Coord
+</span><a href="#local-6989586621679232968"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Coord -&gt; Effect
+</span><a href="Common.Animation.Effects.html#highlightE"><span class="hs-identifier hs-var">highlightE</span></a></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">0.2</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Animation -&gt; Animation) -&gt; (SVG -&gt; Animation) -&gt; SVG -&gt; Animation
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Coord -&gt; SVG -&gt; Animation
+</span><span class="hs-identifier hs-var">staticFrame</span></span><span> </span><span class="annot"><span class="annottext">Coord
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span>
+</span><span id="line-160"></span></pre></body></html>

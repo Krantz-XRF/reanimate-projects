@@ -1,0 +1,121 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Morph.Cache</span><span>
+</span><span id="line-2"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Morph.Cache.html#cachePointCorrespondence"><span class="hs-identifier">cachePointCorrespondence</span></a></span><span> </span><span class="hs-comment">-- :: Int -&gt; PointCorrespondence -&gt; PointCorrespondence</span><span>
+</span><span id="line-3"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-4"></span><span>
+</span><span id="line-5"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Exception</span></span><span>
+</span><span id="line-6"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString</span></span><span>        </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">B</span></span><span>
+</span><span id="line-7"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Hashable</span></span><span>
+</span><span id="line-8"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Serialize</span></span><span>
+</span><span id="line-9"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Cache.html"><span class="hs-identifier">Reanimate.Cache</span></a></span><span>        </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Cache.html#encodeInt"><span class="hs-identifier">encodeInt</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-10"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Misc.html"><span class="hs-identifier">Reanimate.Misc</span></a></span><span>         </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Misc.html#renameOrCopyFile"><span class="hs-identifier">renameOrCopyFile</span></a></span><span class="hs-special">,</span><span class="annot"><a href="Reanimate.Misc.html#getReanimateCacheDirectory"><span class="hs-identifier">getReanimateCacheDirectory</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Morph.Common.html"><span class="hs-identifier">Reanimate.Morph.Common</span></a></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.Directory</span></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.FilePath</span></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO</span></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO.Temp</span></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO.Unsafe</span></span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-comment">-- type PointCorrespondence = Polygon &#8594; Polygon &#8594; (Polygon, Polygon)</span><span>
+</span><span id="line-19"></span><span class="annot"><a href="Reanimate.Morph.Cache.html#cachePointCorrespondence"><span class="hs-identifier hs-type">cachePointCorrespondence</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Morph.Common.html#PointCorrespondence"><span class="hs-identifier hs-type">PointCorrespondence</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Morph.Common.html#PointCorrespondence"><span class="hs-identifier hs-type">PointCorrespondence</span></a></span><span>
+</span><span id="line-20"></span><span id="cachePointCorrespondence"><span class="annot"><span class="annottext">cachePointCorrespondence :: Int -&gt; PointCorrespondence -&gt; PointCorrespondence
+</span><a href="Reanimate.Morph.Cache.html#cachePointCorrespondence"><span class="hs-identifier hs-var hs-var">cachePointCorrespondence</span></a></span></span><span> </span><span id="local-6989586621679545732"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545732"><span class="hs-identifier hs-var">ident</span></a></span></span><span> </span><span id="local-6989586621679545731"><span class="annot"><span class="annottext">PointCorrespondence
+</span><a href="#local-6989586621679545731"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span id="local-6989586621679545730"><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545730"><span class="hs-identifier hs-var">src</span></a></span></span><span> </span><span id="local-6989586621679545729"><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545729"><span class="hs-identifier hs-var">dst</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO (Polygon, Polygon) -&gt; (Polygon, Polygon)
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO (Polygon, Polygon) -&gt; (Polygon, Polygon))
+-&gt; IO (Polygon, Polygon) -&gt; (Polygon, Polygon)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-21"></span><span>    </span><span id="local-6989586621679545727"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679545727"><span class="hs-identifier hs-var">root</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO FilePath
+</span><a href="Reanimate.Misc.html#getReanimateCacheDirectory"><span class="hs-identifier hs-var">getReanimateCacheDirectory</span></a></span><span>
+</span><span id="line-22"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679545726"><span class="annot"><span class="annottext">path :: FilePath
+</span><a href="#local-6989586621679545726"><span class="hs-identifier hs-var hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679545727"><span class="hs-identifier hs-var">root</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+</span><span class="hs-operator hs-var">&lt;/&gt;</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679545724"><span class="hs-identifier hs-var">template</span></a></span><span>
+</span><span id="line-23"></span><span>    </span><span id="local-6989586621679545723"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679545723"><span class="hs-identifier hs-var">hit</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO Bool
+</span><span class="hs-identifier hs-var">doesFileExist</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679545726"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-24"></span><span>    </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679545723"><span class="hs-identifier hs-var">hit</span></a></span><span>
+</span><span id="line-25"></span><span>      </span><span class="hs-keyword">then</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-26"></span><span>        </span><span id="local-6989586621679545721"><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679545721"><span class="hs-identifier hs-var">inp</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO ByteString
+</span><span class="hs-identifier hs-var">B.readFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679545726"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-27"></span><span>        </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; Either FilePath (Polygon, Polygon)
+forall a. Serialize a =&gt; ByteString -&gt; Either FilePath a
+</span><span class="hs-identifier hs-var">decode</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679545721"><span class="hs-identifier hs-var">inp</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-28"></span><span>          </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span class="hs-special">{</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-29"></span><span>            </span><span class="annot"><span class="annottext">FilePath -&gt; IO ()
+</span><span class="hs-identifier hs-var">removeFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679545726"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-30"></span><span>            </span><span class="annot"><span class="annottext">FilePath -&gt; IO (Polygon, Polygon)
+</span><a href="#local-6989586621679545717"><span class="hs-identifier hs-var">gen</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679545726"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-31"></span><span>          </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679545716"><span class="annot"><span class="annottext">(Polygon, Polygon)
+</span><a href="#local-6989586621679545716"><span class="hs-identifier hs-var">out</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Polygon, Polygon) -&gt; IO (Polygon, Polygon)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Polygon, Polygon)
+</span><a href="#local-6989586621679545716"><span class="hs-identifier hs-var">out</span></a></span><span>
+</span><span id="line-32"></span><span>      </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO (Polygon, Polygon)
+</span><a href="#local-6989586621679545717"><span class="hs-identifier hs-var">gen</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679545726"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-33"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-34"></span><span>    </span><span id="local-6989586621679545717"><span class="annot"><span class="annottext">gen :: FilePath -&gt; IO (Polygon, Polygon)
+</span><a href="#local-6989586621679545717"><span class="hs-identifier hs-var hs-var">gen</span></a></span></span><span> </span><span id="local-6989586621679545715"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679545715"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-35"></span><span>      </span><span id="local-6989586621679545714"><span class="annot"><span class="annottext">(Polygon, Polygon)
+</span><a href="#local-6989586621679545714"><span class="hs-identifier hs-var">correspondence</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Polygon, Polygon) -&gt; IO (Polygon, Polygon)
+forall a. a -&gt; IO a
+</span><span class="hs-identifier hs-var">evaluate</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">PointCorrespondence
+</span><a href="#local-6989586621679545731"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545730"><span class="hs-identifier hs-var">src</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545729"><span class="hs-identifier hs-var">dst</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-36"></span><span>      </span><span class="annot"><span class="annottext">FilePath -&gt; (FilePath -&gt; Handle -&gt; IO ()) -&gt; IO ()
+forall (m :: * -&gt; *) a.
+(MonadIO m, MonadMask m) =&gt;
+FilePath -&gt; (FilePath -&gt; Handle -&gt; m a) -&gt; m a
+</span><span class="hs-identifier hs-var">withSystemTempFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679545724"><span class="hs-identifier hs-var">template</span></a></span><span> </span><span class="annot"><span class="annottext">((FilePath -&gt; Handle -&gt; IO ()) -&gt; IO ())
+-&gt; (FilePath -&gt; Handle -&gt; IO ()) -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679545711"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679545711"><span class="hs-identifier hs-var">tmp</span></a></span></span><span> </span><span id="local-6989586621679545710"><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679545710"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-37"></span><span>        </span><span class="annot"><span class="annottext">Handle -&gt; IO ()
+</span><span class="hs-identifier hs-var">hClose</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679545710"><span class="hs-identifier hs-var">h</span></a></span><span>
+</span><span id="line-38"></span><span>        </span><span class="annot"><span class="annottext">FilePath -&gt; ByteString -&gt; IO ()
+</span><span class="hs-identifier hs-var">B.writeFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679545711"><span class="hs-identifier hs-var">tmp</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Polygon, Polygon) -&gt; ByteString
+forall a. Serialize a =&gt; a -&gt; ByteString
+</span><span class="hs-identifier hs-var">encode</span></span><span> </span><span class="annot"><span class="annottext">(Polygon, Polygon)
+</span><a href="#local-6989586621679545714"><span class="hs-identifier hs-var">correspondence</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-39"></span><span>        </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; IO ()
+</span><a href="Reanimate.Misc.html#renameOrCopyFile"><span class="hs-identifier hs-var">renameOrCopyFile</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679545711"><span class="hs-identifier hs-var">tmp</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679545715"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-40"></span><span>      </span><span class="annot"><span class="annottext">(Polygon, Polygon) -&gt; IO (Polygon, Polygon)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Polygon, Polygon)
+</span><a href="#local-6989586621679545714"><span class="hs-identifier hs-var">correspondence</span></a></span><span>
+</span><span id="line-41"></span><span>    </span><span id="local-6989586621679545724"><span class="annot"><span class="annottext">template :: FilePath
+</span><a href="#local-6989586621679545724"><span class="hs-identifier hs-var hs-var">template</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; FilePath
+</span><a href="Reanimate.Cache.html#encodeInt"><span class="hs-identifier hs-var">encodeInt</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545706"><span class="hs-identifier hs-var">key</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+</span><span class="hs-operator hs-var">&lt;.&gt;</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;morph&quot;</span></span><span>
+</span><span id="line-42"></span><span>    </span><span id="local-6989586621679545706"><span class="annot"><span class="annottext">key :: Int
+</span><a href="#local-6989586621679545706"><span class="hs-identifier hs-var hs-var">key</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; (Polygon, Polygon) -&gt; Int
+forall a. Hashable a =&gt; Int -&gt; a -&gt; Int
+</span><span class="hs-identifier hs-var">hashWithSalt</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545732"><span class="hs-identifier hs-var">ident</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545730"><span class="hs-identifier hs-var">src</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545729"><span class="hs-identifier hs-var">dst</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-43"></span></pre></body></html>

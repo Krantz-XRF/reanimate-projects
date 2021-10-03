@@ -1,0 +1,1005 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE TypeOperators, MultiParamTypeClasses, UndecidableInstances
+           , TypeSynonymInstances, FlexibleInstances
+           , FlexibleContexts, TypeFamilies
+           , ScopedTypeVariables, CPP  #-}</span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- The ScopedTypeVariables is there just as a bug work-around.  Without it</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- I get a bogus error about context mismatch for mutually recursive</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- definitions.  This bug was introduced between ghc 6.9.20080622 and</span><span>
+</span><span id="line-9"></span><span class="hs-comment">-- 6.10.0.20081007.</span><span>
+</span><span id="line-10"></span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-comment">-- {-# OPTIONS_GHC -ddump-simpl-stats -ddump-simpl #-}</span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-comment">-- TODO: remove FlexibleContexts</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-pragma">{-# OPTIONS_GHC -Wall #-}</span><span>
+</span><span id="line-17"></span><span class="hs-comment">----------------------------------------------------------------------</span><span>
+</span><span id="line-18"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-19"></span><span class="hs-comment">-- Module      :  Data.Maclaurin</span><span>
+</span><span id="line-20"></span><span class="hs-comment">-- Copyright   :  (c) Conal Elliott 2008</span><span>
+</span><span id="line-21"></span><span class="hs-comment">-- License     :  BSD3</span><span>
+</span><span id="line-22"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-23"></span><span class="hs-comment">-- Maintainer  :  conal@conal.net</span><span>
+</span><span id="line-24"></span><span class="hs-comment">-- Stability   :  experimental</span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-26"></span><span class="hs-comment">-- Infinite derivative towers via linear maps, using the Maclaurin</span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- representation.  See blog posts &lt;http://conal.net/blog/tag/derivative/&gt;.</span><span>
+</span><span id="line-28"></span><span class="hs-comment">----------------------------------------------------------------------</span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Data.Maclaurin</span><span>
+</span><span id="line-31"></span><span>  </span><span class="hs-special">(</span><span>
+</span><span id="line-32"></span><span>    </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator">(:&gt;)</span></a></span><span class="hs-special">(</span><span class="annot"><a href="Data.Maclaurin.html#D"><span class="hs-identifier">D</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#powVal"><span class="hs-identifier">powVal</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#derivative"><span class="hs-identifier">derivative</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#derivAtBasis"><span class="hs-identifier">derivAtBasis</span></a></span><span>  </span><span class="hs-comment">-- maybe not D</span><span>
+</span><span id="line-33"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A~%3E"><span class="hs-operator">(:~&gt;)</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#pureD"><span class="hs-identifier">pureD</span></a></span><span>
+</span><span id="line-34"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#fmapD"><span class="hs-identifier">fmapD</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3C%24%3E%3E"><span class="hs-operator">(&lt;$&gt;&gt;)</span></a></span><span class="hs-comment">{-, (&lt;*&gt;&gt;)-}</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#liftD2"><span class="hs-identifier">liftD2</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#liftD3"><span class="hs-identifier">liftD3</span></a></span><span>
+</span><span id="line-35"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#idD"><span class="hs-identifier">idD</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#fstD"><span class="hs-identifier">fstD</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#sndD"><span class="hs-identifier">sndD</span></a></span><span>
+</span><span id="line-36"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#linearD"><span class="hs-identifier">linearD</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#distrib"><span class="hs-identifier">distrib</span></a></span><span>
+</span><span id="line-37"></span><span>  </span><span class="hs-comment">-- , (@.)</span><span>
+</span><span id="line-38"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator">(&gt;-&lt;)</span></a></span><span>
+</span><span id="line-39"></span><span>  </span><span class="annot"><span class="hs-comment">-- * Misc</span></span><span>
+</span><span id="line-40"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#pairD"><span class="hs-identifier">pairD</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#unpairD"><span class="hs-identifier">unpairD</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#tripleD"><span class="hs-identifier">tripleD</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#untripleD"><span class="hs-identifier">untripleD</span></a></span><span>
+</span><span id="line-41"></span><span>  </span><span class="hs-special">)</span><span> </span><span>
+</span><span id="line-42"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- import Control.Applicative (liftA2)</span><span>
+</span><span id="line-45"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Function</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">on</span></span><span class="hs-special">)</span><span>
+</span><span id="line-46"></span><span>
+</span><span id="line-47"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Data.VectorSpace.html"><span class="hs-identifier">Data.VectorSpace</span></a></span><span>
+</span><span id="line-48"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.NumInstances</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-49"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.MemoTrie</span></span><span>
+</span><span id="line-50"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Data.Basis.html"><span class="hs-identifier">Data.Basis</span></a></span><span>
+</span><span id="line-51"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Data.LinearMap.html"><span class="hs-identifier">Data.LinearMap</span></a></span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Boolean</span></span><span class="hs-cpp">
+
+#if MIN_VERSION_base(4,8,0)
+</span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Prelude</span></span><span> </span><span class="hs-keyword">hiding</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(&lt;*)</span></span><span class="hs-special">)</span><span class="hs-cpp">
+#endif
+</span><span>
+</span><span id="line-59"></span><span class="hs-keyword">infixr</span><span> </span><span class="hs-number">9</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#D"><span class="hs-operator hs-type">`D`</span></a></span><span>
+</span><span id="line-60"></span><span class="hs-comment">-- | Tower of derivatives.</span><span>
+</span><span id="line-61"></span><span class="hs-keyword">data</span><span> </span><span id="local-6989586621679059885"><span class="annot"><a href="#local-6989586621679059885"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span id="%3A%3E"><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-var">:&gt;</span></a></span></span><span> </span><span id="local-6989586621679059886"><span class="annot"><a href="#local-6989586621679059886"><span class="hs-identifier hs-type">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="D"><span class="annot"><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-var">D</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="powVal"><span class="annot"><span class="annottext">(a :&gt; b) -&gt; b
+</span><a href="Data.Maclaurin.html#powVal"><span class="hs-identifier hs-var hs-var">powVal</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679059886"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span> </span><span id="derivative"><span class="annot"><span class="annottext">(a :&gt; b) -&gt; a :-* (a :&gt; b)
+</span><a href="Data.Maclaurin.html#derivative"><span class="hs-identifier hs-var hs-var">derivative</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679059885"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.LinearMap.html#%3A-%2A"><span class="hs-operator hs-type">:-*</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059885"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059886"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="hs-comment">-- | Infinitely differentiable functions</span><span>
+</span><span id="line-64"></span><span class="hs-keyword">type</span><span> </span><span id="local-6989586621679059683"><span class="annot"><a href="#local-6989586621679059683"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span id="%3A~%3E"><span class="annot"><a href="Data.Maclaurin.html#%3A~%3E"><span class="hs-operator hs-var">:~&gt;</span></a></span></span><span> </span><span id="local-6989586621679059682"><span class="annot"><a href="#local-6989586621679059682"><span class="hs-identifier hs-type">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="#local-6989586621679059683"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059683"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="annot"><a href="#local-6989586621679059682"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-65"></span><span>
+</span><span id="line-66"></span><span class="hs-comment">-- Handy for missing methods.</span><span>
+</span><span id="line-67"></span><span id="local-6989586621679059789"><span class="annot"><a href="Data.Maclaurin.html#noOv"><span class="hs-identifier hs-type">noOv</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059789"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-68"></span><span id="noOv"><span class="annot"><span class="annottext">noOv :: String -&gt; a
+</span><a href="Data.Maclaurin.html#noOv"><span class="hs-identifier hs-var hs-var">noOv</span></a></span></span><span> </span><span id="local-6989586621679059680"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679059680"><span class="hs-identifier hs-var">op</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; a
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679059680"><span class="hs-identifier hs-var">op</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;: not defined on a :&gt; b&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-69"></span><span>
+</span><span id="line-70"></span><span class="hs-comment">-- | Constant derivative tower.</span><span>
+</span><span id="line-71"></span><span id="local-6989586621679059814"><span id="local-6989586621679059815"><span class="annot"><a href="Data.Maclaurin.html#pureD"><span class="hs-identifier hs-type">pureD</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.AdditiveGroup.html#AdditiveGroup"><span class="hs-identifier hs-type">AdditiveGroup</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059815"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059814"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059814"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059815"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059814"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="annot"><a href="#local-6989586621679059815"><span class="hs-identifier hs-type">b</span></a></span></span></span><span>
+</span><span id="line-72"></span><span id="pureD"><span class="annot"><span class="annottext">pureD :: b -&gt; a :&gt; b
+</span><a href="Data.Maclaurin.html#pureD"><span class="hs-identifier hs-var hs-var">pureD</span></a></span></span><span> </span><span id="local-6989586621679059678"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679059678"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679059678"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">b -&gt; (a :-* (a :&gt; b)) -&gt; a :&gt; b
+forall a b. b -&gt; (a :-* (a :&gt; b)) -&gt; a :&gt; b
+</span><a href="Data.Maclaurin.html#D"><span class="hs-operator hs-var">`D`</span></a></span><span> </span><span class="annot"><span class="annottext">a :-* (a :&gt; b)
+forall v. AdditiveGroup v =&gt; v
+</span><a href="Data.AdditiveGroup.html#zeroV"><span class="hs-identifier hs-var">zeroV</span></a></span><span>
+</span><span id="line-73"></span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span class="hs-keyword">infixl</span><span> </span><span class="hs-number">4</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3C%24%3E%3E"><span class="hs-operator hs-type">&lt;$&gt;&gt;</span></a></span><span>
+</span><span id="line-76"></span><span class="hs-comment">-- | Map a /linear/ function over a derivative tower.</span><span>
+</span><span id="line-77"></span><span id="local-6989586621679059858"><span id="local-6989586621679059859"><span id="local-6989586621679059861"><span class="annot"><a href="Data.Maclaurin.html#fmapD"><span class="hs-identifier hs-type">fmapD</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3C%24%3E%3E"><span class="hs-operator hs-type">(&lt;$&gt;&gt;)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059861"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059859"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059858"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059861"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059859"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059861"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059858"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">)</span></span></span></span><span>
+</span><span id="line-78"></span><span id="fmapD"><span class="annot"><span class="annottext">fmapD :: (b -&gt; c) -&gt; (a :&gt; b) -&gt; a :&gt; c
+</span><a href="Data.Maclaurin.html#fmapD"><span class="hs-identifier hs-var hs-var">fmapD</span></a></span></span><span> </span><span id="local-6989586621679059676"><span class="annot"><span class="annottext">b -&gt; c
+</span><a href="#local-6989586621679059676"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(a :&gt; b) -&gt; a :&gt; c
+</span><a href="#local-6989586621679059675"><span class="hs-identifier hs-var">lf</span></a></span><span>
+</span><span id="line-79"></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-80"></span><span>   </span><span id="local-6989586621679059675"><span class="annot"><span class="annottext">lf :: (a :&gt; b) -&gt; a :&gt; c
+</span><a href="#local-6989586621679059675"><span class="hs-identifier hs-var hs-var">lf</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-type">D</span></a></span><span> </span><span id="local-6989586621679059674"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679059674"><span class="hs-identifier hs-var">b0</span></a></span></span><span> </span><span id="local-6989586621679059673"><span class="annot"><span class="annottext">a :-* (a :&gt; b)
+</span><a href="#local-6989586621679059673"><span class="hs-identifier hs-var">b'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">c -&gt; (a :-* (a :&gt; c)) -&gt; a :&gt; c
+forall a b. b -&gt; (a :-* (a :&gt; b)) -&gt; a :&gt; b
+</span><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-var">D</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b -&gt; c
+</span><a href="#local-6989586621679059676"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679059674"><span class="hs-identifier hs-var">b0</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Maybe (Sum (Basis a :-&gt;: (a :&gt; b)))
+ -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; c))))
+-&gt; (a :-* (a :&gt; b)) -&gt; a :-* (a :&gt; c)
+forall r s t u. (LMap' r s -&gt; LMap' t u) -&gt; (r :-* s) -&gt; t :-* u
+</span><a href="Data.LinearMap.html#inLMap"><span class="hs-identifier hs-var">inLMap</span></a></span><span class="annot"><span class="annottext">((Maybe (Sum (Basis a :-&gt;: (a :&gt; b)))
+  -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; c))))
+ -&gt; (a :-* (a :&gt; b)) -&gt; a :-* (a :&gt; c))
+-&gt; (((a :&gt; b) -&gt; a :&gt; c)
+    -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; b)))
+    -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; c))))
+-&gt; ((a :&gt; b) -&gt; a :&gt; c)
+-&gt; (a :-* (a :&gt; b))
+-&gt; a :-* (a :&gt; c)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span class="annot"><span class="annottext">((a :&gt; b) -&gt; a :&gt; c)
+-&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; b)))
+-&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; c)))
+forall (f :: * -&gt; *) a b.
+Functor f =&gt;
+(a -&gt; b) -&gt; MSum (f a) -&gt; MSum (f b)
+</span><a href="Data.LinearMap.html#liftL"><span class="hs-identifier hs-var">liftL</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(a :&gt; b) -&gt; a :&gt; c
+</span><a href="#local-6989586621679059675"><span class="hs-identifier hs-var">lf</span></a></span><span> </span><span class="annot"><span class="annottext">a :-* (a :&gt; b)
+</span><a href="#local-6989586621679059673"><span class="hs-identifier hs-var">b'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span id="%3C%24%3E%3E"><span class="annot"><span class="annottext">&lt;$&gt;&gt; :: (b -&gt; c) -&gt; (a :&gt; b) -&gt; a :&gt; c
+</span><a href="Data.Maclaurin.html#%3C%24%3E%3E"><span class="hs-operator hs-var hs-var">(&lt;$&gt;&gt;)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(b -&gt; c) -&gt; (a :&gt; b) -&gt; a :&gt; c
+forall a b c. HasTrie (Basis a) =&gt; (b -&gt; c) -&gt; (a :&gt; b) -&gt; a :&gt; c
+</span><a href="Data.Maclaurin.html#fmapD"><span class="hs-identifier hs-var">fmapD</span></a></span><span>
+</span><span id="line-83"></span><span>
+</span><span id="line-84"></span><span class="hs-comment">-- | Apply a /linear/ binary function over derivative towers.</span><span>
+</span><span id="line-85"></span><span id="local-6989586621679059777"><span id="local-6989586621679059778"><span id="local-6989586621679059779"><span id="local-6989586621679059780"><span class="annot"><a href="Data.Maclaurin.html#liftD2"><span class="hs-identifier hs-type">liftD2</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059780"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059780"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.AdditiveGroup.html#AdditiveGroup"><span class="hs-identifier hs-type">AdditiveGroup</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059779"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.AdditiveGroup.html#AdditiveGroup"><span class="hs-identifier hs-type">AdditiveGroup</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059778"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-86"></span><span>          </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059779"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059778"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059777"><span class="hs-identifier hs-type">d</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059780"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059779"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059780"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059778"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059780"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059777"><span class="hs-identifier hs-type">d</span></a></span><span class="hs-special">)</span></span></span></span></span><span>
+</span><span id="line-87"></span><span id="liftD2"><span class="annot"><span class="annottext">liftD2 :: (b -&gt; c -&gt; d) -&gt; (a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; d
+</span><a href="Data.Maclaurin.html#liftD2"><span class="hs-identifier hs-var hs-var">liftD2</span></a></span></span><span> </span><span id="local-6989586621679059669"><span class="annot"><span class="annottext">b -&gt; c -&gt; d
+</span><a href="#local-6989586621679059669"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; d
+</span><a href="#local-6989586621679059668"><span class="hs-identifier hs-var">lf</span></a></span><span>
+</span><span id="line-88"></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-89"></span><span>   </span><span id="local-6989586621679059668"><span class="annot"><span class="annottext">lf :: (a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; d
+</span><a href="#local-6989586621679059668"><span class="hs-identifier hs-var hs-var">lf</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-type">D</span></a></span><span> </span><span id="local-6989586621679059667"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679059667"><span class="hs-identifier hs-var">b0</span></a></span></span><span> </span><span id="local-6989586621679059666"><span class="annot"><span class="annottext">a :-* (a :&gt; b)
+</span><a href="#local-6989586621679059666"><span class="hs-identifier hs-var">b'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-type">D</span></a></span><span> </span><span id="local-6989586621679059665"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679059665"><span class="hs-identifier hs-var">c0</span></a></span></span><span> </span><span id="local-6989586621679059664"><span class="annot"><span class="annottext">a :-* (a :&gt; c)
+</span><a href="#local-6989586621679059664"><span class="hs-identifier hs-var">c'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">d -&gt; (a :-* (a :&gt; d)) -&gt; a :&gt; d
+forall a b. b -&gt; (a :-* (a :&gt; b)) -&gt; a :&gt; b
+</span><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-var">D</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b -&gt; c -&gt; d
+</span><a href="#local-6989586621679059669"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679059667"><span class="hs-identifier hs-var">b0</span></a></span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679059665"><span class="hs-identifier hs-var">c0</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Maybe (Sum (Basis a :-&gt;: (a :&gt; b)))
+ -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; c)))
+ -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; d))))
+-&gt; (a :-* (a :&gt; b)) -&gt; (a :-* (a :&gt; c)) -&gt; a :-* (a :&gt; d)
+forall r s t u v w.
+(LMap' r s -&gt; LMap' t u -&gt; LMap' v w)
+-&gt; (r :-* s) -&gt; (t :-* u) -&gt; v :-* w
+</span><a href="Data.LinearMap.html#inLMap2"><span class="hs-identifier hs-var">inLMap2</span></a></span><span class="annot"><span class="annottext">((Maybe (Sum (Basis a :-&gt;: (a :&gt; b)))
+  -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; c)))
+  -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; d))))
+ -&gt; (a :-* (a :&gt; b)) -&gt; (a :-* (a :&gt; c)) -&gt; a :-* (a :&gt; d))
+-&gt; (((a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; d)
+    -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; b)))
+    -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; c)))
+    -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; d))))
+-&gt; ((a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; d)
+-&gt; (a :-* (a :&gt; b))
+-&gt; (a :-* (a :&gt; c))
+-&gt; a :-* (a :&gt; d)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span class="annot"><span class="annottext">((a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; d)
+-&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; b)))
+-&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; c)))
+-&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; d)))
+forall (f :: * -&gt; *) a b c.
+(Applicative f, AdditiveGroup (f a), AdditiveGroup (f b)) =&gt;
+(a -&gt; b -&gt; c) -&gt; MSum (f a) -&gt; MSum (f b) -&gt; MSum (f c)
+</span><a href="Data.LinearMap.html#liftL2"><span class="hs-identifier hs-var">liftL2</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; d
+</span><a href="#local-6989586621679059668"><span class="hs-identifier hs-var">lf</span></a></span><span> </span><span class="annot"><span class="annottext">a :-* (a :&gt; b)
+</span><a href="#local-6989586621679059666"><span class="hs-identifier hs-var">b'</span></a></span><span> </span><span class="annot"><span class="annottext">a :-* (a :&gt; c)
+</span><a href="#local-6989586621679059664"><span class="hs-identifier hs-var">c'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-90"></span><span>
+</span><span id="line-91"></span><span>
+</span><span id="line-92"></span><span class="hs-comment">-- | Apply a /linear/ ternary function over derivative towers.</span><span>
+</span><span id="line-93"></span><span id="local-6989586621679059710"><span id="local-6989586621679059711"><span id="local-6989586621679059712"><span id="local-6989586621679059713"><span id="local-6989586621679059714"><span class="annot"><a href="Data.Maclaurin.html#liftD3"><span class="hs-identifier hs-type">liftD3</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059714"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059714"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-94"></span><span>          </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.AdditiveGroup.html#AdditiveGroup"><span class="hs-identifier hs-type">AdditiveGroup</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059713"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.AdditiveGroup.html#AdditiveGroup"><span class="hs-identifier hs-type">AdditiveGroup</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059712"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.AdditiveGroup.html#AdditiveGroup"><span class="hs-identifier hs-type">AdditiveGroup</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059711"><span class="hs-identifier hs-type">d</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-95"></span><span>          </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059713"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059712"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059711"><span class="hs-identifier hs-type">d</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059710"><span class="hs-identifier hs-type">e</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-96"></span><span>       </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059714"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059713"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059714"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059712"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059714"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059711"><span class="hs-identifier hs-type">d</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059714"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059710"><span class="hs-identifier hs-type">e</span></a></span><span class="hs-special">)</span></span></span></span></span></span><span>
+</span><span id="line-97"></span><span id="liftD3"><span class="annot"><span class="annottext">liftD3 :: (b -&gt; c -&gt; d -&gt; e) -&gt; (a :&gt; b) -&gt; (a :&gt; c) -&gt; (a :&gt; d) -&gt; a :&gt; e
+</span><a href="Data.Maclaurin.html#liftD3"><span class="hs-identifier hs-var hs-var">liftD3</span></a></span></span><span> </span><span id="local-6989586621679059661"><span class="annot"><span class="annottext">b -&gt; c -&gt; d -&gt; e
+</span><a href="#local-6989586621679059661"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(a :&gt; b) -&gt; (a :&gt; c) -&gt; (a :&gt; d) -&gt; a :&gt; e
+</span><a href="#local-6989586621679059660"><span class="hs-identifier hs-var">lf</span></a></span><span>
+</span><span id="line-98"></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-99"></span><span>   </span><span id="local-6989586621679059660"><span class="annot"><span class="annottext">lf :: (a :&gt; b) -&gt; (a :&gt; c) -&gt; (a :&gt; d) -&gt; a :&gt; e
+</span><a href="#local-6989586621679059660"><span class="hs-identifier hs-var hs-var">lf</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-type">D</span></a></span><span> </span><span id="local-6989586621679059659"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679059659"><span class="hs-identifier hs-var">b0</span></a></span></span><span> </span><span id="local-6989586621679059658"><span class="annot"><span class="annottext">a :-* (a :&gt; b)
+</span><a href="#local-6989586621679059658"><span class="hs-identifier hs-var">b'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-type">D</span></a></span><span> </span><span id="local-6989586621679059657"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679059657"><span class="hs-identifier hs-var">c0</span></a></span></span><span> </span><span id="local-6989586621679059656"><span class="annot"><span class="annottext">a :-* (a :&gt; c)
+</span><a href="#local-6989586621679059656"><span class="hs-identifier hs-var">c'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-type">D</span></a></span><span> </span><span id="local-6989586621679059655"><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679059655"><span class="hs-identifier hs-var">d0</span></a></span></span><span> </span><span id="local-6989586621679059654"><span class="annot"><span class="annottext">a :-* (a :&gt; d)
+</span><a href="#local-6989586621679059654"><span class="hs-identifier hs-var">d'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-100"></span><span>     </span><span class="annot"><span class="annottext">e -&gt; (a :-* (a :&gt; e)) -&gt; a :&gt; e
+forall a b. b -&gt; (a :-* (a :&gt; b)) -&gt; a :&gt; b
+</span><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-var">D</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b -&gt; c -&gt; d -&gt; e
+</span><a href="#local-6989586621679059661"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679059659"><span class="hs-identifier hs-var">b0</span></a></span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679059657"><span class="hs-identifier hs-var">c0</span></a></span><span> </span><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679059655"><span class="hs-identifier hs-var">d0</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Maybe (Sum (Basis a :-&gt;: (a :&gt; b)))
+ -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; c)))
+ -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; d)))
+ -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; e))))
+-&gt; (a :-* (a :&gt; b))
+-&gt; (a :-* (a :&gt; c))
+-&gt; (a :-* (a :&gt; d))
+-&gt; a :-* (a :&gt; e)
+forall r s t u v w x y.
+(LMap' r s -&gt; LMap' t u -&gt; LMap' v w -&gt; LMap' x y)
+-&gt; (r :-* s) -&gt; (t :-* u) -&gt; (v :-* w) -&gt; x :-* y
+</span><a href="Data.LinearMap.html#inLMap3"><span class="hs-identifier hs-var">inLMap3</span></a></span><span class="annot"><span class="annottext">((Maybe (Sum (Basis a :-&gt;: (a :&gt; b)))
+  -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; c)))
+  -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; d)))
+  -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; e))))
+ -&gt; (a :-* (a :&gt; b))
+ -&gt; (a :-* (a :&gt; c))
+ -&gt; (a :-* (a :&gt; d))
+ -&gt; a :-* (a :&gt; e))
+-&gt; (((a :&gt; b) -&gt; (a :&gt; c) -&gt; (a :&gt; d) -&gt; a :&gt; e)
+    -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; b)))
+    -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; c)))
+    -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; d)))
+    -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; e))))
+-&gt; ((a :&gt; b) -&gt; (a :&gt; c) -&gt; (a :&gt; d) -&gt; a :&gt; e)
+-&gt; (a :-* (a :&gt; b))
+-&gt; (a :-* (a :&gt; c))
+-&gt; (a :-* (a :&gt; d))
+-&gt; a :-* (a :&gt; e)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span class="annot"><span class="annottext">((a :&gt; b) -&gt; (a :&gt; c) -&gt; (a :&gt; d) -&gt; a :&gt; e)
+-&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; b)))
+-&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; c)))
+-&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; d)))
+-&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; e)))
+forall (f :: * -&gt; *) a b c d.
+(Applicative f, AdditiveGroup (f a), AdditiveGroup (f b),
+ AdditiveGroup (f c)) =&gt;
+(a -&gt; b -&gt; c -&gt; d)
+-&gt; MSum (f a) -&gt; MSum (f b) -&gt; MSum (f c) -&gt; MSum (f d)
+</span><a href="Data.LinearMap.html#liftL3"><span class="hs-identifier hs-var">liftL3</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(a :&gt; b) -&gt; (a :&gt; c) -&gt; (a :&gt; d) -&gt; a :&gt; e
+</span><a href="#local-6989586621679059660"><span class="hs-identifier hs-var">lf</span></a></span><span> </span><span class="annot"><span class="annottext">a :-* (a :&gt; b)
+</span><a href="#local-6989586621679059658"><span class="hs-identifier hs-var">b'</span></a></span><span> </span><span class="annot"><span class="annottext">a :-* (a :&gt; c)
+</span><a href="#local-6989586621679059656"><span class="hs-identifier hs-var">c'</span></a></span><span> </span><span class="annot"><span class="annottext">a :-* (a :&gt; d)
+</span><a href="#local-6989586621679059654"><span class="hs-identifier hs-var">d'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-101"></span><span>
+</span><span id="line-102"></span><span>
+</span><span id="line-103"></span><span class="hs-comment">-- TODO: Can liftD2 and liftD3 be defined in terms of a (&lt;*&gt;&gt;) similar to</span><span>
+</span><span id="line-104"></span><span class="hs-comment">-- (&lt;*&gt;)?  If so, can the speed be as good?</span><span>
+</span><span id="line-105"></span><span>
+</span><span id="line-106"></span><span class="hs-comment">-- liftD2 f a b = (f &lt;$&gt;&gt; a) &lt;*&gt;&gt; b</span><span>
+</span><span id="line-107"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-108"></span><span class="hs-comment">-- liftD3 f a b c = liftD2 f a b &lt;*&gt;&gt; c</span><span>
+</span><span id="line-109"></span><span>
+</span><span id="line-110"></span><span>
+</span><span id="line-111"></span><span class="hs-comment">-- | Differentiable identity function.  Sometimes called &quot;the</span><span>
+</span><span id="line-112"></span><span class="hs-comment">-- derivation variable&quot; or similar, but it's not really a variable.</span><span>
+</span><span id="line-113"></span><span id="local-6989586621679059651"><span class="annot"><a href="Data.Maclaurin.html#idD"><span class="hs-identifier hs-type">idD</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.VectorSpace.html#VectorSpace"><span class="hs-identifier hs-type">VectorSpace</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059651"><span class="hs-identifier hs-type">u</span></a></span><span> </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059651"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059651"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-114"></span><span>       </span><span class="annot"><a href="#local-6989586621679059651"><span class="hs-identifier hs-type">u</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A~%3E"><span class="hs-operator hs-type">:~&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059651"><span class="hs-identifier hs-type">u</span></a></span></span><span>
+</span><span id="line-115"></span><span id="idD"><span class="annot"><span class="annottext">idD :: u :~&gt; u
+</span><a href="Data.Maclaurin.html#idD"><span class="hs-identifier hs-var hs-var">idD</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(u -&gt; u) -&gt; u :~&gt; u
+forall u v.
+(HasBasis u, HasTrie (Basis u), AdditiveGroup v) =&gt;
+(u -&gt; v) -&gt; u :~&gt; v
+</span><a href="Data.Maclaurin.html#linearD"><span class="hs-identifier hs-var">linearD</span></a></span><span> </span><span class="annot"><span class="annottext">u -&gt; u
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-116"></span><span>
+</span><span id="line-117"></span><span class="hs-comment">-- or</span><span>
+</span><span id="line-118"></span><span class="hs-comment">--   dId v = D v pureD</span><span>
+</span><span id="line-119"></span><span>
+</span><span id="line-120"></span><span class="hs-comment">-- | Every linear function has a constant derivative equal to the function</span><span>
+</span><span id="line-121"></span><span class="hs-comment">-- itself (as a linear map).</span><span>
+</span><span id="line-122"></span><span id="local-6989586621679059821"><span id="local-6989586621679059823"><span class="annot"><a href="Data.Maclaurin.html#linearD"><span class="hs-identifier hs-type">linearD</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059823"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059823"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.AdditiveGroup.html#AdditiveGroup"><span class="hs-identifier hs-type">AdditiveGroup</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059821"><span class="hs-identifier hs-type">v</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-123"></span><span>           </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059823"><span class="hs-identifier hs-type">u</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059821"><span class="hs-identifier hs-type">v</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059823"><span class="hs-identifier hs-type">u</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A~%3E"><span class="hs-operator hs-type">:~&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059821"><span class="hs-identifier hs-type">v</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-124"></span><span>
+</span><span id="line-125"></span><span class="hs-comment">-- linearD f u = f u `D` linear (pureD . f)</span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span class="hs-comment">-- HEY!  I think there's a hugely wasteful recomputation going on in</span><span>
+</span><span id="line-128"></span><span class="hs-comment">-- 'linearD' above.  Note the definition of 'linear':</span><span>
+</span><span id="line-129"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-130"></span><span class="hs-comment">--     linear f = trie (f . basisValue)</span><span>
+</span><span id="line-131"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-132"></span><span class="hs-comment">-- Substituting,</span><span>
+</span><span id="line-133"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-134"></span><span class="hs-comment">--     linearD f u = f u `D` trie ((pureD . f) . basisValue)</span><span>
+</span><span id="line-135"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-136"></span><span class="hs-comment">-- The trie gets rebuilt for each @u@.</span><span>
+</span><span id="line-137"></span><span>
+</span><span id="line-138"></span><span class="hs-comment">-- Look for similar problems.</span><span>
+</span><span id="line-139"></span><span>
+</span><span id="line-140"></span><span id="linearD"><span class="annot"><span class="annottext">linearD :: (u -&gt; v) -&gt; u :~&gt; v
+</span><a href="Data.Maclaurin.html#linearD"><span class="hs-identifier hs-var hs-var">linearD</span></a></span></span><span> </span><span id="local-6989586621679059649"><span class="annot"><span class="annottext">u -&gt; v
+</span><a href="#local-6989586621679059649"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679059648"><span class="annot"><span class="annottext">u
+</span><a href="#local-6989586621679059648"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">u -&gt; v
+</span><a href="#local-6989586621679059649"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">u
+</span><a href="#local-6989586621679059648"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="annot"><span class="annottext">v -&gt; (u :-* (u :&gt; v)) -&gt; u :&gt; v
+forall a b. b -&gt; (a :-* (a :&gt; b)) -&gt; a :&gt; b
+</span><a href="Data.Maclaurin.html#D"><span class="hs-operator hs-var">`D`</span></a></span><span> </span><span class="annot"><span class="annottext">u :-* (u :&gt; v)
+</span><a href="#local-6989586621679059647"><span class="hs-identifier hs-var">d</span></a></span><span>
+</span><span id="line-141"></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-142"></span><span>   </span><span id="local-6989586621679059647"><span class="annot"><span class="annottext">d :: u :-* (u :&gt; v)
+</span><a href="#local-6989586621679059647"><span class="hs-identifier hs-var hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(u :~&gt; v) -&gt; u :-* (u :&gt; v)
+forall u v. (HasBasis u, HasTrie (Basis u)) =&gt; (u -&gt; v) -&gt; u :-* v
+</span><a href="Data.LinearMap.html#linear"><span class="hs-identifier hs-var">linear</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">v -&gt; u :&gt; v
+forall b a.
+(AdditiveGroup b, HasBasis a, HasTrie (Basis a)) =&gt;
+b -&gt; a :&gt; b
+</span><a href="Data.Maclaurin.html#pureD"><span class="hs-identifier hs-var">pureD</span></a></span><span> </span><span class="annot"><span class="annottext">(v -&gt; u :&gt; v) -&gt; (u -&gt; v) -&gt; u :~&gt; v
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">u -&gt; v
+</span><a href="#local-6989586621679059649"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-143"></span><span>
+</span><span id="line-144"></span><span class="hs-comment">-- (`D` d) . f</span><span>
+</span><span id="line-145"></span><span>
+</span><span id="line-146"></span><span class="hs-comment">-- linearD f = (`D` linear (pureD . f)) . f</span><span>
+</span><span id="line-147"></span><span>
+</span><span id="line-148"></span><span>
+</span><span id="line-149"></span><span class="hs-comment">-- Other examples of linear functions</span><span>
+</span><span id="line-150"></span><span>
+</span><span id="line-151"></span><span class="hs-comment">-- | Differentiable version of 'fst'</span><span>
+</span><span id="line-152"></span><span id="local-6989586621679059644"><span id="local-6989586621679059645"><span class="annot"><a href="Data.Maclaurin.html#fstD"><span class="hs-identifier hs-type">fstD</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059645"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059645"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-153"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059644"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059644"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-154"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#Scalar"><span class="hs-identifier hs-type">Scalar</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059645"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><span class="hs-glyph hs-type">~</span></span><span> </span><span class="annot"><a href="Data.VectorSpace.html#Scalar"><span class="hs-identifier hs-type">Scalar</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059644"><span class="hs-identifier hs-type">b</span></a></span><span>
+</span><span id="line-155"></span><span>        </span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059645"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span class="annot"><a href="#local-6989586621679059644"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A~%3E"><span class="hs-operator hs-type">:~&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059645"><span class="hs-identifier hs-type">a</span></a></span></span></span><span>
+</span><span id="line-156"></span><span id="fstD"><span class="annot"><span class="annottext">fstD :: (a, b) :~&gt; a
+</span><a href="Data.Maclaurin.html#fstD"><span class="hs-identifier hs-var hs-var">fstD</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((a, b) -&gt; a) -&gt; (a, b) :~&gt; a
+forall u v.
+(HasBasis u, HasTrie (Basis u), AdditiveGroup v) =&gt;
+(u -&gt; v) -&gt; u :~&gt; v
+</span><a href="Data.Maclaurin.html#linearD"><span class="hs-identifier hs-var">linearD</span></a></span><span> </span><span class="annot"><span class="annottext">(a, b) -&gt; a
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span>
+</span><span id="line-157"></span><span>
+</span><span id="line-158"></span><span class="hs-comment">-- | Differentiable version of 'snd'</span><span>
+</span><span id="line-159"></span><span id="local-6989586621679059642"><span id="local-6989586621679059643"><span class="annot"><a href="Data.Maclaurin.html#sndD"><span class="hs-identifier hs-type">sndD</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059643"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059643"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-160"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059642"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059642"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-161"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#Scalar"><span class="hs-identifier hs-type">Scalar</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059643"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><span class="hs-glyph hs-type">~</span></span><span> </span><span class="annot"><a href="Data.VectorSpace.html#Scalar"><span class="hs-identifier hs-type">Scalar</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059642"><span class="hs-identifier hs-type">b</span></a></span><span>
+</span><span id="line-162"></span><span>        </span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059643"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span class="annot"><a href="#local-6989586621679059642"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A~%3E"><span class="hs-operator hs-type">:~&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059642"><span class="hs-identifier hs-type">b</span></a></span></span></span><span>
+</span><span id="line-163"></span><span id="sndD"><span class="annot"><span class="annottext">sndD :: (a, b) :~&gt; b
+</span><a href="Data.Maclaurin.html#sndD"><span class="hs-identifier hs-var hs-var">sndD</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((a, b) -&gt; b) -&gt; (a, b) :~&gt; b
+forall u v.
+(HasBasis u, HasTrie (Basis u), AdditiveGroup v) =&gt;
+(u -&gt; v) -&gt; u :~&gt; v
+</span><a href="Data.Maclaurin.html#linearD"><span class="hs-identifier hs-var">linearD</span></a></span><span> </span><span class="annot"><span class="annottext">(a, b) -&gt; b
+forall a b. (a, b) -&gt; b
+</span><span class="hs-identifier hs-var">snd</span></span><span>
+</span><span id="line-164"></span><span>
+</span><span id="line-165"></span><span class="hs-comment">-- | Derivative tower for applying a binary function that distributes over</span><span>
+</span><span id="line-166"></span><span class="hs-comment">-- addition, such as multiplication.  A bit weaker assumption than</span><span>
+</span><span id="line-167"></span><span class="hs-comment">-- bilinearity.  Is bilinearity necessary for correctness here?</span><span>
+</span><span id="line-168"></span><span class="annot"><a href="Data.Maclaurin.html#distrib"><span class="hs-identifier hs-type">distrib</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679059753"><span class="annot"><a href="#local-6989586621679059753"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span id="local-6989586621679059751"><span class="annot"><a href="#local-6989586621679059751"><span class="hs-identifier hs-type">b</span></a></span></span><span> </span><span id="local-6989586621679059750"><span class="annot"><a href="#local-6989586621679059750"><span class="hs-identifier hs-type">c</span></a></span></span><span> </span><span id="local-6989586621679059752"><span class="annot"><a href="#local-6989586621679059752"><span class="hs-identifier hs-type">u</span></a></span></span><span class="hs-operator">.</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059753"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059753"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.AdditiveGroup.html#AdditiveGroup"><span class="hs-identifier hs-type">AdditiveGroup</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059752"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-169"></span><span>           </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059751"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059750"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059752"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059753"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059751"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059753"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059750"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059753"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059752"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-170"></span><span>
+</span><span id="line-171"></span><span id="distrib"><span class="annot"><span class="annottext">distrib :: (b -&gt; c -&gt; u) -&gt; (a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#distrib"><span class="hs-identifier hs-var hs-var">distrib</span></a></span></span><span> </span><span id="local-6989586621679059641"><span class="annot"><span class="annottext">b -&gt; c -&gt; u
+</span><a href="#local-6989586621679059641"><span class="hs-identifier hs-var">op</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; u
+</span><a href="#local-6989586621679059640"><span class="hs-operator hs-var">(#)</span></a></span><span>
+</span><span id="line-172"></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-173"></span><span>   </span><span id="local-6989586621679059639"><span class="annot"><span class="annottext">u :: a :&gt; b
+</span><a href="#local-6989586621679059639"><span class="hs-identifier hs-var">u</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-type">D</span></a></span><span> </span><span id="local-6989586621679059638"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679059638"><span class="hs-identifier hs-var">u0</span></a></span></span><span> </span><span id="local-6989586621679059637"><span class="annot"><span class="annottext">a :-* (a :&gt; b)
+</span><a href="#local-6989586621679059637"><span class="hs-identifier hs-var">u'</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679059640"><span class="annot"><span class="annottext"># :: (a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; u
+</span><a href="#local-6989586621679059640"><span class="hs-operator hs-var hs-var">#</span></a></span></span><span> </span><span id="local-6989586621679059636"><span class="annot"><span class="annottext">v :: a :&gt; c
+</span><a href="#local-6989586621679059636"><span class="hs-identifier hs-var">v</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-type">D</span></a></span><span> </span><span id="local-6989586621679059635"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679059635"><span class="hs-identifier hs-var">v0</span></a></span></span><span> </span><span id="local-6989586621679059634"><span class="annot"><span class="annottext">a :-* (a :&gt; c)
+</span><a href="#local-6989586621679059634"><span class="hs-identifier hs-var">v'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-174"></span><span>     </span><span class="annot"><span class="annottext">u -&gt; (a :-* (a :&gt; u)) -&gt; a :&gt; u
+forall a b. b -&gt; (a :-* (a :&gt; b)) -&gt; a :&gt; b
+</span><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-var">D</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679059638"><span class="hs-identifier hs-var">u0</span></a></span><span> </span><span class="annot"><span class="annottext">b -&gt; c -&gt; u
+</span><a href="#local-6989586621679059641"><span class="hs-operator hs-var">`op`</span></a></span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679059635"><span class="hs-identifier hs-var">v0</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Maybe (Sum (Basis a :-&gt;: (a :&gt; b)))
+ -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; u))))
+-&gt; (a :-* (a :&gt; b)) -&gt; a :-* (a :&gt; u)
+forall r s t u. (LMap' r s -&gt; LMap' t u) -&gt; (r :-* s) -&gt; t :-* u
+</span><a href="Data.LinearMap.html#inLMap"><span class="hs-identifier hs-var">inLMap</span></a></span><span class="annot"><span class="annottext">((Maybe (Sum (Basis a :-&gt;: (a :&gt; b)))
+  -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; u))))
+ -&gt; (a :-* (a :&gt; b)) -&gt; a :-* (a :&gt; u))
+-&gt; (((Basis a :-&gt;: (a :&gt; b)) -&gt; Basis a :-&gt;: (a :&gt; u))
+    -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; b)))
+    -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; u))))
+-&gt; ((Basis a :-&gt;: (a :&gt; b)) -&gt; Basis a :-&gt;: (a :&gt; u))
+-&gt; (a :-* (a :&gt; b))
+-&gt; a :-* (a :&gt; u)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span class="annot"><span class="annottext">((Basis a :-&gt;: (a :&gt; b)) -&gt; Basis a :-&gt;: (a :&gt; u))
+-&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; b)))
+-&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; u)))
+forall a b. (a -&gt; b) -&gt; MSum a -&gt; MSum b
+</span><a href="Data.LinearMap.html#liftMS"><span class="hs-identifier hs-var">liftMS</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">((Basis a -&gt; a :&gt; b) -&gt; Basis a -&gt; a :&gt; u)
+-&gt; (Basis a :-&gt;: (a :&gt; b)) -&gt; Basis a :-&gt;: (a :&gt; u)
+forall a c b d.
+(HasTrie a, HasTrie c) =&gt;
+((a -&gt; b) -&gt; c -&gt; d) -&gt; (a :-&gt;: b) -&gt; c :-&gt;: d
+</span><span class="hs-identifier hs-var">inTrie</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; u
+</span><a href="#local-6989586621679059640"><span class="hs-operator hs-var">#</span></a></span><span> </span><span class="annot"><span class="annottext">a :&gt; c
+</span><a href="#local-6989586621679059636"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">((a :&gt; b) -&gt; a :&gt; u) -&gt; (Basis a -&gt; a :&gt; b) -&gt; Basis a -&gt; a :&gt; u
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a :-* (a :&gt; b)
+</span><a href="#local-6989586621679059637"><span class="hs-identifier hs-var">u'</span></a></span><span> </span><span class="annot"><span class="annottext">(a :-* (a :&gt; u)) -&gt; (a :-* (a :&gt; u)) -&gt; a :-* (a :&gt; u)
+forall v. AdditiveGroup v =&gt; v -&gt; v -&gt; v
+</span><a href="Data.AdditiveGroup.html#%5E%2B%5E"><span class="hs-operator hs-var">^+^</span></a></span><span>
+</span><span id="line-175"></span><span>                      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Maybe (Sum (Basis a :-&gt;: (a :&gt; c)))
+ -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; u))))
+-&gt; (a :-* (a :&gt; c)) -&gt; a :-* (a :&gt; u)
+forall r s t u. (LMap' r s -&gt; LMap' t u) -&gt; (r :-* s) -&gt; t :-* u
+</span><a href="Data.LinearMap.html#inLMap"><span class="hs-identifier hs-var">inLMap</span></a></span><span class="annot"><span class="annottext">((Maybe (Sum (Basis a :-&gt;: (a :&gt; c)))
+  -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; u))))
+ -&gt; (a :-* (a :&gt; c)) -&gt; a :-* (a :&gt; u))
+-&gt; (((Basis a :-&gt;: (a :&gt; c)) -&gt; Basis a :-&gt;: (a :&gt; u))
+    -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; c)))
+    -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; u))))
+-&gt; ((Basis a :-&gt;: (a :&gt; c)) -&gt; Basis a :-&gt;: (a :&gt; u))
+-&gt; (a :-* (a :&gt; c))
+-&gt; a :-* (a :&gt; u)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span class="annot"><span class="annottext">((Basis a :-&gt;: (a :&gt; c)) -&gt; Basis a :-&gt;: (a :&gt; u))
+-&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; c)))
+-&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; u)))
+forall a b. (a -&gt; b) -&gt; MSum a -&gt; MSum b
+</span><a href="Data.LinearMap.html#liftMS"><span class="hs-identifier hs-var">liftMS</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">((Basis a -&gt; a :&gt; c) -&gt; Basis a -&gt; a :&gt; u)
+-&gt; (Basis a :-&gt;: (a :&gt; c)) -&gt; Basis a :-&gt;: (a :&gt; u)
+forall a c b d.
+(HasTrie a, HasTrie c) =&gt;
+((a -&gt; b) -&gt; c -&gt; d) -&gt; (a :-&gt;: b) -&gt; c :-&gt;: d
+</span><span class="hs-identifier hs-var">inTrie</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">a :&gt; b
+</span><a href="#local-6989586621679059639"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="annot"><span class="annottext">(a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; u
+</span><a href="#local-6989586621679059640"><span class="hs-operator hs-var">#</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">((a :&gt; c) -&gt; a :&gt; u) -&gt; (Basis a -&gt; a :&gt; c) -&gt; Basis a -&gt; a :&gt; u
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a :-* (a :&gt; c)
+</span><a href="#local-6989586621679059634"><span class="hs-identifier hs-var">v'</span></a></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-176"></span><span>
+</span><span id="line-177"></span><span>
+</span><span id="line-178"></span><span class="hs-comment">-- TODO: I think this distrib is exponential in increasing degree.  Switch</span><span>
+</span><span id="line-179"></span><span class="hs-comment">-- to the Horner representation.  See /The Music of Streams/ by Doug</span><span>
+</span><span id="line-180"></span><span class="hs-comment">-- McIlroy.</span><span>
+</span><span id="line-181"></span><span>
+</span><span id="line-182"></span><span>
+</span><span id="line-183"></span><span class="hs-comment">-- instance Show b =&gt; Show (a :&gt; b) where show    = noOv &quot;show&quot;</span><span>
+</span><span id="line-184"></span><span>
+</span><span id="line-185"></span><span id="local-6989586621679059629"><span id="local-6989586621679059630"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679059624"><span id="local-6989586621679059627"><span class="annot"><span class="hs-identifier hs-type">Show</span></span><span> </span><span class="annot"><a href="#local-6989586621679059630"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Show</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059629"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059630"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-186"></span><span>  </span><span id="local-6989586621679059622"><span class="annot"><span class="annottext">show :: (a :&gt; b) -&gt; String
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">show</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-type">D</span></a></span><span> </span><span id="local-6989586621679059620"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679059620"><span class="hs-identifier hs-var">b0</span></a></span></span><span> </span><span class="annot"><span class="annottext">a :-* (a :&gt; b)
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;D &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">b -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679059620"><span class="hs-identifier hs-var">b0</span></a></span><span>  </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; ...&quot;</span></span></span></span><span>
+</span><span id="line-187"></span><span>
+</span><span id="line-188"></span><span id="local-6989586621679059618"><span id="local-6989586621679059619"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679059615"><span class="annot"><span class="hs-identifier hs-type">Eq</span></span><span>   </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059619"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059618"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span></span><span> </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679059613"><span class="annot"><span class="annottext">== :: (a :&gt; b) -&gt; (a :&gt; b) -&gt; Bool
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">(==)</span></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; (a :&gt; b) -&gt; (a :&gt; b) -&gt; Bool
+forall a. String -&gt; a
+</span><a href="Data.Maclaurin.html#noOv"><span class="hs-identifier hs-var">noOv</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;(==)&quot;</span></span></span></span><span>
+</span><span id="line-189"></span><span>
+</span><span id="line-190"></span><span class="hs-keyword">type</span><span> </span><span class="hs-keyword">instance</span><span> </span><span id="BooleanOf"><span class="annot"><span class="hs-identifier hs-var">BooleanOf</span></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679059612"><span class="annot"><a href="#local-6989586621679059612"><span class="hs-identifier hs-type hs-type">a</span></a></span></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span id="local-6989586621679059611"><span class="annot"><a href="#local-6989586621679059611"><span class="hs-identifier hs-type hs-type">b</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">BooleanOf</span></span><span> </span><span class="annot"><a href="#local-6989586621679059611"><span class="hs-identifier hs-type">b</span></a></span><span>
+</span><span id="line-191"></span><span>
+</span><span id="line-192"></span><span id="local-6989586621679059609"><span id="local-6989586621679059610"><span class="hs-keyword">instance</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.AdditiveGroup.html#AdditiveGroup"><span class="hs-identifier hs-type">AdditiveGroup</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059610"><span class="hs-identifier hs-type">v</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059609"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059609"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IfB</span></span><span> </span><span class="annot"><a href="#local-6989586621679059610"><span class="hs-identifier hs-type">v</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-193"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">IfB</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059609"><span class="hs-identifier hs-type">u</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059610"><span class="hs-identifier hs-type">v</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-194"></span><span>  </span><span id="local-6989586621679059605"><span class="annot"><span class="annottext">ifB :: bool -&gt; (u :&gt; v) -&gt; (u :&gt; v) -&gt; u :&gt; v
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">ifB</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(v -&gt; v -&gt; v) -&gt; (u :&gt; v) -&gt; (u :&gt; v) -&gt; u :&gt; v
+forall a b c d.
+(HasBasis a, HasTrie (Basis a), AdditiveGroup b,
+ AdditiveGroup c) =&gt;
+(b -&gt; c -&gt; d) -&gt; (a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; d
+</span><a href="Data.Maclaurin.html#liftD2"><span class="hs-identifier hs-var">liftD2</span></a></span><span> </span><span class="annot"><span class="annottext">((v -&gt; v -&gt; v) -&gt; (u :&gt; v) -&gt; (u :&gt; v) -&gt; u :&gt; v)
+-&gt; (bool -&gt; v -&gt; v -&gt; v) -&gt; bool -&gt; (u :&gt; v) -&gt; (u :&gt; v) -&gt; u :&gt; v
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">bool -&gt; v -&gt; v -&gt; v
+forall a bool. (IfB a, bool ~ BooleanOf a) =&gt; bool -&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">ifB</span></span></span></span><span>
+</span><span id="line-195"></span><span>
+</span><span id="line-196"></span><span id="local-6989586621679059602"><span id="local-6989586621679059603"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679059594"><span id="local-6989586621679059596"><span id="local-6989586621679059598"><span class="annot"><span class="hs-identifier hs-type">OrdB</span></span><span> </span><span class="annot"><a href="#local-6989586621679059603"><span class="hs-identifier hs-type">v</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">OrdB</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059602"><span class="hs-identifier hs-type">u</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059603"><span class="hs-identifier hs-type">v</span></a></span><span class="hs-special">)</span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-197"></span><span>  </span><span id="local-6989586621679059592"><span class="annot"><span class="annottext">&lt;* :: (u :&gt; v) -&gt; (u :&gt; v) -&gt; bool
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">(&lt;*)</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">v -&gt; v -&gt; bool
+forall a bool. (OrdB a, bool ~ BooleanOf a) =&gt; a -&gt; a -&gt; bool
+</span><span class="hs-operator hs-var">(&lt;*)</span></span><span> </span><span class="annot"><span class="annottext">(v -&gt; v -&gt; bool) -&gt; ((u :&gt; v) -&gt; v) -&gt; (u :&gt; v) -&gt; (u :&gt; v) -&gt; bool
+forall b c a. (b -&gt; b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">`on`</span></span><span> </span><span class="annot"><span class="annottext">(u :&gt; v) -&gt; v
+forall a b. (a :&gt; b) -&gt; b
+</span><a href="Data.Maclaurin.html#powVal"><span class="hs-identifier hs-var hs-var">powVal</span></a></span></span></span><span>
+</span><span id="line-198"></span><span>
+</span><span id="line-199"></span><span id="local-6989586621679059589"><span id="local-6989586621679059590"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679059579"><span id="local-6989586621679059581"><span id="local-6989586621679059583"><span id="local-6989586621679059585"><span class="hs-special">(</span><span> </span><span class="annot"><a href="Data.AdditiveGroup.html#AdditiveGroup"><span class="hs-identifier hs-type">AdditiveGroup</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059590"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059589"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059589"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-200"></span><span>         </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">OrdB</span></span><span> </span><span class="annot"><a href="#local-6989586621679059590"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IfB</span></span><span> </span><span class="annot"><a href="#local-6989586621679059590"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Ord</span></span><span>  </span><span class="annot"><a href="#local-6989586621679059590"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Ord</span></span><span>  </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059589"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059590"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-201"></span><span>  </span><span id="local-6989586621679059575"><span class="annot"><span class="annottext">compare :: (a :&gt; b) -&gt; (a :&gt; b) -&gt; Ordering
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">compare</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">b -&gt; b -&gt; Ordering
+forall a. Ord a =&gt; a -&gt; a -&gt; Ordering
+</span><span class="hs-identifier hs-var">compare</span></span><span> </span><span class="annot"><span class="annottext">(b -&gt; b -&gt; Ordering)
+-&gt; ((a :&gt; b) -&gt; b) -&gt; (a :&gt; b) -&gt; (a :&gt; b) -&gt; Ordering
+forall b c a. (b -&gt; b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">`on`</span></span><span> </span><span class="annot"><span class="annottext">(a :&gt; b) -&gt; b
+forall a b. (a :&gt; b) -&gt; b
+</span><a href="Data.Maclaurin.html#powVal"><span class="hs-identifier hs-var hs-var">powVal</span></a></span><span>
+</span><span id="line-202"></span><span>  </span><span id="local-6989586621679059573"><span class="annot"><span class="annottext">min :: (a :&gt; b) -&gt; (a :&gt; b) -&gt; a :&gt; b
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">min</span></span></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(a :&gt; b) -&gt; (a :&gt; b) -&gt; a :&gt; b
+forall a. (IfB a, OrdB a) =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">minB</span></span><span>
+</span><span id="line-203"></span><span>  </span><span id="local-6989586621679059570"><span class="annot"><span class="annottext">max :: (a :&gt; b) -&gt; (a :&gt; b) -&gt; a :&gt; b
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">max</span></span></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(a :&gt; b) -&gt; (a :&gt; b) -&gt; a :&gt; b
+forall a. (IfB a, OrdB a) =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">maxB</span></span></span></span><span>
+</span><span id="line-204"></span><span>
+</span><span id="line-205"></span><span class="hs-comment">-- minB &amp; maxB use ifB, and so can work even if b is an expression type,</span><span>
+</span><span id="line-206"></span><span class="hs-comment">-- as in deep DSELs.</span><span>
+</span><span id="line-207"></span><span>
+</span><span id="line-208"></span><span id="local-6989586621679059566"><span id="local-6989586621679059567"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679059561"><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059567"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059567"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.AdditiveGroup.html#AdditiveGroup"><span class="hs-identifier hs-type">AdditiveGroup</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059566"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Data.AdditiveGroup.html#AdditiveGroup"><span class="hs-identifier hs-type">AdditiveGroup</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059567"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059566"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-209"></span><span>  </span><span id="local-6989586621679059559"><span class="annot"><span class="annottext">zeroV :: a :&gt; u
+</span><a href="#local-6989586621679059559"><span class="hs-identifier hs-var hs-var hs-var hs-var">zeroV</span></a></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">u -&gt; a :&gt; u
+forall b a.
+(AdditiveGroup b, HasBasis a, HasTrie (Basis a)) =&gt;
+b -&gt; a :&gt; b
+</span><a href="Data.Maclaurin.html#pureD"><span class="hs-identifier hs-var">pureD</span></a></span><span>  </span><span class="annot"><span class="annottext">u
+forall v. AdditiveGroup v =&gt; v
+</span><a href="Data.AdditiveGroup.html#zeroV"><span class="hs-identifier hs-var">zeroV</span></a></span><span>
+</span><span id="line-210"></span><span>  </span><span id="local-6989586621679059558"><span class="annot"><span class="annottext">negateV :: (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.AdditiveGroup.html#negateV"><span class="hs-identifier hs-var hs-var hs-var hs-var">negateV</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(u -&gt; u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+forall a b c. HasTrie (Basis a) =&gt; (b -&gt; c) -&gt; (a :&gt; b) -&gt; a :&gt; c
+</span><a href="Data.Maclaurin.html#fmapD"><span class="hs-identifier hs-var">fmapD</span></a></span><span>  </span><span class="annot"><span class="annottext">u -&gt; u
+forall v. AdditiveGroup v =&gt; v -&gt; v
+</span><a href="Data.AdditiveGroup.html#negateV"><span class="hs-identifier hs-var">negateV</span></a></span><span>
+</span><span id="line-211"></span><span>  </span><span class="annot"><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-type">D</span></a></span><span> </span><span id="local-6989586621679059556"><span class="annot"><span class="annottext">u
+</span><a href="#local-6989586621679059556"><span class="hs-identifier hs-var">a0</span></a></span></span><span> </span><span id="local-6989586621679059555"><span class="annot"><span class="annottext">a :-* (a :&gt; u)
+</span><a href="#local-6989586621679059555"><span class="hs-identifier hs-var">a'</span></a></span></span><span> </span><span id="local-6989586621679059554"><span class="annot"><span class="annottext">^+^ :: (a :&gt; u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="#local-6989586621679059554"><span class="hs-operator hs-var hs-var hs-var hs-var">^+^</span></a></span></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-type">D</span></a></span><span> </span><span id="local-6989586621679059553"><span class="annot"><span class="annottext">u
+</span><a href="#local-6989586621679059553"><span class="hs-identifier hs-var">b0</span></a></span></span><span> </span><span id="local-6989586621679059552"><span class="annot"><span class="annottext">a :-* (a :&gt; u)
+</span><a href="#local-6989586621679059552"><span class="hs-identifier hs-var">b'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">u -&gt; (a :-* (a :&gt; u)) -&gt; a :&gt; u
+forall a b. b -&gt; (a :-* (a :&gt; b)) -&gt; a :&gt; b
+</span><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-var">D</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">u
+</span><a href="#local-6989586621679059556"><span class="hs-identifier hs-var">a0</span></a></span><span> </span><span class="annot"><span class="annottext">u -&gt; u -&gt; u
+forall v. AdditiveGroup v =&gt; v -&gt; v -&gt; v
+</span><a href="Data.AdditiveGroup.html#%5E%2B%5E"><span class="hs-operator hs-var">^+^</span></a></span><span> </span><span class="annot"><span class="annottext">u
+</span><a href="#local-6989586621679059553"><span class="hs-identifier hs-var">b0</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a :-* (a :&gt; u)
+</span><a href="#local-6989586621679059555"><span class="hs-identifier hs-var">a'</span></a></span><span> </span><span class="annot"><span class="annottext">(a :-* (a :&gt; u)) -&gt; (a :-* (a :&gt; u)) -&gt; a :-* (a :&gt; u)
+forall v. AdditiveGroup v =&gt; v -&gt; v -&gt; v
+</span><a href="Data.AdditiveGroup.html#%5E%2B%5E"><span class="hs-operator hs-var">^+^</span></a></span><span> </span><span class="annot"><span class="annottext">a :-* (a :&gt; u)
+</span><a href="#local-6989586621679059552"><span class="hs-identifier hs-var">b'</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-212"></span><span>  </span><span class="hs-comment">-- Less efficient: adds zero</span><span>
+</span><span id="line-213"></span><span>  </span><span class="hs-comment">-- (^+^)   = liftD2 (^+^)</span><span>
+</span><span id="line-214"></span><span>
+</span><span id="line-215"></span><span id="local-6989586621679059550"><span id="local-6989586621679059551"><span class="hs-keyword">instance</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059551"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059551"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#VectorSpace"><span class="hs-identifier hs-type">VectorSpace</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059550"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-216"></span><span>      </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#VectorSpace"><span class="hs-identifier hs-type">VectorSpace</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059551"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059550"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-217"></span><span>  </span><span class="hs-keyword">type</span><span> </span><span id="Scalar"><span class="annot"><a href="Data.VectorSpace.html#Scalar"><span class="hs-identifier hs-var">Scalar</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059551"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059550"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059551"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="Data.VectorSpace.html#Scalar"><span class="hs-identifier hs-type">Scalar</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059550"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-218"></span><span>  </span><span id="local-6989586621679059546"><span class="annot"><span class="annottext">*^ :: Scalar (a :&gt; u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.VectorSpace.html#%2A%5E"><span class="hs-operator hs-var hs-var hs-var hs-var">(*^)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Scalar u -&gt; u -&gt; u) -&gt; (a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+forall a b c u.
+(HasBasis a, HasTrie (Basis a), AdditiveGroup u) =&gt;
+(b -&gt; c -&gt; u) -&gt; (a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#distrib"><span class="hs-identifier hs-var">distrib</span></a></span><span> </span><span class="annot"><span class="annottext">Scalar u -&gt; u -&gt; u
+forall v. VectorSpace v =&gt; Scalar v -&gt; v -&gt; v
+</span><a href="Data.VectorSpace.html#%2A%5E"><span class="hs-operator hs-var">(*^)</span></a></span></span></span><span>                     </span><span>
+</span><span id="line-219"></span><span>
+</span><span id="line-220"></span><span id="local-6989586621679059542"><span id="local-6989586621679059543"><span id="local-6989586621679059544"><span class="hs-keyword">instance</span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#InnerSpace"><span class="hs-identifier hs-type">InnerSpace</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059544"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679059543"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><span class="hs-glyph hs-type">~</span></span><span> </span><span class="annot"><a href="Data.VectorSpace.html#Scalar"><span class="hs-identifier hs-type">Scalar</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059544"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.AdditiveGroup.html#AdditiveGroup"><span class="hs-identifier hs-type">AdditiveGroup</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059543"><span class="hs-identifier hs-type">s</span></a></span><span>
+</span><span id="line-221"></span><span>         </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059542"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059542"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-222"></span><span>     </span><span class="annot"><a href="Data.VectorSpace.html#InnerSpace"><span class="hs-identifier hs-type">InnerSpace</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059542"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059544"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-223"></span><span>  </span><span id="local-6989586621679059537"><span class="annot"><span class="annottext">&lt;.&gt; :: (a :&gt; u) -&gt; (a :&gt; u) -&gt; Scalar (a :&gt; u)
+</span><a href="Data.VectorSpace.html#%3C.%3E"><span class="hs-operator hs-var hs-var hs-var hs-var">(&lt;.&gt;)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(u -&gt; u -&gt; s) -&gt; (a :&gt; u) -&gt; (a :&gt; u) -&gt; a :&gt; s
+forall a b c u.
+(HasBasis a, HasTrie (Basis a), AdditiveGroup u) =&gt;
+(b -&gt; c -&gt; u) -&gt; (a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#distrib"><span class="hs-identifier hs-var">distrib</span></a></span><span> </span><span class="annot"><span class="annottext">u -&gt; u -&gt; s
+forall v. InnerSpace v =&gt; v -&gt; v -&gt; Scalar v
+</span><a href="Data.VectorSpace.html#%3C.%3E"><span class="hs-operator hs-var">(&lt;.&gt;)</span></a></span></span></span></span><span>
+</span><span id="line-224"></span><span>
+</span><span id="line-225"></span><span class="hs-comment">-- infixr 9 @.</span><span>
+</span><span id="line-226"></span><span class="hs-comment">-- -- | Chain rule.  See also '(&gt;-&lt;)'.</span><span>
+</span><span id="line-227"></span><span class="hs-comment">-- (@.) :: (HasTrie (Basis b), HasTrie (Basis a), VectorSpace c s) =&gt;</span><span>
+</span><span id="line-228"></span><span class="hs-comment">--         (b :~&gt; c) -&gt; (a :~&gt; b) -&gt; (a :~&gt; c)</span><span>
+</span><span id="line-229"></span><span class="hs-comment">-- (h @. g) a0 = D c0 (inL2 (@.) c' b')</span><span>
+</span><span id="line-230"></span><span class="hs-comment">--   where</span><span>
+</span><span id="line-231"></span><span class="hs-comment">--     D b0 b' = g a0</span><span>
+</span><span id="line-232"></span><span class="hs-comment">--     D c0 c' = h b0</span><span>
+</span><span id="line-233"></span><span>
+</span><span id="line-234"></span><span class="hs-keyword">infix</span><span>  </span><span class="hs-number">0</span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-type">&gt;-&lt;</span></a></span><span>
+</span><span id="line-235"></span><span>
+</span><span id="line-236"></span><span class="hs-comment">-- | Specialized chain rule.  See also '(\@.)'</span><span>
+</span><span id="line-237"></span><span id="local-6989586621679059738"><span id="local-6989586621679059739"><span class="annot"><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-type">(&gt;-&lt;)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059739"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059739"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#VectorSpace"><span class="hs-identifier hs-type">VectorSpace</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059738"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-238"></span><span>         </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059738"><span class="hs-identifier hs-type">u</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059738"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059739"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059738"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059739"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="Data.VectorSpace.html#Scalar"><span class="hs-identifier hs-type">Scalar</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059738"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-239"></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059739"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059738"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059739"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059738"><span class="hs-identifier hs-type">u</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-240"></span><span id="local-6989586621679059535"><span class="annot"><span class="annottext">u -&gt; u
+</span><a href="#local-6989586621679059535"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="%3E-%3C"><span class="annot"><span class="annottext">&gt;-&lt; :: (u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var hs-var">&gt;-&lt;</span></a></span></span><span> </span><span id="local-6989586621679059534"><span class="annot"><span class="annottext">(a :&gt; u) -&gt; a :&gt; Scalar u
+</span><a href="#local-6989586621679059534"><span class="hs-identifier hs-var">f'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679059533"><span class="annot"><span class="annottext">u :: a :&gt; u
+</span><a href="#local-6989586621679059533"><span class="hs-identifier hs-var">u</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-type">D</span></a></span><span> </span><span id="local-6989586621679059532"><span class="annot"><span class="annottext">u
+</span><a href="#local-6989586621679059532"><span class="hs-identifier hs-var">u0</span></a></span></span><span> </span><span id="local-6989586621679059531"><span class="annot"><span class="annottext">a :-* (a :&gt; u)
+</span><a href="#local-6989586621679059531"><span class="hs-identifier hs-var">u'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">u -&gt; (a :-* (a :&gt; u)) -&gt; a :&gt; u
+forall a b. b -&gt; (a :-* (a :&gt; b)) -&gt; a :&gt; b
+</span><a href="Data.Maclaurin.html#D"><span class="hs-identifier hs-var">D</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">u -&gt; u
+</span><a href="#local-6989586621679059535"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">u
+</span><a href="#local-6989586621679059532"><span class="hs-identifier hs-var">u0</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Maybe (Sum (Basis a :-&gt;: (a :&gt; u)))
+ -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; u))))
+-&gt; (a :-* (a :&gt; u)) -&gt; a :-* (a :&gt; u)
+forall r s t u. (LMap' r s -&gt; LMap' t u) -&gt; (r :-* s) -&gt; t :-* u
+</span><a href="Data.LinearMap.html#inLMap"><span class="hs-identifier hs-var">inLMap</span></a></span><span class="annot"><span class="annottext">((Maybe (Sum (Basis a :-&gt;: (a :&gt; u)))
+  -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; u))))
+ -&gt; (a :-* (a :&gt; u)) -&gt; a :-* (a :&gt; u))
+-&gt; (((Basis a :-&gt;: (a :&gt; u)) -&gt; Basis a :-&gt;: (a :&gt; u))
+    -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; u)))
+    -&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; u))))
+-&gt; ((Basis a :-&gt;: (a :&gt; u)) -&gt; Basis a :-&gt;: (a :&gt; u))
+-&gt; (a :-* (a :&gt; u))
+-&gt; a :-* (a :&gt; u)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span class="annot"><span class="annottext">((Basis a :-&gt;: (a :&gt; u)) -&gt; Basis a :-&gt;: (a :&gt; u))
+-&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; u)))
+-&gt; Maybe (Sum (Basis a :-&gt;: (a :&gt; u)))
+forall a b. (a -&gt; b) -&gt; MSum a -&gt; MSum b
+</span><a href="Data.LinearMap.html#liftMS"><span class="hs-identifier hs-var">liftMS</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a :&gt; u) -&gt; a :&gt; Scalar u
+</span><a href="#local-6989586621679059534"><span class="hs-identifier hs-var">f'</span></a></span><span> </span><span class="annot"><span class="annottext">a :&gt; u
+</span><a href="#local-6989586621679059533"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="annot"><span class="annottext">Scalar (Basis a :-&gt;: (a :&gt; u))
+-&gt; (Basis a :-&gt;: (a :&gt; u)) -&gt; Basis a :-&gt;: (a :&gt; u)
+forall v. VectorSpace v =&gt; Scalar v -&gt; v -&gt; v
+</span><a href="Data.VectorSpace.html#%2A%5E"><span class="hs-operator hs-var">*^</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a :-* (a :&gt; u)
+</span><a href="#local-6989586621679059531"><span class="hs-identifier hs-var">u'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-241"></span><span>
+</span><span id="line-242"></span><span>
+</span><span id="line-243"></span><span class="hs-comment">-- TODO: express '(&gt;-&lt;)' in terms of '(@.)'.  If I can't, then understand why not.</span><span>
+</span><span id="line-244"></span><span>
+</span><span id="line-245"></span><span id="local-6989586621679059529"><span id="local-6989586621679059530"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679059526"><span class="hs-special">(</span><span> </span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059530"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679059529"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><span class="hs-glyph hs-type">~</span></span><span> </span><span class="annot"><a href="Data.VectorSpace.html#Scalar"><span class="hs-identifier hs-type">Scalar</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059530"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059530"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-246"></span><span>         </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Num</span></span><span> </span><span class="annot"><a href="#local-6989586621679059529"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#VectorSpace"><span class="hs-identifier hs-type">VectorSpace</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059529"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#Scalar"><span class="hs-identifier hs-type">Scalar</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059529"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><span class="hs-glyph hs-type">~</span></span><span> </span><span class="annot"><a href="#local-6989586621679059529"><span class="hs-identifier hs-type">s</span></a></span><span>
+</span><span id="line-247"></span><span>         </span><span class="hs-special">)</span><span>
+</span><span id="line-248"></span><span>      </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Num</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059530"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="annot"><a href="#local-6989586621679059529"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-249"></span><span>  </span><span id="local-6989586621679059519"><span class="annot"><span class="annottext">fromInteger :: Integer -&gt; a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">fromInteger</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; a :&gt; s
+forall b a.
+(AdditiveGroup b, HasBasis a, HasTrie (Basis a)) =&gt;
+b -&gt; a :&gt; b
+</span><a href="Data.Maclaurin.html#pureD"><span class="hs-identifier hs-var">pureD</span></a></span><span> </span><span class="annot"><span class="annottext">(s -&gt; a :&gt; s) -&gt; (Integer -&gt; s) -&gt; Integer -&gt; a :&gt; s
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Integer -&gt; s
+forall a. Num a =&gt; Integer -&gt; a
+</span><span class="hs-identifier hs-var">fromInteger</span></span><span>
+</span><span id="line-250"></span><span>  </span><span id="local-6989586621679059518"><span class="annot"><span class="annottext">+ :: (a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">(+)</span></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall v. AdditiveGroup v =&gt; v -&gt; v -&gt; v
+</span><a href="Data.AdditiveGroup.html#%5E%2B%5E"><span class="hs-operator hs-var">(^+^)</span></a></span><span>
+</span><span id="line-251"></span><span>  </span><span id="local-6989586621679059516"><span class="annot"><span class="annottext">* :: (a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">(*)</span></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(s -&gt; s -&gt; s) -&gt; (a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a b c u.
+(HasBasis a, HasTrie (Basis a), AdditiveGroup u) =&gt;
+(b -&gt; c -&gt; u) -&gt; (a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#distrib"><span class="hs-identifier hs-var">distrib</span></a></span><span> </span><span class="annot"><span class="annottext">s -&gt; s -&gt; s
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">(*)</span></span><span>
+</span><span id="line-252"></span><span>  </span><span id="local-6989586621679059514"><span class="annot"><span class="annottext">negate :: (a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">negate</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">negate</span></span><span> </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-253"></span><span>  </span><span id="local-6989586621679059513"><span class="annot"><span class="annottext">abs :: (a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">abs</span></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">abs</span></span><span>    </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; Scalar s
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">signum</span></span><span>
+</span><span id="line-254"></span><span>  </span><span id="local-6989586621679059510"><span class="annot"><span class="annottext">signum :: (a :&gt; s) -&gt; a :&gt; s
+</span><a href="#local-6989586621679059510"><span class="hs-identifier hs-var hs-var hs-var hs-var">signum</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">signum</span></span><span> </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; Scalar s
+</span><span class="hs-number">0</span></span></span></span><span>  </span><span class="hs-comment">-- derivative wrong at zero</span><span>
+</span><span id="line-255"></span><span>
+</span><span id="line-256"></span><span id="local-6989586621679059508"><span id="local-6989586621679059509"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679059505"><span class="hs-special">(</span><span> </span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059509"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679059508"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><span class="hs-glyph hs-type">~</span></span><span> </span><span class="annot"><a href="Data.VectorSpace.html#Scalar"><span class="hs-identifier hs-type">Scalar</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059509"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059509"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-257"></span><span>         </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Fractional</span></span><span> </span><span class="annot"><a href="#local-6989586621679059508"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#VectorSpace"><span class="hs-identifier hs-type">VectorSpace</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059508"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#Scalar"><span class="hs-identifier hs-type">Scalar</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059508"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><span class="hs-glyph hs-type">~</span></span><span> </span><span class="annot"><a href="#local-6989586621679059508"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-258"></span><span>         </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Fractional</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059509"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="annot"><a href="#local-6989586621679059508"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-259"></span><span>  </span><span id="local-6989586621679059501"><span class="annot"><span class="annottext">fromRational :: Rational -&gt; a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">fromRational</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; a :&gt; s
+forall b a.
+(AdditiveGroup b, HasBasis a, HasTrie (Basis a)) =&gt;
+b -&gt; a :&gt; b
+</span><a href="Data.Maclaurin.html#pureD"><span class="hs-identifier hs-var">pureD</span></a></span><span> </span><span class="annot"><span class="annottext">(s -&gt; a :&gt; s) -&gt; (Rational -&gt; s) -&gt; Rational -&gt; a :&gt; s
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Rational -&gt; s
+forall a. Fractional a =&gt; Rational -&gt; a
+</span><span class="hs-identifier hs-var">fromRational</span></span><span>
+</span><span id="line-260"></span><span>  </span><span id="local-6989586621679059500"><span class="annot"><span class="annottext">recip :: (a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">recip</span></span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Fractional a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">recip</span></span><span> </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="hs-glyph">-</span><span> </span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Fractional a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">recip</span></span><span> </span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+forall a. Num a =&gt; a -&gt; a
+</span><a href="Data.Maclaurin.html#sqr"><span class="hs-identifier hs-var">sqr</span></a></span></span></span><span>
+</span><span id="line-261"></span><span>
+</span><span id="line-262"></span><span id="local-6989586621679059497"><span class="annot"><a href="Data.Maclaurin.html#sqr"><span class="hs-identifier hs-type">sqr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Num</span></span><span> </span><span class="annot"><a href="#local-6989586621679059497"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059497"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059497"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-263"></span><span id="sqr"><span class="annot"><span class="annottext">sqr :: a -&gt; a
+</span><a href="Data.Maclaurin.html#sqr"><span class="hs-identifier hs-var hs-var">sqr</span></a></span></span><span> </span><span id="local-6989586621679059496"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679059496"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679059496"><span class="hs-identifier hs-var">x</span></a></span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679059496"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-264"></span><span>
+</span><span id="line-265"></span><span id="local-6989586621679059494"><span id="local-6989586621679059495"><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679059463"><span id="local-6989586621679059465"><span id="local-6989586621679059467"><span id="local-6989586621679059469"><span id="local-6989586621679059474"><span id="local-6989586621679059481"><span id="local-6989586621679059485"><span id="local-6989586621679059487"><span class="hs-special">(</span><span> </span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059495"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679059494"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><span class="hs-glyph hs-type">~</span></span><span> </span><span class="annot"><a href="Data.VectorSpace.html#Scalar"><span class="hs-identifier hs-type">Scalar</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059495"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059495"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-266"></span><span>         </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Floating</span></span><span> </span><span class="annot"><a href="#local-6989586621679059494"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#VectorSpace"><span class="hs-identifier hs-type">VectorSpace</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059494"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#Scalar"><span class="hs-identifier hs-type">Scalar</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059494"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><span class="hs-glyph hs-type">~</span></span><span> </span><span class="annot"><a href="#local-6989586621679059494"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-267"></span><span>         </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Floating</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059495"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="annot"><a href="#local-6989586621679059494"><span class="hs-identifier hs-type">s</span></a></span><span class="hs-special">)</span></span></span></span></span></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-268"></span><span>  </span><span id="local-6989586621679059461"><span class="annot"><span class="annottext">pi :: a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">pi</span></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; a :&gt; s
+forall b a.
+(AdditiveGroup b, HasBasis a, HasTrie (Basis a)) =&gt;
+b -&gt; a :&gt; b
+</span><a href="Data.Maclaurin.html#pureD"><span class="hs-identifier hs-var">pureD</span></a></span><span> </span><span class="annot"><span class="annottext">s
+forall a. Floating a =&gt; a
+</span><span class="hs-identifier hs-var">pi</span></span><span>
+</span><span id="line-269"></span><span>  </span><span id="local-6989586621679059459"><span class="annot"><span class="annottext">exp :: (a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">exp</span></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">exp</span></span><span>   </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; Scalar s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">exp</span></span><span>
+</span><span id="line-270"></span><span>  </span><span id="local-6989586621679059457"><span class="annot"><span class="annottext">log :: (a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">log</span></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">log</span></span><span>   </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; Scalar s
+forall a. Fractional a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">recip</span></span><span>
+</span><span id="line-271"></span><span>  </span><span id="local-6989586621679059455"><span class="annot"><span class="annottext">sqrt :: (a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">sqrt</span></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sqrt</span></span><span>  </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Fractional a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">recip</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-number">2</span></span><span> </span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sqrt</span></span><span class="hs-special">)</span><span>
+</span><span id="line-272"></span><span>  </span><span id="local-6989586621679059453"><span class="annot"><span class="annottext">sin :: (a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">sin</span></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sin</span></span><span>   </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; Scalar s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">cos</span></span><span>
+</span><span id="line-273"></span><span>  </span><span id="local-6989586621679059450"><span class="annot"><span class="annottext">cos :: (a :&gt; s) -&gt; a :&gt; s
+</span><a href="#local-6989586621679059450"><span class="hs-identifier hs-var hs-var hs-var hs-var">cos</span></a></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">cos</span></span><span>   </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="hs-glyph">-</span><span> </span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sin</span></span><span>
+</span><span id="line-274"></span><span>  </span><span id="local-6989586621679059449"><span class="annot"><span class="annottext">sinh :: (a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">sinh</span></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sinh</span></span><span>  </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; Scalar s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">cosh</span></span><span>
+</span><span id="line-275"></span><span>  </span><span id="local-6989586621679059446"><span class="annot"><span class="annottext">cosh :: (a :&gt; s) -&gt; a :&gt; s
+</span><a href="#local-6989586621679059446"><span class="hs-identifier hs-var hs-var hs-var hs-var">cosh</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">cosh</span></span><span>  </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; Scalar s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sinh</span></span><span>
+</span><span id="line-276"></span><span>  </span><span id="local-6989586621679059445"><span class="annot"><span class="annottext">asin :: (a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">asin</span></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">asin</span></span><span>  </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Fractional a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">recip</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sqrt</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-number">1</span></span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+forall a. Num a =&gt; a -&gt; a
+</span><a href="Data.Maclaurin.html#sqr"><span class="hs-identifier hs-var">sqr</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-277"></span><span>  </span><span id="local-6989586621679059443"><span class="annot"><span class="annottext">acos :: (a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">acos</span></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">acos</span></span><span>  </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Fractional a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">recip</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span> </span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sqrt</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-number">1</span></span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+forall a. Num a =&gt; a -&gt; a
+</span><a href="Data.Maclaurin.html#sqr"><span class="hs-identifier hs-var">sqr</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-278"></span><span>  </span><span id="local-6989586621679059441"><span class="annot"><span class="annottext">atan :: (a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">atan</span></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">atan</span></span><span>  </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Fractional a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">recip</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-number">1</span></span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+forall a. Num a =&gt; a -&gt; a
+</span><a href="Data.Maclaurin.html#sqr"><span class="hs-identifier hs-var">sqr</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-279"></span><span>  </span><span id="local-6989586621679059439"><span class="annot"><span class="annottext">asinh :: (a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">asinh</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">asinh</span></span><span> </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Fractional a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">recip</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sqrt</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-number">1</span></span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+forall a. Num a =&gt; a -&gt; a
+</span><a href="Data.Maclaurin.html#sqr"><span class="hs-identifier hs-var">sqr</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-280"></span><span>  </span><span id="local-6989586621679059437"><span class="annot"><span class="annottext">acosh :: (a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">acosh</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">acosh</span></span><span> </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Fractional a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">recip</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span> </span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">sqrt</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+forall a. Num a =&gt; a -&gt; a
+</span><a href="Data.Maclaurin.html#sqr"><span class="hs-identifier hs-var">sqr</span></a></span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-281"></span><span>  </span><span id="local-6989586621679059435"><span class="annot"><span class="annottext">atanh :: (a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">atanh</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">s -&gt; s
+forall a. Floating a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">atanh</span></span><span> </span><span class="annot"><span class="annottext">(s -&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; Scalar s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a u.
+(HasBasis a, HasTrie (Basis a), VectorSpace u) =&gt;
+(u -&gt; u) -&gt; ((a :&gt; u) -&gt; a :&gt; Scalar u) -&gt; (a :&gt; u) -&gt; a :&gt; u
+</span><a href="Data.Maclaurin.html#%3E-%3C"><span class="hs-operator hs-var">&gt;-&lt;</span></a></span><span> </span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Fractional a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">recip</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+</span><span class="hs-number">1</span></span><span class="annot"><span class="annottext">((a :&gt; s) -&gt; a :&gt; s) -&gt; ((a :&gt; s) -&gt; a :&gt; s) -&gt; (a :&gt; s) -&gt; a :&gt; s
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">(a :&gt; s) -&gt; a :&gt; s
+forall a. Num a =&gt; a -&gt; a
+</span><a href="Data.Maclaurin.html#sqr"><span class="hs-identifier hs-var">sqr</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-282"></span><span>
+</span><span id="line-283"></span><span>
+</span><span id="line-284"></span><span class="hs-comment">-- | Sample the derivative at a basis element.  Optimized for partial</span><span>
+</span><span id="line-285"></span><span class="hs-comment">-- application to save work for non-scalar derivatives.</span><span>
+</span><span id="line-286"></span><span id="local-6989586621679059432"><span id="local-6989586621679059433"><span class="annot"><a href="Data.Maclaurin.html#derivAtBasis"><span class="hs-identifier hs-type">derivAtBasis</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059433"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059433"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.AdditiveGroup.html#AdditiveGroup"><span class="hs-identifier hs-type">AdditiveGroup</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059432"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span>
+</span><span id="line-287"></span><span>                </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059433"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059432"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059433"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059433"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059432"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-288"></span><span id="derivAtBasis"><span class="annot"><span class="annottext">derivAtBasis :: (a :&gt; b) -&gt; Basis a -&gt; a :&gt; b
+</span><a href="Data.Maclaurin.html#derivAtBasis"><span class="hs-identifier hs-var hs-var">derivAtBasis</span></a></span></span><span> </span><span id="local-6989586621679059431"><span class="annot"><span class="annottext">a :&gt; b
+</span><a href="#local-6989586621679059431"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(a :-* (a :&gt; b)) -&gt; Basis a -&gt; a :&gt; b
+forall v u.
+(AdditiveGroup v, HasTrie (Basis u)) =&gt;
+(u :-* v) -&gt; Basis u -&gt; v
+</span><a href="Data.LinearMap.html#atBasis"><span class="hs-identifier hs-var">atBasis</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a :&gt; b) -&gt; a :-* (a :&gt; b)
+forall a b. (a :&gt; b) -&gt; a :-* (a :&gt; b)
+</span><a href="Data.Maclaurin.html#derivative"><span class="hs-identifier hs-var hs-var">derivative</span></a></span><span> </span><span class="annot"><span class="annottext">a :&gt; b
+</span><a href="#local-6989586621679059431"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-289"></span><span>
+</span><span id="line-290"></span><span>
+</span><span id="line-291"></span><span class="hs-comment">---- Misc</span><span>
+</span><span id="line-292"></span><span>
+</span><span id="line-293"></span><span id="local-6989586621679059427"><span id="local-6989586621679059428"><span id="local-6989586621679059429"><span class="annot"><a href="Data.Maclaurin.html#pairD"><span class="hs-identifier hs-type">pairD</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059429"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059429"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#VectorSpace"><span class="hs-identifier hs-type">VectorSpace</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059428"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#VectorSpace"><span class="hs-identifier hs-type">VectorSpace</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059427"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-294"></span><span>      </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059429"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="annot"><a href="#local-6989586621679059428"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span class="annot"><a href="#local-6989586621679059429"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="annot"><a href="#local-6989586621679059427"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059429"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059428"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span class="annot"><a href="#local-6989586621679059427"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">)</span></span></span></span><span>
+</span><span id="line-295"></span><span>
+</span><span id="line-296"></span><span id="pairD"><span class="annot"><span class="annottext">pairD :: (a :&gt; b, a :&gt; c) -&gt; a :&gt; (b, c)
+</span><a href="Data.Maclaurin.html#pairD"><span class="hs-identifier hs-var hs-var">pairD</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679059426"><span class="annot"><span class="annottext">a :&gt; b
+</span><a href="#local-6989586621679059426"><span class="hs-identifier hs-var">u</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679059425"><span class="annot"><span class="annottext">a :&gt; c
+</span><a href="#local-6989586621679059425"><span class="hs-identifier hs-var">v</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(b -&gt; c -&gt; (b, c)) -&gt; (a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; (b, c)
+forall a b c d.
+(HasBasis a, HasTrie (Basis a), AdditiveGroup b,
+ AdditiveGroup c) =&gt;
+(b -&gt; c -&gt; d) -&gt; (a :&gt; b) -&gt; (a :&gt; c) -&gt; a :&gt; d
+</span><a href="Data.Maclaurin.html#liftD2"><span class="hs-identifier hs-var">liftD2</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">,</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a :&gt; b
+</span><a href="#local-6989586621679059426"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="annot"><span class="annottext">a :&gt; c
+</span><a href="#local-6989586621679059425"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-297"></span><span>
+</span><span id="line-298"></span><span id="local-6989586621679059422"><span id="local-6989586621679059423"><span id="local-6989586621679059424"><span class="annot"><a href="Data.Maclaurin.html#unpairD"><span class="hs-identifier hs-type">unpairD</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059424"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059424"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059423"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span class="annot"><a href="#local-6989586621679059422"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059424"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="annot"><a href="#local-6989586621679059423"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679059424"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="annot"><a href="#local-6989586621679059422"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">)</span></span></span></span><span>
+</span><span id="line-299"></span><span id="unpairD"><span class="annot"><span class="annottext">unpairD :: (a :&gt; (b, c)) -&gt; (a :&gt; b, a :&gt; c)
+</span><a href="Data.Maclaurin.html#unpairD"><span class="hs-identifier hs-var hs-var">unpairD</span></a></span></span><span> </span><span id="local-6989586621679059421"><span class="annot"><span class="annottext">a :&gt; (b, c)
+</span><a href="#local-6989586621679059421"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(b, c) -&gt; b
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="annot"><span class="annottext">((b, c) -&gt; b) -&gt; (a :&gt; (b, c)) -&gt; a :&gt; b
+forall a b c. HasTrie (Basis a) =&gt; (b -&gt; c) -&gt; (a :&gt; b) -&gt; a :&gt; c
+</span><a href="Data.Maclaurin.html#%3C%24%3E%3E"><span class="hs-operator hs-var">&lt;$&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">a :&gt; (b, c)
+</span><a href="#local-6989586621679059421"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(b, c) -&gt; c
+forall a b. (a, b) -&gt; b
+</span><span class="hs-identifier hs-var">snd</span></span><span> </span><span class="annot"><span class="annottext">((b, c) -&gt; c) -&gt; (a :&gt; (b, c)) -&gt; a :&gt; c
+forall a b c. HasTrie (Basis a) =&gt; (b -&gt; c) -&gt; (a :&gt; b) -&gt; a :&gt; c
+</span><a href="Data.Maclaurin.html#%3C%24%3E%3E"><span class="hs-operator hs-var">&lt;$&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">a :&gt; (b, c)
+</span><a href="#local-6989586621679059421"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-300"></span><span>
+</span><span id="line-301"></span><span>
+</span><span id="line-302"></span><span id="local-6989586621679059417"><span id="local-6989586621679059418"><span id="local-6989586621679059419"><span id="local-6989586621679059420"><span class="annot"><a href="Data.Maclaurin.html#tripleD"><span class="hs-identifier hs-type">tripleD</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Data.Basis.html#HasBasis"><span class="hs-identifier hs-type">HasBasis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059420"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059420"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-303"></span><span>           </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#VectorSpace"><span class="hs-identifier hs-type">VectorSpace</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059419"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#VectorSpace"><span class="hs-identifier hs-type">VectorSpace</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059418"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.VectorSpace.html#VectorSpace"><span class="hs-identifier hs-type">VectorSpace</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059417"><span class="hs-identifier hs-type">d</span></a></span><span>
+</span><span id="line-304"></span><span>           </span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059420"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="annot"><a href="#local-6989586621679059419"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span class="annot"><a href="#local-6989586621679059420"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="annot"><a href="#local-6989586621679059418"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">,</span><span class="annot"><a href="#local-6989586621679059420"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="annot"><a href="#local-6989586621679059417"><span class="hs-identifier hs-type">d</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679059420"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059419"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span class="annot"><a href="#local-6989586621679059418"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">,</span><span class="annot"><a href="#local-6989586621679059417"><span class="hs-identifier hs-type">d</span></a></span><span class="hs-special">)</span></span></span></span></span><span>
+</span><span id="line-305"></span><span id="tripleD"><span class="annot"><span class="annottext">tripleD :: (a :&gt; b, a :&gt; c, a :&gt; d) -&gt; a :&gt; (b, c, d)
+</span><a href="Data.Maclaurin.html#tripleD"><span class="hs-identifier hs-var hs-var">tripleD</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679059416"><span class="annot"><span class="annottext">a :&gt; b
+</span><a href="#local-6989586621679059416"><span class="hs-identifier hs-var">u</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679059415"><span class="annot"><span class="annottext">a :&gt; c
+</span><a href="#local-6989586621679059415"><span class="hs-identifier hs-var">v</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679059414"><span class="annot"><span class="annottext">a :&gt; d
+</span><a href="#local-6989586621679059414"><span class="hs-identifier hs-var">w</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(b -&gt; c -&gt; d -&gt; (b, c, d))
+-&gt; (a :&gt; b) -&gt; (a :&gt; c) -&gt; (a :&gt; d) -&gt; a :&gt; (b, c, d)
+forall a b c d e.
+(HasBasis a, HasTrie (Basis a), AdditiveGroup b, AdditiveGroup c,
+ AdditiveGroup d) =&gt;
+(b -&gt; c -&gt; d -&gt; e) -&gt; (a :&gt; b) -&gt; (a :&gt; c) -&gt; (a :&gt; d) -&gt; a :&gt; e
+</span><a href="Data.Maclaurin.html#liftD3"><span class="hs-identifier hs-var">liftD3</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">,</span><span class="hs-special">,</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a :&gt; b
+</span><a href="#local-6989586621679059416"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="annot"><span class="annottext">a :&gt; c
+</span><a href="#local-6989586621679059415"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">a :&gt; d
+</span><a href="#local-6989586621679059414"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-306"></span><span>
+</span><span id="line-307"></span><span id="local-6989586621679059410"><span id="local-6989586621679059411"><span id="local-6989586621679059412"><span id="local-6989586621679059413"><span class="annot"><a href="Data.Maclaurin.html#untripleD"><span class="hs-identifier hs-type">untripleD</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">HasTrie</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.Basis.html#Basis"><span class="hs-identifier hs-type">Basis</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679059413"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059413"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059412"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span class="annot"><a href="#local-6989586621679059411"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">,</span><span class="annot"><a href="#local-6989586621679059410"><span class="hs-identifier hs-type">d</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679059413"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="annot"><a href="#local-6989586621679059412"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679059413"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="annot"><a href="#local-6989586621679059411"><span class="hs-identifier hs-type">c</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679059413"><span class="hs-identifier hs-type">a</span></a></span><span class="annot"><a href="Data.Maclaurin.html#%3A%3E"><span class="hs-operator hs-type">:&gt;</span></a></span><span class="annot"><a href="#local-6989586621679059410"><span class="hs-identifier hs-type">d</span></a></span><span class="hs-special">)</span></span></span></span></span><span>
+</span><span id="line-308"></span><span id="untripleD"><span class="annot"><span class="annottext">untripleD :: (a :&gt; (b, c, d)) -&gt; (a :&gt; b, a :&gt; c, a :&gt; d)
+</span><a href="Data.Maclaurin.html#untripleD"><span class="hs-identifier hs-var hs-var">untripleD</span></a></span></span><span> </span><span id="local-6989586621679059409"><span class="annot"><span class="annottext">a :&gt; (b, c, d)
+</span><a href="#local-6989586621679059409"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-309"></span><span>  </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="hs-glyph">\</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679059408"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679059408"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">c
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">d
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679059408"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">((b, c, d) -&gt; b) -&gt; (a :&gt; (b, c, d)) -&gt; a :&gt; b
+forall a b c. HasTrie (Basis a) =&gt; (b -&gt; c) -&gt; (a :&gt; b) -&gt; a :&gt; c
+</span><a href="Data.Maclaurin.html#%3C%24%3E%3E"><span class="hs-operator hs-var">&lt;$&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">a :&gt; (b, c, d)
+</span><a href="#local-6989586621679059409"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span id="local-6989586621679059407"><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679059407"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">d
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">c
+</span><a href="#local-6989586621679059407"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">((b, c, d) -&gt; c) -&gt; (a :&gt; (b, c, d)) -&gt; a :&gt; c
+forall a b c. HasTrie (Basis a) =&gt; (b -&gt; c) -&gt; (a :&gt; b) -&gt; a :&gt; c
+</span><a href="Data.Maclaurin.html#%3C%24%3E%3E"><span class="hs-operator hs-var">&lt;$&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">a :&gt; (b, c, d)
+</span><a href="#local-6989586621679059409"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">c
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span id="local-6989586621679059406"><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679059406"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">d
+</span><a href="#local-6989586621679059406"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">((b, c, d) -&gt; d) -&gt; (a :&gt; (b, c, d)) -&gt; a :&gt; d
+forall a b c. HasTrie (Basis a) =&gt; (b -&gt; c) -&gt; (a :&gt; b) -&gt; a :&gt; c
+</span><a href="Data.Maclaurin.html#%3C%24%3E%3E"><span class="hs-operator hs-var">&lt;$&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">a :&gt; (b, c, d)
+</span><a href="#local-6989586621679059409"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-310"></span><span>
+</span><span id="line-311"></span></pre></body></html>

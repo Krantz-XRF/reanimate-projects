@@ -1,0 +1,640 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">--------------------------------------------------------------------</span><span>
+</span><span id="line-2"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-3"></span><span class="hs-comment">-- Module    : Text.XML.Light.Output</span><span>
+</span><span id="line-4"></span><span class="hs-comment">-- Copyright : (c) Galois, Inc. 2007</span><span>
+</span><span id="line-5"></span><span class="hs-comment">-- License   : BSD3</span><span>
+</span><span id="line-6"></span><span class="hs-comment">--</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- Maintainer: Iavor S. Diatchki &lt;diatchki@galois.com&gt;</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- Stability : provisional</span><span>
+</span><span id="line-9"></span><span class="hs-comment">-- Portability:</span><span>
+</span><span id="line-10"></span><span class="hs-comment">--</span><span>
+</span><span id="line-11"></span><span class="hs-comment">-- Output handling for the lightweight XML lib.</span><span>
+</span><span id="line-12"></span><span class="hs-comment">--</span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.XML.Light.Output</span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#showTopElement"><span class="hs-identifier">showTopElement</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#showContent"><span class="hs-identifier">showContent</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#showElement"><span class="hs-identifier">showElement</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#showCData"><span class="hs-identifier">showCData</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#showQName"><span class="hs-identifier">showQName</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#showAttr"><span class="hs-identifier">showAttr</span></a></span><span>
+</span><span id="line-16"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ppTopElement"><span class="hs-identifier">ppTopElement</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ppContent"><span class="hs-identifier">ppContent</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ppElement"><span class="hs-identifier">ppElement</span></a></span><span>
+</span><span id="line-17"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ppcTopElement"><span class="hs-identifier">ppcTopElement</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ppcContent"><span class="hs-identifier">ppcContent</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ppcElement"><span class="hs-identifier">ppcElement</span></a></span><span>
+</span><span id="line-18"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ConfigPP"><span class="hs-identifier">ConfigPP</span></a></span><span>
+</span><span id="line-19"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#defaultConfigPP"><span class="hs-identifier">defaultConfigPP</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#prettyConfigPP"><span class="hs-identifier">prettyConfigPP</span></a></span><span>
+</span><span id="line-20"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#useShortEmptyTags"><span class="hs-identifier">useShortEmptyTags</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#useExtraWhiteSpace"><span class="hs-identifier">useExtraWhiteSpace</span></a></span><span>
+</span><span id="line-21"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#tagEnd"><span class="hs-identifier">tagEnd</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#xml_header"><span class="hs-identifier">xml_header</span></a></span><span>
+</span><span id="line-22"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html"><span class="hs-identifier">Text.XML.Light.Types</span></a></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Char</span></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-identifier">isPrefixOf</span></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- | The XML 1.0 header</span><span>
+</span><span id="line-29"></span><span class="annot"><a href="Text.XML.Light.Output.html#xml_header"><span class="hs-identifier hs-type">xml_header</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-30"></span><span id="xml_header"><span class="annot"><span class="annottext">xml_header :: String
+</span><a href="Text.XML.Light.Output.html#xml_header"><span class="hs-identifier hs-var hs-var">xml_header</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&lt;?xml version='1.0' ?&gt;&quot;</span></span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="hs-comment">--------------------------------------------------------------------------------</span><span>
+</span><span id="line-34"></span><span class="hs-keyword">data</span><span> </span><span id="ConfigPP"><span class="annot"><a href="Text.XML.Light.Output.html#ConfigPP"><span class="hs-identifier hs-var">ConfigPP</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="ConfigPP"><span class="annot"><a href="Text.XML.Light.Output.html#ConfigPP"><span class="hs-identifier hs-var">ConfigPP</span></a></span></span><span>
+</span><span id="line-35"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="shortEmptyTag"><span class="annot"><span class="annottext">ConfigPP -&gt; QName -&gt; Bool
+</span><a href="Text.XML.Light.Output.html#shortEmptyTag"><span class="hs-identifier hs-var hs-var">shortEmptyTag</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#QName"><span class="hs-identifier hs-type">QName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-36"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="prettify"><span class="annot"><span class="annottext">ConfigPP -&gt; Bool
+</span><a href="Text.XML.Light.Output.html#prettify"><span class="hs-identifier hs-var hs-var">prettify</span></a></span></span><span>      </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-37"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="hs-comment">-- | Default pretty orinting configuration.</span><span>
+</span><span id="line-40"></span><span class="hs-comment">--  * Always use abbreviate empty tags.</span><span>
+</span><span id="line-41"></span><span class="annot"><a href="Text.XML.Light.Output.html#defaultConfigPP"><span class="hs-identifier hs-type">defaultConfigPP</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ConfigPP"><span class="hs-identifier hs-type">ConfigPP</span></a></span><span>
+</span><span id="line-42"></span><span id="defaultConfigPP"><span class="annot"><span class="annottext">defaultConfigPP :: ConfigPP
+</span><a href="Text.XML.Light.Output.html#defaultConfigPP"><span class="hs-identifier hs-var hs-var">defaultConfigPP</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ConfigPP :: (QName -&gt; Bool) -&gt; Bool -&gt; ConfigPP
+</span><a href="Text.XML.Light.Output.html#ConfigPP"><span class="hs-identifier hs-type">ConfigPP</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">shortEmptyTag :: QName -&gt; Bool
+</span><a href="Text.XML.Light.Output.html#shortEmptyTag"><span class="hs-identifier hs-var">shortEmptyTag</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; QName -&gt; Bool
+forall a b. a -&gt; b -&gt; a
+</span><span class="hs-identifier hs-var">const</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-43"></span><span>                           </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">prettify :: Bool
+</span><a href="Text.XML.Light.Output.html#prettify"><span class="hs-identifier hs-var">prettify</span></a></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-44"></span><span>                           </span><span class="hs-special">}</span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span class="hs-comment">-- | The predicate specifies for which empty tags we should use XML's</span><span>
+</span><span id="line-47"></span><span class="hs-comment">-- abbreviated notation &lt;TAG /&gt;.  This is useful if we are working with</span><span>
+</span><span id="line-48"></span><span class="hs-comment">-- some XML-ish standards (such as certain versions of HTML) where some</span><span>
+</span><span id="line-49"></span><span class="hs-comment">-- empty tags should always be displayed in the &lt;TAG&gt;&lt;/TAG&gt; form.</span><span>
+</span><span id="line-50"></span><span class="annot"><a href="Text.XML.Light.Output.html#useShortEmptyTags"><span class="hs-identifier hs-type">useShortEmptyTags</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Types.html#QName"><span class="hs-identifier hs-type">QName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ConfigPP"><span class="hs-identifier hs-type">ConfigPP</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ConfigPP"><span class="hs-identifier hs-type">ConfigPP</span></a></span><span>
+</span><span id="line-51"></span><span id="useShortEmptyTags"><span class="annot"><span class="annottext">useShortEmptyTags :: (QName -&gt; Bool) -&gt; ConfigPP -&gt; ConfigPP
+</span><a href="Text.XML.Light.Output.html#useShortEmptyTags"><span class="hs-identifier hs-var hs-var">useShortEmptyTags</span></a></span></span><span> </span><span id="local-6989586621679044647"><span class="annot"><span class="annottext">QName -&gt; Bool
+</span><a href="#local-6989586621679044647"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679044646"><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044646"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044646"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">shortEmptyTag :: QName -&gt; Bool
+</span><a href="Text.XML.Light.Output.html#shortEmptyTag"><span class="hs-identifier hs-var">shortEmptyTag</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">QName -&gt; Bool
+</span><a href="#local-6989586621679044647"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span>
+</span><span id="line-54"></span><span class="hs-comment">-- | Specify if we should use extra white-space to make document more readable.</span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- WARNING: This adds additional white-space to text elements,</span><span>
+</span><span id="line-56"></span><span class="hs-comment">-- and so it may change the meaning of the document.</span><span>
+</span><span id="line-57"></span><span class="annot"><a href="Text.XML.Light.Output.html#useExtraWhiteSpace"><span class="hs-identifier hs-type">useExtraWhiteSpace</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ConfigPP"><span class="hs-identifier hs-type">ConfigPP</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ConfigPP"><span class="hs-identifier hs-type">ConfigPP</span></a></span><span>
+</span><span id="line-58"></span><span id="useExtraWhiteSpace"><span class="annot"><span class="annottext">useExtraWhiteSpace :: Bool -&gt; ConfigPP -&gt; ConfigPP
+</span><a href="Text.XML.Light.Output.html#useExtraWhiteSpace"><span class="hs-identifier hs-var hs-var">useExtraWhiteSpace</span></a></span></span><span> </span><span id="local-6989586621679044645"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679044645"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679044644"><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044644"><span class="hs-identifier hs-var">c</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044644"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">prettify :: Bool
+</span><a href="Text.XML.Light.Output.html#prettify"><span class="hs-identifier hs-var">prettify</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679044645"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-59"></span><span>
+</span><span id="line-60"></span><span class="hs-comment">-- | A configuration that tries to make things pretty</span><span>
+</span><span id="line-61"></span><span class="hs-comment">-- (possibly at the cost of changing the semantics a bit</span><span>
+</span><span id="line-62"></span><span class="hs-comment">-- through adding white space.)</span><span>
+</span><span id="line-63"></span><span class="annot"><a href="Text.XML.Light.Output.html#prettyConfigPP"><span class="hs-identifier hs-type">prettyConfigPP</span></a></span><span>     </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ConfigPP"><span class="hs-identifier hs-type">ConfigPP</span></a></span><span>
+</span><span id="line-64"></span><span id="prettyConfigPP"><span class="annot"><span class="annottext">prettyConfigPP :: ConfigPP
+</span><a href="Text.XML.Light.Output.html#prettyConfigPP"><span class="hs-identifier hs-var hs-var">prettyConfigPP</span></a></span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; ConfigPP -&gt; ConfigPP
+</span><a href="Text.XML.Light.Output.html#useExtraWhiteSpace"><span class="hs-identifier hs-var">useExtraWhiteSpace</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="Text.XML.Light.Output.html#defaultConfigPP"><span class="hs-identifier hs-var">defaultConfigPP</span></a></span><span>
+</span><span id="line-65"></span><span>
+</span><span id="line-66"></span><span>
+</span><span id="line-67"></span><span class="hs-comment">--------------------------------------------------------------------------------</span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span>
+</span><span id="line-70"></span><span class="hs-comment">-- | Pretty printing renders XML documents faithfully,</span><span>
+</span><span id="line-71"></span><span class="hs-comment">-- with the exception that whitespace may be added\/removed</span><span>
+</span><span id="line-72"></span><span class="hs-comment">-- in non-verbatim character data.</span><span>
+</span><span id="line-73"></span><span class="annot"><a href="Text.XML.Light.Output.html#ppTopElement"><span class="hs-identifier hs-type">ppTopElement</span></a></span><span>       </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Element"><span class="hs-identifier hs-type">Element</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-74"></span><span id="ppTopElement"><span class="annot"><span class="annottext">ppTopElement :: Element -&gt; String
+</span><a href="Text.XML.Light.Output.html#ppTopElement"><span class="hs-identifier hs-var hs-var">ppTopElement</span></a></span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ConfigPP -&gt; Element -&gt; String
+</span><a href="Text.XML.Light.Output.html#ppcTopElement"><span class="hs-identifier hs-var">ppcTopElement</span></a></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="Text.XML.Light.Output.html#prettyConfigPP"><span class="hs-identifier hs-var">prettyConfigPP</span></a></span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span class="hs-comment">-- | Pretty printing elements</span><span>
+</span><span id="line-77"></span><span class="annot"><a href="Text.XML.Light.Output.html#ppElement"><span class="hs-identifier hs-type">ppElement</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Element"><span class="hs-identifier hs-type">Element</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-78"></span><span id="ppElement"><span class="annot"><span class="annottext">ppElement :: Element -&gt; String
+</span><a href="Text.XML.Light.Output.html#ppElement"><span class="hs-identifier hs-var hs-var">ppElement</span></a></span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ConfigPP -&gt; Element -&gt; String
+</span><a href="Text.XML.Light.Output.html#ppcElement"><span class="hs-identifier hs-var">ppcElement</span></a></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="Text.XML.Light.Output.html#prettyConfigPP"><span class="hs-identifier hs-var">prettyConfigPP</span></a></span><span>
+</span><span id="line-79"></span><span>
+</span><span id="line-80"></span><span class="hs-comment">-- | Pretty printing content</span><span>
+</span><span id="line-81"></span><span class="annot"><a href="Text.XML.Light.Output.html#ppContent"><span class="hs-identifier hs-type">ppContent</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-82"></span><span id="ppContent"><span class="annot"><span class="annottext">ppContent :: Content -&gt; String
+</span><a href="Text.XML.Light.Output.html#ppContent"><span class="hs-identifier hs-var hs-var">ppContent</span></a></span></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ConfigPP -&gt; Content -&gt; String
+</span><a href="Text.XML.Light.Output.html#ppcContent"><span class="hs-identifier hs-var">ppcContent</span></a></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="Text.XML.Light.Output.html#prettyConfigPP"><span class="hs-identifier hs-var">prettyConfigPP</span></a></span><span>
+</span><span id="line-83"></span><span>
+</span><span id="line-84"></span><span>
+</span><span id="line-85"></span><span>
+</span><span id="line-86"></span><span class="hs-comment">-- | Pretty printing renders XML documents faithfully,</span><span>
+</span><span id="line-87"></span><span class="hs-comment">-- with the exception that whitespace may be added\/removed</span><span>
+</span><span id="line-88"></span><span class="hs-comment">-- in non-verbatim character data.</span><span>
+</span><span id="line-89"></span><span class="annot"><a href="Text.XML.Light.Output.html#ppcTopElement"><span class="hs-identifier hs-type">ppcTopElement</span></a></span><span>      </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ConfigPP"><span class="hs-identifier hs-type">ConfigPP</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Element"><span class="hs-identifier hs-type">Element</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-90"></span><span id="ppcTopElement"><span class="annot"><span class="annottext">ppcTopElement :: ConfigPP -&gt; Element -&gt; String
+</span><a href="Text.XML.Light.Output.html#ppcTopElement"><span class="hs-identifier hs-var hs-var">ppcTopElement</span></a></span></span><span> </span><span id="local-6989586621679044643"><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044643"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679044642"><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679044642"><span class="hs-identifier hs-var">e</span></a></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><span class="hs-identifier hs-var">unlines</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><a href="Text.XML.Light.Output.html#xml_header"><span class="hs-identifier hs-var">xml_header</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">ConfigPP -&gt; Element -&gt; String
+</span><a href="Text.XML.Light.Output.html#ppcElement"><span class="hs-identifier hs-var">ppcElement</span></a></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044643"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679044642"><span class="hs-identifier hs-var">e</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-91"></span><span>
+</span><span id="line-92"></span><span class="hs-comment">-- | Pretty printing elements</span><span>
+</span><span id="line-93"></span><span class="annot"><a href="Text.XML.Light.Output.html#ppcElement"><span class="hs-identifier hs-type">ppcElement</span></a></span><span>         </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ConfigPP"><span class="hs-identifier hs-type">ConfigPP</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Element"><span class="hs-identifier hs-type">Element</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-94"></span><span id="ppcElement"><span class="annot"><span class="annottext">ppcElement :: ConfigPP -&gt; Element -&gt; String
+</span><a href="Text.XML.Light.Output.html#ppcElement"><span class="hs-identifier hs-var hs-var">ppcElement</span></a></span></span><span> </span><span id="local-6989586621679044640"><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044640"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679044639"><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679044639"><span class="hs-identifier hs-var">e</span></a></span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ConfigPP -&gt; String -&gt; Element -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#ppElementS"><span class="hs-identifier hs-var">ppElementS</span></a></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044640"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679044639"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-95"></span><span>
+</span><span id="line-96"></span><span class="hs-comment">-- | Pretty printing content</span><span>
+</span><span id="line-97"></span><span class="annot"><a href="Text.XML.Light.Output.html#ppcContent"><span class="hs-identifier hs-type">ppcContent</span></a></span><span>         </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ConfigPP"><span class="hs-identifier hs-type">ConfigPP</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-98"></span><span id="ppcContent"><span class="annot"><span class="annottext">ppcContent :: ConfigPP -&gt; Content -&gt; String
+</span><a href="Text.XML.Light.Output.html#ppcContent"><span class="hs-identifier hs-var hs-var">ppcContent</span></a></span></span><span> </span><span id="local-6989586621679044637"><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044637"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679044636"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679044636"><span class="hs-identifier hs-var">x</span></a></span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ConfigPP -&gt; String -&gt; Content -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#ppContentS"><span class="hs-identifier hs-var">ppContentS</span></a></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044637"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679044636"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span>
+</span><span id="line-102"></span><span>
+</span><span id="line-103"></span><span>
+</span><span id="line-104"></span><span class="hs-comment">-- | Pretty printing content using ShowS</span><span>
+</span><span id="line-105"></span><span class="annot"><a href="Text.XML.Light.Output.html#ppContentS"><span class="hs-identifier hs-type">ppContentS</span></a></span><span>         </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ConfigPP"><span class="hs-identifier hs-type">ConfigPP</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ShowS</span></span><span>
+</span><span id="line-106"></span><span id="ppContentS"><span class="annot"><span class="annottext">ppContentS :: ConfigPP -&gt; String -&gt; Content -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#ppContentS"><span class="hs-identifier hs-var hs-var">ppContentS</span></a></span></span><span> </span><span id="local-6989586621679044634"><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044634"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679044633"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044633"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span id="local-6989586621679044632"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679044632"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679044631"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044631"><span class="hs-identifier hs-var">xs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679044632"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-107"></span><span>                        </span><span class="annot"><a href="Text.XML.Light.Types.html#Elem"><span class="hs-identifier hs-type">Elem</span></a></span><span> </span><span id="local-6989586621679044629"><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679044629"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">ConfigPP -&gt; String -&gt; Element -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#ppElementS"><span class="hs-identifier hs-var">ppElementS</span></a></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044634"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044633"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679044629"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044631"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-108"></span><span>                        </span><span class="annot"><a href="Text.XML.Light.Types.html#Text"><span class="hs-identifier hs-type">Text</span></a></span><span> </span><span id="local-6989586621679044627"><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679044627"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">ConfigPP -&gt; String -&gt; CData -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#ppCDataS"><span class="hs-identifier hs-var">ppCDataS</span></a></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044634"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044633"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679044627"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044631"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-109"></span><span>                        </span><span class="annot"><a href="Text.XML.Light.Types.html#CRef"><span class="hs-identifier hs-type">CRef</span></a></span><span> </span><span id="local-6989586621679044624"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044624"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#showCRefS"><span class="hs-identifier hs-var">showCRefS</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044624"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044631"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-110"></span><span>
+</span><span id="line-111"></span><span class="annot"><a href="Text.XML.Light.Output.html#ppElementS"><span class="hs-identifier hs-type">ppElementS</span></a></span><span>         </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ConfigPP"><span class="hs-identifier hs-type">ConfigPP</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Element"><span class="hs-identifier hs-type">Element</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ShowS</span></span><span>
+</span><span id="line-112"></span><span id="ppElementS"><span class="annot"><span class="annottext">ppElementS :: ConfigPP -&gt; String -&gt; Element -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#ppElementS"><span class="hs-identifier hs-var hs-var">ppElementS</span></a></span></span><span> </span><span id="local-6989586621679044622"><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044622"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679044621"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044621"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span id="local-6989586621679044620"><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679044620"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span id="local-6989586621679044619"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044619"><span class="hs-identifier hs-var">xs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044621"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">QName -&gt; [Attr] -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#tagStart"><span class="hs-identifier hs-var">tagStart</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Element -&gt; QName
+</span><a href="Text.XML.Light.Types.html#elName"><span class="hs-identifier hs-var hs-var">elName</span></a></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679044620"><span class="hs-identifier hs-var">e</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Element -&gt; [Attr]
+</span><a href="Text.XML.Light.Types.html#elAttribs"><span class="hs-identifier hs-var hs-var">elAttribs</span></a></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679044620"><span class="hs-identifier hs-var">e</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">ShowS -&gt; ShowS
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-113"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Element -&gt; [Content]
+</span><a href="Text.XML.Light.Types.html#elContent"><span class="hs-identifier hs-var hs-var">elContent</span></a></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679044620"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-114"></span><span>    </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;?&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; Bool
+forall a. Eq a =&gt; [a] -&gt; [a] -&gt; Bool
+</span><span class="hs-operator hs-var">`isPrefixOf`</span></span><span> </span><span class="annot"><span class="annottext">QName -&gt; String
+</span><a href="Text.XML.Light.Types.html#qName"><span class="hs-identifier hs-var hs-var">qName</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679044613"><span class="hs-identifier hs-var">name</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; ?&gt;&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044619"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-115"></span><span>       </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">ConfigPP -&gt; QName -&gt; Bool
+</span><a href="Text.XML.Light.Output.html#shortEmptyTag"><span class="hs-identifier hs-var hs-var">shortEmptyTag</span></a></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044622"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679044613"><span class="hs-identifier hs-var">name</span></a></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; /&gt;&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044619"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-116"></span><span>    </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Types.html#Text"><span class="hs-identifier hs-type">Text</span></a></span><span> </span><span id="local-6989586621679044612"><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679044612"><span class="hs-identifier hs-var">t</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&gt;&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">ConfigPP -&gt; String -&gt; CData -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#ppCDataS"><span class="hs-identifier hs-var">ppCDataS</span></a></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044622"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679044612"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">QName -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#tagEnd"><span class="hs-identifier hs-var">tagEnd</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679044613"><span class="hs-identifier hs-var">name</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044619"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-117"></span><span>    </span><span id="local-6989586621679044611"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679044611"><span class="hs-identifier hs-var">cs</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&gt;'</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; ShowS
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044610"><span class="hs-identifier hs-var">nl</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">(Content -&gt; ShowS) -&gt; String -&gt; [Content] -&gt; String
+forall (t :: * -&gt; *) a b.
+Foldable t =&gt;
+(a -&gt; b -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldr</span></span><span> </span><span class="annot"><span class="annottext">Content -&gt; ShowS
+</span><a href="#local-6989586621679044608"><span class="hs-identifier hs-var">ppSub</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044621"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">QName -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#tagEnd"><span class="hs-identifier hs-var">tagEnd</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679044613"><span class="hs-identifier hs-var">name</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044619"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679044611"><span class="hs-identifier hs-var">cs</span></a></span><span>
+</span><span id="line-118"></span><span>      </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679044608"><span class="annot"><span class="annottext">ppSub :: Content -&gt; ShowS
+</span><a href="#local-6989586621679044608"><span class="hs-identifier hs-var hs-var">ppSub</span></a></span></span><span> </span><span id="local-6989586621679044607"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679044607"><span class="hs-identifier hs-var">e1</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ConfigPP -&gt; String -&gt; Content -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#ppContentS"><span class="hs-identifier hs-var">ppContentS</span></a></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044622"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044606"><span class="hs-identifier hs-var">sp</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044621"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679044607"><span class="hs-identifier hs-var">e1</span></a></span><span> </span><span class="annot"><span class="annottext">ShowS -&gt; ShowS -&gt; ShowS
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044610"><span class="hs-identifier hs-var">nl</span></a></span><span>
+</span><span id="line-119"></span><span>            </span><span class="hs-special">(</span><span id="local-6989586621679044610"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044610"><span class="hs-identifier hs-var">nl</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679044606"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044606"><span class="hs-identifier hs-var">sp</span></a></span></span><span class="hs-special">)</span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">ConfigPP -&gt; Bool
+</span><a href="Text.XML.Light.Output.html#prettify"><span class="hs-identifier hs-var hs-var">prettify</span></a></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044622"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;\n&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;  &quot;</span></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-120"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-121"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679044613"><span class="annot"><span class="annottext">name :: QName
+</span><a href="#local-6989586621679044613"><span class="hs-identifier hs-var hs-var">name</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Element -&gt; QName
+</span><a href="Text.XML.Light.Types.html#elName"><span class="hs-identifier hs-var hs-var">elName</span></a></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679044620"><span class="hs-identifier hs-var">e</span></a></span><span>
+</span><span id="line-122"></span><span>
+</span><span id="line-123"></span><span class="annot"><a href="Text.XML.Light.Output.html#ppCDataS"><span class="hs-identifier hs-type">ppCDataS</span></a></span><span>           </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Output.html#ConfigPP"><span class="hs-identifier hs-type">ConfigPP</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#CData"><span class="hs-identifier hs-type">CData</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ShowS</span></span><span>
+</span><span id="line-124"></span><span id="ppCDataS"><span class="annot"><span class="annottext">ppCDataS :: ConfigPP -&gt; String -&gt; CData -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#ppCDataS"><span class="hs-identifier hs-var hs-var">ppCDataS</span></a></span></span><span> </span><span id="local-6989586621679044603"><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044603"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679044602"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044602"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span id="local-6989586621679044601"><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679044601"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679044600"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044600"><span class="hs-identifier hs-var">xs</span></a></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044602"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">CData -&gt; CDataKind
+</span><a href="Text.XML.Light.Types.html#cdVerbatim"><span class="hs-identifier hs-var hs-var">cdVerbatim</span></a></span><span> </span><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679044601"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">CDataKind -&gt; CDataKind -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">/=</span></span><span> </span><span class="annot"><span class="annottext">CDataKind
+</span><a href="Text.XML.Light.Types.html#CDataText"><span class="hs-identifier hs-var">CDataText</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ConfigPP -&gt; Bool
+</span><a href="Text.XML.Light.Output.html#prettify"><span class="hs-identifier hs-var hs-var">prettify</span></a></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="#local-6989586621679044603"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-125"></span><span>                             </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">CData -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#showCDataS"><span class="hs-identifier hs-var">showCDataS</span></a></span><span> </span><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679044601"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044600"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-126"></span><span>                             </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; ShowS) -&gt; String -&gt; ShowS
+forall (t :: * -&gt; *) a b.
+Foldable t =&gt;
+(a -&gt; b -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldr</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; ShowS
+</span><a href="#local-6989586621679044593"><span class="hs-identifier hs-var">cons</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044600"><span class="hs-identifier hs-var">xs</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CData -&gt; String
+</span><a href="Text.XML.Light.Output.html#showCData"><span class="hs-identifier hs-var">showCData</span></a></span><span> </span><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679044601"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-127"></span><span>
+</span><span id="line-128"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span class="annot"><a href="#local-6989586621679044593"><span class="hs-identifier hs-type">cons</span></a></span><span>         </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-129"></span><span>        </span><span id="local-6989586621679044593"><span class="annot"><span class="annottext">cons :: Char -&gt; ShowS
+</span><a href="#local-6989586621679044593"><span class="hs-identifier hs-var hs-var">cons</span></a></span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\n'</span></span><span> </span><span id="local-6989586621679044592"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044592"><span class="hs-identifier hs-var">ys</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;\n&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044602"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044592"><span class="hs-identifier hs-var">ys</span></a></span><span>
+</span><span id="line-130"></span><span>        </span><span class="annot"><a href="#local-6989586621679044593"><span class="hs-identifier hs-var">cons</span></a></span><span> </span><span id="local-6989586621679044591"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679044591"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span id="local-6989586621679044590"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044590"><span class="hs-identifier hs-var">ys</span></a></span></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679044591"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; ShowS
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044590"><span class="hs-identifier hs-var">ys</span></a></span><span>
+</span><span id="line-131"></span><span>
+</span><span id="line-132"></span><span>
+</span><span id="line-133"></span><span>
+</span><span id="line-134"></span><span class="hs-comment">--------------------------------------------------------------------------------</span><span>
+</span><span id="line-135"></span><span>
+</span><span id="line-136"></span><span class="hs-comment">-- | Adds the &lt;?xml?&gt; header.</span><span>
+</span><span id="line-137"></span><span class="annot"><a href="Text.XML.Light.Output.html#showTopElement"><span class="hs-identifier hs-type">showTopElement</span></a></span><span>     </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Element"><span class="hs-identifier hs-type">Element</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-138"></span><span id="showTopElement"><span class="annot"><span class="annottext">showTopElement :: Element -&gt; String
+</span><a href="Text.XML.Light.Output.html#showTopElement"><span class="hs-identifier hs-var hs-var">showTopElement</span></a></span></span><span> </span><span id="local-6989586621679044589"><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679044589"><span class="hs-identifier hs-var">c</span></a></span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="Text.XML.Light.Output.html#xml_header"><span class="hs-identifier hs-var">xml_header</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">Element -&gt; String
+</span><a href="Text.XML.Light.Output.html#showElement"><span class="hs-identifier hs-var">showElement</span></a></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679044589"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-139"></span><span>
+</span><span id="line-140"></span><span class="annot"><a href="Text.XML.Light.Output.html#showContent"><span class="hs-identifier hs-type">showContent</span></a></span><span>        </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-141"></span><span id="showContent"><span class="annot"><span class="annottext">showContent :: Content -&gt; String
+</span><a href="Text.XML.Light.Output.html#showContent"><span class="hs-identifier hs-var hs-var">showContent</span></a></span></span><span> </span><span id="local-6989586621679044588"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679044588"><span class="hs-identifier hs-var">c</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ConfigPP -&gt; String -&gt; Content -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#ppContentS"><span class="hs-identifier hs-var">ppContentS</span></a></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="Text.XML.Light.Output.html#defaultConfigPP"><span class="hs-identifier hs-var">defaultConfigPP</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679044588"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-142"></span><span>
+</span><span id="line-143"></span><span class="annot"><a href="Text.XML.Light.Output.html#showElement"><span class="hs-identifier hs-type">showElement</span></a></span><span>        </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Element"><span class="hs-identifier hs-type">Element</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-144"></span><span id="showElement"><span class="annot"><span class="annottext">showElement :: Element -&gt; String
+</span><a href="Text.XML.Light.Output.html#showElement"><span class="hs-identifier hs-var hs-var">showElement</span></a></span></span><span> </span><span id="local-6989586621679044587"><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679044587"><span class="hs-identifier hs-var">c</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ConfigPP -&gt; String -&gt; Element -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#ppElementS"><span class="hs-identifier hs-var">ppElementS</span></a></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="Text.XML.Light.Output.html#defaultConfigPP"><span class="hs-identifier hs-var">defaultConfigPP</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679044587"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-145"></span><span>
+</span><span id="line-146"></span><span class="annot"><a href="Text.XML.Light.Output.html#showCData"><span class="hs-identifier hs-type">showCData</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#CData"><span class="hs-identifier hs-type">CData</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-147"></span><span id="showCData"><span class="annot"><span class="annottext">showCData :: CData -&gt; String
+</span><a href="Text.XML.Light.Output.html#showCData"><span class="hs-identifier hs-var hs-var">showCData</span></a></span></span><span> </span><span id="local-6989586621679044586"><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679044586"><span class="hs-identifier hs-var">c</span></a></span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ConfigPP -&gt; String -&gt; CData -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#ppCDataS"><span class="hs-identifier hs-var">ppCDataS</span></a></span><span> </span><span class="annot"><span class="annottext">ConfigPP
+</span><a href="Text.XML.Light.Output.html#defaultConfigPP"><span class="hs-identifier hs-var">defaultConfigPP</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679044586"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-148"></span><span>
+</span><span id="line-149"></span><span class="hs-comment">-- Note: crefs should not contain '&amp;', ';', etc.</span><span>
+</span><span id="line-150"></span><span class="annot"><a href="Text.XML.Light.Output.html#showCRefS"><span class="hs-identifier hs-type">showCRefS</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ShowS</span></span><span>
+</span><span id="line-151"></span><span id="showCRefS"><span class="annot"><span class="annottext">showCRefS :: String -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#showCRefS"><span class="hs-identifier hs-var hs-var">showCRefS</span></a></span></span><span> </span><span id="local-6989586621679044585"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044585"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span id="local-6989586621679044584"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044584"><span class="hs-identifier hs-var">xs</span></a></span></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&amp;'</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; ShowS
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044585"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">';'</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; ShowS
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044584"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-152"></span><span>
+</span><span id="line-153"></span><span class="hs-comment">-- | Convert a text element to characters.</span><span>
+</span><span id="line-154"></span><span class="annot"><a href="Text.XML.Light.Output.html#showCDataS"><span class="hs-identifier hs-type">showCDataS</span></a></span><span>         </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#CData"><span class="hs-identifier hs-type">CData</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ShowS</span></span><span>
+</span><span id="line-155"></span><span id="showCDataS"><span class="annot"><span class="annottext">showCDataS :: CData -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#showCDataS"><span class="hs-identifier hs-var hs-var">showCDataS</span></a></span></span><span> </span><span id="local-6989586621679044583"><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679044583"><span class="hs-identifier hs-var">cd</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-156"></span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">CData -&gt; CDataKind
+</span><a href="Text.XML.Light.Types.html#cdVerbatim"><span class="hs-identifier hs-var hs-var">cdVerbatim</span></a></span><span> </span><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679044583"><span class="hs-identifier hs-var">cd</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-157"></span><span>   </span><span class="annot"><span class="annottext">CDataKind
+</span><a href="Text.XML.Light.Types.html#CDataText"><span class="hs-identifier hs-var">CDataText</span></a></span><span>     </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#escStr"><span class="hs-identifier hs-var">escStr</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CData -&gt; String
+</span><a href="Text.XML.Light.Types.html#cdData"><span class="hs-identifier hs-var hs-var">cdData</span></a></span><span> </span><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679044583"><span class="hs-identifier hs-var">cd</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-158"></span><span>   </span><span class="annot"><span class="annottext">CDataKind
+</span><a href="Text.XML.Light.Types.html#CDataVerbatim"><span class="hs-identifier hs-var">CDataVerbatim</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&lt;![CDATA[&quot;</span></span><span> </span><span class="annot"><span class="annottext">ShowS -&gt; ShowS -&gt; ShowS
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#escCData"><span class="hs-identifier hs-var">escCData</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CData -&gt; String
+</span><a href="Text.XML.Light.Types.html#cdData"><span class="hs-identifier hs-var hs-var">cdData</span></a></span><span> </span><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679044583"><span class="hs-identifier hs-var">cd</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-159"></span><span>                                           </span><span class="annot"><span class="annottext">ShowS -&gt; ShowS -&gt; ShowS
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;]]&gt;&quot;</span></span><span>
+</span><span id="line-160"></span><span>   </span><span class="annot"><span class="annottext">CDataKind
+</span><a href="Text.XML.Light.Types.html#CDataRaw"><span class="hs-identifier hs-var">CDataRaw</span></a></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-glyph">\</span><span> </span><span id="local-6989586621679044577"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044577"><span class="hs-identifier hs-var">xs</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">CData -&gt; String
+</span><a href="Text.XML.Light.Types.html#cdData"><span class="hs-identifier hs-var hs-var">cdData</span></a></span><span> </span><span class="annot"><span class="annottext">CData
+</span><a href="#local-6989586621679044583"><span class="hs-identifier hs-var">cd</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044577"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-161"></span><span>
+</span><span id="line-162"></span><span class="hs-comment">--------------------------------------------------------------------------------</span><span>
+</span><span id="line-163"></span><span class="annot"><a href="Text.XML.Light.Output.html#escCData"><span class="hs-identifier hs-type">escCData</span></a></span><span>           </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ShowS</span></span><span>
+</span><span id="line-164"></span><span id="escCData"><span class="annot"><span class="annottext">escCData :: String -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#escCData"><span class="hs-identifier hs-var hs-var">escCData</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">']'</span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">']'</span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&gt;'</span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679044576"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044576"><span class="hs-identifier hs-var">cs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;]]]]&gt;&lt;![CDATA[&gt;&quot;</span></span><span> </span><span class="annot"><span class="annottext">ShowS -&gt; ShowS -&gt; ShowS
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#escCData"><span class="hs-identifier hs-var">escCData</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044576"><span class="hs-identifier hs-var">cs</span></a></span><span>
+</span><span id="line-165"></span><span class="annot"><a href="Text.XML.Light.Output.html#escCData"><span class="hs-identifier hs-var">escCData</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679044575"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679044575"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679044574"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044574"><span class="hs-identifier hs-var">cs</span></a></span></span><span class="hs-special">)</span><span>               </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; ShowS
+</span><span class="hs-identifier hs-var">showChar</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679044575"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">ShowS -&gt; ShowS -&gt; ShowS
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#escCData"><span class="hs-identifier hs-var">escCData</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044574"><span class="hs-identifier hs-var">cs</span></a></span><span>
+</span><span id="line-166"></span><span class="annot"><a href="Text.XML.Light.Output.html#escCData"><span class="hs-identifier hs-var">escCData</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>                     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ShowS
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-167"></span><span>
+</span><span id="line-168"></span><span class="annot"><a href="Text.XML.Light.Output.html#escChar"><span class="hs-identifier hs-type">escChar</span></a></span><span>            </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ShowS</span></span><span>
+</span><span id="line-169"></span><span id="escChar"><span class="annot"><span class="annottext">escChar :: Char -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#escChar"><span class="hs-identifier hs-var hs-var">escChar</span></a></span></span><span> </span><span id="local-6989586621679044570"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679044570"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679044570"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-170"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&lt;'</span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&amp;lt;&quot;</span></span><span>
+</span><span id="line-171"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&gt;'</span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&amp;gt;&quot;</span></span><span>
+</span><span id="line-172"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&amp;'</span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&amp;amp;&quot;</span></span><span>
+</span><span id="line-173"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&quot;'</span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&amp;quot;&quot;</span></span><span>
+</span><span id="line-174"></span><span>  </span><span class="hs-comment">-- we use &amp;#39 instead of &amp;apos; because IE apparently has difficulties</span><span>
+</span><span id="line-175"></span><span>  </span><span class="hs-comment">-- rendering &amp;apos; in xhtml.</span><span>
+</span><span id="line-176"></span><span>  </span><span class="hs-comment">-- Reported by Rohan Drape &lt;rohan.drape@gmail.com&gt;.</span><span>
+</span><span id="line-177"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\''</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&amp;#39;&quot;</span></span><span>
+</span><span id="line-178"></span><span>
+</span><span id="line-179"></span><span>  </span><span class="hs-comment">-- NOTE: We escape '\r' explicitly because otherwise they get lost</span><span>
+</span><span id="line-180"></span><span>  </span><span class="hs-comment">-- when parsed back in because of then end-of-line normalization rules.</span><span>
+</span><span id="line-181"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Bool
+</span><span class="hs-identifier hs-var">isPrint</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679044570"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679044570"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\n'</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Char -&gt; ShowS
+</span><span class="hs-identifier hs-var">showChar</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679044570"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-182"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&amp;#&quot;</span></span><span> </span><span class="annot"><span class="annottext">ShowS -&gt; ShowS -&gt; ShowS
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; ShowS
+forall a. Show a =&gt; a -&gt; ShowS
+</span><span class="hs-identifier hs-var">shows</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679044567"><span class="hs-identifier hs-var">oc</span></a></span><span> </span><span class="annot"><span class="annottext">ShowS -&gt; ShowS -&gt; ShowS
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; ShowS
+</span><span class="hs-identifier hs-var">showChar</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">';'</span></span><span>
+</span><span id="line-183"></span><span>      </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679044567"><span class="annot"><span class="annottext">oc :: Int
+</span><a href="#local-6989586621679044567"><span class="hs-identifier hs-var hs-var">oc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Int
+</span><span class="hs-identifier hs-var">ord</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679044570"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-184"></span><span>
+</span><span id="line-185"></span><span class="annot"><a href="Text.XML.Light.Output.html#escStr"><span class="hs-identifier hs-type">escStr</span></a></span><span>             </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ShowS</span></span><span>
+</span><span id="line-186"></span><span id="escStr"><span class="annot"><span class="annottext">escStr :: String -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#escStr"><span class="hs-identifier hs-var hs-var">escStr</span></a></span></span><span> </span><span id="local-6989586621679044565"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044565"><span class="hs-identifier hs-var">cs</span></a></span></span><span> </span><span id="local-6989586621679044564"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044564"><span class="hs-identifier hs-var">rs</span></a></span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; ShowS) -&gt; String -&gt; ShowS
+forall (t :: * -&gt; *) a b.
+Foldable t =&gt;
+(a -&gt; b -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldr</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#escChar"><span class="hs-identifier hs-var">escChar</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044564"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044565"><span class="hs-identifier hs-var">cs</span></a></span><span>
+</span><span id="line-187"></span><span>
+</span><span id="line-188"></span><span class="annot"><a href="Text.XML.Light.Output.html#tagEnd"><span class="hs-identifier hs-type">tagEnd</span></a></span><span>             </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#QName"><span class="hs-identifier hs-type">QName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ShowS</span></span><span>
+</span><span id="line-189"></span><span id="tagEnd"><span class="annot"><span class="annottext">tagEnd :: QName -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#tagEnd"><span class="hs-identifier hs-var hs-var">tagEnd</span></a></span></span><span> </span><span id="local-6989586621679044563"><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679044563"><span class="hs-identifier hs-var">qn</span></a></span></span><span> </span><span id="local-6989586621679044562"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044562"><span class="hs-identifier hs-var">rs</span></a></span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&lt;'</span></span><span class="annot"><span class="annottext">Char -&gt; ShowS
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'/'</span></span><span class="annot"><span class="annottext">Char -&gt; ShowS
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">QName -&gt; String
+</span><a href="Text.XML.Light.Output.html#showQName"><span class="hs-identifier hs-var">showQName</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679044563"><span class="hs-identifier hs-var">qn</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&gt;'</span></span><span class="annot"><span class="annottext">Char -&gt; ShowS
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044562"><span class="hs-identifier hs-var">rs</span></a></span><span>
+</span><span id="line-190"></span><span>
+</span><span id="line-191"></span><span class="annot"><a href="Text.XML.Light.Output.html#tagStart"><span class="hs-identifier hs-type">tagStart</span></a></span><span>           </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#QName"><span class="hs-identifier hs-type">QName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Types.html#Attr"><span class="hs-identifier hs-type">Attr</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ShowS</span></span><span>
+</span><span id="line-192"></span><span id="tagStart"><span class="annot"><span class="annottext">tagStart :: QName -&gt; [Attr] -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#tagStart"><span class="hs-identifier hs-var hs-var">tagStart</span></a></span></span><span> </span><span id="local-6989586621679044561"><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679044561"><span class="hs-identifier hs-var">qn</span></a></span></span><span> </span><span id="local-6989586621679044560"><span class="annot"><span class="annottext">[Attr]
+</span><a href="#local-6989586621679044560"><span class="hs-keyword hs-var">as</span></a></span></span><span> </span><span id="local-6989586621679044559"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044559"><span class="hs-identifier hs-var">rs</span></a></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&lt;'</span></span><span class="annot"><span class="annottext">Char -&gt; ShowS
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">QName -&gt; String
+</span><a href="Text.XML.Light.Output.html#showQName"><span class="hs-identifier hs-var">showQName</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679044561"><span class="hs-identifier hs-var">qn</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044558"><span class="hs-identifier hs-var">as_str</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044559"><span class="hs-identifier hs-var">rs</span></a></span><span>
+</span><span id="line-193"></span><span> </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679044558"><span class="annot"><span class="annottext">as_str :: String
+</span><a href="#local-6989586621679044558"><span class="hs-identifier hs-var hs-var">as_str</span></a></span></span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">[Attr] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[Attr]
+</span><a href="#local-6989586621679044560"><span class="hs-keyword hs-var">as</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">' '</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; ShowS
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><span class="hs-identifier hs-var">unwords</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Attr -&gt; String) -&gt; [Attr] -&gt; [String]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Attr -&gt; String
+</span><a href="Text.XML.Light.Output.html#showAttr"><span class="hs-identifier hs-var">showAttr</span></a></span><span> </span><span class="annot"><span class="annottext">[Attr]
+</span><a href="#local-6989586621679044560"><span class="hs-keyword hs-var">as</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-194"></span><span>
+</span><span id="line-195"></span><span class="annot"><a href="Text.XML.Light.Output.html#showAttr"><span class="hs-identifier hs-type">showAttr</span></a></span><span>           </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Attr"><span class="hs-identifier hs-type">Attr</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-196"></span><span id="showAttr"><span class="annot"><span class="annottext">showAttr :: Attr -&gt; String
+</span><a href="Text.XML.Light.Output.html#showAttr"><span class="hs-identifier hs-var hs-var">showAttr</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Types.html#Attr"><span class="hs-identifier hs-type">Attr</span></a></span><span> </span><span id="local-6989586621679044554"><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679044554"><span class="hs-identifier hs-var">qn</span></a></span></span><span> </span><span id="local-6989586621679044553"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044553"><span class="hs-identifier hs-var">v</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">QName -&gt; String
+</span><a href="Text.XML.Light.Output.html#showQName"><span class="hs-identifier hs-var">showQName</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679044554"><span class="hs-identifier hs-var">qn</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'='</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; ShowS
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&quot;'</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; ShowS
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><a href="Text.XML.Light.Output.html#escStr"><span class="hs-identifier hs-var">escStr</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044553"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;\&quot;&quot;</span></span><span>
+</span><span id="line-197"></span><span>
+</span><span id="line-198"></span><span class="annot"><a href="Text.XML.Light.Output.html#showQName"><span class="hs-identifier hs-type">showQName</span></a></span><span>          </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#QName"><span class="hs-identifier hs-type">QName</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-199"></span><span id="showQName"><span class="annot"><span class="annottext">showQName :: QName -&gt; String
+</span><a href="Text.XML.Light.Output.html#showQName"><span class="hs-identifier hs-var hs-var">showQName</span></a></span></span><span> </span><span id="local-6989586621679044552"><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679044552"><span class="hs-identifier hs-var">q</span></a></span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044551"><span class="hs-identifier hs-var">pre</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">QName -&gt; String
+</span><a href="Text.XML.Light.Types.html#qName"><span class="hs-identifier hs-var hs-var">qName</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679044552"><span class="hs-identifier hs-var">q</span></a></span><span>
+</span><span id="line-200"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679044551"><span class="annot"><span class="annottext">pre :: String
+</span><a href="#local-6989586621679044551"><span class="hs-identifier hs-var hs-var">pre</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">QName -&gt; Maybe String
+</span><a href="Text.XML.Light.Types.html#qPrefix"><span class="hs-identifier hs-var hs-var">qPrefix</span></a></span><span> </span><span class="annot"><span class="annottext">QName
+</span><a href="#local-6989586621679044552"><span class="hs-identifier hs-var">q</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-201"></span><span>                </span><span class="annot"><span class="annottext">Maybe String
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-202"></span><span>                </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679044549"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044549"><span class="hs-identifier hs-var">p</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679044549"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;:&quot;</span></span><span>
+</span><span id="line-203"></span><span>
+</span><span id="line-204"></span><span>
+</span><span id="line-205"></span><span>
+</span><span id="line-206"></span></pre></body></html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE DeriveAnyClass  #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE DeriveGeneric   #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE TemplateHaskell #-}</span><span>
+</span><span id="line-4"></span><span class="hs-comment">-------------------------------------------------------------------</span><span>
+</span><span id="line-5"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- Module       : Data.Geospatial.Internal.Geometry.GeoPoint</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- Copyright    : (C) 2014-2019 HS-GeoJSON Project</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- License      : BSD-style (see the file LICENSE.md)</span><span>
+</span><span id="line-9"></span><span class="hs-comment">-- Maintainer   : Andrew Newman</span><span>
+</span><span id="line-10"></span><span class="hs-comment">--</span><span>
+</span><span id="line-11"></span><span class="hs-comment">-------------------------------------------------------------------</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Data.Geospatial.Internal.Geometry.GeoPoint</span><span> </span><span class="hs-special">(</span><span>
+</span><span id="line-13"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Type</span></span><span>
+</span><span id="line-14"></span><span>        </span><span class="annot"><a href="Data.Geospatial.Internal.Geometry.GeoPoint.html#GeoPoint"><span class="hs-identifier">GeoPoint</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.Geometry.GeoPoint.html#unGeoPoint"><span class="hs-identifier">unGeoPoint</span></a></span><span>
+</span><span id="line-16"></span><span>    </span><span class="hs-special">,</span><span>   </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#retrieveXY"><span class="hs-identifier">retrieveXY</span></a></span><span>
+</span><span id="line-17"></span><span>    </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.DeepSeq</span></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>                            </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">makeLenses</span></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>                           </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">mzero</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson</span></span><span>                              </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Aeson</span></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html"><span class="hs-identifier">Data.Geospatial.Internal.BasicTypes</span></a></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Data.Geospatial.Internal.Geometry.Aeson.html"><span class="hs-identifier">Data.Geospatial.Internal.Geometry.Aeson</span></a></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">GHC.Generics</span></span><span>                            </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span id="local-6989586621679176823"><span id="local-6989586621679176824"></span></span><span class="hs-keyword">newtype</span><span> </span><span id="GeoPoint"><span class="annot"><a href="Data.Geospatial.Internal.Geometry.GeoPoint.html#GeoPoint"><span class="hs-identifier hs-var">GeoPoint</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="GeoPoint"><span class="annot"><a href="Data.Geospatial.Internal.Geometry.GeoPoint.html#GeoPoint"><span class="hs-identifier hs-var">GeoPoint</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="_unGeoPoint"><span class="annot"><span class="annottext">GeoPoint -&gt; GeoPositionWithoutCRS
+</span><a href="Data.Geospatial.Internal.Geometry.GeoPoint.html#_unGeoPoint"><span class="hs-identifier hs-var hs-var">_unGeoPoint</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.BasicTypes.html#GeoPositionWithoutCRS"><span class="hs-identifier hs-type">GeoPositionWithoutCRS</span></a></span><span> </span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679176815"><span id="local-6989586621679176817"><span id="local-6989586621679176819"><span class="annot"><span class="annottext">Int -&gt; GeoPoint -&gt; ShowS
+[GeoPoint] -&gt; ShowS
+GeoPoint -&gt; String
+(Int -&gt; GeoPoint -&gt; ShowS)
+-&gt; (GeoPoint -&gt; String) -&gt; ([GeoPoint] -&gt; ShowS) -&gt; Show GeoPoint
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [GeoPoint] -&gt; ShowS
+$cshowList :: [GeoPoint] -&gt; ShowS
+show :: GeoPoint -&gt; String
+$cshow :: GeoPoint -&gt; String
+showsPrec :: Int -&gt; GeoPoint -&gt; ShowS
+$cshowsPrec :: Int -&gt; GeoPoint -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176810"><span id="local-6989586621679176812"><span class="annot"><span class="annottext">GeoPoint -&gt; GeoPoint -&gt; Bool
+(GeoPoint -&gt; GeoPoint -&gt; Bool)
+-&gt; (GeoPoint -&gt; GeoPoint -&gt; Bool) -&gt; Eq GeoPoint
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: GeoPoint -&gt; GeoPoint -&gt; Bool
+$c/= :: GeoPoint -&gt; GeoPoint -&gt; Bool
+== :: GeoPoint -&gt; GeoPoint -&gt; Bool
+$c== :: GeoPoint -&gt; GeoPoint -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(forall x. GeoPoint -&gt; Rep GeoPoint x)
+-&gt; (forall x. Rep GeoPoint x -&gt; GeoPoint) -&gt; Generic GeoPoint
+forall x. Rep GeoPoint x -&gt; GeoPoint
+forall x. GeoPoint -&gt; Rep GeoPoint x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep GeoPoint x -&gt; GeoPoint
+$cfrom :: forall x. GeoPoint -&gt; Rep GeoPoint x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679176804"><span class="annot"><span class="annottext">GeoPoint -&gt; ()
+(GeoPoint -&gt; ()) -&gt; NFData GeoPoint
+forall a. (a -&gt; ()) -&gt; NFData a
+rnf :: GeoPoint -&gt; ()
+$crnf :: GeoPoint -&gt; ()
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">NFData</span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span id="unGeoPoint"><span class="hs-identifier">makeLenses</span><span> </span><span class="hs-special">''</span><span class="hs-identifier">GeoPoint</span></span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- instances</span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679176796"><span id="local-6989586621679176798"><span id="local-6989586621679176800"><span class="annot"><span class="hs-identifier hs-type">Aeson.ToJSON</span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.Geometry.GeoPoint.html#GeoPoint"><span class="hs-identifier hs-type">GeoPoint</span></a></span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-35"></span><span class="hs-comment">--  toJSON :: a -&gt; Value</span><span>
+</span><span id="line-36"></span><span>    </span><span id="local-6989586621679176794"><span class="annot"><span class="annottext">toJSON :: GeoPoint -&gt; Value
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">toJSON</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; GeoPositionWithoutCRS -&gt; Value
+forall a. ToJSON a =&gt; String -&gt; a -&gt; Value
+</span><a href="Data.Geospatial.Internal.Geometry.Aeson.html#makeGeometryGeoAeson"><span class="hs-identifier hs-var">makeGeometryGeoAeson</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Point&quot;</span></span><span> </span><span class="annot"><span class="annottext">(GeoPositionWithoutCRS -&gt; Value)
+-&gt; (GeoPoint -&gt; GeoPositionWithoutCRS) -&gt; GeoPoint -&gt; Value
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">GeoPoint -&gt; GeoPositionWithoutCRS
+</span><a href="Data.Geospatial.Internal.Geometry.GeoPoint.html#_unGeoPoint"><span class="hs-identifier hs-var hs-var">_unGeoPoint</span></a></span><span>
+</span><span id="line-37"></span><span>
+</span><span id="line-38"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679176788"><span class="annot"><span class="hs-identifier hs-type">Aeson.FromJSON</span></span><span> </span><span class="annot"><a href="Data.Geospatial.Internal.Geometry.GeoPoint.html#GeoPoint"><span class="hs-identifier hs-type">GeoPoint</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-39"></span><span class="hs-comment">--  parseJSON :: Value -&gt; Parser a</span><span>
+</span><span id="line-40"></span><span>    </span><span id="local-6989586621679176786"><span class="annot"><span class="annottext">parseJSON :: Value -&gt; Parser GeoPoint
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">parseJSON</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Aeson.Object</span></span><span> </span><span id="local-6989586621679176783"><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679176783"><span class="hs-identifier hs-var">o</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+-&gt; (GeoPositionWithoutCRS -&gt; GeoPoint) -&gt; Object -&gt; Parser GeoPoint
+forall a b.
+(FromJSON a, FromJSON b) =&gt;
+String -&gt; (a -&gt; b) -&gt; Object -&gt; Parser b
+</span><a href="Data.Geospatial.Internal.Geometry.Aeson.html#readGeometryGeoAeson"><span class="hs-identifier hs-var">readGeometryGeoAeson</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Point&quot;</span></span><span> </span><span class="annot"><span class="annottext">GeoPositionWithoutCRS -&gt; GeoPoint
+</span><a href="Data.Geospatial.Internal.Geometry.GeoPoint.html#GeoPoint"><span class="hs-identifier hs-var">GeoPoint</span></a></span><span> </span><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679176783"><span class="hs-identifier hs-var">o</span></a></span><span>
+</span><span id="line-41"></span><span>    </span><span class="annot"><span class="hs-identifier hs-var">parseJSON</span></span><span> </span><span class="annot"><span class="annottext">Value
+</span><span class="hs-identifier">_</span></span><span>                </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser GeoPoint
+forall (m :: * -&gt; *) a. MonadPlus m =&gt; m a
+</span><span class="hs-identifier hs-var">mzero</span></span><span>
+</span><span id="line-42"></span></pre></body></html>

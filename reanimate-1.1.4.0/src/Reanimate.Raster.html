@@ -1,0 +1,1011 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Module      : Reanimate.Raster
+Copyright   : Written by David Himmelstrup
+License     : Unlicense
+Maintainer  : lemmih@gmail.com
+Stability   : experimental
+Portability : POSIX
+
+Tools for generating, manipulating, and embedding raster images.
+
+-}</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Raster</span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Raster.html#mkImage"><span class="hs-identifier">mkImage</span></a></span><span>           </span><span class="hs-comment">-- :: Double -&gt; Double -&gt; FilePath -&gt; SVG</span><span>
+</span><span id="line-14"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Raster.html#cacheImage"><span class="hs-identifier">cacheImage</span></a></span><span>        </span><span class="hs-comment">-- :: (PngSavable pixel, Hashable a) =&gt; a -&gt; Image pixel -&gt; FilePath</span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Raster.html#prerenderSvg"><span class="hs-identifier">prerenderSvg</span></a></span><span>      </span><span class="hs-comment">-- :: Hashable a =&gt; a -&gt; SVG -&gt; SVG</span><span>
+</span><span id="line-16"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Raster.html#prerenderSvgFile"><span class="hs-identifier">prerenderSvgFile</span></a></span><span>  </span><span class="hs-comment">-- :: Hashable a =&gt; a -&gt; Width -&gt; Height -&gt; SVG -&gt; FilePath</span><span>
+</span><span id="line-17"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Raster.html#embedImage"><span class="hs-identifier">embedImage</span></a></span><span>        </span><span class="hs-comment">-- :: PngSavable a =&gt; Image a -&gt; SVG</span><span>
+</span><span id="line-18"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Raster.html#embedDynamicImage"><span class="hs-identifier">embedDynamicImage</span></a></span><span> </span><span class="hs-comment">-- :: DynamicImage -&gt; SVG</span><span>
+</span><span id="line-19"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Raster.html#embedPng"><span class="hs-identifier">embedPng</span></a></span><span>          </span><span class="hs-comment">-- :: Double -&gt; Double -&gt; LBS.ByteString -&gt; SVG</span><span>
+</span><span id="line-20"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Raster.html#raster"><span class="hs-identifier">raster</span></a></span><span>            </span><span class="hs-comment">-- :: SVG -&gt; DynamicImage</span><span>
+</span><span id="line-21"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Raster.html#rasterSized"><span class="hs-identifier">rasterSized</span></a></span><span>       </span><span class="hs-comment">-- :: Width -&gt; Height -&gt; SVG -&gt; DynamicImage</span><span>
+</span><span id="line-22"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Raster.html#vectorize"><span class="hs-identifier">vectorize</span></a></span><span>         </span><span class="hs-comment">-- :: FilePath -&gt; SVG</span><span>
+</span><span id="line-23"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Raster.html#vectorize_"><span class="hs-identifier">vectorize_</span></a></span><span>        </span><span class="hs-comment">-- :: [String] -&gt; FilePath -&gt; SVG</span><span>
+</span><span id="line-24"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Raster.html#svgAsPngFile"><span class="hs-identifier">svgAsPngFile</span></a></span><span>      </span><span class="hs-comment">-- :: SVG -&gt; FilePath</span><span>
+</span><span id="line-25"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Raster.html#svgAsPngFile%27"><span class="hs-identifier">svgAsPngFile'</span></a></span><span>     </span><span class="hs-comment">-- :: Width -&gt; Height -&gt; SVG -&gt; FilePath</span><span>
+</span><span id="line-26"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Codec.Picture</span></span><span>               </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">DynamicImage</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Image</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">imageHeight</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">imageWidth</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-30"></span><span>                                              </span><span class="annot"><span class="hs-identifier">PngSavable</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">encodePng</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">decodePng</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">dynamicMap</span></span><span class="hs-special">,</span><span>
+</span><span id="line-31"></span><span>                                              </span><span class="annot"><span class="hs-identifier">encodeDynamicPng</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">writePng</span></span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>                </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(&amp;)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(.~)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>               </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">unless</span></span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString</span></span><span>             </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">B</span></span><span>
+</span><span id="line-35"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString.Base64.Lazy</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Base64</span></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString.Lazy.Char8</span></span><span>  </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">LBS</span></span><span>
+</span><span id="line-37"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Hashable</span></span><span>               </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Hashable</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">hash</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>                   </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-39"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.IO</span></span><span>                </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-40"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree</span></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Number</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">defaultSvg</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">parseSvgFile</span></span><span class="hs-special">)</span><span>
+</span><span id="line-41"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree</span></span><span>            </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Svg</span></span><span>
+</span><span id="line-42"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Animation.html"><span class="hs-identifier">Reanimate.Animation</span></a></span><span>         </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier">SVG</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#renderSvg"><span class="hs-identifier">renderSvg</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-43"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Cache.html"><span class="hs-identifier">Reanimate.Cache</span></a></span><span>             </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Cache.html#cacheFile"><span class="hs-identifier">cacheFile</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Cache.html#encodeInt"><span class="hs-identifier">encodeInt</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-44"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Constants.html"><span class="hs-identifier">Reanimate.Constants</span></a></span><span>         </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Constants.html#screenHeight"><span class="hs-identifier">screenHeight</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Constants.html#screenWidth"><span class="hs-identifier">screenWidth</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-45"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Driver.Magick.html"><span class="hs-identifier">Reanimate.Driver.Magick</span></a></span><span>     </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Driver.Magick.html#magickCmd"><span class="hs-identifier">magickCmd</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-46"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Misc.html"><span class="hs-identifier">Reanimate.Misc</span></a></span><span>              </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Misc.html#getReanimateCacheDirectory"><span class="hs-identifier">getReanimateCacheDirectory</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Misc.html#renameOrCopyFile"><span class="hs-identifier">renameOrCopyFile</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-47"></span><span>                                              </span><span class="annot"><a href="Reanimate.Misc.html#requireExecutable"><span class="hs-identifier">requireExecutable</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Misc.html#runCmd"><span class="hs-identifier">runCmd</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-48"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Parameters.html"><span class="hs-identifier">Reanimate.Parameters</span></a></span><span>        </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Parameters.html#Height"><span class="hs-identifier">Height</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Raster"><span class="hs-identifier">Raster</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Parameters.html#RasterNone"><span class="hs-identifier">RasterNone</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Width"><span class="hs-identifier">Width</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pHeight"><span class="hs-identifier">pHeight</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-49"></span><span>                                              </span><span class="annot"><a href="Reanimate.Parameters.html#pNoExternals"><span class="hs-identifier">pNoExternals</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pRaster"><span class="hs-identifier">pRaster</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pRootDirectory"><span class="hs-identifier">pRootDirectory</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#pWidth"><span class="hs-identifier">pWidth</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-50"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Render.html"><span class="hs-identifier">Reanimate.Render</span></a></span><span>            </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Render.html#applyRaster"><span class="hs-identifier">applyRaster</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Render.html#requireRaster"><span class="hs-identifier">requireRaster</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-51"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Svg.Constructors.html"><span class="hs-identifier">Reanimate.Svg.Constructors</span></a></span><span>  </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Svg.Constructors.html#flipYAxis"><span class="hs-identifier">flipYAxis</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.Constructors.html#mkText"><span class="hs-identifier">mkText</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.Constructors.html#scaleXY"><span class="hs-identifier">scaleXY</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-52"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Svg.Unuse.html"><span class="hs-identifier">Reanimate.Svg.Unuse</span></a></span><span>         </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Svg.Unuse.html#replaceUses"><span class="hs-identifier">replaceUses</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.Unuse.html#unbox"><span class="hs-identifier">unbox</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Svg.Unuse.html#unboxFit"><span class="hs-identifier">unboxFit</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-53"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.Directory</span></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">copyFile</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">doesFileExist</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">removeFile</span></span><span class="hs-special">)</span><span>
+</span><span id="line-54"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.FilePath</span></span><span>             </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">replaceExtension</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">takeExtension</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(&lt;.&gt;)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(&lt;/&gt;)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-55"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO</span></span><span>                   </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">hClose</span></span><span class="hs-special">)</span><span>
+</span><span id="line-56"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO.Temp</span></span><span>              </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">withSystemTempFile</span></span><span class="hs-special">)</span><span>
+</span><span id="line-57"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO.Unsafe</span></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">unsafePerformIO</span></span><span class="hs-special">)</span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span class="hs-comment">-- | Load an external image. Width and height must be specified,</span><span>
+</span><span id="line-60"></span><span class="hs-comment">--   ignoring the image's aspect ratio. The center of the image is</span><span>
+</span><span id="line-61"></span><span class="hs-comment">--   placed at position (0,0).</span><span>
+</span><span id="line-62"></span><span class="hs-comment">--</span><span>
+</span><span id="line-63"></span><span class="hs-comment">--   For security reasons, must SVG renderer do not allow arbitrary</span><span>
+</span><span id="line-64"></span><span class="hs-comment">--   image links. For some renderers, we can get around this by placing</span><span>
+</span><span id="line-65"></span><span class="hs-comment">--   the images in the same root directory as the parent SVG file. Other</span><span>
+</span><span id="line-66"></span><span class="hs-comment">--   renderers (like Chrome and ffmpeg) requires that the image is inlined</span><span>
+</span><span id="line-67"></span><span class="hs-comment">--   as base64 data. External SVG files are an exception, though, as must</span><span>
+</span><span id="line-68"></span><span class="hs-comment">--   always be inlined directly. `mkImage` attempts to hide all the complexity</span><span>
+</span><span id="line-69"></span><span class="hs-comment">--   but edge-cases may exist.</span><span>
+</span><span id="line-70"></span><span class="hs-comment">--</span><span>
+</span><span id="line-71"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-72"></span><span class="hs-comment">--</span><span>
+</span><span id="line-73"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-74"></span><span class="hs-comment">-- 'mkImage' 'screenWidth' 'screenHeight' \&quot;..\/data\/haskell.svg\&quot;</span><span>
+</span><span id="line-75"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-76"></span><span class="hs-comment">--</span><span>
+</span><span id="line-77"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_mkImage.gif&gt;&gt;</span><span>
+</span><span id="line-78"></span><span class="annot"><a href="Reanimate.Raster.html#mkImage"><span class="hs-identifier hs-type">mkImage</span></a></span><span>
+</span><span id="line-79"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-comment">-- ^ Desired image width.</span><span>
+</span><span id="line-80"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-comment">-- ^ Desired image height.</span><span>
+</span><span id="line-81"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-comment">-- ^ Path to external image file.</span><span>
+</span><span id="line-82"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span>
+</span><span id="line-83"></span><span id="mkImage"><span class="annot"><span class="annottext">mkImage :: Double -&gt; Double -&gt; FilePath -&gt; SVG
+</span><a href="Reanimate.Raster.html#mkImage"><span class="hs-identifier hs-var hs-var">mkImage</span></a></span></span><span> </span><span id="local-6989586621679544022"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679544022"><span class="hs-identifier hs-var">width</span></a></span></span><span> </span><span id="local-6989586621679544021"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679544021"><span class="hs-identifier hs-var">height</span></a></span></span><span> </span><span id="local-6989586621679544020"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679544020"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath
+</span><span class="hs-identifier hs-var">takeExtension</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679544020"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;.svg&quot;</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO SVG -&gt; SVG
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO SVG -&gt; SVG) -&gt; IO SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-84"></span><span>  </span><span id="local-6989586621679544019"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679544019"><span class="hs-identifier hs-var">svg_data</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO Text
+</span><span class="hs-identifier hs-var">T.readFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679544020"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-85"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; Text -&gt; Maybe Document
+</span><span class="hs-identifier hs-var">parseSvgFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679544020"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679544019"><span class="hs-identifier hs-var">svg_data</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-86"></span><span>    </span><span class="annot"><span class="annottext">Maybe Document
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO SVG
+forall a. HasCallStack =&gt; FilePath -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;Malformed svg&quot;</span></span><span>
+</span><span id="line-87"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679544016"><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679544016"><span class="hs-identifier hs-var">svg</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-88"></span><span>      </span><span class="annot"><span class="annottext">SVG -&gt; IO SVG
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span>
+</span><span id="line-89"></span><span>        </span><span class="annot"><span class="annottext">(SVG -&gt; IO SVG) -&gt; SVG -&gt; IO SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; SVG -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#scaleXY"><span class="hs-identifier hs-var">scaleXY</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679544022"><span class="hs-identifier hs-var">width</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+forall a. Fractional a =&gt; a
+</span><a href="Reanimate.Constants.html#screenWidth"><span class="hs-identifier hs-var">screenWidth</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679544021"><span class="hs-identifier hs-var">height</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+forall a. Fractional a =&gt; a
+</span><a href="Reanimate.Constants.html#screenHeight"><span class="hs-identifier hs-var">screenHeight</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-90"></span><span>        </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Document -&gt; SVG
+</span><a href="Reanimate.Svg.Unuse.html#unboxFit"><span class="hs-identifier hs-var">unboxFit</span></a></span><span> </span><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679544016"><span class="hs-identifier hs-var">svg</span></a></span><span>
+</span><span id="line-91"></span><span class="annot"><a href="Reanimate.Raster.html#mkImage"><span class="hs-identifier hs-var">mkImage</span></a></span><span> </span><span id="local-6989586621679544014"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679544014"><span class="hs-identifier hs-var">width</span></a></span></span><span> </span><span id="local-6989586621679544013"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679544013"><span class="hs-identifier hs-var">height</span></a></span></span><span> </span><span id="local-6989586621679544012"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679544012"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#pRaster"><span class="hs-identifier hs-var">pRaster</span></a></span><span> </span><span class="annot"><span class="annottext">Raster -&gt; Raster -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterNone"><span class="hs-identifier hs-var">RasterNone</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO SVG -&gt; SVG
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO SVG -&gt; SVG) -&gt; IO SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-92"></span><span>  </span><span id="local-6989586621679544011"><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679544011"><span class="hs-identifier hs-var">inp</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO ByteString
+</span><span class="hs-identifier hs-var">LBS.readFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679544012"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-93"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679544009"><span class="annot"><span class="annottext">imgData :: FilePath
+</span><a href="#local-6989586621679544009"><span class="hs-identifier hs-var hs-var">imgData</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; FilePath
+</span><span class="hs-identifier hs-var">LBS.unpack</span></span><span> </span><span class="annot"><span class="annottext">(ByteString -&gt; FilePath) -&gt; ByteString -&gt; FilePath
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; ByteString
+</span><span class="hs-identifier hs-var">Base64.encode</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679544011"><span class="hs-identifier hs-var">inp</span></a></span><span>
+</span><span id="line-94"></span><span>  </span><span class="annot"><span class="annottext">SVG -&gt; IO SVG
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span>
+</span><span id="line-95"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; IO SVG) -&gt; SVG -&gt; IO SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>  </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#flipYAxis"><span class="hs-identifier hs-var">flipYAxis</span></a></span><span>
+</span><span id="line-96"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>  </span><span class="annot"><span class="annottext">Image -&gt; SVG
+</span><span class="hs-identifier hs-var">Svg.imageTree</span></span><span>
+</span><span id="line-97"></span><span>    </span><span class="annot"><span class="annottext">(Image -&gt; SVG) -&gt; Image -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>  </span><span class="annot"><span class="annottext">Image
+forall a. WithDefaultSvg a =&gt; a
+</span><span class="hs-identifier hs-var">defaultSvg</span></span><span>
+</span><span id="line-98"></span><span>    </span><span class="annot"><span class="annottext">Image -&gt; (Image -&gt; Image) -&gt; Image
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span>  </span><span class="annot"><span class="annottext">(Number -&gt; Identity Number) -&gt; Image -&gt; Identity Image
+Lens' Image Number
+</span><span class="hs-identifier hs-var">Svg.imageWidth</span></span><span>
+</span><span id="line-99"></span><span>    </span><span class="annot"><span class="annottext">((Number -&gt; Identity Number) -&gt; Image -&gt; Identity Image)
+-&gt; Number -&gt; Image -&gt; Image
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Svg.Num</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679544014"><span class="hs-identifier hs-var">width</span></a></span><span>
+</span><span id="line-100"></span><span>    </span><span class="annot"><span class="annottext">Image -&gt; (Image -&gt; Image) -&gt; Image
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span>  </span><span class="annot"><span class="annottext">(Number -&gt; Identity Number) -&gt; Image -&gt; Identity Image
+Lens' Image Number
+</span><span class="hs-identifier hs-var">Svg.imageHeight</span></span><span>
+</span><span id="line-101"></span><span>    </span><span class="annot"><span class="annottext">((Number -&gt; Identity Number) -&gt; Image -&gt; Identity Image)
+-&gt; Number -&gt; Image -&gt; Image
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Svg.Num</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679544013"><span class="hs-identifier hs-var">height</span></a></span><span>
+</span><span id="line-102"></span><span>    </span><span class="annot"><span class="annottext">Image -&gt; (Image -&gt; Image) -&gt; Image
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span>  </span><span class="annot"><span class="annottext">(FilePath -&gt; Identity FilePath) -&gt; Image -&gt; Identity Image
+Lens' Image FilePath
+</span><span class="hs-identifier hs-var">Svg.imageHref</span></span><span>
+</span><span id="line-103"></span><span>    </span><span class="annot"><span class="annottext">((FilePath -&gt; Identity FilePath) -&gt; Image -&gt; Identity Image)
+-&gt; FilePath -&gt; Image -&gt; Image
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;data:&quot;</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679544001"><span class="hs-identifier hs-var">mimeType</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;;base64,&quot;</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679544009"><span class="hs-identifier hs-var">imgData</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-104"></span><span>    </span><span class="annot"><span class="annottext">Image -&gt; (Image -&gt; Image) -&gt; Image
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span>  </span><span class="annot"><span class="annottext">(Point -&gt; Identity Point) -&gt; Image -&gt; Identity Image
+Lens' Image Point
+</span><span class="hs-identifier hs-var">Svg.imageCornerUpperLeft</span></span><span>
+</span><span id="line-105"></span><span>    </span><span class="annot"><span class="annottext">((Point -&gt; Identity Point) -&gt; Image -&gt; Identity Image)
+-&gt; Point -&gt; Image -&gt; Image
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Svg.Num</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679544014"><span class="hs-identifier hs-var">width</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Svg.Num</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679544013"><span class="hs-identifier hs-var">height</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-106"></span><span>    </span><span class="annot"><span class="annottext">Image -&gt; (Image -&gt; Image) -&gt; Image
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span>  </span><span class="annot"><span class="annottext">(PreserveAspectRatio -&gt; Identity PreserveAspectRatio)
+-&gt; Image -&gt; Identity Image
+Lens' Image PreserveAspectRatio
+</span><span class="hs-identifier hs-var">Svg.imageAspectRatio</span></span><span>
+</span><span id="line-107"></span><span>    </span><span class="annot"><span class="annottext">((PreserveAspectRatio -&gt; Identity PreserveAspectRatio)
+ -&gt; Image -&gt; Identity Image)
+-&gt; PreserveAspectRatio -&gt; Image -&gt; Image
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Alignment -&gt; Maybe MeetSlice -&gt; PreserveAspectRatio
+</span><span class="hs-identifier hs-var">Svg.PreserveAspectRatio</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span class="annot"><span class="annottext">Alignment
+</span><span class="hs-identifier hs-var">Svg.AlignNone</span></span><span> </span><span class="annot"><span class="annottext">Maybe MeetSlice
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-108"></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-109"></span><span>    </span><span class="hs-comment">-- FIXME: Is there a better way to do this?</span><span>
+</span><span id="line-110"></span><span>  </span><span id="local-6989586621679544001"><span class="annot"><span class="annottext">mimeType :: FilePath
+</span><a href="#local-6989586621679544001"><span class="hs-identifier hs-var hs-var">mimeType</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath
+</span><span class="hs-identifier hs-var">takeExtension</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679544012"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-111"></span><span>    </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;.jpg&quot;</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;image/jpeg&quot;</span></span><span>
+</span><span id="line-112"></span><span>    </span><span id="local-6989586621679543996"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543996"><span class="hs-identifier hs-var">ext</span></a></span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;image/&quot;</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; FilePath -&gt; FilePath
+forall a. Int -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">drop</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543996"><span class="hs-identifier hs-var">ext</span></a></span><span>
+</span><span id="line-113"></span><span class="annot"><a href="Reanimate.Raster.html#mkImage"><span class="hs-identifier hs-var">mkImage</span></a></span><span> </span><span id="local-6989586621679543994"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679543994"><span class="hs-identifier hs-var">width</span></a></span></span><span> </span><span id="local-6989586621679543993"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679543993"><span class="hs-identifier hs-var">height</span></a></span></span><span> </span><span id="local-6989586621679543992"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543992"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO SVG -&gt; SVG
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO SVG -&gt; SVG) -&gt; IO SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-114"></span><span>  </span><span id="local-6989586621679543991"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679543991"><span class="hs-identifier hs-var">exists</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO Bool
+</span><span class="hs-identifier hs-var">doesFileExist</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543990"><span class="hs-identifier hs-var">target</span></a></span><span>
+</span><span id="line-115"></span><span>  </span><span class="annot"><span class="annottext">Bool -&gt; IO () -&gt; IO ()
+forall (f :: * -&gt; *). Applicative f =&gt; Bool -&gt; f () -&gt; f ()
+</span><span class="hs-identifier hs-var">unless</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679543991"><span class="hs-identifier hs-var">exists</span></a></span><span> </span><span class="annot"><span class="annottext">(IO () -&gt; IO ()) -&gt; IO () -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; IO ()
+</span><span class="hs-identifier hs-var">copyFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543992"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543990"><span class="hs-identifier hs-var">target</span></a></span><span>
+</span><span id="line-116"></span><span>  </span><span class="annot"><span class="annottext">SVG -&gt; IO SVG
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span>
+</span><span id="line-117"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; IO SVG) -&gt; SVG -&gt; IO SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>  </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#flipYAxis"><span class="hs-identifier hs-var">flipYAxis</span></a></span><span>
+</span><span id="line-118"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>  </span><span class="annot"><span class="annottext">Image -&gt; SVG
+</span><span class="hs-identifier hs-var">Svg.imageTree</span></span><span>
+</span><span id="line-119"></span><span>    </span><span class="annot"><span class="annottext">(Image -&gt; SVG) -&gt; Image -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>  </span><span class="annot"><span class="annottext">Image
+forall a. WithDefaultSvg a =&gt; a
+</span><span class="hs-identifier hs-var">defaultSvg</span></span><span>
+</span><span id="line-120"></span><span>    </span><span class="annot"><span class="annottext">Image -&gt; (Image -&gt; Image) -&gt; Image
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span>  </span><span class="annot"><span class="annottext">(Number -&gt; Identity Number) -&gt; Image -&gt; Identity Image
+Lens' Image Number
+</span><span class="hs-identifier hs-var">Svg.imageWidth</span></span><span>
+</span><span id="line-121"></span><span>    </span><span class="annot"><span class="annottext">((Number -&gt; Identity Number) -&gt; Image -&gt; Identity Image)
+-&gt; Number -&gt; Image -&gt; Image
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Svg.Num</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679543994"><span class="hs-identifier hs-var">width</span></a></span><span>
+</span><span id="line-122"></span><span>    </span><span class="annot"><span class="annottext">Image -&gt; (Image -&gt; Image) -&gt; Image
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span>  </span><span class="annot"><span class="annottext">(Number -&gt; Identity Number) -&gt; Image -&gt; Identity Image
+Lens' Image Number
+</span><span class="hs-identifier hs-var">Svg.imageHeight</span></span><span>
+</span><span id="line-123"></span><span>    </span><span class="annot"><span class="annottext">((Number -&gt; Identity Number) -&gt; Image -&gt; Identity Image)
+-&gt; Number -&gt; Image -&gt; Image
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Svg.Num</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679543993"><span class="hs-identifier hs-var">height</span></a></span><span>
+</span><span id="line-124"></span><span>    </span><span class="annot"><span class="annottext">Image -&gt; (Image -&gt; Image) -&gt; Image
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span>  </span><span class="annot"><span class="annottext">(FilePath -&gt; Identity FilePath) -&gt; Image -&gt; Identity Image
+Lens' Image FilePath
+</span><span class="hs-identifier hs-var">Svg.imageHref</span></span><span>
+</span><span id="line-125"></span><span>    </span><span class="annot"><span class="annottext">((FilePath -&gt; Identity FilePath) -&gt; Image -&gt; Identity Image)
+-&gt; FilePath -&gt; Image -&gt; Image
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;file://&quot;</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543990"><span class="hs-identifier hs-var">target</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-126"></span><span>    </span><span class="annot"><span class="annottext">Image -&gt; (Image -&gt; Image) -&gt; Image
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span>  </span><span class="annot"><span class="annottext">(Point -&gt; Identity Point) -&gt; Image -&gt; Identity Image
+Lens' Image Point
+</span><span class="hs-identifier hs-var">Svg.imageCornerUpperLeft</span></span><span>
+</span><span id="line-127"></span><span>    </span><span class="annot"><span class="annottext">((Point -&gt; Identity Point) -&gt; Image -&gt; Identity Image)
+-&gt; Point -&gt; Image -&gt; Image
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Svg.Num</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679543994"><span class="hs-identifier hs-var">width</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Svg.Num</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679543993"><span class="hs-identifier hs-var">height</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-128"></span><span>    </span><span class="annot"><span class="annottext">Image -&gt; (Image -&gt; Image) -&gt; Image
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span>  </span><span class="annot"><span class="annottext">(PreserveAspectRatio -&gt; Identity PreserveAspectRatio)
+-&gt; Image -&gt; Identity Image
+Lens' Image PreserveAspectRatio
+</span><span class="hs-identifier hs-var">Svg.imageAspectRatio</span></span><span>
+</span><span id="line-129"></span><span>    </span><span class="annot"><span class="annottext">((PreserveAspectRatio -&gt; Identity PreserveAspectRatio)
+ -&gt; Image -&gt; Identity Image)
+-&gt; PreserveAspectRatio -&gt; Image -&gt; Image
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Alignment -&gt; Maybe MeetSlice -&gt; PreserveAspectRatio
+</span><span class="hs-identifier hs-var">Svg.PreserveAspectRatio</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span class="annot"><span class="annottext">Alignment
+</span><span class="hs-identifier hs-var">Svg.AlignNone</span></span><span> </span><span class="annot"><span class="annottext">Maybe MeetSlice
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-130"></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-131"></span><span>  </span><span id="local-6989586621679543990"><span class="annot"><span class="annottext">target :: FilePath
+</span><a href="#local-6989586621679543990"><span class="hs-identifier hs-var hs-var">target</span></a></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="Reanimate.Parameters.html#pRootDirectory"><span class="hs-identifier hs-var">pRootDirectory</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+</span><span class="hs-operator hs-var">&lt;/&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; FilePath
+</span><a href="Reanimate.Cache.html#encodeInt"><span class="hs-identifier hs-var">encodeInt</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543989"><span class="hs-identifier hs-var">hashPath</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+</span><span class="hs-operator hs-var">&lt;.&gt;</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath
+</span><span class="hs-identifier hs-var">takeExtension</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543992"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-132"></span><span>  </span><span id="local-6989586621679543989"><span class="annot"><span class="annottext">hashPath :: Int
+</span><a href="#local-6989586621679543989"><span class="hs-identifier hs-var hs-var">hashPath</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; Int
+forall a. Hashable a =&gt; a -&gt; Int
+</span><span class="hs-identifier hs-var">hash</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543992"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-133"></span><span>
+</span><span id="line-134"></span><span class="hs-comment">-- | Write in-memory image to cache file if (and only if) such cache file doesn't</span><span>
+</span><span id="line-135"></span><span class="hs-comment">--   already exist.</span><span>
+</span><span id="line-136"></span><span id="local-6989586621679543987"><span id="local-6989586621679543988"><span class="annot"><a href="Reanimate.Raster.html#cacheImage"><span class="hs-identifier hs-type">cacheImage</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">PngSavable</span></span><span> </span><span class="annot"><a href="#local-6989586621679543988"><span class="hs-identifier hs-type">pixel</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Hashable</span></span><span> </span><span class="annot"><a href="#local-6989586621679543987"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679543987"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Image</span></span><span> </span><span class="annot"><a href="#local-6989586621679543988"><span class="hs-identifier hs-type">pixel</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span></span></span><span>
+</span><span id="line-137"></span><span id="cacheImage"><span class="annot"><span class="annottext">cacheImage :: a -&gt; Image pixel -&gt; FilePath
+</span><a href="Reanimate.Raster.html#cacheImage"><span class="hs-identifier hs-var hs-var">cacheImage</span></a></span></span><span> </span><span id="local-6989586621679543986"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679543986"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span id="local-6989586621679543985"><span class="annot"><span class="annottext">Image pixel
+</span><a href="#local-6989586621679543985"><span class="hs-identifier hs-var">gen</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO FilePath -&gt; FilePath
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO FilePath -&gt; FilePath) -&gt; IO FilePath -&gt; FilePath
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; (FilePath -&gt; IO ()) -&gt; IO FilePath
+</span><a href="Reanimate.Cache.html#cacheFile"><span class="hs-identifier hs-var">cacheFile</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543984"><span class="hs-identifier hs-var">template</span></a></span><span> </span><span class="annot"><span class="annottext">((FilePath -&gt; IO ()) -&gt; IO FilePath)
+-&gt; (FilePath -&gt; IO ()) -&gt; IO FilePath
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679543983"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543983"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-138"></span><span>  </span><span class="annot"><span class="annottext">FilePath -&gt; Image pixel -&gt; IO ()
+forall pixel. PngSavable pixel =&gt; FilePath -&gt; Image pixel -&gt; IO ()
+</span><span class="hs-identifier hs-var">writePng</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543983"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">Image pixel
+</span><a href="#local-6989586621679543985"><span class="hs-identifier hs-var">gen</span></a></span><span>
+</span><span id="line-139"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679543984"><span class="annot"><span class="annottext">template :: FilePath
+</span><a href="#local-6989586621679543984"><span class="hs-identifier hs-var hs-var">template</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; FilePath
+</span><a href="Reanimate.Cache.html#encodeInt"><span class="hs-identifier hs-var">encodeInt</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Int
+forall a. Hashable a =&gt; a -&gt; Int
+</span><span class="hs-identifier hs-var">hash</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679543986"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+</span><span class="hs-operator hs-var">&lt;.&gt;</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;png&quot;</span></span><span>
+</span><span id="line-140"></span><span>
+</span><span id="line-141"></span><span class="hs-comment">-- Warning: Caching svg elements with links to external objects does</span><span>
+</span><span id="line-142"></span><span class="hs-comment">--          not work. 2020-06-01</span><span>
+</span><span id="line-143"></span><span class="hs-comment">-- | Same as 'prerenderSvg' but returns the location of the rendered image</span><span>
+</span><span id="line-144"></span><span class="hs-comment">--   as a FilePath.</span><span>
+</span><span id="line-145"></span><span id="local-6989586621679544100"><span class="annot"><a href="Reanimate.Raster.html#prerenderSvgFile"><span class="hs-identifier hs-type">prerenderSvgFile</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Hashable</span></span><span> </span><span class="annot"><a href="#local-6989586621679544100"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679544100"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Width"><span class="hs-identifier hs-type">Width</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Height"><span class="hs-identifier hs-type">Height</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span></span><span>
+</span><span id="line-146"></span><span id="prerenderSvgFile"><span class="annot"><span class="annottext">prerenderSvgFile :: a -&gt; Int -&gt; Int -&gt; SVG -&gt; FilePath
+</span><a href="Reanimate.Raster.html#prerenderSvgFile"><span class="hs-identifier hs-var hs-var">prerenderSvgFile</span></a></span></span><span> </span><span id="local-6989586621679543982"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679543982"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span id="local-6989586621679543981"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543981"><span class="hs-identifier hs-var">width</span></a></span></span><span> </span><span id="local-6989586621679543980"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543980"><span class="hs-identifier hs-var">height</span></a></span></span><span> </span><span id="local-6989586621679543979"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679543979"><span class="hs-identifier hs-var">svg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-147"></span><span>  </span><span class="annot"><span class="annottext">IO FilePath -&gt; FilePath
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO FilePath -&gt; FilePath) -&gt; IO FilePath -&gt; FilePath
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; (FilePath -&gt; IO ()) -&gt; IO FilePath
+</span><a href="Reanimate.Cache.html#cacheFile"><span class="hs-identifier hs-var">cacheFile</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543978"><span class="hs-identifier hs-var">template</span></a></span><span> </span><span class="annot"><span class="annottext">((FilePath -&gt; IO ()) -&gt; IO FilePath)
+-&gt; (FilePath -&gt; IO ()) -&gt; IO FilePath
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679543977"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543977"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-148"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679543976"><span class="annot"><span class="annottext">svgPath :: FilePath
+</span><a href="#local-6989586621679543976"><span class="hs-identifier hs-var hs-var">svgPath</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+</span><span class="hs-identifier hs-var">replaceExtension</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543977"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;svg&quot;</span></span><span>
+</span><span id="line-149"></span><span>    </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; IO ()
+</span><span class="hs-identifier hs-var">writeFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543976"><span class="hs-identifier hs-var">svgPath</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543974"><span class="hs-identifier hs-var">rendered</span></a></span><span>
+</span><span id="line-150"></span><span>    </span><span id="local-6989586621679543973"><span class="annot"><span class="annottext">Raster
+</span><a href="#local-6989586621679543973"><span class="hs-identifier hs-var">engine</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Raster -&gt; IO Raster
+</span><a href="Reanimate.Render.html#requireRaster"><span class="hs-identifier hs-var">requireRaster</span></a></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#pRaster"><span class="hs-identifier hs-var">pRaster</span></a></span><span>
+</span><span id="line-151"></span><span>    </span><span class="annot"><span class="annottext">Raster -&gt; FilePath -&gt; IO ()
+</span><a href="Reanimate.Render.html#applyRaster"><span class="hs-identifier hs-var">applyRaster</span></a></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="#local-6989586621679543973"><span class="hs-identifier hs-var">engine</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543976"><span class="hs-identifier hs-var">svgPath</span></a></span><span>
+</span><span id="line-152"></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-153"></span><span>  </span><span id="local-6989586621679543978"><span class="annot"><span class="annottext">template :: FilePath
+</span><a href="#local-6989586621679543978"><span class="hs-identifier hs-var hs-var">template</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; FilePath
+</span><a href="Reanimate.Cache.html#encodeInt"><span class="hs-identifier hs-var">encodeInt</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a, Int, Int) -&gt; Int
+forall a. Hashable a =&gt; a -&gt; Int
+</span><span class="hs-identifier hs-var">hash</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679543982"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543981"><span class="hs-identifier hs-var">width</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543980"><span class="hs-identifier hs-var">height</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+</span><span class="hs-operator hs-var">&lt;.&gt;</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;png&quot;</span></span><span>
+</span><span id="line-154"></span><span>  </span><span id="local-6989586621679543974"><span class="annot"><span class="annottext">rendered :: FilePath
+</span><a href="#local-6989586621679543974"><span class="hs-identifier hs-var hs-var">rendered</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Number -&gt; Maybe Number -&gt; SVG -&gt; FilePath
+</span><a href="Reanimate.Animation.html#renderSvg"><span class="hs-identifier hs-var">renderSvg</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Number -&gt; Maybe Number
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(Number -&gt; Maybe Number) -&gt; Number -&gt; Maybe Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Px</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543981"><span class="hs-identifier hs-var">width</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-155"></span><span>                       </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Number -&gt; Maybe Number
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(Number -&gt; Maybe Number) -&gt; Number -&gt; Maybe Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Px</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543980"><span class="hs-identifier hs-var">height</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-156"></span><span>                       </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679543979"><span class="hs-identifier hs-var">svg</span></a></span><span>
+</span><span id="line-157"></span><span>
+</span><span id="line-158"></span><span class="hs-comment">-- | Render SVG node to a PNG file and return a new node containing</span><span>
+</span><span id="line-159"></span><span class="hs-comment">--   that image. For static SVG nodes, this can hugely improve performance.</span><span>
+</span><span id="line-160"></span><span class="hs-comment">--   The first argument is the key that determines SVG uniqueness. It</span><span>
+</span><span id="line-161"></span><span class="hs-comment">--   is entirely your responsibility to ensure that all keys are unique.</span><span>
+</span><span id="line-162"></span><span class="hs-comment">--   If they are not, you will be served stale results from the cache.</span><span>
+</span><span id="line-163"></span><span id="local-6989586621679543971"><span class="annot"><a href="Reanimate.Raster.html#prerenderSvg"><span class="hs-identifier hs-type">prerenderSvg</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Hashable</span></span><span> </span><span class="annot"><a href="#local-6989586621679543971"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679543971"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span></span><span>
+</span><span id="line-164"></span><span id="prerenderSvg"><span class="annot"><span class="annottext">prerenderSvg :: a -&gt; SVG -&gt; SVG
+</span><a href="Reanimate.Raster.html#prerenderSvg"><span class="hs-identifier hs-var hs-var">prerenderSvg</span></a></span></span><span> </span><span id="local-6989586621679543970"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679543970"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-165"></span><span>  </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; FilePath -&gt; SVG
+</span><a href="Reanimate.Raster.html#mkImage"><span class="hs-identifier hs-var">mkImage</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+forall a. Fractional a =&gt; a
+</span><a href="Reanimate.Constants.html#screenWidth"><span class="hs-identifier hs-var">screenWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+forall a. Fractional a =&gt; a
+</span><a href="Reanimate.Constants.html#screenHeight"><span class="hs-identifier hs-var">screenHeight</span></a></span><span> </span><span class="annot"><span class="annottext">(FilePath -&gt; SVG) -&gt; (SVG -&gt; FilePath) -&gt; SVG -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; Int -&gt; Int -&gt; SVG -&gt; FilePath
+forall a. Hashable a =&gt; a -&gt; Int -&gt; Int -&gt; SVG -&gt; FilePath
+</span><a href="Reanimate.Raster.html#prerenderSvgFile"><span class="hs-identifier hs-var">prerenderSvgFile</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679543970"><span class="hs-identifier hs-var">key</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="Reanimate.Parameters.html#pWidth"><span class="hs-identifier hs-var">pWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="Reanimate.Parameters.html#pHeight"><span class="hs-identifier hs-var">pHeight</span></a></span><span>
+</span><span id="line-166"></span><span>
+</span><span id="line-167"></span><span>
+</span><span id="line-168"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Reanimate.Raster.html#embedImage"><span class="hs-pragma hs-type">embedImage</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-169"></span><span class="hs-comment">-- | Embed an in-memory PNG image. Note, the pixel size of the image</span><span>
+</span><span id="line-170"></span><span class="hs-comment">--   is used as the dimensions. As such, embedding a 100x100 PNG will</span><span>
+</span><span id="line-171"></span><span class="hs-comment">--   result in an image 100 units wide and 100 units high. Consider</span><span>
+</span><span id="line-172"></span><span class="hs-comment">--   using with 'scaleToSize'.</span><span>
+</span><span id="line-173"></span><span id="local-6989586621679543968"><span class="annot"><a href="Reanimate.Raster.html#embedImage"><span class="hs-identifier hs-type">embedImage</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PngSavable</span></span><span> </span><span class="annot"><a href="#local-6989586621679543968"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Image</span></span><span> </span><span class="annot"><a href="#local-6989586621679543968"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span></span><span>
+</span><span id="line-174"></span><span id="embedImage"><span class="annot"><span class="annottext">embedImage :: Image a -&gt; SVG
+</span><a href="Reanimate.Raster.html#embedImage"><span class="hs-identifier hs-var hs-var">embedImage</span></a></span></span><span> </span><span id="local-6989586621679543967"><span class="annot"><span class="annottext">Image a
+</span><a href="#local-6989586621679543967"><span class="hs-identifier hs-var">img</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; ByteString -&gt; SVG
+</span><a href="Reanimate.Raster.html#embedPng"><span class="hs-identifier hs-var">embedPng</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679543966"><span class="hs-identifier hs-var">width</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679543965"><span class="hs-identifier hs-var">height</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Image a -&gt; ByteString
+forall a. PngSavable a =&gt; Image a -&gt; ByteString
+</span><span class="hs-identifier hs-var">encodePng</span></span><span> </span><span class="annot"><span class="annottext">Image a
+</span><a href="#local-6989586621679543967"><span class="hs-identifier hs-var">img</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-175"></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-176"></span><span>  </span><span id="local-6989586621679543966"><span class="annot"><span class="annottext">width :: Double
+</span><a href="#local-6989586621679543966"><span class="hs-identifier hs-var hs-var">width</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Double) -&gt; Int -&gt; Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Image a -&gt; Int
+forall a. Image a -&gt; Int
+</span><span class="hs-identifier hs-var hs-var">imageWidth</span></span><span> </span><span class="annot"><span class="annottext">Image a
+</span><a href="#local-6989586621679543967"><span class="hs-identifier hs-var">img</span></a></span><span>
+</span><span id="line-177"></span><span>  </span><span id="local-6989586621679543965"><span class="annot"><span class="annottext">height :: Double
+</span><a href="#local-6989586621679543965"><span class="hs-identifier hs-var hs-var">height</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Double) -&gt; Int -&gt; Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Image a -&gt; Int
+forall a. Image a -&gt; Int
+</span><span class="hs-identifier hs-var hs-var">imageHeight</span></span><span> </span><span class="annot"><span class="annottext">Image a
+</span><a href="#local-6989586621679543967"><span class="hs-identifier hs-var">img</span></a></span><span>
+</span><span id="line-178"></span><span>
+</span><span id="line-179"></span><span class="hs-comment">-- | Embed in-memory PNG bytestring without parsing it.</span><span>
+</span><span id="line-180"></span><span class="annot"><a href="Reanimate.Raster.html#embedPng"><span class="hs-identifier hs-type">embedPng</span></a></span><span>
+</span><span id="line-181"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-comment">-- ^ Width</span><span>
+</span><span id="line-182"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-comment">-- ^ Height</span><span>
+</span><span id="line-183"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">LBS.ByteString</span></span><span> </span><span class="hs-comment">-- ^ Raw PNG data</span><span>
+</span><span id="line-184"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span>
+</span><span id="line-185"></span><span class="hs-comment">-- embedPng w h png = unsafePerformIO $ do</span><span>
+</span><span id="line-186"></span><span class="hs-comment">--     LBS.writeFile path png</span><span>
+</span><span id="line-187"></span><span class="hs-comment">--     return $ ImageTree $ defaultSvg</span><span>
+</span><span id="line-188"></span><span class="hs-comment">--       &amp; Svg.imageCornerUpperLeft .~ (Svg.Num (-w/2), Svg.Num (-h/2))</span><span>
+</span><span id="line-189"></span><span class="hs-comment">--       &amp; Svg.imageWidth .~ Svg.Num w</span><span>
+</span><span id="line-190"></span><span class="hs-comment">--       &amp; Svg.imageHeight .~ Svg.Num h</span><span>
+</span><span id="line-191"></span><span class="hs-comment">--       &amp; Svg.imageHref .~ (&quot;file://&quot;++path)</span><span>
+</span><span id="line-192"></span><span class="hs-comment">--   where</span><span>
+</span><span id="line-193"></span><span class="hs-comment">--     path = &quot;/tmp&quot; &lt;/&gt; show (hash png) &lt;.&gt; &quot;png&quot;</span><span>
+</span><span id="line-194"></span><span id="embedPng"><span class="annot"><span class="annottext">embedPng :: Double -&gt; Double -&gt; ByteString -&gt; SVG
+</span><a href="Reanimate.Raster.html#embedPng"><span class="hs-identifier hs-var hs-var">embedPng</span></a></span></span><span> </span><span id="local-6989586621679543964"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679543964"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span id="local-6989586621679543963"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679543963"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span id="local-6989586621679543962"><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679543962"><span class="hs-identifier hs-var">png</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-195"></span><span>  </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#flipYAxis"><span class="hs-identifier hs-var">flipYAxis</span></a></span><span>
+</span><span id="line-196"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>  </span><span class="annot"><span class="annottext">Image -&gt; SVG
+</span><span class="hs-identifier hs-var">Svg.imageTree</span></span><span>
+</span><span id="line-197"></span><span>    </span><span class="annot"><span class="annottext">(Image -&gt; SVG) -&gt; Image -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>  </span><span class="annot"><span class="annottext">Image
+forall a. WithDefaultSvg a =&gt; a
+</span><span class="hs-identifier hs-var">defaultSvg</span></span><span>
+</span><span id="line-198"></span><span>    </span><span class="annot"><span class="annottext">Image -&gt; (Image -&gt; Image) -&gt; Image
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span>  </span><span class="annot"><span class="annottext">(Point -&gt; Identity Point) -&gt; Image -&gt; Identity Image
+Lens' Image Point
+</span><span class="hs-identifier hs-var">Svg.imageCornerUpperLeft</span></span><span>
+</span><span id="line-199"></span><span>    </span><span class="annot"><span class="annottext">((Point -&gt; Identity Point) -&gt; Image -&gt; Identity Image)
+-&gt; Point -&gt; Image -&gt; Image
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Svg.Num</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679543964"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Svg.Num</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679543963"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-200"></span><span>    </span><span class="annot"><span class="annottext">Image -&gt; (Image -&gt; Image) -&gt; Image
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span>  </span><span class="annot"><span class="annottext">(Number -&gt; Identity Number) -&gt; Image -&gt; Identity Image
+Lens' Image Number
+</span><span class="hs-identifier hs-var">Svg.imageWidth</span></span><span>
+</span><span id="line-201"></span><span>    </span><span class="annot"><span class="annottext">((Number -&gt; Identity Number) -&gt; Image -&gt; Identity Image)
+-&gt; Number -&gt; Image -&gt; Image
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Svg.Num</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679543964"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-202"></span><span>    </span><span class="annot"><span class="annottext">Image -&gt; (Image -&gt; Image) -&gt; Image
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span>  </span><span class="annot"><span class="annottext">(Number -&gt; Identity Number) -&gt; Image -&gt; Identity Image
+Lens' Image Number
+</span><span class="hs-identifier hs-var">Svg.imageHeight</span></span><span>
+</span><span id="line-203"></span><span>    </span><span class="annot"><span class="annottext">((Number -&gt; Identity Number) -&gt; Image -&gt; Identity Image)
+-&gt; Number -&gt; Image -&gt; Image
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Svg.Num</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679543963"><span class="hs-identifier hs-var">h</span></a></span><span>
+</span><span id="line-204"></span><span>    </span><span class="annot"><span class="annottext">Image -&gt; (Image -&gt; Image) -&gt; Image
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span>  </span><span class="annot"><span class="annottext">(FilePath -&gt; Identity FilePath) -&gt; Image -&gt; Identity Image
+Lens' Image FilePath
+</span><span class="hs-identifier hs-var">Svg.imageHref</span></span><span>
+</span><span id="line-205"></span><span>    </span><span class="annot"><span class="annottext">((FilePath -&gt; Identity FilePath) -&gt; Image -&gt; Identity Image)
+-&gt; FilePath -&gt; Image -&gt; Image
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;data:image/png;base64,&quot;</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543961"><span class="hs-identifier hs-var">imgData</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-206"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679543961"><span class="annot"><span class="annottext">imgData :: FilePath
+</span><a href="#local-6989586621679543961"><span class="hs-identifier hs-var hs-var">imgData</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; FilePath
+</span><span class="hs-identifier hs-var">LBS.unpack</span></span><span> </span><span class="annot"><span class="annottext">(ByteString -&gt; FilePath) -&gt; ByteString -&gt; FilePath
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; ByteString
+</span><span class="hs-identifier hs-var">Base64.encode</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679543962"><span class="hs-identifier hs-var">png</span></a></span><span>
+</span><span id="line-207"></span><span>
+</span><span id="line-208"></span><span>
+</span><span id="line-209"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Reanimate.Raster.html#embedDynamicImage"><span class="hs-pragma hs-type">embedDynamicImage</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-210"></span><span class="hs-comment">-- | Embed an in-memory image. Note, the pixel size of the image</span><span>
+</span><span id="line-211"></span><span class="hs-comment">--   is used as the dimensions. As such, embedding a 100x100 image will</span><span>
+</span><span id="line-212"></span><span class="hs-comment">--   result in an image 100 units wide and 100 units high. Consider</span><span>
+</span><span id="line-213"></span><span class="hs-comment">--   using with 'scaleToSize'.</span><span>
+</span><span id="line-214"></span><span class="annot"><a href="Reanimate.Raster.html#embedDynamicImage"><span class="hs-identifier hs-type">embedDynamicImage</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">DynamicImage</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span>
+</span><span id="line-215"></span><span id="embedDynamicImage"><span class="annot"><span class="annottext">embedDynamicImage :: DynamicImage -&gt; SVG
+</span><a href="Reanimate.Raster.html#embedDynamicImage"><span class="hs-identifier hs-var hs-var">embedDynamicImage</span></a></span></span><span> </span><span id="local-6989586621679543960"><span class="annot"><span class="annottext">DynamicImage
+</span><a href="#local-6989586621679543960"><span class="hs-identifier hs-var">img</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; ByteString -&gt; SVG
+</span><a href="Reanimate.Raster.html#embedPng"><span class="hs-identifier hs-var">embedPng</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679543959"><span class="hs-identifier hs-var">width</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679543958"><span class="hs-identifier hs-var">height</span></a></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679543957"><span class="hs-identifier hs-var">imgData</span></a></span><span>
+</span><span id="line-216"></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-217"></span><span>  </span><span id="local-6989586621679543959"><span class="annot"><span class="annottext">width :: Double
+</span><a href="#local-6989586621679543959"><span class="hs-identifier hs-var hs-var">width</span></a></span></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Double) -&gt; Int -&gt; Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(forall pixel. Pixel pixel =&gt; Image pixel -&gt; Int)
+-&gt; DynamicImage -&gt; Int
+forall a.
+(forall pixel. Pixel pixel =&gt; Image pixel -&gt; a)
+-&gt; DynamicImage -&gt; a
+</span><span class="hs-identifier hs-var">dynamicMap</span></span><span> </span><span class="annot"><span class="annottext">forall a. Image a -&gt; Int
+forall pixel. Pixel pixel =&gt; Image pixel -&gt; Int
+</span><span class="hs-identifier hs-var hs-var">imageWidth</span></span><span> </span><span class="annot"><span class="annottext">DynamicImage
+</span><a href="#local-6989586621679543960"><span class="hs-identifier hs-var">img</span></a></span><span>
+</span><span id="line-218"></span><span>  </span><span id="local-6989586621679543958"><span class="annot"><span class="annottext">height :: Double
+</span><a href="#local-6989586621679543958"><span class="hs-identifier hs-var hs-var">height</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Double) -&gt; Int -&gt; Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(forall pixel. Pixel pixel =&gt; Image pixel -&gt; Int)
+-&gt; DynamicImage -&gt; Int
+forall a.
+(forall pixel. Pixel pixel =&gt; Image pixel -&gt; a)
+-&gt; DynamicImage -&gt; a
+</span><span class="hs-identifier hs-var">dynamicMap</span></span><span> </span><span class="annot"><span class="annottext">forall a. Image a -&gt; Int
+forall pixel. Pixel pixel =&gt; Image pixel -&gt; Int
+</span><span class="hs-identifier hs-var hs-var">imageHeight</span></span><span> </span><span class="annot"><span class="annottext">DynamicImage
+</span><a href="#local-6989586621679543960"><span class="hs-identifier hs-var">img</span></a></span><span>
+</span><span id="line-219"></span><span>  </span><span id="local-6989586621679543957"><span class="annot"><span class="annottext">imgData :: ByteString
+</span><a href="#local-6989586621679543957"><span class="hs-identifier hs-var hs-var">imgData</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">DynamicImage -&gt; Either FilePath ByteString
+</span><span class="hs-identifier hs-var">encodeDynamicPng</span></span><span> </span><span class="annot"><span class="annottext">DynamicImage
+</span><a href="#local-6989586621679543960"><span class="hs-identifier hs-var">img</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-220"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span>  </span><span id="local-6989586621679543956"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543956"><span class="hs-identifier hs-var">err</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; ByteString
+forall a. HasCallStack =&gt; FilePath -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543956"><span class="hs-identifier hs-var">err</span></a></span><span>
+</span><span id="line-221"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679543955"><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679543955"><span class="hs-identifier hs-var">dat</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679543955"><span class="hs-identifier hs-var">dat</span></a></span><span>
+</span><span id="line-222"></span><span>
+</span><span id="line-223"></span><span class="hs-comment">-- embedImageFile :: FilePath -&gt; Tree</span><span>
+</span><span id="line-224"></span><span class="hs-comment">-- embedImageFile path = unsafePerformIO $ do</span><span>
+</span><span id="line-225"></span><span class="hs-comment">--     png &lt;- B.readFile path</span><span>
+</span><span id="line-226"></span><span class="hs-comment">--     case decodePng png of</span><span>
+</span><span id="line-227"></span><span class="hs-comment">--       Left{}    -&gt; error &quot;bad image&quot;</span><span>
+</span><span id="line-228"></span><span class="hs-comment">--       Right img -&gt; return $</span><span>
+</span><span id="line-229"></span><span class="hs-comment">--         let width   = fromIntegral $ dynamicMap imageWidth img</span><span>
+</span><span id="line-230"></span><span class="hs-comment">--             height  = fromIntegral $ dynamicMap imageHeight img in</span><span>
+</span><span id="line-231"></span><span class="hs-comment">--         ImageTree $ defaultSvg</span><span>
+</span><span id="line-232"></span><span class="hs-comment">--           &amp; Svg.imageCornerUpperLeft .~ (Svg.Num (-width/2), Svg.Num (-height/2))</span><span>
+</span><span id="line-233"></span><span class="hs-comment">--           &amp; Svg.imageWidth .~ Svg.Num width</span><span>
+</span><span id="line-234"></span><span class="hs-comment">--           &amp; Svg.imageHeight .~ Svg.Num height</span><span>
+</span><span id="line-235"></span><span class="hs-comment">--           &amp; Svg.imageHref .~ (&quot;file://&quot; ++ path)</span><span>
+</span><span id="line-236"></span><span>
+</span><span id="line-237"></span><span>
+</span><span id="line-238"></span><span class="hs-comment">-- | Convert an SVG object to a pixel-based image. The default resolution</span><span>
+</span><span id="line-239"></span><span class="hs-comment">--   is 2560x1440. See also 'rasterSized'. Multiple raster engines are supported</span><span>
+</span><span id="line-240"></span><span class="hs-comment">--   and are selected using the '--raster' flag in the driver.</span><span>
+</span><span id="line-241"></span><span class="annot"><a href="Reanimate.Raster.html#raster"><span class="hs-identifier hs-type">raster</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">DynamicImage</span></span><span>
+</span><span id="line-242"></span><span id="raster"><span class="annot"><span class="annottext">raster :: SVG -&gt; DynamicImage
+</span><a href="Reanimate.Raster.html#raster"><span class="hs-identifier hs-var hs-var">raster</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; SVG -&gt; DynamicImage
+</span><a href="Reanimate.Raster.html#rasterSized"><span class="hs-identifier hs-var">rasterSized</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2560</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1440</span></span><span>
+</span><span id="line-243"></span><span>
+</span><span id="line-244"></span><span class="hs-comment">-- | Convert an SVG object to a pixel-based image.</span><span>
+</span><span id="line-245"></span><span class="annot"><a href="Reanimate.Raster.html#rasterSized"><span class="hs-identifier hs-type">rasterSized</span></a></span><span>
+</span><span id="line-246"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Width"><span class="hs-identifier hs-type">Width</span></a></span><span>  </span><span class="hs-comment">-- ^ X resolution in pixels</span><span>
+</span><span id="line-247"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Height"><span class="hs-identifier hs-type">Height</span></a></span><span> </span><span class="hs-comment">-- ^ Y resolution in pixels</span><span>
+</span><span id="line-248"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span>    </span><span class="hs-comment">-- ^ SVG object</span><span>
+</span><span id="line-249"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">DynamicImage</span></span><span>
+</span><span id="line-250"></span><span id="rasterSized"><span class="annot"><span class="annottext">rasterSized :: Int -&gt; Int -&gt; SVG -&gt; DynamicImage
+</span><a href="Reanimate.Raster.html#rasterSized"><span class="hs-identifier hs-var hs-var">rasterSized</span></a></span></span><span> </span><span id="local-6989586621679543954"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543954"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span id="local-6989586621679543953"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543953"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span id="local-6989586621679543952"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679543952"><span class="hs-identifier hs-var">svg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO DynamicImage -&gt; DynamicImage
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO DynamicImage -&gt; DynamicImage)
+-&gt; IO DynamicImage -&gt; DynamicImage
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-251"></span><span>  </span><span id="local-6989586621679543951"><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679543951"><span class="hs-identifier hs-var">png</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO ByteString
+</span><span class="hs-identifier hs-var">B.readFile</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; SVG -&gt; FilePath
+</span><a href="Reanimate.Raster.html#svgAsPngFile%27"><span class="hs-identifier hs-var">svgAsPngFile'</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543954"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543953"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679543952"><span class="hs-identifier hs-var">svg</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-252"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; Either FilePath DynamicImage
+</span><span class="hs-identifier hs-var">decodePng</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679543951"><span class="hs-identifier hs-var">png</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-253"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span class="hs-special">{</span><span class="hs-special">}</span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO DynamicImage
+forall a. HasCallStack =&gt; FilePath -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;bad image&quot;</span></span><span>
+</span><span id="line-254"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679543949"><span class="annot"><span class="annottext">DynamicImage
+</span><a href="#local-6989586621679543949"><span class="hs-identifier hs-var">img</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">DynamicImage -&gt; IO DynamicImage
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">DynamicImage
+</span><a href="#local-6989586621679543949"><span class="hs-identifier hs-var">img</span></a></span><span>
+</span><span id="line-255"></span><span>
+</span><span id="line-256"></span><span class="hs-comment">-- | Use \'potrace\' to trace edges in a raster image and convert them to SVG polygons.</span><span>
+</span><span id="line-257"></span><span class="annot"><a href="Reanimate.Raster.html#vectorize"><span class="hs-identifier hs-type">vectorize</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span>
+</span><span id="line-258"></span><span id="vectorize"><span class="annot"><span class="annottext">vectorize :: FilePath -&gt; SVG
+</span><a href="Reanimate.Raster.html#vectorize"><span class="hs-identifier hs-var hs-var">vectorize</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[FilePath] -&gt; FilePath -&gt; SVG
+</span><a href="Reanimate.Raster.html#vectorize_"><span class="hs-identifier hs-var">vectorize_</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-259"></span><span>
+</span><span id="line-260"></span><span class="hs-comment">-- | Same as 'vectorize' but takes a list of arguments for \'potrace\'.</span><span>
+</span><span id="line-261"></span><span class="annot"><a href="Reanimate.Raster.html#vectorize_"><span class="hs-identifier hs-type">vectorize_</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span>
+</span><span id="line-262"></span><span id="vectorize_"><span class="annot"><span class="annottext">vectorize_ :: [FilePath] -&gt; FilePath -&gt; SVG
+</span><a href="Reanimate.Raster.html#vectorize_"><span class="hs-identifier hs-var hs-var">vectorize_</span></a></span></span><span> </span><span class="annot"><span class="annottext">[FilePath]
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679543947"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543947"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="Reanimate.Parameters.html#pNoExternals"><span class="hs-identifier hs-var">pNoExternals</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#mkText"><span class="hs-identifier hs-var">mkText</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; SVG) -&gt; Text -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543947"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-263"></span><span class="annot"><a href="Reanimate.Raster.html#vectorize_"><span class="hs-identifier hs-var">vectorize_</span></a></span><span> </span><span id="local-6989586621679543945"><span class="annot"><span class="annottext">[FilePath]
+</span><a href="#local-6989586621679543945"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span id="local-6989586621679543944"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543944"><span class="hs-identifier hs-var">path</span></a></span></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO SVG -&gt; SVG
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO SVG -&gt; SVG) -&gt; IO SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-264"></span><span>  </span><span id="local-6989586621679543943"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543943"><span class="hs-identifier hs-var">root</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO FilePath
+</span><a href="Reanimate.Misc.html#getReanimateCacheDirectory"><span class="hs-identifier hs-var">getReanimateCacheDirectory</span></a></span><span>
+</span><span id="line-265"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679543942"><span class="annot"><span class="annottext">svgPath :: FilePath
+</span><a href="#local-6989586621679543942"><span class="hs-identifier hs-var hs-var">svgPath</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543943"><span class="hs-identifier hs-var">root</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+</span><span class="hs-operator hs-var">&lt;/&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; FilePath
+</span><a href="Reanimate.Cache.html#encodeInt"><span class="hs-identifier hs-var">encodeInt</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543941"><span class="hs-identifier hs-var">key</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+</span><span class="hs-operator hs-var">&lt;.&gt;</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;svg&quot;</span></span><span>
+</span><span id="line-266"></span><span>  </span><span id="local-6989586621679543940"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679543940"><span class="hs-identifier hs-var">hit</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO Bool
+</span><span class="hs-identifier hs-var">doesFileExist</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543942"><span class="hs-identifier hs-var">svgPath</span></a></span><span>
+</span><span id="line-267"></span><span>  </span><span class="annot"><span class="annottext">Bool -&gt; IO () -&gt; IO ()
+forall (f :: * -&gt; *). Applicative f =&gt; Bool -&gt; f () -&gt; f ()
+</span><span class="hs-identifier hs-var">unless</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679543940"><span class="hs-identifier hs-var">hit</span></a></span><span> </span><span class="annot"><span class="annottext">(IO () -&gt; IO ()) -&gt; IO () -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; (FilePath -&gt; Handle -&gt; IO ()) -&gt; IO ()
+forall (m :: * -&gt; *) a.
+(MonadIO m, MonadMask m) =&gt;
+FilePath -&gt; (FilePath -&gt; Handle -&gt; m a) -&gt; m a
+</span><span class="hs-identifier hs-var">withSystemTempFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;file.svg&quot;</span></span><span> </span><span class="annot"><span class="annottext">((FilePath -&gt; Handle -&gt; IO ()) -&gt; IO ())
+-&gt; (FilePath -&gt; Handle -&gt; IO ()) -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679543939"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543939"><span class="hs-identifier hs-var">tmpSvgPath</span></a></span></span><span> </span><span id="local-6989586621679543938"><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679543938"><span class="hs-identifier hs-var">svgH</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-268"></span><span>    </span><span class="annot"><span class="annottext">FilePath -&gt; (FilePath -&gt; Handle -&gt; IO ()) -&gt; IO ()
+forall (m :: * -&gt; *) a.
+(MonadIO m, MonadMask m) =&gt;
+FilePath -&gt; (FilePath -&gt; Handle -&gt; m a) -&gt; m a
+</span><span class="hs-identifier hs-var">withSystemTempFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;file.bmp&quot;</span></span><span> </span><span class="annot"><span class="annottext">((FilePath -&gt; Handle -&gt; IO ()) -&gt; IO ())
+-&gt; (FilePath -&gt; Handle -&gt; IO ()) -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679543937"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543937"><span class="hs-identifier hs-var">tmpBmpPath</span></a></span></span><span> </span><span id="local-6989586621679543936"><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679543936"><span class="hs-identifier hs-var">bmpH</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-269"></span><span>      </span><span class="annot"><span class="annottext">Handle -&gt; IO ()
+</span><span class="hs-identifier hs-var">hClose</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679543938"><span class="hs-identifier hs-var">svgH</span></a></span><span>
+</span><span id="line-270"></span><span>      </span><span class="annot"><span class="annottext">Handle -&gt; IO ()
+</span><span class="hs-identifier hs-var">hClose</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679543936"><span class="hs-identifier hs-var">bmpH</span></a></span><span>
+</span><span id="line-271"></span><span>      </span><span id="local-6989586621679543935"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543935"><span class="hs-identifier hs-var">potrace</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO FilePath
+</span><a href="Reanimate.Misc.html#requireExecutable"><span class="hs-identifier hs-var">requireExecutable</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;potrace&quot;</span></span><span>
+</span><span id="line-272"></span><span>      </span><span id="local-6989586621679543934"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543934"><span class="hs-identifier hs-var">magick</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO FilePath
+</span><a href="Reanimate.Misc.html#requireExecutable"><span class="hs-identifier hs-var">requireExecutable</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="Reanimate.Driver.Magick.html#magickCmd"><span class="hs-identifier hs-var">magickCmd</span></a></span><span>
+</span><span id="line-273"></span><span>      </span><span class="annot"><span class="annottext">FilePath -&gt; [FilePath] -&gt; IO ()
+</span><a href="Reanimate.Misc.html#runCmd"><span class="hs-identifier hs-var">runCmd</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543934"><span class="hs-identifier hs-var">magick</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543944"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;-flatten&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543937"><span class="hs-identifier hs-var">tmpBmpPath</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-274"></span><span>      </span><span class="annot"><span class="annottext">FilePath -&gt; [FilePath] -&gt; IO ()
+</span><a href="Reanimate.Misc.html#runCmd"><span class="hs-identifier hs-var">runCmd</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543935"><span class="hs-identifier hs-var">potrace</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[FilePath]
+</span><a href="#local-6989586621679543945"><span class="hs-identifier hs-var">args</span></a></span><span> </span><span class="annot"><span class="annottext">[FilePath] -&gt; [FilePath] -&gt; [FilePath]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;--svg&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;--output&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543939"><span class="hs-identifier hs-var">tmpSvgPath</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543937"><span class="hs-identifier hs-var">tmpBmpPath</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-275"></span><span>      </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; IO ()
+</span><a href="Reanimate.Misc.html#renameOrCopyFile"><span class="hs-identifier hs-var">renameOrCopyFile</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543939"><span class="hs-identifier hs-var">tmpSvgPath</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543942"><span class="hs-identifier hs-var">svgPath</span></a></span><span>
+</span><span id="line-276"></span><span>  </span><span id="local-6989586621679543933"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679543933"><span class="hs-identifier hs-var">svg_data</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO Text
+</span><span class="hs-identifier hs-var">T.readFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543942"><span class="hs-identifier hs-var">svgPath</span></a></span><span>
+</span><span id="line-277"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; Text -&gt; Maybe Document
+</span><span class="hs-identifier hs-var">parseSvgFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543942"><span class="hs-identifier hs-var">svgPath</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679543933"><span class="hs-identifier hs-var">svg_data</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-278"></span><span>    </span><span class="annot"><span class="annottext">Maybe Document
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-279"></span><span>      </span><span class="annot"><span class="annottext">FilePath -&gt; IO ()
+</span><span class="hs-identifier hs-var">removeFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543942"><span class="hs-identifier hs-var">svgPath</span></a></span><span>
+</span><span id="line-280"></span><span>      </span><span class="annot"><span class="annottext">FilePath -&gt; IO SVG
+forall a. HasCallStack =&gt; FilePath -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;Malformed svg&quot;</span></span><span>
+</span><span id="line-281"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679543932"><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679543932"><span class="hs-identifier hs-var">svg</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; IO SVG
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; IO SVG) -&gt; SVG -&gt; IO SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Document -&gt; SVG
+</span><a href="Reanimate.Svg.Unuse.html#unbox"><span class="hs-identifier hs-var">unbox</span></a></span><span> </span><span class="annot"><span class="annottext">(Document -&gt; SVG) -&gt; Document -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Document -&gt; Document
+</span><a href="Reanimate.Svg.Unuse.html#replaceUses"><span class="hs-identifier hs-var">replaceUses</span></a></span><span> </span><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679543932"><span class="hs-identifier hs-var">svg</span></a></span><span>
+</span><span id="line-282"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679543941"><span class="annot"><span class="annottext">key :: Int
+</span><a href="#local-6989586621679543941"><span class="hs-identifier hs-var hs-var">key</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(FilePath, [FilePath]) -&gt; Int
+forall a. Hashable a =&gt; a -&gt; Int
+</span><span class="hs-identifier hs-var">hash</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543944"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[FilePath]
+</span><a href="#local-6989586621679543945"><span class="hs-identifier hs-var">args</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-283"></span><span>
+</span><span id="line-284"></span><span class="hs-comment">-- imageAsFile :: DynamicImage -&gt; FilePath</span><span>
+</span><span id="line-285"></span><span class="hs-comment">-- imageAsFile img</span><span>
+</span><span id="line-286"></span><span>
+</span><span id="line-287"></span><span class="hs-comment">-- | Convert an SVG object to a pixel-based image and save it to disk, returning</span><span>
+</span><span id="line-288"></span><span class="hs-comment">--   the filepath. The default resolution is 2560x1440. See also 'svgAsPngFile''.</span><span>
+</span><span id="line-289"></span><span class="hs-comment">--   Multiple raster engines are supported and are selected using the '--raster'</span><span>
+</span><span id="line-290"></span><span class="hs-comment">--   flag in the driver.</span><span>
+</span><span id="line-291"></span><span class="annot"><a href="Reanimate.Raster.html#svgAsPngFile"><span class="hs-identifier hs-type">svgAsPngFile</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span>
+</span><span id="line-292"></span><span id="svgAsPngFile"><span class="annot"><span class="annottext">svgAsPngFile :: SVG -&gt; FilePath
+</span><a href="Reanimate.Raster.html#svgAsPngFile"><span class="hs-identifier hs-var hs-var">svgAsPngFile</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; SVG -&gt; FilePath
+</span><a href="Reanimate.Raster.html#svgAsPngFile%27"><span class="hs-identifier hs-var">svgAsPngFile'</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543931"><span class="hs-identifier hs-var">width</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543930"><span class="hs-identifier hs-var">height</span></a></span><span>
+</span><span id="line-293"></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-294"></span><span>  </span><span id="local-6989586621679543931"><span class="annot"><span class="annottext">width :: Int
+</span><a href="#local-6989586621679543931"><span class="hs-identifier hs-var hs-var">width</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2560</span></span><span>
+</span><span id="line-295"></span><span>  </span><span id="local-6989586621679543930"><span class="annot"><span class="annottext">height :: Int
+</span><a href="#local-6989586621679543930"><span class="hs-identifier hs-var hs-var">height</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543931"><span class="hs-identifier hs-var">width</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">9</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Integral a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">`div`</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">16</span></span><span>
+</span><span id="line-296"></span><span>
+</span><span id="line-297"></span><span class="hs-comment">-- | Convert an SVG object to a pixel-based image and save it to disk, returning</span><span>
+</span><span id="line-298"></span><span class="hs-comment">--   the filepath.</span><span>
+</span><span id="line-299"></span><span class="annot"><a href="Reanimate.Raster.html#svgAsPngFile%27"><span class="hs-identifier hs-type">svgAsPngFile'</span></a></span><span>
+</span><span id="line-300"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Width"><span class="hs-identifier hs-type">Width</span></a></span><span>  </span><span class="hs-comment">-- ^ Width</span><span>
+</span><span id="line-301"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Height"><span class="hs-identifier hs-type">Height</span></a></span><span> </span><span class="hs-comment">-- ^ Height</span><span>
+</span><span id="line-302"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span>    </span><span class="hs-comment">-- ^ SVG object</span><span>
+</span><span id="line-303"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span>
+</span><span id="line-304"></span><span id="svgAsPngFile%27"><span class="annot"><span class="annottext">svgAsPngFile' :: Int -&gt; Int -&gt; SVG -&gt; FilePath
+</span><a href="Reanimate.Raster.html#svgAsPngFile%27"><span class="hs-identifier hs-var hs-var">svgAsPngFile'</span></a></span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="Reanimate.Parameters.html#pNoExternals"><span class="hs-identifier hs-var">pNoExternals</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;/svgAsPngFile/has/been/disabled&quot;</span></span><span>
+</span><span id="line-305"></span><span class="annot"><a href="Reanimate.Raster.html#svgAsPngFile%27"><span class="hs-identifier hs-var">svgAsPngFile'</span></a></span><span> </span><span id="local-6989586621679543927"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543927"><span class="hs-identifier hs-var">width</span></a></span></span><span> </span><span id="local-6989586621679543926"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543926"><span class="hs-identifier hs-var">height</span></a></span></span><span> </span><span id="local-6989586621679543925"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679543925"><span class="hs-identifier hs-var">svg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-306"></span><span>  </span><span class="annot"><span class="annottext">IO FilePath -&gt; FilePath
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO FilePath -&gt; FilePath) -&gt; IO FilePath -&gt; FilePath
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; (FilePath -&gt; IO ()) -&gt; IO FilePath
+</span><a href="Reanimate.Cache.html#cacheFile"><span class="hs-identifier hs-var">cacheFile</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543924"><span class="hs-identifier hs-var">template</span></a></span><span> </span><span class="annot"><span class="annottext">((FilePath -&gt; IO ()) -&gt; IO FilePath)
+-&gt; (FilePath -&gt; IO ()) -&gt; IO FilePath
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679543923"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543923"><span class="hs-identifier hs-var">pngPath</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-307"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679543922"><span class="annot"><span class="annottext">svgPath :: FilePath
+</span><a href="#local-6989586621679543922"><span class="hs-identifier hs-var hs-var">svgPath</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+</span><span class="hs-identifier hs-var">replaceExtension</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543923"><span class="hs-identifier hs-var">pngPath</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;svg&quot;</span></span><span>
+</span><span id="line-308"></span><span>    </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; IO ()
+</span><span class="hs-identifier hs-var">writeFile</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543922"><span class="hs-identifier hs-var">svgPath</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543921"><span class="hs-identifier hs-var">rendered</span></a></span><span>
+</span><span id="line-309"></span><span>    </span><span id="local-6989586621679543920"><span class="annot"><span class="annottext">Raster
+</span><a href="#local-6989586621679543920"><span class="hs-identifier hs-var">engine</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Raster -&gt; IO Raster
+</span><a href="Reanimate.Render.html#requireRaster"><span class="hs-identifier hs-var">requireRaster</span></a></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#pRaster"><span class="hs-identifier hs-var">pRaster</span></a></span><span>
+</span><span id="line-310"></span><span>    </span><span class="annot"><span class="annottext">Raster -&gt; FilePath -&gt; IO ()
+</span><a href="Reanimate.Render.html#applyRaster"><span class="hs-identifier hs-var">applyRaster</span></a></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="#local-6989586621679543920"><span class="hs-identifier hs-var">engine</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543922"><span class="hs-identifier hs-var">svgPath</span></a></span><span>
+</span><span id="line-311"></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-312"></span><span>  </span><span id="local-6989586621679543924"><span class="annot"><span class="annottext">template :: FilePath
+</span><a href="#local-6989586621679543924"><span class="hs-identifier hs-var hs-var">template</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; FilePath
+</span><a href="Reanimate.Cache.html#encodeInt"><span class="hs-identifier hs-var">encodeInt</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FilePath -&gt; Int
+forall a. Hashable a =&gt; a -&gt; Int
+</span><span class="hs-identifier hs-var">hash</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679543921"><span class="hs-identifier hs-var">rendered</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; FilePath -&gt; FilePath
+</span><span class="hs-operator hs-var">&lt;.&gt;</span></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;png&quot;</span></span><span>
+</span><span id="line-313"></span><span>  </span><span id="local-6989586621679543921"><span class="annot"><span class="annottext">rendered :: FilePath
+</span><a href="#local-6989586621679543921"><span class="hs-identifier hs-var hs-var">rendered</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Number -&gt; Maybe Number -&gt; SVG -&gt; FilePath
+</span><a href="Reanimate.Animation.html#renderSvg"><span class="hs-identifier hs-var">renderSvg</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Number -&gt; Maybe Number
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(Number -&gt; Maybe Number) -&gt; Number -&gt; Maybe Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Px</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543927"><span class="hs-identifier hs-var">width</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-314"></span><span>                       </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Number -&gt; Maybe Number
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">(Number -&gt; Maybe Number) -&gt; Number -&gt; Maybe Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><span class="hs-identifier hs-var">Px</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679543926"><span class="hs-identifier hs-var">height</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-315"></span><span>                       </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679543925"><span class="hs-identifier hs-var">svg</span></a></span><span>
+</span><span id="line-316"></span></pre></body></html>

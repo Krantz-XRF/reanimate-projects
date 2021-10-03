@@ -1,0 +1,421 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Module      : Common.Object.SyntaxHighlight
+Description : Syntax highlighting support for Reanimate through Skylighting.
+Copyright   : (c) Xie Ruifeng, 2020
+License     : AGPL-3
+Maintainer  : krantz.xrf@outlook.com
+Stability   : experimental
+Portability : portable
+-}</span><span>
+</span><span id="line-10"></span><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-11"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Common.Object.SyntaxHighlight</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-12"></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Arrow</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(&gt;&gt;&gt;)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Function</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(&amp;)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">fromJust</span></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Lens.Internal.Getter</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">AlongsideRight</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Bifunctor</span></span><span>               </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Bifunctor</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">second</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Coerce</span></span><span>                  </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Coercible</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">coerce</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Functor.Compose</span></span><span>         </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Compose</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">M</span></span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Common.Object.SyntaxHighlight.Theme.html"><span class="hs-identifier">Common.Object.SyntaxHighlight.Theme</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Common.Object.SyntaxHighlight.Theme.html#tomorrow"><span class="hs-identifier">tomorrow</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Codec.Picture</span></span><span>              </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">PixelRGBA8</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate</span></span><span>                  </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">SVG</span></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate.LaTeX</span></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate.Svg.Constructors</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">withFillColorPixel</span></span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Skylighting.Core</span></span><span>           </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">lookupSyntax</span></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Skylighting.Syntax</span></span><span>         </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">defaultSyntaxMap</span></span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Skylighting.Tokenizer</span></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">TokenizerConfig</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">tokenize</span></span><span class="hs-special">)</span><span>
+</span><span id="line-35"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Skylighting.Types</span></span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-comment">-- |Evaluate to the first, with the second as a type hint.</span><span>
+</span><span id="line-38"></span><span id="local-6989586621679232294"><span class="annot"><a href="Common.Object.SyntaxHighlight.html#asIf"><span class="hs-identifier hs-type">asIf</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679232294"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679232294"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679232294"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-39"></span><span id="asIf"><span class="annot"><span class="annottext">asIf :: a -&gt; a -&gt; a
+</span><a href="Common.Object.SyntaxHighlight.html#asIf"><span class="hs-identifier hs-var hs-var">asIf</span></a></span></span><span> </span><span id="local-6989586621679232210"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679232210"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679232210"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-40"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Common.Object.SyntaxHighlight.html#asIf"><span class="hs-pragma hs-type">asIf</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- |Coerce the data, as if it were converted using the given converter.</span><span>
+</span><span id="line-43"></span><span id="local-6989586621679232255"><span id="local-6989586621679232256"><span class="annot"><a href="Common.Object.SyntaxHighlight.html#coerceAsIf"><span class="hs-identifier hs-type">coerceAsIf</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Coercible</span></span><span> </span><span class="annot"><a href="#local-6989586621679232256"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679232255"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679232256"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679232255"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679232256"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679232255"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-44"></span><span id="coerceAsIf"><span class="annot"><span class="annottext">coerceAsIf :: (a -&gt; b) -&gt; a -&gt; b
+</span><a href="Common.Object.SyntaxHighlight.html#coerceAsIf"><span class="hs-identifier hs-var hs-var">coerceAsIf</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(a -&gt; b) -&gt; (a -&gt; b) -&gt; a -&gt; b
+forall a. a -&gt; a -&gt; a
+</span><a href="Common.Object.SyntaxHighlight.html#asIf"><span class="hs-identifier hs-var">asIf</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; b
+</span><span class="hs-identifier hs-var">coerce</span></span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span class="hs-comment">-- |Default tokenizer config: with default syntax map, without trace output.</span><span>
+</span><span id="line-47"></span><span class="annot"><a href="Common.Object.SyntaxHighlight.html#defaultTokenizerConfig"><span class="hs-identifier hs-type">defaultTokenizerConfig</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">TokenizerConfig</span></span><span>
+</span><span id="line-48"></span><span id="defaultTokenizerConfig"><span class="annot"><span class="annottext">defaultTokenizerConfig :: TokenizerConfig
+</span><a href="Common.Object.SyntaxHighlight.html#defaultTokenizerConfig"><span class="hs-identifier hs-var hs-var">defaultTokenizerConfig</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TokenizerConfig :: SyntaxMap -&gt; Bool -&gt; TokenizerConfig
+</span><span class="hs-identifier hs-type">TokenizerConfig</span></span><span>
+</span><span id="line-49"></span><span>  </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">syntaxMap :: SyntaxMap
+</span><span class="hs-identifier hs-var">syntaxMap</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SyntaxMap
+</span><span class="hs-identifier hs-var">defaultSyntaxMap</span></span><span>
+</span><span id="line-50"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">traceOutput :: Bool
+</span><span class="hs-identifier hs-var">traceOutput</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-51"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="hs-comment">-- |Highlight with a specified language syntax.</span><span>
+</span><span id="line-54"></span><span class="hs-comment">-- Use 'lookupSyntax' to find a proper 'Syntax'.</span><span>
+</span><span id="line-55"></span><span class="annot"><a href="Common.Object.SyntaxHighlight.html#highlight"><span class="hs-identifier hs-type">highlight</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Syntax</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-56"></span><span id="highlight"><span class="annot"><span class="annottext">highlight :: Syntax -&gt; Text -&gt; [[SVG]]
+</span><a href="Common.Object.SyntaxHighlight.html#highlight"><span class="hs-identifier hs-var hs-var">highlight</span></a></span></span><span> </span><span id="local-6989586621679232203"><span class="annot"><span class="annottext">Syntax
+</span><a href="#local-6989586621679232203"><span class="hs-identifier hs-var">syn</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TokenizerConfig -&gt; Style -&gt; Syntax -&gt; Text -&gt; Either String [[SVG]]
+</span><a href="Common.Object.SyntaxHighlight.html#highlightWith"><span class="hs-identifier hs-var">highlightWith</span></a></span><span> </span><span class="annot"><span class="annottext">TokenizerConfig
+</span><a href="Common.Object.SyntaxHighlight.html#defaultTokenizerConfig"><span class="hs-identifier hs-var">defaultTokenizerConfig</span></a></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="Common.Object.SyntaxHighlight.Theme.html#tomorrow"><span class="hs-identifier hs-var">tomorrow</span></a></span><span> </span><span class="annot"><span class="annottext">Syntax
+</span><a href="#local-6989586621679232203"><span class="hs-identifier hs-var">syn</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Either String [[SVG]])
+-&gt; (Either String [[SVG]] -&gt; [[SVG]]) -&gt; Text -&gt; [[SVG]]
+forall k (cat :: k -&gt; k -&gt; *) (a :: k) (b :: k) (c :: k).
+Category cat =&gt;
+cat a b -&gt; cat b c -&gt; cat a c
+</span><span class="hs-operator hs-var">&gt;&gt;&gt;</span></span><span> </span><span class="hs-glyph">\</span><span class="hs-glyph">case</span><span>
+</span><span id="line-57"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679232201"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679232201"><span class="hs-identifier hs-var">err</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; [[SVG]]
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;syntax highlight error: &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679232201"><span class="hs-identifier hs-var">err</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-58"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679232199"><span class="annot"><span class="annottext">[[SVG]]
+</span><a href="#local-6989586621679232199"><span class="hs-identifier hs-var">res</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[[SVG]]
+</span><a href="#local-6989586621679232199"><span class="hs-identifier hs-var">res</span></a></span><span>
+</span><span id="line-59"></span><span>
+</span><span id="line-60"></span><span class="hs-comment">-- |Highlight code in some language.</span><span>
+</span><span id="line-61"></span><span class="annot"><a href="Common.Object.SyntaxHighlight.html#highlightIn"><span class="hs-identifier hs-type">highlightIn</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-62"></span><span id="highlightIn"><span class="annot"><span class="annottext">highlightIn :: Text -&gt; Text -&gt; [[SVG]]
+</span><a href="Common.Object.SyntaxHighlight.html#highlightIn"><span class="hs-identifier hs-var hs-var">highlightIn</span></a></span></span><span> </span><span id="local-6989586621679232197"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679232197"><span class="hs-identifier hs-var">lang</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Syntax -&gt; Text -&gt; [[SVG]]
+</span><a href="Common.Object.SyntaxHighlight.html#highlight"><span class="hs-identifier hs-var">highlight</span></a></span><span> </span><span class="annot"><span class="annottext">(Syntax -&gt; Text -&gt; [[SVG]]) -&gt; Syntax -&gt; Text -&gt; [[SVG]]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Maybe Syntax -&gt; Syntax
+forall a. HasCallStack =&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromJust</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Syntax -&gt; Syntax) -&gt; Maybe Syntax -&gt; Syntax
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; SyntaxMap -&gt; Maybe Syntax
+</span><span class="hs-identifier hs-var">lookupSyntax</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679232197"><span class="hs-identifier hs-var">lang</span></a></span><span> </span><span class="annot"><span class="annottext">SyntaxMap
+</span><span class="hs-identifier hs-var">defaultSyntaxMap</span></span><span>
+</span><span id="line-63"></span><span>
+</span><span id="line-64"></span><span class="hs-comment">-- |Highlight Haskell code.</span><span>
+</span><span id="line-65"></span><span class="annot"><a href="Common.Object.SyntaxHighlight.html#highlightHs"><span class="hs-identifier hs-type">highlightHs</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-66"></span><span id="highlightHs"><span class="annot"><span class="annottext">highlightHs :: Text -&gt; [[SVG]]
+</span><a href="Common.Object.SyntaxHighlight.html#highlightHs"><span class="hs-identifier hs-var hs-var">highlightHs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; [[SVG]]
+</span><a href="Common.Object.SyntaxHighlight.html#highlightIn"><span class="hs-identifier hs-var">highlightIn</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;haskell&quot;</span></span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span class="hs-comment">-- |Custom highlight with maximum flexibility.</span><span>
+</span><span id="line-69"></span><span class="annot"><a href="Common.Object.SyntaxHighlight.html#highlightWith"><span class="hs-identifier hs-type">highlightWith</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">TokenizerConfig</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Style</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Syntax</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-70"></span><span id="highlightWith"><span class="annot"><span class="annottext">highlightWith :: TokenizerConfig -&gt; Style -&gt; Syntax -&gt; Text -&gt; Either String [[SVG]]
+</span><a href="Common.Object.SyntaxHighlight.html#highlightWith"><span class="hs-identifier hs-var hs-var">highlightWith</span></a></span></span><span> </span><span id="local-6989586621679232195"><span class="annot"><span class="annottext">TokenizerConfig
+</span><a href="#local-6989586621679232195"><span class="hs-identifier hs-var">cfg</span></a></span></span><span> </span><span id="local-6989586621679232194"><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679232194"><span class="hs-identifier hs-var">style</span></a></span></span><span> </span><span id="local-6989586621679232193"><span class="annot"><span class="annottext">Syntax
+</span><a href="#local-6989586621679232193"><span class="hs-identifier hs-var">syn</span></a></span></span><span> </span><span id="local-6989586621679232192"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679232192"><span class="hs-identifier hs-var">code</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-71"></span><span>  </span><span id="local-6989586621679232191"><span class="annot"><span class="annottext">[SourceLine]
+</span><a href="#local-6989586621679232191"><span class="hs-identifier hs-var">ls</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">TokenizerConfig -&gt; Syntax -&gt; Text -&gt; Either String [SourceLine]
+</span><span class="hs-identifier hs-var">tokenize</span></span><span> </span><span class="annot"><span class="annottext">TokenizerConfig
+</span><a href="#local-6989586621679232195"><span class="hs-identifier hs-var">cfg</span></a></span><span> </span><span class="annot"><span class="annottext">Syntax
+</span><a href="#local-6989586621679232193"><span class="hs-identifier hs-var">syn</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679232192"><span class="hs-identifier hs-var">code</span></a></span><span>
+</span><span id="line-72"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679232190"><span class="annot"><span class="annottext">applyOtherStyles :: (TokenType, b) -&gt; (TokenType, b)
+</span><a href="#local-6989586621679232190"><span class="hs-identifier hs-var hs-var">applyOtherStyles</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679232189"><span class="annot"><span class="annottext">TokenType
+</span><a href="#local-6989586621679232189"><span class="hs-identifier hs-var">tp</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679232188"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679232188"><span class="hs-identifier hs-var">txt</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-73"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">TokenType
+</span><a href="#local-6989586621679232189"><span class="hs-identifier hs-var">tp</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">TokenType -&gt; Map TokenType TokenStyle -&gt; Maybe TokenStyle
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">M.lookup</span></span><span> </span><span class="annot"><span class="annottext">TokenType
+</span><a href="#local-6989586621679232189"><span class="hs-identifier hs-var">tp</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Style -&gt; Map TokenType TokenStyle
+</span><span class="hs-identifier hs-var hs-var">tokenStyles</span></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679232194"><span class="hs-identifier hs-var">style</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-74"></span><span>          </span><span class="annot"><span class="annottext">Maybe TokenStyle
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679232188"><span class="hs-identifier hs-var">txt</span></a></span><span>
+</span><span id="line-75"></span><span>          </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">TokenStyle</span></span><span class="hs-special">{</span><span id="local-6989586621679232180"><span id="local-6989586621679232181"><span id="local-6989586621679232182"><span id="local-6989586621679232183"><span id="local-6989586621679232184"><span class="annot"><span class="annottext">Bool
+Maybe Color
+tokenUnderline :: TokenStyle -&gt; Bool
+tokenItalic :: TokenStyle -&gt; Bool
+tokenBold :: TokenStyle -&gt; Bool
+tokenColor :: TokenStyle -&gt; Maybe Color
+tokenBackground :: TokenStyle -&gt; Maybe Color
+tokenUnderline :: Bool
+tokenItalic :: Bool
+tokenBold :: Bool
+tokenBackground :: Maybe Color
+tokenColor :: Maybe Color
+</span><span class="hs-glyph hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">..</span></span></span></span></span></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-76"></span><span>            </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679232188"><span class="hs-identifier hs-var">txt</span></a></span><span> </span><span class="annot"><span class="annottext">b -&gt; (b -&gt; b) -&gt; b
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; b -&gt; b -&gt; b
+forall p. (Semigroup p, IsString p) =&gt; Bool -&gt; p -&gt; p -&gt; p
+</span><a href="#local-6989586621679232174"><span class="hs-identifier hs-var">styled</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679232182"><span class="hs-identifier hs-var">tokenBold</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><span class="hs-string">&quot;textbf&quot;</span></span><span>
+</span><span id="line-77"></span><span>                </span><span class="annot"><span class="annottext">b -&gt; (b -&gt; b) -&gt; b
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; b -&gt; b -&gt; b
+forall p. (Semigroup p, IsString p) =&gt; Bool -&gt; p -&gt; p -&gt; p
+</span><a href="#local-6989586621679232174"><span class="hs-identifier hs-var">styled</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679232181"><span class="hs-identifier hs-var">tokenItalic</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><span class="hs-string">&quot;textit&quot;</span></span><span>
+</span><span id="line-78"></span><span>                </span><span class="annot"><span class="annottext">b -&gt; (b -&gt; b) -&gt; b
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; b -&gt; b -&gt; b
+forall p. (Semigroup p, IsString p) =&gt; Bool -&gt; p -&gt; p -&gt; p
+</span><a href="#local-6989586621679232174"><span class="hs-identifier hs-var">styled</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679232180"><span class="hs-identifier hs-var">tokenUnderline</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><span class="hs-string">&quot;underline&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-79"></span><span>      </span><span id="local-6989586621679232174"><span class="annot"><span class="annottext">styled :: Bool -&gt; p -&gt; p -&gt; p
+</span><a href="#local-6989586621679232174"><span class="hs-identifier hs-var hs-var">styled</span></a></span></span><span> </span><span id="local-6989586621679232173"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679232173"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span id="local-6989586621679232172"><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679232172"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679232171"><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679232171"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679232173"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-string">&quot;\\&quot;</span></span><span> </span><span class="annot"><span class="annottext">p -&gt; p -&gt; p
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679232172"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">p -&gt; p -&gt; p
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-string">&quot;{&quot;</span></span><span> </span><span class="annot"><span class="annottext">p -&gt; p -&gt; p
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679232171"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">p -&gt; p -&gt; p
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-string">&quot;}&quot;</span></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679232171"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-80"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679232170"><span class="annot"><span class="annottext">gs :: [[(TokenType, SVG)]]
+</span><a href="#local-6989586621679232170"><span class="hs-identifier hs-var hs-var">gs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Compose [] (AlongsideRight [] TokenType) SVG
+ -&gt; [[(TokenType, SVG)]])
+-&gt; Compose [] (AlongsideRight [] TokenType) SVG
+-&gt; [[(TokenType, SVG)]]
+forall a b. Coercible a b =&gt; (a -&gt; b) -&gt; a -&gt; b
+</span><a href="Common.Object.SyntaxHighlight.html#coerceAsIf"><span class="hs-identifier hs-var">coerceAsIf</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(AlongsideRight [] TokenType SVG -&gt; [(TokenType, SVG)])
+-&gt; [AlongsideRight [] TokenType SVG] -&gt; [[(TokenType, SVG)]]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">AlongsideRight [] TokenType SVG -&gt; [(TokenType, SVG)]
+forall (f :: * -&gt; *) a b. AlongsideRight f a b -&gt; f (a, b)
+</span><span class="hs-identifier hs-var hs-var">getAlongsideRight</span></span><span> </span><span class="annot"><span class="annottext">([AlongsideRight [] TokenType SVG] -&gt; [[(TokenType, SVG)]])
+-&gt; (Compose [] (AlongsideRight [] TokenType) SVG
+    -&gt; [AlongsideRight [] TokenType SVG])
+-&gt; Compose [] (AlongsideRight [] TokenType) SVG
+-&gt; [[(TokenType, SVG)]]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Compose [] (AlongsideRight [] TokenType) SVG
+-&gt; [AlongsideRight [] TokenType SVG]
+forall k1 (f :: k1 -&gt; *) k2 (g :: k2 -&gt; k1) (a :: k2).
+Compose f g a -&gt; f (g a)
+</span><span class="hs-identifier hs-var hs-var">getCompose</span></span><span class="hs-special">)</span><span>
+</span><span id="line-81"></span><span>         </span><span class="annot"><span class="annottext">(Compose [] (AlongsideRight [] TokenType) SVG
+ -&gt; [[(TokenType, SVG)]])
+-&gt; Compose [] (AlongsideRight [] TokenType) SVG
+-&gt; [[(TokenType, SVG)]]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">TexConfig
+-&gt; (Text -&gt; Text)
+-&gt; Compose [] (AlongsideRight [] TokenType) Text
+-&gt; Compose [] (AlongsideRight [] TokenType) SVG
+forall (t :: * -&gt; *).
+Traversable t =&gt;
+TexConfig -&gt; (Text -&gt; Text) -&gt; t Text -&gt; t SVG
+</span><span class="hs-identifier hs-var">latexCfgChunksTrans</span></span><span> </span><span class="annot"><span class="annottext">TexConfig
+</span><a href="#local-6989586621679232165"><span class="hs-identifier hs-var">texCfg</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+forall p. (Eq p, IsString p, Semigroup p) =&gt; p -&gt; p
+</span><a href="#local-6989586621679232164"><span class="hs-identifier hs-var">setFont</span></a></span><span>
+</span><span id="line-82"></span><span>         </span><span class="annot"><span class="annottext">(Compose [] (AlongsideRight [] TokenType) Text
+ -&gt; Compose [] (AlongsideRight [] TokenType) SVG)
+-&gt; Compose [] (AlongsideRight [] TokenType) Text
+-&gt; Compose [] (AlongsideRight [] TokenType) SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">([SourceLine] -&gt; Compose [] (AlongsideRight [] TokenType) Text)
+-&gt; [SourceLine] -&gt; Compose [] (AlongsideRight [] TokenType) Text
+forall a b. Coercible a b =&gt; (a -&gt; b) -&gt; a -&gt; b
+</span><a href="Common.Object.SyntaxHighlight.html#coerceAsIf"><span class="hs-identifier hs-var">coerceAsIf</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[AlongsideRight [] TokenType Text]
+-&gt; Compose [] (AlongsideRight [] TokenType) Text
+forall k k1 (f :: k -&gt; *) (g :: k1 -&gt; k) (a :: k1).
+f (g a) -&gt; Compose f g a
+</span><span class="hs-identifier hs-var">Compose</span></span><span> </span><span class="annot"><span class="annottext">([AlongsideRight [] TokenType Text]
+ -&gt; Compose [] (AlongsideRight [] TokenType) Text)
+-&gt; ([SourceLine] -&gt; [AlongsideRight [] TokenType Text])
+-&gt; [SourceLine]
+-&gt; Compose [] (AlongsideRight [] TokenType) Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(SourceLine -&gt; AlongsideRight [] TokenType Text)
+-&gt; [SourceLine] -&gt; [AlongsideRight [] TokenType Text]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">SourceLine -&gt; AlongsideRight [] TokenType Text
+forall (f :: * -&gt; *) a b. f (a, b) -&gt; AlongsideRight f a b
+</span><span class="hs-identifier hs-var">AlongsideRight</span></span><span class="hs-special">)</span><span>
+</span><span id="line-83"></span><span>         </span><span class="annot"><span class="annottext">([SourceLine] -&gt; Compose [] (AlongsideRight [] TokenType) Text)
+-&gt; [SourceLine] -&gt; Compose [] (AlongsideRight [] TokenType) Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(SourceLine -&gt; SourceLine) -&gt; [SourceLine] -&gt; [SourceLine]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SourceLine -&gt; SourceLine -&gt; SourceLine
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">TokenType
+</span><span class="hs-identifier hs-var">OtherTok</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\\\\n&quot;</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-84"></span><span>               </span><span class="annot"><span class="annottext">(SourceLine -&gt; SourceLine)
+-&gt; (SourceLine -&gt; SourceLine) -&gt; SourceLine -&gt; SourceLine
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">((TokenType, Text) -&gt; (TokenType, Text))
+-&gt; SourceLine -&gt; SourceLine
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(TokenType, Text) -&gt; (TokenType, Text)
+forall b.
+(Semigroup b, IsString b) =&gt;
+(TokenType, b) -&gt; (TokenType, b)
+</span><a href="#local-6989586621679232190"><span class="hs-identifier hs-var">applyOtherStyles</span></a></span><span> </span><span class="annot"><span class="annottext">((TokenType, Text) -&gt; (TokenType, Text))
+-&gt; ((TokenType, Text) -&gt; (TokenType, Text))
+-&gt; (TokenType, Text)
+-&gt; (TokenType, Text)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; (TokenType, Text) -&gt; (TokenType, Text)
+forall (p :: * -&gt; * -&gt; *) b c a.
+Bifunctor p =&gt;
+(b -&gt; c) -&gt; p a b -&gt; p a c
+</span><span class="hs-identifier hs-var">second</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><a href="Common.Object.SyntaxHighlight.html#escapeLaTeX"><span class="hs-identifier hs-var">escapeLaTeX</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[SourceLine]
+</span><a href="#local-6989586621679232191"><span class="hs-identifier hs-var">ls</span></a></span><span>
+</span><span id="line-85"></span><span>      </span><span id="local-6989586621679232165"><span class="annot"><span class="annottext">texCfg :: TexConfig
+</span><a href="#local-6989586621679232165"><span class="hs-identifier hs-var hs-var">texCfg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexEngine -&gt; [Text] -&gt; [Text] -&gt; TexConfig
+</span><span class="hs-identifier hs-var">TexConfig</span></span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><span class="hs-identifier hs-var">XeLaTeX</span></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679232157"><span class="hs-identifier hs-var">headers</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-86"></span><span>      </span><span id="local-6989586621679232157"><span class="annot"><span class="annottext">headers :: [Text]
+</span><a href="#local-6989586621679232157"><span class="hs-identifier hs-var hs-var">headers</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-87"></span><span>        </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\usepackage{fontspec}&quot;</span></span><span>
+</span><span id="line-88"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\setmonofont{JetBrains Mono}[Contextuals=Alternate]&quot;</span></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-89"></span><span>      </span><span class="hs-comment">-- fix &quot;there is no new line to end&quot; error.</span><span>
+</span><span id="line-90"></span><span>      </span><span id="local-6989586621679232164"><span class="annot"><span class="annottext">setFont :: p -&gt; p
+</span><a href="#local-6989586621679232164"><span class="hs-identifier hs-var hs-var">setFont</span></a></span></span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-string">&quot;\\\\\n&quot;</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-91"></span><span>      </span><span class="annot"><a href="#local-6989586621679232164"><span class="hs-identifier hs-var">setFont</span></a></span><span> </span><span id="local-6989586621679232156"><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679232156"><span class="hs-identifier hs-var">t</span></a></span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-string">&quot;\\tt &quot;</span></span><span> </span><span class="annot"><span class="annottext">p -&gt; p -&gt; p
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679232156"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-92"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679232155"><span class="annot"><span class="annottext">applyColour :: (TokenType, SVG) -&gt; SVG
+</span><a href="#local-6989586621679232155"><span class="hs-identifier hs-var hs-var">applyColour</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679232154"><span class="annot"><span class="annottext">TokenType
+</span><a href="#local-6989586621679232154"><span class="hs-identifier hs-var">tp</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679232153"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679232153"><span class="hs-identifier hs-var">svg</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-93"></span><span>        </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679232153"><span class="hs-identifier hs-var">svg</span></a></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; (SVG -&gt; SVG) -&gt; SVG
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="hs-keyword">case</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">TokenType -&gt; Map TokenType TokenStyle -&gt; Maybe TokenStyle
+forall k a. Ord k =&gt; k -&gt; Map k a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">M.lookup</span></span><span> </span><span class="annot"><span class="annottext">TokenType
+</span><a href="#local-6989586621679232154"><span class="hs-identifier hs-var">tp</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Style -&gt; Map TokenType TokenStyle
+</span><span class="hs-identifier hs-var hs-var">tokenStyles</span></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679232194"><span class="hs-identifier hs-var">style</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Style -&gt; Maybe Color
+</span><span class="hs-identifier hs-var hs-var">defaultColor</span></span><span> </span><span class="annot"><span class="annottext">Style
+</span><a href="#local-6989586621679232194"><span class="hs-identifier hs-var">style</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-94"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">TokenStyle</span></span><span class="hs-special">{</span><span class="annot"><span class="annottext">tokenColor :: TokenStyle -&gt; Maybe Color
+</span><span class="hs-identifier hs-var">tokenColor</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">RGB</span></span><span> </span><span id="local-6989586621679232150"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679232150"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span id="local-6989586621679232149"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679232149"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span id="local-6989586621679232148"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679232148"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">)</span><span class="hs-special">}</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Maybe Color
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-95"></span><span>            </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withFillColorPixel</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8 -&gt; Word8 -&gt; PixelRGBA8
+</span><span class="hs-identifier hs-var">PixelRGBA8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679232150"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679232149"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679232148"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0xFF</span></span><span class="hs-special">)</span><span>
+</span><span id="line-96"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe TokenStyle
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">RGB</span></span><span> </span><span id="local-6989586621679232146"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679232146"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span id="local-6989586621679232145"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679232145"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span id="local-6989586621679232144"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679232144"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">PixelRGBA8 -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">withFillColorPixel</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Word8 -&gt; Word8 -&gt; PixelRGBA8
+</span><span class="hs-identifier hs-var">PixelRGBA8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679232146"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679232145"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679232144"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0xFF</span></span><span class="hs-special">)</span><span>
+</span><span id="line-97"></span><span>          </span><span class="annot"><span class="annottext">(Maybe TokenStyle, Maybe Color)
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-98"></span><span>  </span><span class="annot"><span class="annottext">[[SVG]] -&gt; Either String [[SVG]]
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">([(TokenType, SVG)] -&gt; [SVG]) -&gt; [[(TokenType, SVG)]] -&gt; [[SVG]]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">((TokenType, SVG) -&gt; SVG) -&gt; [(TokenType, SVG)] -&gt; [SVG]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">(TokenType, SVG) -&gt; SVG
+</span><a href="#local-6989586621679232155"><span class="hs-identifier hs-var">applyColour</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[[(TokenType, SVG)]]
+</span><a href="#local-6989586621679232170"><span class="hs-identifier hs-var">gs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span class="hs-comment">-- |Escape LaTeX text. Stolen from @Skylighting.Format.LaTeX.escapeLaTeX@.</span><span>
+</span><span id="line-101"></span><span class="annot"><a href="Common.Object.SyntaxHighlight.html#escapeLaTeX"><span class="hs-identifier hs-type">escapeLaTeX</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-102"></span><span id="escapeLaTeX"><span class="annot"><span class="annottext">escapeLaTeX :: Text -&gt; Text
+</span><a href="Common.Object.SyntaxHighlight.html#escapeLaTeX"><span class="hs-identifier hs-var hs-var">escapeLaTeX</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Text) -&gt; Text -&gt; Text
+</span><span class="hs-identifier hs-var">T.concatMap</span></span><span> </span><span class="annot"><span class="annottext">((Char -&gt; Text) -&gt; Text -&gt; Text) -&gt; (Char -&gt; Text) -&gt; Text -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span class="hs-glyph">case</span><span>
+</span><span id="line-103"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\\'</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\textbackslash{}&quot;</span></span><span>
+</span><span id="line-104"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'{'</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\{&quot;</span></span><span>
+</span><span id="line-105"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'}'</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\}&quot;</span></span><span>
+</span><span id="line-106"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'_'</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\_&quot;</span></span><span>
+</span><span id="line-107"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&amp;'</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\&amp;&quot;</span></span><span>
+</span><span id="line-108"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'%'</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\%&quot;</span></span><span>
+</span><span id="line-109"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'#'</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\#&quot;</span></span><span>
+</span><span id="line-110"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'`'</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\textasciigrave{}&quot;</span></span><span>
+</span><span id="line-111"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\''</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\textquotesingle{}&quot;</span></span><span>
+</span><span id="line-112"></span><span>  </span><span class="hs-comment">-- we don't want to prevent ligatures</span><span>
+</span><span id="line-113"></span><span>  </span><span class="hs-comment">-- '-'  -&gt; &quot;{-}&quot;</span><span>
+</span><span id="line-114"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'~'</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\textasciitilde{}&quot;</span></span><span>
+</span><span id="line-115"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'^'</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\^{}&quot;</span></span><span>
+</span><span id="line-116"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&gt;'</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\textgreater{}&quot;</span></span><span>
+</span><span id="line-117"></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&lt;'</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\textless{}&quot;</span></span><span>
+</span><span id="line-118"></span><span>  </span><span id="local-6989586621679232141"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679232141"><span class="hs-identifier hs-var">c</span></a></span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Text
+</span><span class="hs-identifier hs-var">T.singleton</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679232141"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-119"></span></pre></body></html>

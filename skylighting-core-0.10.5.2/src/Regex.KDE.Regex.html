@@ -1,0 +1,266 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE CPP #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-3"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Regex.KDE.Regex</span><span>
+</span><span id="line-4"></span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Regex.KDE.Regex.html#Direction"><span class="hs-identifier">Direction</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-5"></span><span> </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Regex.KDE.Regex.html#Regex"><span class="hs-identifier">Regex</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-6"></span><span> </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Regex.KDE.Regex.html#isWordChar"><span class="hs-identifier">isWordChar</span></a></span><span>
+</span><span id="line-7"></span><span> </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-8"></span><span>
+</span><span id="line-9"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Char</span></span><span class="hs-cpp">
+#if !MIN_VERSION_base(4,11,0)
+</span><span class="hs-keyword">import</span><span> </span><span class="hs-identifier">Data.Semigroup</span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="hs-operator">&lt;&gt;</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-identifier">Semigroup</span><span class="hs-special">)</span><span class="hs-cpp">
+#endif
+</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">data</span><span> </span><span id="Direction"><span class="annot"><a href="Regex.KDE.Regex.html#Direction"><span class="hs-identifier hs-var">Direction</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Forward"><span class="annot"><a href="Regex.KDE.Regex.html#Forward"><span class="hs-identifier hs-var">Forward</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="Backward"><span class="annot"><a href="Regex.KDE.Regex.html#Backward"><span class="hs-identifier hs-var">Backward</span></a></span></span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679136046"><span id="local-6989586621679136048"><span id="local-6989586621679136050"><span class="annot"><span class="annottext">Int -&gt; Direction -&gt; ShowS
+[Direction] -&gt; ShowS
+Direction -&gt; String
+(Int -&gt; Direction -&gt; ShowS)
+-&gt; (Direction -&gt; String)
+-&gt; ([Direction] -&gt; ShowS)
+-&gt; Show Direction
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Direction] -&gt; ShowS
+$cshowList :: [Direction] -&gt; ShowS
+show :: Direction -&gt; String
+$cshow :: Direction -&gt; String
+showsPrec :: Int -&gt; Direction -&gt; ShowS
+$cshowsPrec :: Int -&gt; Direction -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679136041"><span id="local-6989586621679136043"><span class="annot"><span class="annottext">Direction -&gt; Direction -&gt; Bool
+(Direction -&gt; Direction -&gt; Bool)
+-&gt; (Direction -&gt; Direction -&gt; Bool) -&gt; Eq Direction
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: Direction -&gt; Direction -&gt; Bool
+$c/= :: Direction -&gt; Direction -&gt; Bool
+== :: Direction -&gt; Direction -&gt; Bool
+$c== :: Direction -&gt; Direction -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">data</span><span> </span><span id="Regex"><span class="annot"><a href="Regex.KDE.Regex.html#Regex"><span class="hs-identifier hs-var">Regex</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-18"></span><span>  </span><span id="MatchAnyChar"><span class="annot"><a href="Regex.KDE.Regex.html#MatchAnyChar"><span class="hs-identifier hs-var">MatchAnyChar</span></a></span></span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-19"></span><span>  </span><span id="MatchDynamic"><span class="annot"><a href="Regex.KDE.Regex.html#MatchDynamic"><span class="hs-identifier hs-var">MatchDynamic</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-20"></span><span>  </span><span id="MatchChar"><span class="annot"><a href="Regex.KDE.Regex.html#MatchChar"><span class="hs-identifier hs-var">MatchChar</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-21"></span><span>  </span><span id="MatchSome"><span class="annot"><a href="Regex.KDE.Regex.html#MatchSome"><span class="hs-identifier hs-var">MatchSome</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Regex.KDE.Regex.html#Regex"><span class="hs-identifier hs-type">Regex</span></a></span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-22"></span><span>  </span><span id="MatchAlt"><span class="annot"><a href="Regex.KDE.Regex.html#MatchAlt"><span class="hs-identifier hs-var">MatchAlt</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Regex.KDE.Regex.html#Regex"><span class="hs-identifier hs-type">Regex</span></a></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Regex.KDE.Regex.html#Regex"><span class="hs-identifier hs-type">Regex</span></a></span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-23"></span><span>  </span><span id="MatchConcat"><span class="annot"><a href="Regex.KDE.Regex.html#MatchConcat"><span class="hs-identifier hs-var">MatchConcat</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Regex.KDE.Regex.html#Regex"><span class="hs-identifier hs-type">Regex</span></a></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Regex.KDE.Regex.html#Regex"><span class="hs-identifier hs-type">Regex</span></a></span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-24"></span><span>  </span><span id="MatchCapture"><span class="annot"><a href="Regex.KDE.Regex.html#MatchCapture"><span class="hs-identifier hs-var">MatchCapture</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Regex.KDE.Regex.html#Regex"><span class="hs-identifier hs-type">Regex</span></a></span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-25"></span><span>  </span><span id="MatchCaptured"><span class="annot"><a href="Regex.KDE.Regex.html#MatchCaptured"><span class="hs-identifier hs-var">MatchCaptured</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-26"></span><span>  </span><span id="AssertWordBoundary"><span class="annot"><a href="Regex.KDE.Regex.html#AssertWordBoundary"><span class="hs-identifier hs-var">AssertWordBoundary</span></a></span></span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-27"></span><span>  </span><span id="AssertBeginning"><span class="annot"><a href="Regex.KDE.Regex.html#AssertBeginning"><span class="hs-identifier hs-var">AssertBeginning</span></a></span></span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-28"></span><span>  </span><span id="AssertEnd"><span class="annot"><a href="Regex.KDE.Regex.html#AssertEnd"><span class="hs-identifier hs-var">AssertEnd</span></a></span></span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-29"></span><span>  </span><span id="AssertPositive"><span class="annot"><a href="Regex.KDE.Regex.html#AssertPositive"><span class="hs-identifier hs-var">AssertPositive</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Regex.KDE.Regex.html#Direction"><span class="hs-identifier hs-type">Direction</span></a></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Regex.KDE.Regex.html#Regex"><span class="hs-identifier hs-type">Regex</span></a></span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-30"></span><span>  </span><span id="AssertNegative"><span class="annot"><a href="Regex.KDE.Regex.html#AssertNegative"><span class="hs-identifier hs-var">AssertNegative</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Regex.KDE.Regex.html#Direction"><span class="hs-identifier hs-type">Direction</span></a></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Regex.KDE.Regex.html#Regex"><span class="hs-identifier hs-type">Regex</span></a></span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-31"></span><span>  </span><span id="Possessive"><span class="annot"><a href="Regex.KDE.Regex.html#Possessive"><span class="hs-identifier hs-var">Possessive</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Regex.KDE.Regex.html#Regex"><span class="hs-identifier hs-type">Regex</span></a></span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-32"></span><span>  </span><span id="Lazy"><span class="annot"><a href="Regex.KDE.Regex.html#Lazy"><span class="hs-identifier hs-var">Lazy</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Regex.KDE.Regex.html#Regex"><span class="hs-identifier hs-type">Regex</span></a></span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-33"></span><span>  </span><span id="Recurse"><span class="annot"><a href="Regex.KDE.Regex.html#Recurse"><span class="hs-identifier hs-var">Recurse</span></a></span></span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-34"></span><span>  </span><span id="MatchNull"><span class="annot"><a href="Regex.KDE.Regex.html#MatchNull"><span class="hs-identifier hs-var">MatchNull</span></a></span></span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679136018"><span id="local-6989586621679136021"><span class="annot"><span class="hs-identifier hs-type">Show</span></span><span> </span><span class="annot"><a href="Regex.KDE.Regex.html#Regex"><span class="hs-identifier hs-type">Regex</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-37"></span><span>  </span><span id="local-6989586621679136017"><span class="annot"><span class="annottext">show :: Regex -&gt; String
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">show</span></span></span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="Regex.KDE.Regex.html#MatchAnyChar"><span class="hs-identifier hs-var">MatchAnyChar</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;MatchAnyChar&quot;</span></span><span>
+</span><span id="line-38"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">show</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Regex.KDE.Regex.html#MatchDynamic"><span class="hs-identifier hs-type">MatchDynamic</span></a></span><span> </span><span id="local-6989586621679136015"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679136015"><span class="hs-identifier hs-var">i</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;MatchDynamic &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679136015"><span class="hs-identifier hs-var">i</span></a></span><span>
+</span><span id="line-39"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">show</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Regex.KDE.Regex.html#MatchChar"><span class="hs-identifier hs-type">MatchChar</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Bool
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;(MatchChar &lt;fn&gt;)&quot;</span></span><span>
+</span><span id="line-40"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">show</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Regex.KDE.Regex.html#MatchSome"><span class="hs-identifier hs-type">MatchSome</span></a></span><span> </span><span id="local-6989586621679136014"><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136014"><span class="hs-identifier hs-var">re</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;(MatchSome &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Regex -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136014"><span class="hs-identifier hs-var">re</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;)&quot;</span></span><span>
+</span><span id="line-41"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">show</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Regex.KDE.Regex.html#MatchAlt"><span class="hs-identifier hs-type">MatchAlt</span></a></span><span> </span><span id="local-6989586621679136013"><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136013"><span class="hs-identifier hs-var">r1</span></a></span></span><span> </span><span id="local-6989586621679136012"><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136012"><span class="hs-identifier hs-var">r2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;(MatchAlt &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Regex -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136013"><span class="hs-identifier hs-var">r1</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Regex -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136012"><span class="hs-identifier hs-var">r2</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;)&quot;</span></span><span>
+</span><span id="line-42"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">show</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Regex.KDE.Regex.html#MatchConcat"><span class="hs-identifier hs-type">MatchConcat</span></a></span><span> </span><span id="local-6989586621679136011"><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136011"><span class="hs-identifier hs-var">r1</span></a></span></span><span> </span><span id="local-6989586621679136010"><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136010"><span class="hs-identifier hs-var">r2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;(MatchConcat &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Regex -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136011"><span class="hs-identifier hs-var">r1</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Regex -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136010"><span class="hs-identifier hs-var">r2</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span>
+</span><span id="line-43"></span><span>            </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;)&quot;</span></span><span>
+</span><span id="line-44"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">show</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Regex.KDE.Regex.html#MatchCapture"><span class="hs-identifier hs-type">MatchCapture</span></a></span><span> </span><span id="local-6989586621679136009"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679136009"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span id="local-6989586621679136008"><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136008"><span class="hs-identifier hs-var">re</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;(MatchCapture &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679136009"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span>
+</span><span id="line-45"></span><span>                </span><span class="annot"><span class="annottext">Regex -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136008"><span class="hs-identifier hs-var">re</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;)&quot;</span></span><span>
+</span><span id="line-46"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">show</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Regex.KDE.Regex.html#MatchCaptured"><span class="hs-identifier hs-type">MatchCaptured</span></a></span><span> </span><span id="local-6989586621679136007"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679136007"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;(MatchCaptured &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679136007"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;)&quot;</span></span><span>
+</span><span id="line-47"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="Regex.KDE.Regex.html#AssertWordBoundary"><span class="hs-identifier hs-var">AssertWordBoundary</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;AssertWordBoundary&quot;</span></span><span>
+</span><span id="line-48"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="Regex.KDE.Regex.html#AssertBeginning"><span class="hs-identifier hs-var">AssertBeginning</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;AssertBeginning&quot;</span></span><span>
+</span><span id="line-49"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="Regex.KDE.Regex.html#AssertEnd"><span class="hs-identifier hs-var">AssertEnd</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;AssertEnd&quot;</span></span><span>
+</span><span id="line-50"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">show</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Regex.KDE.Regex.html#AssertPositive"><span class="hs-identifier hs-type">AssertPositive</span></a></span><span> </span><span id="local-6989586621679136006"><span class="annot"><span class="annottext">Direction
+</span><a href="#local-6989586621679136006"><span class="hs-identifier hs-var">dir</span></a></span></span><span> </span><span id="local-6989586621679136005"><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136005"><span class="hs-identifier hs-var">re</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;(AssertPositive &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Direction -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Direction
+</span><a href="#local-6989586621679136006"><span class="hs-identifier hs-var">dir</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span>
+</span><span id="line-51"></span><span>                  </span><span class="annot"><span class="annottext">Regex -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136005"><span class="hs-identifier hs-var">re</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;)&quot;</span></span><span>
+</span><span id="line-52"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">show</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Regex.KDE.Regex.html#AssertNegative"><span class="hs-identifier hs-type">AssertNegative</span></a></span><span> </span><span id="local-6989586621679136004"><span class="annot"><span class="annottext">Direction
+</span><a href="#local-6989586621679136004"><span class="hs-identifier hs-var">dir</span></a></span></span><span> </span><span id="local-6989586621679136003"><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136003"><span class="hs-identifier hs-var">re</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;(AssertNegativeLookahead &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span>
+</span><span id="line-53"></span><span>                  </span><span class="annot"><span class="annottext">Direction -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Direction
+</span><a href="#local-6989586621679136004"><span class="hs-identifier hs-var">dir</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Regex -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136003"><span class="hs-identifier hs-var">re</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;)&quot;</span></span><span>
+</span><span id="line-54"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">show</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Regex.KDE.Regex.html#Possessive"><span class="hs-identifier hs-type">Possessive</span></a></span><span> </span><span id="local-6989586621679136002"><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136002"><span class="hs-identifier hs-var">re</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;(Possessive &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Regex -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136002"><span class="hs-identifier hs-var">re</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;)&quot;</span></span><span>
+</span><span id="line-55"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">show</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Regex.KDE.Regex.html#Lazy"><span class="hs-identifier hs-type">Lazy</span></a></span><span> </span><span id="local-6989586621679136001"><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136001"><span class="hs-identifier hs-var">re</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;(Lazy &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Regex -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="#local-6989586621679136001"><span class="hs-identifier hs-var">re</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;)&quot;</span></span><span>
+</span><span id="line-56"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="Regex.KDE.Regex.html#Recurse"><span class="hs-identifier hs-var">Recurse</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Recurse&quot;</span></span><span>
+</span><span id="line-57"></span><span>  </span><span class="annot"><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="Regex.KDE.Regex.html#MatchNull"><span class="hs-identifier hs-var">MatchNull</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;MatchNull&quot;</span></span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679135996"><span id="local-6989586621679135998"><span class="annot"><span class="hs-identifier hs-type">Semigroup</span></span><span> </span><span class="annot"><a href="Regex.KDE.Regex.html#Regex"><span class="hs-identifier hs-type">Regex</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-60"></span><span>  </span><span id="local-6989586621679135994"><span class="annot"><span class="annottext">&lt;&gt; :: Regex -&gt; Regex -&gt; Regex
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">(&lt;&gt;)</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Regex -&gt; Regex -&gt; Regex
+</span><a href="Regex.KDE.Regex.html#MatchConcat"><span class="hs-identifier hs-var">MatchConcat</span></a></span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679135989"><span class="annot"><span class="hs-identifier hs-type">Monoid</span></span><span> </span><span class="annot"><a href="Regex.KDE.Regex.html#Regex"><span class="hs-identifier hs-type">Regex</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-63"></span><span>  </span><span id="local-6989586621679135987"><span class="annot"><span class="annottext">mempty :: Regex
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">mempty</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Regex
+</span><a href="Regex.KDE.Regex.html#MatchNull"><span class="hs-identifier hs-var">MatchNull</span></a></span><span>
+</span><span id="line-64"></span><span>  </span><span id="local-6989586621679135986"><span class="annot"><span class="annottext">mappend :: Regex -&gt; Regex -&gt; Regex
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">mappend</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Regex -&gt; Regex -&gt; Regex
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">(&lt;&gt;)</span></span><span>
+</span><span id="line-65"></span><span>
+</span><span id="line-66"></span><span class="annot"><a href="Regex.KDE.Regex.html#isWordChar"><span class="hs-identifier hs-type">isWordChar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-67"></span><span id="isWordChar"><span class="annot"><span class="annottext">isWordChar :: Char -&gt; Bool
+</span><a href="Regex.KDE.Regex.html#isWordChar"><span class="hs-identifier hs-var hs-var">isWordChar</span></a></span></span><span> </span><span id="local-6989586621679135985"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679135985"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Bool
+</span><span class="hs-identifier hs-var">isAlphaNum</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679135985"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; GeneralCategory
+</span><span class="hs-identifier hs-var">generalCategory</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679135985"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">GeneralCategory -&gt; GeneralCategory -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">GeneralCategory
+</span><span class="hs-identifier hs-var">ConnectorPunctuation</span></span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span></pre></body></html>

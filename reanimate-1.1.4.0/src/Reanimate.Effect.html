@@ -1,0 +1,353 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-| Effects represent modifications applied to frames of the 'Animation'.
+Effects can (and usually do) depend on time.
+One or more effects can be applied over the entire duration of animation, or modified to affect
+only a specific portion at the beginning \/ middle \/ end of the animation.
+-}</span><span>
+</span><span id="line-6"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Effect</span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-comment">-- * Primitive Effects</span></span><span>
+</span><span id="line-8"></span><span>  </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier">Effect</span></a></span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#fadeInE"><span class="hs-identifier">fadeInE</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#fadeOutE"><span class="hs-identifier">fadeOutE</span></a></span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#fadeLineInE"><span class="hs-identifier">fadeLineInE</span></a></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#fadeLineOutE"><span class="hs-identifier">fadeLineOutE</span></a></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#fillInE"><span class="hs-identifier">fillInE</span></a></span><span>
+</span><span id="line-14"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#drawInE"><span class="hs-identifier">drawInE</span></a></span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#drawOutE"><span class="hs-identifier">drawOutE</span></a></span><span>
+</span><span id="line-16"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#translateE"><span class="hs-identifier">translateE</span></a></span><span>
+</span><span id="line-17"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#scaleE"><span class="hs-identifier">scaleE</span></a></span><span>
+</span><span id="line-18"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#constE"><span class="hs-identifier">constE</span></a></span><span>
+</span><span id="line-19"></span><span>  </span><span class="annot"><span class="hs-comment">-- * Modifying Effects</span></span><span>
+</span><span id="line-20"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#overBeginning"><span class="hs-identifier">overBeginning</span></a></span><span>
+</span><span id="line-21"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#overEnding"><span class="hs-identifier">overEnding</span></a></span><span>
+</span><span id="line-22"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#overInterval"><span class="hs-identifier">overInterval</span></a></span><span>
+</span><span id="line-23"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#reverseE"><span class="hs-identifier">reverseE</span></a></span><span>
+</span><span id="line-24"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#delayE"><span class="hs-identifier">delayE</span></a></span><span>
+</span><span id="line-25"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#aroundCenterE"><span class="hs-identifier">aroundCenterE</span></a></span><span>
+</span><span id="line-26"></span><span>  </span><span class="annot"><span class="hs-comment">-- * Applying Effects to Animations</span></span><span>
+</span><span id="line-27"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#applyE"><span class="hs-identifier">applyE</span></a></span><span>
+</span><span id="line-28"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree</span></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Tree</span></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Animation.html"><span class="hs-identifier">Reanimate.Animation</span></a></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Svg.html"><span class="hs-identifier">Reanimate.Svg</span></a></span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span class="hs-comment">-- | An Effect represents a modification of a SVG 'Tree' that can vary with time.</span><span>
+</span><span id="line-35"></span><span class="hs-keyword">type</span><span> </span><span id="Effect"><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-var">Effect</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Duration"><span class="hs-identifier hs-type">Duration</span></a></span><span> </span><span class="hs-comment">-- ^ Duration of the effect (in seconds)</span><span>
+</span><span id="line-36"></span><span>           </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-comment">-- ^ Time elapsed from when the effect started (in seconds)</span><span>
+</span><span id="line-37"></span><span>           </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span> </span><span class="hs-comment">-- ^ Image to be modified</span><span>
+</span><span id="line-38"></span><span>           </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span> </span><span class="hs-comment">-- ^ Image after modification</span><span>
+</span><span id="line-39"></span><span>
+</span><span id="line-40"></span><span class="hs-comment">-- | Modify the effect so that it only applies to the initial part of the animation.</span><span>
+</span><span id="line-41"></span><span class="annot"><a href="Reanimate.Effect.html#overBeginning"><span class="hs-identifier hs-type">overBeginning</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Duration"><span class="hs-identifier hs-type">Duration</span></a></span><span> </span><span class="hs-comment">-- ^ Duration of the initial segment of the animation over which the Effect should be applied</span><span>
+</span><span id="line-42"></span><span>              </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span> </span><span class="hs-comment">-- ^ The Effect to modify</span><span>
+</span><span id="line-43"></span><span>              </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span> </span><span class="hs-comment">-- ^ Effect which will only affect the initial segment of the animation</span><span>
+</span><span id="line-44"></span><span id="overBeginning"><span class="annot"><span class="annottext">overBeginning :: Duration -&gt; Effect -&gt; Effect
+</span><a href="Reanimate.Effect.html#overBeginning"><span class="hs-identifier hs-var hs-var">overBeginning</span></a></span></span><span> </span><span id="local-6989586621679546472"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546472"><span class="hs-identifier hs-var">maxT</span></a></span></span><span> </span><span id="local-6989586621679546471"><span class="annot"><span class="annottext">Effect
+</span><a href="#local-6989586621679546471"><span class="hs-identifier hs-var">effect</span></a></span></span><span> </span><span id="local-6989586621679546470"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546470"><span class="hs-identifier hs-var">_d</span></a></span></span><span> </span><span id="local-6989586621679546469"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546469"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-45"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546469"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546472"><span class="hs-identifier hs-var">maxT</span></a></span><span>
+</span><span id="line-46"></span><span>    </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Effect
+</span><a href="#local-6989586621679546471"><span class="hs-identifier hs-var">effect</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546472"><span class="hs-identifier hs-var">maxT</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546469"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-47"></span><span>    </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Tree -&gt; Tree
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-48"></span><span>
+</span><span id="line-49"></span><span class="hs-comment">-- | Modify the effect so that it only applies to the ending part of the animation.</span><span>
+</span><span id="line-50"></span><span class="annot"><a href="Reanimate.Effect.html#overEnding"><span class="hs-identifier hs-type">overEnding</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Duration"><span class="hs-identifier hs-type">Duration</span></a></span><span> </span><span class="hs-comment">-- ^ Duration of the ending segment of the animation over which the Effect should be applied</span><span>
+</span><span id="line-51"></span><span>           </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span>  </span><span class="hs-comment">-- ^ The Effect to modify</span><span>
+</span><span id="line-52"></span><span>           </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span> </span><span class="hs-comment">-- ^ Effect which will only affect the ending segment of the animation</span><span>
+</span><span id="line-53"></span><span id="overEnding"><span class="annot"><span class="annottext">overEnding :: Duration -&gt; Effect -&gt; Effect
+</span><a href="Reanimate.Effect.html#overEnding"><span class="hs-identifier hs-var hs-var">overEnding</span></a></span></span><span> </span><span id="local-6989586621679546466"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546466"><span class="hs-identifier hs-var">minT</span></a></span></span><span> </span><span id="local-6989586621679546465"><span class="annot"><span class="annottext">Effect
+</span><a href="#local-6989586621679546465"><span class="hs-identifier hs-var">effect</span></a></span></span><span> </span><span id="local-6989586621679546464"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546464"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679546463"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546463"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-54"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546463"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546462"><span class="hs-identifier hs-var">blankDur</span></a></span><span>
+</span><span id="line-55"></span><span>    </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Effect
+</span><a href="#local-6989586621679546465"><span class="hs-identifier hs-var">effect</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546466"><span class="hs-identifier hs-var">minT</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546463"><span class="hs-identifier hs-var">t</span></a></span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546462"><span class="hs-identifier hs-var">blankDur</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-56"></span><span>    </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Tree -&gt; Tree
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-57"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-58"></span><span>    </span><span id="local-6989586621679546462"><span class="annot"><span class="annottext">blankDur :: Duration
+</span><a href="#local-6989586621679546462"><span class="hs-identifier hs-var hs-var">blankDur</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546464"><span class="hs-identifier hs-var">d</span></a></span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546466"><span class="hs-identifier hs-var">minT</span></a></span><span>
+</span><span id="line-59"></span><span>
+</span><span id="line-60"></span><span class="hs-comment">-- | Modify the effect so that it only applies within given interval of animation's running time.</span><span>
+</span><span id="line-61"></span><span class="annot"><a href="Reanimate.Effect.html#overInterval"><span class="hs-identifier hs-type">overInterval</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-comment">-- ^ time after start of animation when the effect should start</span><span>
+</span><span id="line-62"></span><span>             </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Time"><span class="hs-identifier hs-type">Time</span></a></span><span> </span><span class="hs-comment">-- ^ time after start of the animation when the effect should finish</span><span>
+</span><span id="line-63"></span><span>             </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span>  </span><span class="hs-comment">-- ^ The Effect to modify</span><span>
+</span><span id="line-64"></span><span>             </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span> </span><span class="hs-comment">-- ^ Effect which will only affect the specified interval within the animation</span><span>
+</span><span id="line-65"></span><span id="overInterval"><span class="annot"><span class="annottext">overInterval :: Duration -&gt; Duration -&gt; Effect -&gt; Effect
+</span><a href="Reanimate.Effect.html#overInterval"><span class="hs-identifier hs-var hs-var">overInterval</span></a></span></span><span> </span><span id="local-6989586621679546461"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546461"><span class="hs-identifier hs-var">start</span></a></span></span><span> </span><span id="local-6989586621679546460"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546460"><span class="hs-identifier hs-var">end</span></a></span></span><span> </span><span id="local-6989586621679546459"><span class="annot"><span class="annottext">Effect
+</span><a href="#local-6989586621679546459"><span class="hs-identifier hs-var">effect</span></a></span></span><span> </span><span id="local-6989586621679546458"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546458"><span class="hs-identifier hs-var">_d</span></a></span></span><span> </span><span id="local-6989586621679546457"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546457"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-66"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546461"><span class="hs-identifier hs-var">start</span></a></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546457"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546457"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546460"><span class="hs-identifier hs-var">end</span></a></span><span>
+</span><span id="line-67"></span><span>    </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Effect
+</span><a href="#local-6989586621679546459"><span class="hs-identifier hs-var">effect</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546454"><span class="hs-identifier hs-var">dur</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546457"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546461"><span class="hs-identifier hs-var">start</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546454"><span class="hs-identifier hs-var">dur</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-68"></span><span>    </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Tree -&gt; Tree
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-69"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-70"></span><span>    </span><span id="local-6989586621679546454"><span class="annot"><span class="annottext">dur :: Duration
+</span><a href="#local-6989586621679546454"><span class="hs-identifier hs-var hs-var">dur</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546460"><span class="hs-identifier hs-var">end</span></a></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546461"><span class="hs-identifier hs-var">start</span></a></span><span>
+</span><span id="line-71"></span><span>
+</span><span id="line-72"></span><span class="hs-comment">-- | @reverseE effect@ starts where the @effect@ ends and vice versa.</span><span>
+</span><span id="line-73"></span><span class="annot"><a href="Reanimate.Effect.html#reverseE"><span class="hs-identifier hs-type">reverseE</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span>
+</span><span id="line-74"></span><span id="reverseE"><span class="annot"><span class="annottext">reverseE :: Effect -&gt; Effect
+</span><a href="Reanimate.Effect.html#reverseE"><span class="hs-identifier hs-var hs-var">reverseE</span></a></span></span><span> </span><span id="local-6989586621679546452"><span class="annot"><span class="annottext">Effect
+</span><a href="#local-6989586621679546452"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span id="local-6989586621679546451"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546451"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679546450"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546450"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Effect
+</span><a href="#local-6989586621679546452"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546451"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546451"><span class="hs-identifier hs-var">d</span></a></span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546450"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span class="hs-comment">-- | Delay the effect so that it only starts after specified duration and then runs till the end of animation.</span><span>
+</span><span id="line-77"></span><span class="annot"><a href="Reanimate.Effect.html#delayE"><span class="hs-identifier hs-type">delayE</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Duration"><span class="hs-identifier hs-type">Duration</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span>
+</span><span id="line-78"></span><span id="delayE"><span class="annot"><span class="annottext">delayE :: Duration -&gt; Effect -&gt; Effect
+</span><a href="Reanimate.Effect.html#delayE"><span class="hs-identifier hs-var hs-var">delayE</span></a></span></span><span> </span><span id="local-6989586621679546449"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546449"><span class="hs-identifier hs-var">delayT</span></a></span></span><span> </span><span id="local-6989586621679546448"><span class="annot"><span class="annottext">Effect
+</span><a href="#local-6989586621679546448"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span id="local-6989586621679546447"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546447"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Effect -&gt; Effect
+</span><a href="Reanimate.Effect.html#overEnding"><span class="hs-identifier hs-var">overEnding</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546447"><span class="hs-identifier hs-var">d</span></a></span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546449"><span class="hs-identifier hs-var">delayT</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Effect
+</span><a href="#local-6989586621679546448"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546447"><span class="hs-identifier hs-var">d</span></a></span><span>
+</span><span id="line-79"></span><span>
+</span><span id="line-80"></span><span class="hs-comment">-- | Modify the animation by applying the effect. If desired, you can apply multiple effects to single animation by calling this function multiple times.</span><span>
+</span><span id="line-81"></span><span class="annot"><a href="Reanimate.Effect.html#applyE"><span class="hs-identifier hs-type">applyE</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Animation"><span class="hs-identifier hs-type">Animation</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Animation"><span class="hs-identifier hs-type">Animation</span></a></span><span>
+</span><span id="line-82"></span><span id="applyE"><span class="annot"><span class="annottext">applyE :: Effect -&gt; Animation -&gt; Animation
+</span><a href="Reanimate.Effect.html#applyE"><span class="hs-identifier hs-var hs-var">applyE</span></a></span></span><span> </span><span id="local-6989586621679546446"><span class="annot"><span class="annottext">Effect
+</span><a href="#local-6989586621679546446"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span id="local-6989586621679546445"><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679546445"><span class="hs-identifier hs-var">ani</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679546444"><span class="annot"><span class="annottext">d :: Duration
+</span><a href="#local-6989586621679546444"><span class="hs-identifier hs-var hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Animation -&gt; Duration
+</span><a href="Reanimate.Animation.html#duration"><span class="hs-identifier hs-var">duration</span></a></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679546445"><span class="hs-identifier hs-var">ani</span></a></span><span>
+</span><span id="line-83"></span><span>                </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Duration -&gt; (Duration -&gt; Tree) -&gt; Animation
+</span><a href="Reanimate.Animation.html#mkAnimation"><span class="hs-identifier hs-var">mkAnimation</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546444"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">((Duration -&gt; Tree) -&gt; Animation)
+-&gt; (Duration -&gt; Tree) -&gt; Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679546441"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546441"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Effect
+</span><a href="#local-6989586621679546446"><span class="hs-identifier hs-var">fn</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546444"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546444"><span class="hs-identifier hs-var">d</span></a></span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546441"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Animation -&gt; Tree
+</span><a href="Reanimate.Animation.html#frameAt"><span class="hs-identifier hs-var">frameAt</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546444"><span class="hs-identifier hs-var">d</span></a></span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546441"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679546445"><span class="hs-identifier hs-var">ani</span></a></span><span>
+</span><span id="line-84"></span><span>
+</span><span id="line-85"></span><span class="hs-comment">-- | Build an effect from an image-modifying function. This effect does not change as time passes.</span><span>
+</span><span id="line-86"></span><span class="annot"><a href="Reanimate.Effect.html#constE"><span class="hs-identifier hs-type">constE</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span>
+</span><span id="line-87"></span><span id="constE"><span class="annot"><span class="annottext">constE :: (Tree -&gt; Tree) -&gt; Effect
+</span><a href="Reanimate.Effect.html#constE"><span class="hs-identifier hs-var hs-var">constE</span></a></span></span><span> </span><span id="local-6989586621679546438"><span class="annot"><span class="annottext">Tree -&gt; Tree
+</span><a href="#local-6989586621679546438"><span class="hs-identifier hs-var">fn</span></a></span></span><span> </span><span id="local-6989586621679546437"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546437"><span class="hs-identifier hs-var">_d</span></a></span></span><span> </span><span id="local-6989586621679546436"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546436"><span class="hs-identifier hs-var">_t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Tree -&gt; Tree
+</span><a href="#local-6989586621679546438"><span class="hs-identifier hs-var">fn</span></a></span><span>
+</span><span id="line-88"></span><span>
+</span><span id="line-89"></span><span class="hs-comment">-- | Change image opacity from 0 to 1.</span><span>
+</span><span id="line-90"></span><span class="annot"><a href="Reanimate.Effect.html#fadeInE"><span class="hs-identifier hs-type">fadeInE</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span>
+</span><span id="line-91"></span><span id="fadeInE"><span class="annot"><span class="annottext">fadeInE :: Effect
+</span><a href="Reanimate.Effect.html#fadeInE"><span class="hs-identifier hs-var hs-var">fadeInE</span></a></span></span><span> </span><span id="local-6989586621679546435"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546435"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679546434"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546434"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Tree -&gt; Tree
+</span><a href="Reanimate.Svg.Constructors.html#withGroupOpacity"><span class="hs-identifier hs-var">withGroupOpacity</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546434"><span class="hs-identifier hs-var">t</span></a></span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546435"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span class="hs-comment">-- | Change image opacity from 1 to 0. Reverse of 'fadeInE'.</span><span>
+</span><span id="line-94"></span><span class="annot"><a href="Reanimate.Effect.html#fadeOutE"><span class="hs-identifier hs-type">fadeOutE</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span>
+</span><span id="line-95"></span><span id="fadeOutE"><span class="annot"><span class="annottext">fadeOutE :: Effect
+</span><a href="Reanimate.Effect.html#fadeOutE"><span class="hs-identifier hs-var hs-var">fadeOutE</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Effect -&gt; Effect
+</span><a href="Reanimate.Effect.html#reverseE"><span class="hs-identifier hs-var">reverseE</span></a></span><span> </span><span class="annot"><span class="annottext">Effect
+</span><a href="Reanimate.Effect.html#fadeInE"><span class="hs-identifier hs-var">fadeInE</span></a></span><span>
+</span><span id="line-96"></span><span>
+</span><span id="line-97"></span><span class="hs-comment">-- | Change stroke width from 0 to given value.</span><span>
+</span><span id="line-98"></span><span class="annot"><a href="Reanimate.Effect.html#fadeLineInE"><span class="hs-identifier hs-type">fadeLineInE</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span>
+</span><span id="line-99"></span><span id="fadeLineInE"><span class="annot"><span class="annottext">fadeLineInE :: Duration -&gt; Effect
+</span><a href="Reanimate.Effect.html#fadeLineInE"><span class="hs-identifier hs-var hs-var">fadeLineInE</span></a></span></span><span> </span><span id="local-6989586621679546432"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546432"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span id="local-6989586621679546431"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546431"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679546430"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546430"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Tree -&gt; Tree
+</span><a href="Reanimate.Svg.Constructors.html#withStrokeWidth"><span class="hs-identifier hs-var">withStrokeWidth</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546432"><span class="hs-identifier hs-var">w</span></a></span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="hs-special">(</span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546430"><span class="hs-identifier hs-var">t</span></a></span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546431"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span class="hs-comment">-- | Change stroke width from given value to 0. Reverse of 'fadeLineInE'.</span><span>
+</span><span id="line-102"></span><span class="annot"><a href="Reanimate.Effect.html#fadeLineOutE"><span class="hs-identifier hs-type">fadeLineOutE</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span>
+</span><span id="line-103"></span><span id="fadeLineOutE"><span class="annot"><span class="annottext">fadeLineOutE :: Duration -&gt; Effect
+</span><a href="Reanimate.Effect.html#fadeLineOutE"><span class="hs-identifier hs-var hs-var">fadeLineOutE</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Effect -&gt; Effect
+</span><a href="Reanimate.Effect.html#reverseE"><span class="hs-identifier hs-var">reverseE</span></a></span><span> </span><span class="annot"><span class="annottext">(Effect -&gt; Effect) -&gt; (Duration -&gt; Effect) -&gt; Duration -&gt; Effect
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Effect
+</span><a href="Reanimate.Effect.html#fadeLineInE"><span class="hs-identifier hs-var">fadeLineInE</span></a></span><span>
+</span><span id="line-104"></span><span>
+</span><span id="line-105"></span><span class="hs-comment">-- | Effect of progressively drawing the image. Note that this will only affect primitive shapes (see 'pathify').</span><span>
+</span><span id="line-106"></span><span class="annot"><a href="Reanimate.Effect.html#drawInE"><span class="hs-identifier hs-type">drawInE</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span>
+</span><span id="line-107"></span><span id="drawInE"><span class="annot"><span class="annottext">drawInE :: Effect
+</span><a href="Reanimate.Effect.html#drawInE"><span class="hs-identifier hs-var hs-var">drawInE</span></a></span></span><span> </span><span id="local-6989586621679546427"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546427"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679546426"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546426"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Tree -&gt; Tree
+</span><a href="Reanimate.Svg.Constructors.html#withFillOpacity"><span class="hs-identifier hs-var">withFillOpacity</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; (Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Tree -&gt; Tree
+</span><a href="Reanimate.Svg.LineCommand.html#partialSvg"><span class="hs-identifier hs-var">partialSvg</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546426"><span class="hs-identifier hs-var">t</span></a></span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546427"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; (Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Tree -&gt; Tree
+</span><a href="Reanimate.Svg.html#pathify"><span class="hs-identifier hs-var">pathify</span></a></span><span>
+</span><span id="line-108"></span><span>
+</span><span id="line-109"></span><span class="hs-comment">-- | Reverse of 'drawInE'.</span><span>
+</span><span id="line-110"></span><span class="annot"><a href="Reanimate.Effect.html#drawOutE"><span class="hs-identifier hs-type">drawOutE</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span>
+</span><span id="line-111"></span><span id="drawOutE"><span class="annot"><span class="annottext">drawOutE :: Effect
+</span><a href="Reanimate.Effect.html#drawOutE"><span class="hs-identifier hs-var hs-var">drawOutE</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Effect -&gt; Effect
+</span><a href="Reanimate.Effect.html#reverseE"><span class="hs-identifier hs-var">reverseE</span></a></span><span> </span><span class="annot"><span class="annottext">Effect
+</span><a href="Reanimate.Effect.html#drawInE"><span class="hs-identifier hs-var">drawInE</span></a></span><span>
+</span><span id="line-112"></span><span>
+</span><span id="line-113"></span><span class="hs-comment">-- | Change fill opacity from 0 to 1.</span><span>
+</span><span id="line-114"></span><span class="annot"><a href="Reanimate.Effect.html#fillInE"><span class="hs-identifier hs-type">fillInE</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span>
+</span><span id="line-115"></span><span id="fillInE"><span class="annot"><span class="annottext">fillInE :: Effect
+</span><a href="Reanimate.Effect.html#fillInE"><span class="hs-identifier hs-var hs-var">fillInE</span></a></span></span><span> </span><span id="local-6989586621679546422"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546422"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679546421"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546421"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Tree -&gt; Tree
+</span><a href="Reanimate.Svg.Constructors.html#withFillOpacity"><span class="hs-identifier hs-var">withFillOpacity</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546420"><span class="hs-identifier hs-var">f</span></a></span><span>
+</span><span id="line-116"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-117"></span><span>    </span><span id="local-6989586621679546420"><span class="annot"><span class="annottext">f :: Duration
+</span><a href="#local-6989586621679546420"><span class="hs-identifier hs-var hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546421"><span class="hs-identifier hs-var">t</span></a></span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546422"><span class="hs-identifier hs-var">d</span></a></span><span>
+</span><span id="line-118"></span><span>
+</span><span id="line-119"></span><span class="hs-comment">-- | Change scale from 1 to given value.</span><span>
+</span><span id="line-120"></span><span class="annot"><a href="Reanimate.Effect.html#scaleE"><span class="hs-identifier hs-type">scaleE</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span>
+</span><span id="line-121"></span><span id="scaleE"><span class="annot"><span class="annottext">scaleE :: Duration -&gt; Effect
+</span><a href="Reanimate.Effect.html#scaleE"><span class="hs-identifier hs-var hs-var">scaleE</span></a></span></span><span> </span><span id="local-6989586621679546419"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546419"><span class="hs-identifier hs-var">target</span></a></span></span><span> </span><span id="local-6989586621679546418"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546418"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679546417"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546417"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Tree -&gt; Tree
+</span><a href="Reanimate.Svg.Constructors.html#scale"><span class="hs-identifier hs-var">scale</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Duration
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546419"><span class="hs-identifier hs-var">target</span></a></span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Duration
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546417"><span class="hs-identifier hs-var">t</span></a></span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546418"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-122"></span><span>
+</span><span id="line-123"></span><span class="hs-comment">-- | Move the image from its current position to the target x y coordinates.</span><span>
+</span><span id="line-124"></span><span class="annot"><a href="Reanimate.Effect.html#translateE"><span class="hs-identifier hs-type">translateE</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span>
+</span><span id="line-125"></span><span id="translateE"><span class="annot"><span class="annottext">translateE :: Duration -&gt; Duration -&gt; Effect
+</span><a href="Reanimate.Effect.html#translateE"><span class="hs-identifier hs-var hs-var">translateE</span></a></span></span><span> </span><span id="local-6989586621679546414"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546414"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679546413"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546413"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span id="local-6989586621679546412"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546412"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679546411"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546411"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Effect
+</span><a href="Reanimate.Svg.Constructors.html#translate"><span class="hs-identifier hs-var">translate</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546414"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546411"><span class="hs-identifier hs-var">t</span></a></span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546412"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546413"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546411"><span class="hs-identifier hs-var">t</span></a></span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546412"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span class="hs-comment">-- | Transform the effect so that the image passed to the effect's image-modifying</span><span>
+</span><span id="line-128"></span><span class="hs-comment">-- function has coordinates (0, 0) shifted to the center of its bounding box.</span><span>
+</span><span id="line-129"></span><span class="hs-comment">-- Also see 'aroundCenter'.</span><span>
+</span><span id="line-130"></span><span class="annot"><a href="Reanimate.Effect.html#aroundCenterE"><span class="hs-identifier hs-type">aroundCenterE</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Effect.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span>
+</span><span id="line-131"></span><span id="aroundCenterE"><span class="annot"><span class="annottext">aroundCenterE :: Effect -&gt; Effect
+</span><a href="Reanimate.Effect.html#aroundCenterE"><span class="hs-identifier hs-var hs-var">aroundCenterE</span></a></span></span><span> </span><span id="local-6989586621679546409"><span class="annot"><span class="annottext">Effect
+</span><a href="#local-6989586621679546409"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span id="local-6989586621679546408"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546408"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679546407"><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546407"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Tree -&gt; Tree) -&gt; Tree -&gt; Tree
+</span><a href="Reanimate.Svg.Constructors.html#aroundCenter"><span class="hs-identifier hs-var">aroundCenter</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Effect
+</span><a href="#local-6989586621679546409"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546408"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679546407"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-132"></span></pre></body></html>

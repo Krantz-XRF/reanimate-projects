@@ -1,0 +1,1141 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span id="%24con2tag_F0ISBykgaQmAHzLmjdEIGl"></span><span class="hs-pragma">{-# LANGUAGE DeriveAnyClass      #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE DeriveGeneric       #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE OverloadedStrings   #-}</span><span>
+</span><span id="line-4"></span><span class="hs-pragma">{-# LANGUAGE PatternSynonyms     #-}</span><span>
+</span><span id="line-5"></span><span class="hs-pragma">{-# LANGUAGE ScopedTypeVariables #-}</span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- Copyright   : Written by David Himmelstrup</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- License     : Unlicense</span><span>
+</span><span id="line-9"></span><span class="hs-comment">-- Maintainer  : lemmih@gmail.com</span><span>
+</span><span id="line-10"></span><span class="hs-comment">-- Stability   : experimental</span><span>
+</span><span id="line-11"></span><span class="hs-comment">-- Portability : POSIX</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.LaTeX</span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.LaTeX.html#latexCfg"><span class="hs-identifier">latexCfg</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#TexEngine"><span class="hs-identifier">TexEngine</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-15"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier">TexConfig</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-16"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#latex"><span class="hs-identifier">latex</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-17"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#latexWithHeaders"><span class="hs-identifier">latexWithHeaders</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-18"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#latexChunks"><span class="hs-identifier">latexChunks</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-19"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#latexCfgChunks"><span class="hs-identifier">latexCfgChunks</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-20"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#latexCfgChunksTrans"><span class="hs-identifier">latexCfgChunksTrans</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-21"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#mathChunks"><span class="hs-identifier">mathChunks</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-22"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#xelatex"><span class="hs-identifier">xelatex</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-23"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#xelatexWithHeaders"><span class="hs-identifier">xelatexWithHeaders</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-24"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#ctex"><span class="hs-identifier">ctex</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-25"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#ctexWithHeaders"><span class="hs-identifier">ctexWithHeaders</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-26"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#latexAlign"><span class="hs-identifier">latexAlign</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Font configurations</span></span><span>
+</span><span id="line-29"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#chalkduster"><span class="hs-identifier">chalkduster</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-30"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#calligra"><span class="hs-identifier">calligra</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-31"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#noto"><span class="hs-identifier">noto</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-32"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#helvet"><span class="hs-identifier">helvet</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-33"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#libertine"><span class="hs-identifier">libertine</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-34"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#biolinum"><span class="hs-identifier">biolinum</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-35"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#droidSerif"><span class="hs-identifier">droidSerif</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-36"></span><span>    </span><span class="annot"><a href="Reanimate.LaTeX.html#droidSans"><span class="hs-identifier">droidSans</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-37"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-39"></span><span>
+</span><span id="line-40"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>         </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(&amp;)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(.~)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-41"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Monad.State</span></span><span>  </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">runState</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">state</span></span><span class="hs-special">)</span><span>
+</span><span id="line-42"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString</span></span><span>      </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">B</span></span><span>
+</span><span id="line-43"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Foldable</span></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Foldable</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">fold</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-44"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Hashable</span></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Hashable</span></span><span class="hs-special">)</span><span>
+</span><span id="line-45"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-46"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>            </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-47"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Encoding</span></span><span>   </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-48"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.IO</span></span><span>         </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-49"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">GHC.Generics</span></span><span>         </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-50"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Graphics.SvgTree</span></span><span>     </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Tree</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">clipPathRef</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">clipRule</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">mapTree</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">parseSvgFile</span></span><span class="hs-special">,</span><span>
+</span><span id="line-51"></span><span>                                       </span><span class="hs-keyword">pattern</span><span> </span><span class="annot"><span class="hs-identifier">ClipPathTree</span></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">pattern</span><span> </span><span class="annot"><span class="hs-identifier">None</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">strokeColor</span></span><span class="hs-special">)</span><span>
+</span><span id="line-52"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Animation.html"><span class="hs-identifier">Reanimate.Animation</span></a></span><span>  </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier">SVG</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-53"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Cache.html"><span class="hs-identifier">Reanimate.Cache</span></a></span><span>      </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Cache.html#cacheDiskSvg"><span class="hs-identifier">cacheDiskSvg</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Cache.html#cacheMem"><span class="hs-identifier">cacheMem</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-54"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.External.html"><span class="hs-identifier">Reanimate.External</span></a></span><span>   </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.External.html#zipArchive"><span class="hs-identifier">zipArchive</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-55"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Misc.html"><span class="hs-identifier">Reanimate.Misc</span></a></span><span>       </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Misc.html#requireExecutable"><span class="hs-identifier">requireExecutable</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Misc.html#runCmd"><span class="hs-identifier">runCmd</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Misc.html#withTempDir"><span class="hs-identifier">withTempDir</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Misc.html#withTempFile"><span class="hs-identifier">withTempFile</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-56"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Parameters.html"><span class="hs-identifier">Reanimate.Parameters</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Parameters.html#pNoExternals"><span class="hs-identifier">pNoExternals</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-57"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Svg.html"><span class="hs-identifier">Reanimate.Svg</span></a></span><span>
+</span><span id="line-58"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.FilePath</span></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">replaceExtension</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">takeFileName</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(&lt;/&gt;)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-59"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO.Unsafe</span></span><span>     </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">unsafePerformIO</span></span><span class="hs-special">)</span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span class="hs-comment">-- | TeX backends. They have different features and capabilities.</span><span>
+</span><span id="line-62"></span><span id="local-6989586621679546269"><span id="local-6989586621679546270"></span></span><span class="hs-keyword">data</span><span> </span><span id="TexEngine"><span class="annot"><a href="Reanimate.LaTeX.html#TexEngine"><span class="hs-identifier hs-var">TexEngine</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="LaTeX"><span class="annot"><a href="Reanimate.LaTeX.html#LaTeX"><span class="hs-identifier hs-var">LaTeX</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="XeLaTeX"><span class="annot"><a href="Reanimate.LaTeX.html#XeLaTeX"><span class="hs-identifier hs-var">XeLaTeX</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="LuaLaTeX"><span class="annot"><a href="Reanimate.LaTeX.html#LuaLaTeX"><span class="hs-identifier hs-var">LuaLaTeX</span></a></span></span><span>
+</span><span id="line-63"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(forall x. TexEngine -&gt; Rep TexEngine x)
+-&gt; (forall x. Rep TexEngine x -&gt; TexEngine) -&gt; Generic TexEngine
+forall x. Rep TexEngine x -&gt; TexEngine
+forall x. TexEngine -&gt; Rep TexEngine x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep TexEngine x -&gt; TexEngine
+$cfrom :: forall x. TexEngine -&gt; Rep TexEngine x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546259"><span id="local-6989586621679546261"><span class="annot"><span class="annottext">Int -&gt; TexEngine -&gt; Int
+TexEngine -&gt; Int
+(Int -&gt; TexEngine -&gt; Int)
+-&gt; (TexEngine -&gt; Int) -&gt; Hashable TexEngine
+forall a. (Int -&gt; a -&gt; Int) -&gt; (a -&gt; Int) -&gt; Hashable a
+hash :: TexEngine -&gt; Int
+$chash :: TexEngine -&gt; Int
+hashWithSalt :: Int -&gt; TexEngine -&gt; Int
+$chashWithSalt :: Int -&gt; TexEngine -&gt; Int
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Hashable</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546254"><span id="local-6989586621679546256"><span class="annot"><span class="annottext">TexEngine -&gt; TexEngine -&gt; Bool
+(TexEngine -&gt; TexEngine -&gt; Bool)
+-&gt; (TexEngine -&gt; TexEngine -&gt; Bool) -&gt; Eq TexEngine
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: TexEngine -&gt; TexEngine -&gt; Bool
+$c/= :: TexEngine -&gt; TexEngine -&gt; Bool
+== :: TexEngine -&gt; TexEngine -&gt; Bool
+$c== :: TexEngine -&gt; TexEngine -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546238"><span id="local-6989586621679546240"><span id="local-6989586621679546242"><span id="local-6989586621679546244"><span id="local-6989586621679546246"><span id="local-6989586621679546248"><span id="local-6989586621679546250"><span class="annot"><span class="annottext">Eq TexEngine
+Eq TexEngine
+-&gt; (TexEngine -&gt; TexEngine -&gt; Ordering)
+-&gt; (TexEngine -&gt; TexEngine -&gt; Bool)
+-&gt; (TexEngine -&gt; TexEngine -&gt; Bool)
+-&gt; (TexEngine -&gt; TexEngine -&gt; Bool)
+-&gt; (TexEngine -&gt; TexEngine -&gt; Bool)
+-&gt; (TexEngine -&gt; TexEngine -&gt; TexEngine)
+-&gt; (TexEngine -&gt; TexEngine -&gt; TexEngine)
+-&gt; Ord TexEngine
+TexEngine -&gt; TexEngine -&gt; Bool
+TexEngine -&gt; TexEngine -&gt; Ordering
+TexEngine -&gt; TexEngine -&gt; TexEngine
+forall a.
+Eq a
+-&gt; (a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+min :: TexEngine -&gt; TexEngine -&gt; TexEngine
+$cmin :: TexEngine -&gt; TexEngine -&gt; TexEngine
+max :: TexEngine -&gt; TexEngine -&gt; TexEngine
+$cmax :: TexEngine -&gt; TexEngine -&gt; TexEngine
+&gt;= :: TexEngine -&gt; TexEngine -&gt; Bool
+$c&gt;= :: TexEngine -&gt; TexEngine -&gt; Bool
+&gt; :: TexEngine -&gt; TexEngine -&gt; Bool
+$c&gt; :: TexEngine -&gt; TexEngine -&gt; Bool
+&lt;= :: TexEngine -&gt; TexEngine -&gt; Bool
+$c&lt;= :: TexEngine -&gt; TexEngine -&gt; Bool
+&lt; :: TexEngine -&gt; TexEngine -&gt; Bool
+$c&lt; :: TexEngine -&gt; TexEngine -&gt; Bool
+compare :: TexEngine -&gt; TexEngine -&gt; Ordering
+$ccompare :: TexEngine -&gt; TexEngine -&gt; Ordering
+$cp1Ord :: Eq TexEngine
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546229"><span id="local-6989586621679546231"><span id="local-6989586621679546233"><span id="local-6989586621679546235"><span class="annot"><span class="annottext">ReadPrec [TexEngine]
+ReadPrec TexEngine
+Int -&gt; ReadS TexEngine
+ReadS [TexEngine]
+(Int -&gt; ReadS TexEngine)
+-&gt; ReadS [TexEngine]
+-&gt; ReadPrec TexEngine
+-&gt; ReadPrec [TexEngine]
+-&gt; Read TexEngine
+forall a.
+(Int -&gt; ReadS a)
+-&gt; ReadS [a] -&gt; ReadPrec a -&gt; ReadPrec [a] -&gt; Read a
+readListPrec :: ReadPrec [TexEngine]
+$creadListPrec :: ReadPrec [TexEngine]
+readPrec :: ReadPrec TexEngine
+$creadPrec :: ReadPrec TexEngine
+readList :: ReadS [TexEngine]
+$creadList :: ReadS [TexEngine]
+readsPrec :: Int -&gt; ReadS TexEngine
+$creadsPrec :: Int -&gt; ReadS TexEngine
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Read</span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546222"><span id="local-6989586621679546224"><span id="local-6989586621679546226"><span class="annot"><span class="annottext">Int -&gt; TexEngine -&gt; ShowS
+[TexEngine] -&gt; ShowS
+TexEngine -&gt; String
+(Int -&gt; TexEngine -&gt; ShowS)
+-&gt; (TexEngine -&gt; String)
+-&gt; ([TexEngine] -&gt; ShowS)
+-&gt; Show TexEngine
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [TexEngine] -&gt; ShowS
+$cshowList :: [TexEngine] -&gt; ShowS
+show :: TexEngine -&gt; String
+$cshow :: TexEngine -&gt; String
+showsPrec :: Int -&gt; TexEngine -&gt; ShowS
+$cshowsPrec :: Int -&gt; TexEngine -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-64"></span><span>
+</span><span id="line-65"></span><span class="hs-comment">-- | TeX configurations can load packages and set up environments for tex scripts.</span><span>
+</span><span id="line-66"></span><span id="local-6989586621679546219"><span id="local-6989586621679546220"></span></span><span class="hs-keyword">data</span><span> </span><span id="TexConfig"><span class="annot"><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-var">TexConfig</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="TexConfig"><span class="annot"><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-var">TexConfig</span></a></span></span><span>
+</span><span id="line-67"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="texConfigEngine"><span class="annot"><span class="annottext">TexConfig -&gt; TexEngine
+</span><a href="Reanimate.LaTeX.html#texConfigEngine"><span class="hs-identifier hs-var hs-var">texConfigEngine</span></a></span></span><span>     </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.LaTeX.html#TexEngine"><span class="hs-identifier hs-type">TexEngine</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-68"></span><span>    </span><span id="texConfigHeaders"><span class="annot"><span class="annottext">TexConfig -&gt; [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigHeaders"><span class="hs-identifier hs-var hs-var">texConfigHeaders</span></a></span></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span>
+</span><span id="line-69"></span><span>    </span><span id="texConfigPostScript"><span class="annot"><span class="annottext">TexConfig -&gt; [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigPostScript"><span class="hs-identifier hs-var hs-var">texConfigPostScript</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span>
+</span><span id="line-70"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-71"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(forall x. TexConfig -&gt; Rep TexConfig x)
+-&gt; (forall x. Rep TexConfig x -&gt; TexConfig) -&gt; Generic TexConfig
+forall x. Rep TexConfig x -&gt; TexConfig
+forall x. TexConfig -&gt; Rep TexConfig x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep TexConfig x -&gt; TexConfig
+$cfrom :: forall x. TexConfig -&gt; Rep TexConfig x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546209"><span id="local-6989586621679546211"><span class="annot"><span class="annottext">Int -&gt; TexConfig -&gt; Int
+TexConfig -&gt; Int
+(Int -&gt; TexConfig -&gt; Int)
+-&gt; (TexConfig -&gt; Int) -&gt; Hashable TexConfig
+forall a. (Int -&gt; a -&gt; Int) -&gt; (a -&gt; Int) -&gt; Hashable a
+hash :: TexConfig -&gt; Int
+$chash :: TexConfig -&gt; Int
+hashWithSalt :: Int -&gt; TexConfig -&gt; Int
+$chashWithSalt :: Int -&gt; TexConfig -&gt; Int
+</span><a href="#local-6989586621679546209"><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Hashable</span></a></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546201"><span id="local-6989586621679546203"><span id="local-6989586621679546205"><span id="local-6989586621679546207"><span class="annot"><span class="annottext">ReadPrec [TexConfig]
+ReadPrec TexConfig
+Int -&gt; ReadS TexConfig
+ReadS [TexConfig]
+(Int -&gt; ReadS TexConfig)
+-&gt; ReadS [TexConfig]
+-&gt; ReadPrec TexConfig
+-&gt; ReadPrec [TexConfig]
+-&gt; Read TexConfig
+forall a.
+(Int -&gt; ReadS a)
+-&gt; ReadS [a] -&gt; ReadPrec a -&gt; ReadPrec [a] -&gt; Read a
+readListPrec :: ReadPrec [TexConfig]
+$creadListPrec :: ReadPrec [TexConfig]
+readPrec :: ReadPrec TexConfig
+$creadPrec :: ReadPrec TexConfig
+readList :: ReadS [TexConfig]
+$creadList :: ReadS [TexConfig]
+readsPrec :: Int -&gt; ReadS TexConfig
+$creadsPrec :: Int -&gt; ReadS TexConfig
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Read</span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546195"><span id="local-6989586621679546197"><span id="local-6989586621679546199"><span class="annot"><span class="annottext">Int -&gt; TexConfig -&gt; ShowS
+[TexConfig] -&gt; ShowS
+TexConfig -&gt; String
+(Int -&gt; TexConfig -&gt; ShowS)
+-&gt; (TexConfig -&gt; String)
+-&gt; ([TexConfig] -&gt; ShowS)
+-&gt; Show TexConfig
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [TexConfig] -&gt; ShowS
+$cshowList :: [TexConfig] -&gt; ShowS
+show :: TexConfig -&gt; String
+$cshow :: TexConfig -&gt; String
+showsPrec :: Int -&gt; TexConfig -&gt; ShowS
+$cshowsPrec :: Int -&gt; TexConfig -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546191"><span id="local-6989586621679546193"><span class="annot"><span class="annottext">TexConfig -&gt; TexConfig -&gt; Bool
+(TexConfig -&gt; TexConfig -&gt; Bool)
+-&gt; (TexConfig -&gt; TexConfig -&gt; Bool) -&gt; Eq TexConfig
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: TexConfig -&gt; TexConfig -&gt; Bool
+$c/= :: TexConfig -&gt; TexConfig -&gt; Bool
+== :: TexConfig -&gt; TexConfig -&gt; Bool
+$c== :: TexConfig -&gt; TexConfig -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546176"><span id="local-6989586621679546178"><span id="local-6989586621679546180"><span id="local-6989586621679546182"><span id="local-6989586621679546184"><span id="local-6989586621679546186"><span id="local-6989586621679546188"><span class="annot"><span class="annottext">Eq TexConfig
+Eq TexConfig
+-&gt; (TexConfig -&gt; TexConfig -&gt; Ordering)
+-&gt; (TexConfig -&gt; TexConfig -&gt; Bool)
+-&gt; (TexConfig -&gt; TexConfig -&gt; Bool)
+-&gt; (TexConfig -&gt; TexConfig -&gt; Bool)
+-&gt; (TexConfig -&gt; TexConfig -&gt; Bool)
+-&gt; (TexConfig -&gt; TexConfig -&gt; TexConfig)
+-&gt; (TexConfig -&gt; TexConfig -&gt; TexConfig)
+-&gt; Ord TexConfig
+TexConfig -&gt; TexConfig -&gt; Bool
+TexConfig -&gt; TexConfig -&gt; Ordering
+TexConfig -&gt; TexConfig -&gt; TexConfig
+forall a.
+Eq a
+-&gt; (a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+min :: TexConfig -&gt; TexConfig -&gt; TexConfig
+$cmin :: TexConfig -&gt; TexConfig -&gt; TexConfig
+max :: TexConfig -&gt; TexConfig -&gt; TexConfig
+$cmax :: TexConfig -&gt; TexConfig -&gt; TexConfig
+&gt;= :: TexConfig -&gt; TexConfig -&gt; Bool
+$c&gt;= :: TexConfig -&gt; TexConfig -&gt; Bool
+&gt; :: TexConfig -&gt; TexConfig -&gt; Bool
+$c&gt; :: TexConfig -&gt; TexConfig -&gt; Bool
+&lt;= :: TexConfig -&gt; TexConfig -&gt; Bool
+$c&lt;= :: TexConfig -&gt; TexConfig -&gt; Bool
+&lt; :: TexConfig -&gt; TexConfig -&gt; Bool
+$c&lt; :: TexConfig -&gt; TexConfig -&gt; Bool
+compare :: TexConfig -&gt; TexConfig -&gt; Ordering
+$ccompare :: TexConfig -&gt; TexConfig -&gt; Ordering
+$cp1Ord :: Eq TexConfig
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-72"></span><span>
+</span><span id="line-73"></span><span class="annot"><a href="Reanimate.LaTeX.html#defaultTexConfig"><span class="hs-identifier hs-type">defaultTexConfig</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-74"></span><span id="defaultTexConfig"><span class="annot"><span class="annottext">defaultTexConfig :: TexConfig
+</span><a href="Reanimate.LaTeX.html#defaultTexConfig"><span class="hs-identifier hs-var hs-var">defaultTexConfig</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexEngine -&gt; [Text] -&gt; [Text] -&gt; TexConfig
+</span><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-var">TexConfig</span></a></span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="Reanimate.LaTeX.html#LaTeX"><span class="hs-identifier hs-var">LaTeX</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span class="hs-comment">-- | Render TeX script using a given configuration.</span><span>
+</span><span id="line-77"></span><span class="annot"><a href="Reanimate.LaTeX.html#latexCfg"><span class="hs-identifier hs-type">latexCfg</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span>
+</span><span id="line-78"></span><span id="latexCfg"><span class="annot"><span class="annottext">latexCfg :: TexConfig -&gt; Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#latexCfg"><span class="hs-identifier hs-var hs-var">latexCfg</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span> </span><span id="local-6989586621679546174"><span class="annot"><span class="annottext">TexEngine
+</span><a href="#local-6989586621679546174"><span class="hs-identifier hs-var">engine</span></a></span></span><span> </span><span id="local-6989586621679546173"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679546173"><span class="hs-identifier hs-var">headers</span></a></span></span><span> </span><span id="local-6989586621679546172"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679546172"><span class="hs-identifier hs-var">postscript</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-79"></span><span>  </span><span class="annot"><span class="annottext">[Text] -&gt; [Text] -&gt; Text -&gt; SVG
+</span><a href="#local-6989586621679546171"><span class="hs-identifier hs-var">gen</span></a></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679546172"><span class="hs-identifier hs-var">postscript</span></a></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679546173"><span class="hs-identifier hs-var">headers</span></a></span><span>
+</span><span id="line-80"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-81"></span><span>    </span><span id="local-6989586621679546171"><span class="annot"><span class="annottext">gen :: [Text] -&gt; [Text] -&gt; Text -&gt; SVG
+</span><a href="#local-6989586621679546171"><span class="hs-identifier hs-var hs-var">gen</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-82"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="#local-6989586621679546174"><span class="hs-identifier hs-var">engine</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-83"></span><span>        </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="Reanimate.LaTeX.html#LaTeX"><span class="hs-identifier hs-var">LaTeX</span></a></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">TexEngine
+-&gt; String -&gt; String -&gt; [String] -&gt; [Text] -&gt; [Text] -&gt; Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#someTexWithHeaders"><span class="hs-identifier hs-var">someTexWithHeaders</span></a></span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="#local-6989586621679546174"><span class="hs-identifier hs-var">engine</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;latex&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;dvi&quot;</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-84"></span><span>        </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="Reanimate.LaTeX.html#XeLaTeX"><span class="hs-identifier hs-var">XeLaTeX</span></a></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">TexEngine
+-&gt; String -&gt; String -&gt; [String] -&gt; [Text] -&gt; [Text] -&gt; Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#someTexWithHeaders"><span class="hs-identifier hs-var">someTexWithHeaders</span></a></span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="#local-6989586621679546174"><span class="hs-identifier hs-var">engine</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;xelatex&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;xdv&quot;</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;-no-pdf&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-85"></span><span>        </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="Reanimate.LaTeX.html#LuaLaTeX"><span class="hs-identifier hs-var">LuaLaTeX</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">TexEngine
+-&gt; String -&gt; String -&gt; [String] -&gt; [Text] -&gt; [Text] -&gt; Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#someTexWithHeaders"><span class="hs-identifier hs-var">someTexWithHeaders</span></a></span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="#local-6989586621679546174"><span class="hs-identifier hs-var">engine</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;lualatex&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;pdf&quot;</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-86"></span><span>
+</span><span id="line-87"></span><span class="hs-comment">-- | Invoke latex and import the result as an SVG object. SVG objects are</span><span>
+</span><span id="line-88"></span><span class="hs-comment">--   cached to improve performance.</span><span>
+</span><span id="line-89"></span><span class="hs-comment">--</span><span>
+</span><span id="line-90"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-91"></span><span class="hs-comment">--</span><span>
+</span><span id="line-92"></span><span class="hs-comment">--   &gt; latex &quot;$e^{i\\pi}+1=0$&quot;</span><span>
+</span><span id="line-93"></span><span class="hs-comment">--</span><span>
+</span><span id="line-94"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_latex.gif&gt;&gt;</span><span>
+</span><span id="line-95"></span><span class="annot"><a href="Reanimate.LaTeX.html#latex"><span class="hs-identifier hs-type">latex</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-96"></span><span id="latex"><span class="annot"><span class="annottext">latex :: Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#latex"><span class="hs-identifier hs-var hs-var">latex</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#latexWithHeaders"><span class="hs-identifier hs-var">latexWithHeaders</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-97"></span><span>
+</span><span id="line-98"></span><span class="hs-comment">-- | Invoke latex with extra script headers.</span><span>
+</span><span id="line-99"></span><span class="annot"><a href="Reanimate.LaTeX.html#latexWithHeaders"><span class="hs-identifier hs-type">latexWithHeaders</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-100"></span><span id="latexWithHeaders"><span class="annot"><span class="annottext">latexWithHeaders :: [Text] -&gt; Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#latexWithHeaders"><span class="hs-identifier hs-var hs-var">latexWithHeaders</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexEngine
+-&gt; String -&gt; String -&gt; [String] -&gt; [Text] -&gt; [Text] -&gt; Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#someTexWithHeaders"><span class="hs-identifier hs-var">someTexWithHeaders</span></a></span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="Reanimate.LaTeX.html#LaTeX"><span class="hs-identifier hs-var">LaTeX</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;latex&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;dvi&quot;</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-101"></span><span>
+</span><span id="line-102"></span><span class="annot"><a href="Reanimate.LaTeX.html#someTexWithHeaders"><span class="hs-identifier hs-type">someTexWithHeaders</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-103"></span><span>  </span><span class="annot"><a href="Reanimate.LaTeX.html#TexEngine"><span class="hs-identifier hs-type">TexEngine</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-104"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-105"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-106"></span><span>  </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-107"></span><span>  </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-108"></span><span>  </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-109"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-110"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-111"></span><span id="someTexWithHeaders"><span class="annot"><span class="annottext">someTexWithHeaders :: TexEngine
+-&gt; String -&gt; String -&gt; [String] -&gt; [Text] -&gt; [Text] -&gt; Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#someTexWithHeaders"><span class="hs-identifier hs-var hs-var">someTexWithHeaders</span></a></span></span><span> </span><span id="local-6989586621679546169"><span class="annot"><span class="annottext">TexEngine
+</span><a href="#local-6989586621679546169"><span class="hs-identifier hs-var">_engine</span></a></span></span><span> </span><span id="local-6989586621679546168"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546168"><span class="hs-identifier hs-var">_exec</span></a></span></span><span> </span><span id="local-6989586621679546167"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546167"><span class="hs-identifier hs-var">_dvi</span></a></span></span><span> </span><span id="local-6989586621679546166"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679546166"><span class="hs-identifier hs-var">_args</span></a></span></span><span> </span><span id="local-6989586621679546165"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679546165"><span class="hs-identifier hs-var">_postscript</span></a></span></span><span> </span><span id="local-6989586621679546164"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679546164"><span class="hs-identifier hs-var">_headers</span></a></span></span><span> </span><span id="local-6989586621679546163"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546163"><span class="hs-identifier hs-var">tex</span></a></span></span><span>
+</span><span id="line-112"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="Reanimate.Parameters.html#pNoExternals"><span class="hs-identifier hs-var">pNoExternals</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#mkText"><span class="hs-identifier hs-var">mkText</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546163"><span class="hs-identifier hs-var">tex</span></a></span><span>
+</span><span id="line-113"></span><span class="annot"><a href="Reanimate.LaTeX.html#someTexWithHeaders"><span class="hs-identifier hs-var">someTexWithHeaders</span></a></span><span> </span><span id="local-6989586621679546161"><span class="annot"><span class="annottext">TexEngine
+</span><a href="#local-6989586621679546161"><span class="hs-identifier hs-var">engine</span></a></span></span><span> </span><span id="local-6989586621679546160"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546160"><span class="hs-identifier hs-var">exec</span></a></span></span><span> </span><span id="local-6989586621679546159"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546159"><span class="hs-identifier hs-var">dvi</span></a></span></span><span> </span><span id="local-6989586621679546158"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679546158"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span id="local-6989586621679546157"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679546157"><span class="hs-identifier hs-var">postscript</span></a></span></span><span> </span><span id="local-6989586621679546156"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679546156"><span class="hs-identifier hs-var">headers</span></a></span></span><span> </span><span id="local-6989586621679546155"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546155"><span class="hs-identifier hs-var">tex</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-114"></span><span>  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">IO SVG -&gt; SVG
+forall a. IO a -&gt; a
+</span><span class="hs-identifier hs-var">unsafePerformIO</span></span><span> </span><span class="annot"><span class="annottext">(IO SVG -&gt; SVG) -&gt; (Text -&gt; IO SVG) -&gt; Text -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Text -&gt; IO SVG) -&gt; Text -&gt; IO SVG
+</span><a href="Reanimate.Cache.html#cacheMem"><span class="hs-identifier hs-var">cacheMem</span></a></span><span> </span><span class="annot"><span class="annottext">((Text -&gt; IO SVG) -&gt; Text -&gt; IO SVG)
+-&gt; ((Text -&gt; IO SVG) -&gt; Text -&gt; IO SVG)
+-&gt; (Text -&gt; IO SVG)
+-&gt; Text
+-&gt; IO SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; IO SVG) -&gt; Text -&gt; IO SVG
+</span><a href="Reanimate.Cache.html#cacheDiskSvg"><span class="hs-identifier hs-var">cacheDiskSvg</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">TexEngine -&gt; String -&gt; String -&gt; [String] -&gt; Text -&gt; IO SVG
+</span><a href="Reanimate.LaTeX.html#latexToSVG"><span class="hs-identifier hs-var">latexToSVG</span></a></span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="#local-6989586621679546161"><span class="hs-identifier hs-var">engine</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546159"><span class="hs-identifier hs-var">dvi</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546160"><span class="hs-identifier hs-var">exec</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679546158"><span class="hs-identifier hs-var">args</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-115"></span><span>    </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546152"><span class="hs-identifier hs-var">script</span></a></span><span>
+</span><span id="line-116"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-117"></span><span>    </span><span id="local-6989586621679546152"><span class="annot"><span class="annottext">script :: Text
+</span><a href="#local-6989586621679546152"><span class="hs-identifier hs-var hs-var">script</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; [Text] -&gt; Text -&gt; Text
+</span><a href="Reanimate.LaTeX.html#mkTexScript"><span class="hs-identifier hs-var">mkTexScript</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546160"><span class="hs-identifier hs-var">exec</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679546158"><span class="hs-identifier hs-var">args</span></a></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679546156"><span class="hs-identifier hs-var">headers</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Text] -&gt; Text
+</span><span class="hs-identifier hs-var">T.unlines</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679546157"><span class="hs-identifier hs-var">postscript</span></a></span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; [Text] -&gt; [Text]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546155"><span class="hs-identifier hs-var">tex</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-118"></span><span>
+</span><span id="line-119"></span><span class="hs-comment">-- | Invoke latex using a given configuration and separate results.</span><span>
+</span><span id="line-120"></span><span class="hs-comment">--   Apply the transformation to the LaTeX segments.</span><span>
+</span><span id="line-121"></span><span class="hs-comment">--   See also 'mathChunks', the transformation is @(\s -&gt; &quot;$&quot; &lt;&gt; s &lt;&gt; &quot;$&quot;)@.</span><span>
+</span><span id="line-122"></span><span id="local-6989586621679546341"><span class="annot"><a href="Reanimate.LaTeX.html#latexCfgChunksTrans"><span class="hs-identifier hs-type">latexCfgChunksTrans</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversable</span></span><span> </span><span class="annot"><a href="#local-6989586621679546341"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679546341"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679546341"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span></span><span>
+</span><span id="line-123"></span><span id="latexCfgChunksTrans"><span class="annot"><span class="annottext">latexCfgChunksTrans :: TexConfig -&gt; (Text -&gt; Text) -&gt; t Text -&gt; t SVG
+</span><a href="Reanimate.LaTeX.html#latexCfgChunksTrans"><span class="hs-identifier hs-var hs-var">latexCfgChunksTrans</span></a></span></span><span> </span><span id="local-6989586621679546149"><span class="annot"><span class="annottext">TexConfig
+</span><a href="#local-6989586621679546149"><span class="hs-identifier hs-var">_cfg</span></a></span></span><span> </span><span id="local-6989586621679546148"><span class="annot"><span class="annottext">Text -&gt; Text
+</span><a href="#local-6989586621679546148"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679546147"><span class="annot"><span class="annottext">t Text
+</span><a href="#local-6989586621679546147"><span class="hs-identifier hs-var">chunks</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="Reanimate.Parameters.html#pNoExternals"><span class="hs-identifier hs-var">pNoExternals</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Text -&gt; SVG) -&gt; t Text -&gt; t SVG
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#mkText"><span class="hs-identifier hs-var">mkText</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; SVG) -&gt; (Text -&gt; Text) -&gt; Text -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><a href="#local-6989586621679546148"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">t Text
+</span><a href="#local-6989586621679546147"><span class="hs-identifier hs-var">chunks</span></a></span><span>
+</span><span id="line-124"></span><span class="annot"><a href="Reanimate.LaTeX.html#latexCfgChunksTrans"><span class="hs-identifier hs-var">latexCfgChunksTrans</span></a></span><span> </span><span id="local-6989586621679546146"><span class="annot"><span class="annottext">TexConfig
+</span><a href="#local-6989586621679546146"><span class="hs-identifier hs-var">cfg</span></a></span></span><span> </span><span id="local-6989586621679546145"><span class="annot"><span class="annottext">Text -&gt; Text
+</span><a href="#local-6989586621679546145"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679546144"><span class="annot"><span class="annottext">t Text
+</span><a href="#local-6989586621679546144"><span class="hs-identifier hs-var">chunks</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[(SVG -&gt; SVG, DrawAttributes, SVG)] -&gt; t SVG
+forall t b. [(t -&gt; SVG, b, t)] -&gt; t SVG
+</span><a href="#local-6989586621679546143"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span class="annot"><span class="annottext">([(SVG -&gt; SVG, DrawAttributes, SVG)] -&gt; t SVG)
+-&gt; [(SVG -&gt; SVG, DrawAttributes, SVG)] -&gt; t SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; [(SVG -&gt; SVG, DrawAttributes, SVG)]
+</span><a href="Reanimate.Svg.html#svgGlyphs"><span class="hs-identifier hs-var">svgGlyphs</span></a></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; [(SVG -&gt; SVG, DrawAttributes, SVG)])
+-&gt; SVG -&gt; [(SVG -&gt; SVG, DrawAttributes, SVG)]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; SVG
+</span><a href="#local-6989586621679546141"><span class="hs-identifier hs-var">tex</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; SVG) -&gt; Text -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><a href="#local-6989586621679546145"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; Text -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">t Text -&gt; Text
+forall (t :: * -&gt; *) m. (Foldable t, Monoid m) =&gt; t m -&gt; m
+</span><span class="hs-identifier hs-var">fold</span></span><span> </span><span class="annot"><span class="annottext">t Text
+</span><a href="#local-6989586621679546144"><span class="hs-identifier hs-var">chunks</span></a></span><span>
+</span><span id="line-125"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-126"></span><span>    </span><span id="local-6989586621679546141"><span class="annot"><span class="annottext">tex :: Text -&gt; SVG
+</span><a href="#local-6989586621679546141"><span class="hs-identifier hs-var hs-var">tex</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexConfig -&gt; Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#latexCfg"><span class="hs-identifier hs-var">latexCfg</span></a></span><span> </span><span class="annot"><span class="annottext">TexConfig
+</span><a href="#local-6989586621679546146"><span class="hs-identifier hs-var">cfg</span></a></span><span>
+</span><span id="line-127"></span><span>    </span><span id="local-6989586621679546140"><span class="annot"><span class="annottext">merge :: [(t -&gt; SVG, b, t)] -&gt; SVG
+</span><a href="#local-6989586621679546140"><span class="hs-identifier hs-var hs-var">merge</span></a></span></span><span> </span><span id="local-6989586621679546139"><span class="annot"><span class="annottext">[(t -&gt; SVG, b, t)]
+</span><a href="#local-6989586621679546139"><span class="hs-identifier hs-var">lst</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[SVG] -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#mkGroup"><span class="hs-identifier hs-var">mkGroup</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">t -&gt; SVG
+</span><a href="#local-6989586621679546137"><span class="hs-identifier hs-var">fmt</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679546136"><span class="hs-identifier hs-var">svg</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679546137"><span class="annot"><span class="annottext">t -&gt; SVG
+</span><a href="#local-6989586621679546137"><span class="hs-identifier hs-var">fmt</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">b
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546136"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679546136"><span class="hs-identifier hs-var">svg</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[(t -&gt; SVG, b, t)]
+</span><a href="#local-6989586621679546139"><span class="hs-identifier hs-var">lst</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-128"></span><span>    </span><span id="local-6989586621679546135"><span class="annot"><span class="annottext">checkResult :: (p, [a]) -&gt; p
+</span><a href="#local-6989586621679546135"><span class="hs-identifier hs-var hs-var">checkResult</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679546134"><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679546134"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679546134"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-129"></span><span>    </span><span class="annot"><a href="#local-6989586621679546135"><span class="hs-identifier hs-var">checkResult</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">p
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[a]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; p
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;latex chunk mismatch&quot;</span></span><span>
+</span><span id="line-130"></span><span>    </span><span id="local-6989586621679546143"><span class="annot"><span class="annottext">worker :: [(t -&gt; SVG, b, t)] -&gt; t SVG
+</span><a href="#local-6989586621679546143"><span class="hs-identifier hs-var hs-var">worker</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(t SVG, [(t -&gt; SVG, b, t)]) -&gt; t SVG
+forall p a. (p, [a]) -&gt; p
+</span><a href="#local-6989586621679546135"><span class="hs-identifier hs-var">checkResult</span></a></span><span> </span><span class="annot"><span class="annottext">((t SVG, [(t -&gt; SVG, b, t)]) -&gt; t SVG)
+-&gt; ([(t -&gt; SVG, b, t)] -&gt; (t SVG, [(t -&gt; SVG, b, t)]))
+-&gt; [(t -&gt; SVG, b, t)]
+-&gt; t SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">State [(t -&gt; SVG, b, t)] (t SVG)
+-&gt; [(t -&gt; SVG, b, t)] -&gt; (t SVG, [(t -&gt; SVG, b, t)])
+forall s a. State s a -&gt; s -&gt; (a, s)
+</span><span class="hs-identifier hs-var">runState</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Text -&gt; StateT [(t -&gt; SVG, b, t)] Identity SVG)
+-&gt; t Text -&gt; State [(t -&gt; SVG, b, t)] (t SVG)
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Traversable t, Monad m) =&gt;
+(a -&gt; m b) -&gt; t a -&gt; m (t b)
+</span><span class="hs-identifier hs-var">mapM</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">([(t -&gt; SVG, b, t)] -&gt; (SVG, [(t -&gt; SVG, b, t)]))
+-&gt; StateT [(t -&gt; SVG, b, t)] Identity SVG
+forall s (m :: * -&gt; *) a. MonadState s m =&gt; (s -&gt; (a, s)) -&gt; m a
+</span><span class="hs-identifier hs-var">state</span></span><span> </span><span class="annot"><span class="annottext">(([(t -&gt; SVG, b, t)] -&gt; (SVG, [(t -&gt; SVG, b, t)]))
+ -&gt; StateT [(t -&gt; SVG, b, t)] Identity SVG)
+-&gt; (Text -&gt; [(t -&gt; SVG, b, t)] -&gt; (SVG, [(t -&gt; SVG, b, t)]))
+-&gt; Text
+-&gt; StateT [(t -&gt; SVG, b, t)] Identity SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; [(t -&gt; SVG, b, t)] -&gt; (SVG, [(t -&gt; SVG, b, t)])
+forall t b. Text -&gt; [(t -&gt; SVG, b, t)] -&gt; (SVG, [(t -&gt; SVG, b, t)])
+</span><a href="#local-6989586621679546131"><span class="hs-identifier hs-var">workerSingle</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; t Text -&gt; t Text
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><a href="#local-6989586621679546145"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">t Text
+</span><a href="#local-6989586621679546144"><span class="hs-identifier hs-var">chunks</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-131"></span><span>    </span><span id="local-6989586621679546131"><span class="annot"><span class="annottext">workerSingle :: Text -&gt; [(t -&gt; SVG, b, t)] -&gt; (SVG, [(t -&gt; SVG, b, t)])
+</span><a href="#local-6989586621679546131"><span class="hs-identifier hs-var hs-var">workerSingle</span></a></span></span><span> </span><span id="local-6989586621679546130"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546130"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679546129"><span class="annot"><span class="annottext">[(t -&gt; SVG, b, t)]
+</span><a href="#local-6989586621679546129"><span class="hs-identifier hs-var">everything</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-132"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679546128"><span class="annot"><span class="annottext">width :: Int
+</span><a href="#local-6989586621679546128"><span class="hs-identifier hs-var hs-var">width</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[(SVG -&gt; SVG, DrawAttributes, SVG)] -&gt; Int
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Int
+</span><span class="hs-identifier hs-var">length</span></span><span> </span><span class="annot"><span class="annottext">([(SVG -&gt; SVG, DrawAttributes, SVG)] -&gt; Int)
+-&gt; [(SVG -&gt; SVG, DrawAttributes, SVG)] -&gt; Int
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; [(SVG -&gt; SVG, DrawAttributes, SVG)]
+</span><a href="Reanimate.Svg.html#svgGlyphs"><span class="hs-identifier hs-var">svgGlyphs</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; SVG
+</span><a href="#local-6989586621679546141"><span class="hs-identifier hs-var">tex</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546130"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-133"></span><span>          </span><span class="hs-special">(</span><span id="local-6989586621679546126"><span class="annot"><span class="annottext">[(t -&gt; SVG, b, t)]
+</span><a href="#local-6989586621679546126"><span class="hs-identifier hs-var">first</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679546125"><span class="annot"><span class="annottext">[(t -&gt; SVG, b, t)]
+</span><a href="#local-6989586621679546125"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int
+-&gt; [(t -&gt; SVG, b, t)] -&gt; ([(t -&gt; SVG, b, t)], [(t -&gt; SVG, b, t)])
+forall a. Int -&gt; [a] -&gt; ([a], [a])
+</span><span class="hs-identifier hs-var">splitAt</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679546128"><span class="hs-identifier hs-var">width</span></a></span><span> </span><span class="annot"><span class="annottext">[(t -&gt; SVG, b, t)]
+</span><a href="#local-6989586621679546129"><span class="hs-identifier hs-var">everything</span></a></span><span>
+</span><span id="line-134"></span><span>       </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[(t -&gt; SVG, b, t)] -&gt; SVG
+forall t b. [(t -&gt; SVG, b, t)] -&gt; SVG
+</span><a href="#local-6989586621679546140"><span class="hs-identifier hs-var">merge</span></a></span><span> </span><span class="annot"><span class="annottext">[(t -&gt; SVG, b, t)]
+</span><a href="#local-6989586621679546126"><span class="hs-identifier hs-var">first</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[(t -&gt; SVG, b, t)]
+</span><a href="#local-6989586621679546125"><span class="hs-identifier hs-var">rest</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-135"></span><span>
+</span><span id="line-136"></span><span class="hs-comment">-- | Render math formula and separate results.</span><span>
+</span><span id="line-137"></span><span id="local-6989586621679546123"><span class="annot"><a href="Reanimate.LaTeX.html#mathChunks"><span class="hs-identifier hs-type">mathChunks</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversable</span></span><span> </span><span class="annot"><a href="#local-6989586621679546123"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679546123"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679546123"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span></span><span>
+</span><span id="line-138"></span><span id="mathChunks"><span class="annot"><span class="annottext">mathChunks :: t Text -&gt; t SVG
+</span><a href="Reanimate.LaTeX.html#mathChunks"><span class="hs-identifier hs-var hs-var">mathChunks</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexConfig -&gt; (Text -&gt; Text) -&gt; t Text -&gt; t SVG
+forall (t :: * -&gt; *).
+Traversable t =&gt;
+TexConfig -&gt; (Text -&gt; Text) -&gt; t Text -&gt; t SVG
+</span><a href="Reanimate.LaTeX.html#latexCfgChunksTrans"><span class="hs-identifier hs-var">latexCfgChunksTrans</span></a></span><span> </span><span class="annot"><span class="annottext">TexConfig
+</span><a href="Reanimate.LaTeX.html#defaultTexConfig"><span class="hs-identifier hs-var">defaultTexConfig</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679546122"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546122"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;$&quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546122"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;$&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-139"></span><span>
+</span><span id="line-140"></span><span class="hs-comment">-- | Invoke latex using a given configuration and separate results.</span><span>
+</span><span id="line-141"></span><span id="local-6989586621679546121"><span class="annot"><a href="Reanimate.LaTeX.html#latexCfgChunks"><span class="hs-identifier hs-type">latexCfgChunks</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversable</span></span><span> </span><span class="annot"><a href="#local-6989586621679546121"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679546121"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679546121"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span></span><span>
+</span><span id="line-142"></span><span id="latexCfgChunks"><span class="annot"><span class="annottext">latexCfgChunks :: TexConfig -&gt; t Text -&gt; t SVG
+</span><a href="Reanimate.LaTeX.html#latexCfgChunks"><span class="hs-identifier hs-var hs-var">latexCfgChunks</span></a></span></span><span> </span><span id="local-6989586621679546120"><span class="annot"><span class="annottext">TexConfig
+</span><a href="#local-6989586621679546120"><span class="hs-identifier hs-var">cfg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexConfig -&gt; (Text -&gt; Text) -&gt; t Text -&gt; t SVG
+forall (t :: * -&gt; *).
+Traversable t =&gt;
+TexConfig -&gt; (Text -&gt; Text) -&gt; t Text -&gt; t SVG
+</span><a href="Reanimate.LaTeX.html#latexCfgChunksTrans"><span class="hs-identifier hs-var">latexCfgChunksTrans</span></a></span><span> </span><span class="annot"><span class="annottext">TexConfig
+</span><a href="#local-6989586621679546120"><span class="hs-identifier hs-var">cfg</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-143"></span><span>
+</span><span id="line-144"></span><span class="hs-comment">-- | Invoke latex and separate results.</span><span>
+</span><span id="line-145"></span><span id="local-6989586621679546118"><span class="annot"><a href="Reanimate.LaTeX.html#latexChunks"><span class="hs-identifier hs-type">latexChunks</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Traversable</span></span><span> </span><span class="annot"><a href="#local-6989586621679546118"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679546118"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679546118"><span class="hs-identifier hs-type">t</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span></span><span>
+</span><span id="line-146"></span><span id="latexChunks"><span class="annot"><span class="annottext">latexChunks :: t Text -&gt; t SVG
+</span><a href="Reanimate.LaTeX.html#latexChunks"><span class="hs-identifier hs-var hs-var">latexChunks</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexConfig -&gt; (Text -&gt; Text) -&gt; t Text -&gt; t SVG
+forall (t :: * -&gt; *).
+Traversable t =&gt;
+TexConfig -&gt; (Text -&gt; Text) -&gt; t Text -&gt; t SVG
+</span><a href="Reanimate.LaTeX.html#latexCfgChunksTrans"><span class="hs-identifier hs-var">latexCfgChunksTrans</span></a></span><span> </span><span class="annot"><span class="annottext">TexConfig
+</span><a href="Reanimate.LaTeX.html#defaultTexConfig"><span class="hs-identifier hs-var">defaultTexConfig</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-147"></span><span>
+</span><span id="line-148"></span><span class="hs-comment">-- | Invoke xelatex and import the result as an SVG object. SVG objects are</span><span>
+</span><span id="line-149"></span><span class="hs-comment">--   cached to improve performance. Xelatex has support for non-western scripts.</span><span>
+</span><span id="line-150"></span><span class="annot"><a href="Reanimate.LaTeX.html#xelatex"><span class="hs-identifier hs-type">xelatex</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-151"></span><span id="xelatex"><span class="annot"><span class="annottext">xelatex :: Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#xelatex"><span class="hs-identifier hs-var hs-var">xelatex</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#xelatexWithHeaders"><span class="hs-identifier hs-var">xelatexWithHeaders</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-152"></span><span>
+</span><span id="line-153"></span><span class="hs-comment">-- | Invoke xelatex with extra script headers.</span><span>
+</span><span id="line-154"></span><span class="annot"><a href="Reanimate.LaTeX.html#xelatexWithHeaders"><span class="hs-identifier hs-type">xelatexWithHeaders</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-155"></span><span id="xelatexWithHeaders"><span class="annot"><span class="annottext">xelatexWithHeaders :: [Text] -&gt; Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#xelatexWithHeaders"><span class="hs-identifier hs-var hs-var">xelatexWithHeaders</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexEngine
+-&gt; String -&gt; String -&gt; [String] -&gt; [Text] -&gt; [Text] -&gt; Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#someTexWithHeaders"><span class="hs-identifier hs-var">someTexWithHeaders</span></a></span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="Reanimate.LaTeX.html#XeLaTeX"><span class="hs-identifier hs-var">XeLaTeX</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;xelatex&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;xdv&quot;</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;-no-pdf&quot;</span></span><span class="hs-special">]</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-156"></span><span>
+</span><span id="line-157"></span><span class="hs-comment">-- | Invoke xelatex with &quot;\usepackage[UTF8]{ctex}&quot; and import the result as an</span><span>
+</span><span id="line-158"></span><span class="hs-comment">--   SVG object. SVG objects are cached to improve performance. Xelatex has</span><span>
+</span><span id="line-159"></span><span class="hs-comment">--   support for non-western scripts.</span><span>
+</span><span id="line-160"></span><span class="hs-comment">--</span><span>
+</span><span id="line-161"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-162"></span><span class="hs-comment">--</span><span>
+</span><span id="line-163"></span><span class="hs-comment">--   &gt; ctex &quot;&#20013;&#25991;&quot;</span><span>
+</span><span id="line-164"></span><span class="hs-comment">--</span><span>
+</span><span id="line-165"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_ctex.gif&gt;&gt;</span><span>
+</span><span id="line-166"></span><span class="annot"><a href="Reanimate.LaTeX.html#ctex"><span class="hs-identifier hs-type">ctex</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-167"></span><span id="ctex"><span class="annot"><span class="annottext">ctex :: Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#ctex"><span class="hs-identifier hs-var hs-var">ctex</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#ctexWithHeaders"><span class="hs-identifier hs-var">ctexWithHeaders</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-168"></span><span>
+</span><span id="line-169"></span><span class="hs-comment">-- | Invoke xelatex with extra script headers + ctex headers.</span><span>
+</span><span id="line-170"></span><span class="annot"><a href="Reanimate.LaTeX.html#ctexWithHeaders"><span class="hs-identifier hs-type">ctexWithHeaders</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-171"></span><span id="ctexWithHeaders"><span class="annot"><span class="annottext">ctexWithHeaders :: [Text] -&gt; Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#ctexWithHeaders"><span class="hs-identifier hs-var hs-var">ctexWithHeaders</span></a></span></span><span> </span><span id="local-6989586621679546117"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679546117"><span class="hs-identifier hs-var">headers</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#xelatexWithHeaders"><span class="hs-identifier hs-var">xelatexWithHeaders</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\usepackage[UTF8]{ctex}&quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; [Text] -&gt; [Text]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679546117"><span class="hs-identifier hs-var">headers</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-172"></span><span>
+</span><span id="line-173"></span><span class="hs-comment">-- | Invoke latex and import the result as an SVG object. SVG objects are</span><span>
+</span><span id="line-174"></span><span class="hs-comment">--   cached to improve performance. This wraps the TeX code in an 'align*'</span><span>
+</span><span id="line-175"></span><span class="hs-comment">--   context.</span><span>
+</span><span id="line-176"></span><span class="hs-comment">--</span><span>
+</span><span id="line-177"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-178"></span><span class="hs-comment">--</span><span>
+</span><span id="line-179"></span><span class="hs-comment">--   &gt; latexAlign &quot;R = \\frac{{\\Delta x}}{{kA}}&quot;</span><span>
+</span><span id="line-180"></span><span class="hs-comment">--</span><span>
+</span><span id="line-181"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_latexAlign.gif&gt;&gt;</span><span>
+</span><span id="line-182"></span><span class="annot"><a href="Reanimate.LaTeX.html#latexAlign"><span class="hs-identifier hs-type">latexAlign</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-183"></span><span id="latexAlign"><span class="annot"><span class="annottext">latexAlign :: Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#latexAlign"><span class="hs-identifier hs-var hs-var">latexAlign</span></a></span></span><span> </span><span id="local-6989586621679546116"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546116"><span class="hs-identifier hs-var">tex</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#latex"><span class="hs-identifier hs-var">latex</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; SVG) -&gt; Text -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Text
+</span><span class="hs-identifier hs-var">T.unlines</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\begin{align*}&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546116"><span class="hs-identifier hs-var">tex</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\end{align*}&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-184"></span><span>
+</span><span id="line-185"></span><span class="annot"><a href="Reanimate.LaTeX.html#postprocess"><span class="hs-identifier hs-type">postprocess</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-186"></span><span id="postprocess"><span class="annot"><span class="annottext">postprocess :: SVG -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#postprocess"><span class="hs-identifier hs-var hs-var">postprocess</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-187"></span><span>  </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="Reanimate.Svg.html#simplify"><span class="hs-identifier hs-var">simplify</span></a></span><span>
+</span><span id="line-188"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="Reanimate.Svg.html#lowerTransformations"><span class="hs-identifier hs-var">lowerTransformations</span></a></span><span>
+</span><span id="line-189"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; SVG -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#scaleXY"><span class="hs-identifier hs-var">scaleXY</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.1</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.1</span></span><span class="hs-special">)</span><span>
+</span><span id="line-190"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#removeClipPaths"><span class="hs-identifier hs-var">removeClipPaths</span></a></span><span>
+</span><span id="line-191"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="Reanimate.Svg.html#lowerIds"><span class="hs-identifier hs-var">lowerIds</span></a></span><span>
+</span><span id="line-192"></span><span>    </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; (SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">mapTree</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+forall b. HasDrawAttributes b =&gt; b -&gt; b
+</span><a href="#local-6989586621679546109"><span class="hs-identifier hs-var">clearDrawAttr</span></a></span><span>
+</span><span id="line-193"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-194"></span><span>    </span><span id="local-6989586621679546109"><span class="annot"><span class="annottext">clearDrawAttr :: b -&gt; b
+</span><a href="#local-6989586621679546109"><span class="hs-identifier hs-var hs-var">clearDrawAttr</span></a></span></span><span> </span><span id="local-6989586621679546108"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679546108"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679546108"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">b -&gt; (b -&gt; b) -&gt; b
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Texture -&gt; Identity (Maybe Texture)) -&gt; b -&gt; Identity b
+forall c. HasDrawAttributes c =&gt; Lens' c (Maybe Texture)
+</span><span class="hs-identifier hs-var">strokeColor</span></span><span> </span><span class="annot"><span class="annottext">((Maybe Texture -&gt; Identity (Maybe Texture)) -&gt; b -&gt; Identity b)
+-&gt; Maybe Texture -&gt; b -&gt; b
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Maybe Texture
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-195"></span><span>
+</span><span id="line-196"></span><span class="annot"><a href="Reanimate.LaTeX.html#enginePostprocess"><span class="hs-identifier hs-type">enginePostprocess</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.LaTeX.html#TexEngine"><span class="hs-identifier hs-type">TexEngine</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-197"></span><span id="enginePostprocess"><span class="annot"><span class="annottext">enginePostprocess :: TexEngine -&gt; SVG -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#enginePostprocess"><span class="hs-identifier hs-var hs-var">enginePostprocess</span></a></span></span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="Reanimate.LaTeX.html#LuaLaTeX"><span class="hs-identifier hs-var">LuaLaTeX</span></a></span><span> </span><span id="local-6989586621679546106"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546106"><span class="hs-identifier hs-var">svg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; SVG -&gt; SVG
+</span><a href="Reanimate.Svg.Constructors.html#translate"><span class="hs-identifier hs-var">translate</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SVG -&gt; Double
+</span><a href="Reanimate.Svg.BoundingBox.html#svgHeight"><span class="hs-identifier hs-var">svgHeight</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546106"><span class="hs-identifier hs-var">svg</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546106"><span class="hs-identifier hs-var">svg</span></a></span><span>
+</span><span id="line-198"></span><span class="annot"><a href="Reanimate.LaTeX.html#enginePostprocess"><span class="hs-identifier hs-var">enginePostprocess</span></a></span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679546103"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546103"><span class="hs-identifier hs-var">svg</span></a></span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546103"><span class="hs-identifier hs-var">svg</span></a></span><span>
+</span><span id="line-199"></span><span>
+</span><span id="line-200"></span><span class="annot"><a href="Reanimate.LaTeX.html#removeClipPaths"><span class="hs-identifier hs-type">removeClipPaths</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#SVG"><span class="hs-identifier hs-type">SVG</span></a></span><span>
+</span><span id="line-201"></span><span id="removeClipPaths"><span class="annot"><span class="annottext">removeClipPaths :: SVG -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#removeClipPaths"><span class="hs-identifier hs-var hs-var">removeClipPaths</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+</span><span class="hs-identifier hs-var">mapTree</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="#local-6989586621679546102"><span class="hs-identifier hs-var">worker</span></a></span><span>
+</span><span id="line-202"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-203"></span><span>    </span><span id="local-6989586621679546102"><span class="annot"><span class="annottext">worker :: SVG -&gt; SVG
+</span><a href="#local-6989586621679546102"><span class="hs-identifier hs-var hs-var">worker</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">ClipPathTree</span></span><span> </span><span class="hs-special">{</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SVG
+</span><span class="hs-identifier hs-var">None</span></span><span>
+</span><span id="line-204"></span><span>    </span><span class="annot"><a href="#local-6989586621679546102"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span id="local-6989586621679546101"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546101"><span class="hs-identifier hs-var">t</span></a></span></span><span>               </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679546101"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; (SVG -&gt; SVG) -&gt; SVG
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">(Maybe FillRule -&gt; Identity (Maybe FillRule))
+-&gt; SVG -&gt; Identity SVG
+forall c. HasDrawAttributes c =&gt; Lens' c (Maybe FillRule)
+</span><span class="hs-identifier hs-var">clipRule</span></span><span> </span><span class="annot"><span class="annottext">((Maybe FillRule -&gt; Identity (Maybe FillRule))
+ -&gt; SVG -&gt; Identity SVG)
+-&gt; Maybe FillRule -&gt; SVG -&gt; SVG
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Maybe FillRule
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; (SVG -&gt; SVG) -&gt; SVG
+forall a b. a -&gt; (a -&gt; b) -&gt; b
+</span><span class="hs-operator hs-var">&amp;</span></span><span> </span><span class="annot"><span class="annottext">(Maybe ElementRef -&gt; Identity (Maybe ElementRef))
+-&gt; SVG -&gt; Identity SVG
+forall c. HasDrawAttributes c =&gt; Lens' c (Maybe ElementRef)
+</span><span class="hs-identifier hs-var">clipPathRef</span></span><span> </span><span class="annot"><span class="annottext">((Maybe ElementRef -&gt; Identity (Maybe ElementRef))
+ -&gt; SVG -&gt; Identity SVG)
+-&gt; Maybe ElementRef -&gt; SVG -&gt; SVG
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Maybe ElementRef
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-205"></span><span>
+</span><span id="line-206"></span><span class="hs-comment">-- executable, arguments, header, tex</span><span>
+</span><span id="line-207"></span><span class="annot"><a href="Reanimate.LaTeX.html#latexToSVG"><span class="hs-identifier hs-type">latexToSVG</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.LaTeX.html#TexEngine"><span class="hs-identifier hs-type">TexEngine</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span>
+</span><span id="line-208"></span><span id="latexToSVG"><span class="annot"><span class="annottext">latexToSVG :: TexEngine -&gt; String -&gt; String -&gt; [String] -&gt; Text -&gt; IO SVG
+</span><a href="Reanimate.LaTeX.html#latexToSVG"><span class="hs-identifier hs-var hs-var">latexToSVG</span></a></span></span><span> </span><span id="local-6989586621679546100"><span class="annot"><span class="annottext">TexEngine
+</span><a href="#local-6989586621679546100"><span class="hs-identifier hs-var">engine</span></a></span></span><span> </span><span id="local-6989586621679546099"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546099"><span class="hs-identifier hs-var">dviExt</span></a></span></span><span> </span><span id="local-6989586621679546098"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546098"><span class="hs-identifier hs-var">latexExec</span></a></span></span><span> </span><span id="local-6989586621679546097"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679546097"><span class="hs-identifier hs-var">latexArgs</span></a></span></span><span> </span><span id="local-6989586621679546096"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546096"><span class="hs-identifier hs-var">tex</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-209"></span><span>  </span><span id="local-6989586621679546095"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546095"><span class="hs-identifier hs-var">latexBin</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO String
+</span><a href="Reanimate.Misc.html#requireExecutable"><span class="hs-identifier hs-var">requireExecutable</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546098"><span class="hs-identifier hs-var">latexExec</span></a></span><span>
+</span><span id="line-210"></span><span>  </span><span class="annot"><span class="annottext">(String -&gt; IO SVG) -&gt; IO SVG
+forall a. (String -&gt; IO a) -&gt; IO a
+</span><a href="Reanimate.Misc.html#withTempDir"><span class="hs-identifier hs-var">withTempDir</span></a></span><span> </span><span class="annot"><span class="annottext">((String -&gt; IO SVG) -&gt; IO SVG) -&gt; (String -&gt; IO SVG) -&gt; IO SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679546094"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546094"><span class="hs-identifier hs-var">tmp_dir</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; (String -&gt; IO SVG) -&gt; IO SVG
+forall a. String -&gt; (String -&gt; IO a) -&gt; IO a
+</span><a href="Reanimate.Misc.html#withTempFile"><span class="hs-identifier hs-var">withTempFile</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;tex&quot;</span></span><span> </span><span class="annot"><span class="annottext">((String -&gt; IO SVG) -&gt; IO SVG) -&gt; (String -&gt; IO SVG) -&gt; IO SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679546093"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546093"><span class="hs-identifier hs-var">tex_file</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-211"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; (String -&gt; IO SVG) -&gt; IO SVG
+forall a. String -&gt; (String -&gt; IO a) -&gt; IO a
+</span><a href="Reanimate.Misc.html#withTempFile"><span class="hs-identifier hs-var">withTempFile</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;svg&quot;</span></span><span> </span><span class="annot"><span class="annottext">((String -&gt; IO SVG) -&gt; IO SVG) -&gt; (String -&gt; IO SVG) -&gt; IO SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679546092"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546092"><span class="hs-identifier hs-var">svg_file</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-212"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679546091"><span class="annot"><span class="annottext">dvi_file :: String
+</span><a href="#local-6989586621679546091"><span class="hs-identifier hs-var hs-var">dvi_file</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-213"></span><span>            </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546094"><span class="hs-identifier hs-var">tmp_dir</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-operator hs-var">&lt;/&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">replaceExtension</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ShowS
+</span><span class="hs-identifier hs-var">takeFileName</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546093"><span class="hs-identifier hs-var">tex_file</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546099"><span class="hs-identifier hs-var">dviExt</span></a></span><span>
+</span><span id="line-214"></span><span>      </span><span class="annot"><span class="annottext">String -&gt; ByteString -&gt; IO ()
+</span><span class="hs-identifier hs-var">B.writeFile</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546093"><span class="hs-identifier hs-var">tex_file</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; ByteString
+</span><span class="hs-identifier hs-var">T.encodeUtf8</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546096"><span class="hs-identifier hs-var">tex</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-215"></span><span>      </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; IO ()
+</span><a href="Reanimate.Misc.html#runCmd"><span class="hs-identifier hs-var">runCmd</span></a></span><span>
+</span><span id="line-216"></span><span>        </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546095"><span class="hs-identifier hs-var">latexBin</span></a></span><span>
+</span><span id="line-217"></span><span>        </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679546097"><span class="hs-identifier hs-var">latexArgs</span></a></span><span>
+</span><span id="line-218"></span><span>            </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; [String]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;-interaction=nonstopmode&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-219"></span><span>                 </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;-halt-on-error&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-220"></span><span>                 </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;-output-directory=&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546094"><span class="hs-identifier hs-var">tmp_dir</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-221"></span><span>                 </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546093"><span class="hs-identifier hs-var">tex_file</span></a></span><span>
+</span><span id="line-222"></span><span>               </span><span class="hs-special">]</span><span>
+</span><span id="line-223"></span><span>        </span><span class="hs-special">)</span><span>
+</span><span id="line-224"></span><span>      </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546099"><span class="hs-identifier hs-var">dviExt</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;pdf&quot;</span></span><span>
+</span><span id="line-225"></span><span>        </span><span class="hs-keyword">then</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-226"></span><span>          </span><span id="local-6989586621679546088"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546088"><span class="hs-identifier hs-var">pdf2svg</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO String
+</span><a href="Reanimate.Misc.html#requireExecutable"><span class="hs-identifier hs-var">requireExecutable</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;pdf2svg&quot;</span></span><span>
+</span><span id="line-227"></span><span>          </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; IO ()
+</span><a href="Reanimate.Misc.html#runCmd"><span class="hs-identifier hs-var">runCmd</span></a></span><span>
+</span><span id="line-228"></span><span>            </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546088"><span class="hs-identifier hs-var">pdf2svg</span></a></span><span>
+</span><span id="line-229"></span><span>            </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546091"><span class="hs-identifier hs-var">dvi_file</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546092"><span class="hs-identifier hs-var">svg_file</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-230"></span><span>        </span><span class="hs-keyword">else</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-231"></span><span>          </span><span id="local-6989586621679546087"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546087"><span class="hs-identifier hs-var">dvisvgm</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO String
+</span><a href="Reanimate.Misc.html#requireExecutable"><span class="hs-identifier hs-var">requireExecutable</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;dvisvgm&quot;</span></span><span>
+</span><span id="line-232"></span><span>          </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; IO ()
+</span><a href="Reanimate.Misc.html#runCmd"><span class="hs-identifier hs-var">runCmd</span></a></span><span>
+</span><span id="line-233"></span><span>            </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546087"><span class="hs-identifier hs-var">dvisvgm</span></a></span><span>
+</span><span id="line-234"></span><span>            </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546091"><span class="hs-identifier hs-var">dvi_file</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-235"></span><span>              </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;--precision=5&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-236"></span><span>              </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;--exact&quot;</span></span><span class="hs-special">,</span><span> </span><span class="hs-comment">-- better bboxes.</span><span>
+</span><span id="line-237"></span><span>              </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;--no-fonts&quot;</span></span><span class="hs-special">,</span><span> </span><span class="hs-comment">-- use glyphs instead of fonts.</span><span>
+</span><span id="line-238"></span><span>              </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;--verbosity=0&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-239"></span><span>              </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;-o&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-240"></span><span>              </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546092"><span class="hs-identifier hs-var">svg_file</span></a></span><span>
+</span><span id="line-241"></span><span>            </span><span class="hs-special">]</span><span>
+</span><span id="line-242"></span><span>      </span><span id="local-6989586621679546086"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546086"><span class="hs-identifier hs-var">svg_data</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO Text
+</span><span class="hs-identifier hs-var">T.readFile</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546092"><span class="hs-identifier hs-var">svg_file</span></a></span><span>
+</span><span id="line-243"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">String -&gt; Text -&gt; Maybe Document
+</span><span class="hs-identifier hs-var">parseSvgFile</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546092"><span class="hs-identifier hs-var">svg_file</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546086"><span class="hs-identifier hs-var">svg_data</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-244"></span><span>        </span><span class="annot"><span class="annottext">Maybe Document
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO SVG
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Malformed svg&quot;</span></span><span>
+</span><span id="line-245"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679546084"><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679546084"><span class="hs-identifier hs-var">svg</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-246"></span><span>          </span><span class="annot"><span class="annottext">SVG -&gt; IO SVG
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; IO SVG) -&gt; SVG -&gt; IO SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-247"></span><span>            </span><span class="annot"><span class="annottext">TexEngine -&gt; SVG -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#enginePostprocess"><span class="hs-identifier hs-var">enginePostprocess</span></a></span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="#local-6989586621679546100"><span class="hs-identifier hs-var">engine</span></a></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-248"></span><span>              </span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="Reanimate.LaTeX.html#postprocess"><span class="hs-identifier hs-var">postprocess</span></a></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; SVG) -&gt; SVG -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Document -&gt; SVG
+</span><a href="Reanimate.Svg.Unuse.html#unbox"><span class="hs-identifier hs-var">unbox</span></a></span><span> </span><span class="annot"><span class="annottext">(Document -&gt; SVG) -&gt; Document -&gt; SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Document -&gt; Document
+</span><a href="Reanimate.Svg.Unuse.html#replaceUses"><span class="hs-identifier hs-var">replaceUses</span></a></span><span> </span><span class="annot"><span class="annottext">Document
+</span><a href="#local-6989586621679546084"><span class="hs-identifier hs-var">svg</span></a></span><span>
+</span><span id="line-249"></span><span>
+</span><span id="line-250"></span><span class="annot"><a href="Reanimate.LaTeX.html#mkTexScript"><span class="hs-identifier hs-type">mkTexScript</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-251"></span><span id="mkTexScript"><span class="annot"><span class="annottext">mkTexScript :: String -&gt; [String] -&gt; [Text] -&gt; Text -&gt; Text
+</span><a href="Reanimate.LaTeX.html#mkTexScript"><span class="hs-identifier hs-var hs-var">mkTexScript</span></a></span></span><span> </span><span id="local-6989586621679546081"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546081"><span class="hs-identifier hs-var">latexExec</span></a></span></span><span> </span><span id="local-6989586621679546080"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679546080"><span class="hs-identifier hs-var">latexArgs</span></a></span></span><span> </span><span id="local-6989586621679546079"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679546079"><span class="hs-identifier hs-var">texHeaders</span></a></span></span><span> </span><span id="local-6989586621679546078"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546078"><span class="hs-identifier hs-var">tex</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-252"></span><span>  </span><span class="annot"><span class="annottext">[Text] -&gt; Text
+</span><span class="hs-identifier hs-var">T.unlines</span></span><span> </span><span class="annot"><span class="annottext">([Text] -&gt; Text) -&gt; [Text] -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-253"></span><span>    </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;% &quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><span class="hs-identifier hs-var">unwords</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679546081"><span class="hs-identifier hs-var">latexExec</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; [String]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679546080"><span class="hs-identifier hs-var">latexArgs</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-254"></span><span>      </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\documentclass[preview]{standalone}&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-255"></span><span>      </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\usepackage{amsmath}&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-256"></span><span>      </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\usepackage{gensymb}&quot;</span></span><span>
+</span><span id="line-257"></span><span>    </span><span class="hs-special">]</span><span>
+</span><span id="line-258"></span><span>      </span><span class="annot"><span class="annottext">[Text] -&gt; [Text] -&gt; [Text]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679546079"><span class="hs-identifier hs-var">texHeaders</span></a></span><span>
+</span><span id="line-259"></span><span>      </span><span class="annot"><span class="annottext">[Text] -&gt; [Text] -&gt; [Text]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\usepackage[english]{babel}&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-260"></span><span>           </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\linespread{1}&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-261"></span><span>           </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\begin{document}&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-262"></span><span>           </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546078"><span class="hs-identifier hs-var">tex</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-263"></span><span>           </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\end{document}&quot;</span></span><span>
+</span><span id="line-264"></span><span>         </span><span class="hs-special">]</span><span>
+</span><span id="line-265"></span><span>
+</span><span id="line-266"></span><span class="hs-comment">{- Packages used by manim.
+
+\\\usepackage{amsmath}\n\
+\\\usepackage{amssymb}\n\
+\\\usepackage{dsfont}\n\
+\\\usepackage{setspace}\n\
+\\\usepackage{relsize}\n\
+\\\usepackage{textcomp}\n\
+\\\usepackage{mathrsfs}\n\
+\\\usepackage{calligra}\n\
+\\\usepackage{wasysym}\n\
+\\\usepackage{ragged2e}\n\
+\\\usepackage{physics}\n\
+\\\usepackage{xcolor}\n\
+\\\usepackage{textcomp}\n\
+\\\usepackage{xfrac}\n\
+\\\usepackage{microtype}\n\
+-}</span><span>
+</span><span id="line-284"></span><span>
+</span><span id="line-285"></span><span class="hs-comment">-- | Chalkduster font. Depends on lualatex.</span><span>
+</span><span id="line-286"></span><span class="hs-comment">--   Font files are automatically downloaded.</span><span>
+</span><span id="line-287"></span><span class="hs-comment">--</span><span>
+</span><span id="line-288"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-289"></span><span class="hs-comment">-- `latexCfg` `chalkduster` &quot;chalkduster&quot;</span><span>
+</span><span id="line-290"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-291"></span><span class="hs-comment">--</span><span>
+</span><span id="line-292"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_chalkduster.gif&gt;&gt;</span><span>
+</span><span id="line-293"></span><span class="annot"><a href="Reanimate.LaTeX.html#chalkduster"><span class="hs-identifier hs-type">chalkduster</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-294"></span><span id="chalkduster"><span class="annot"><span class="annottext">chalkduster :: TexConfig
+</span><a href="Reanimate.LaTeX.html#chalkduster"><span class="hs-identifier hs-var hs-var">chalkduster</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-295"></span><span>  </span><span class="annot"><span class="annottext">TexConfig :: TexEngine -&gt; [Text] -&gt; [Text] -&gt; TexConfig
+</span><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-296"></span><span>    </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">texConfigEngine :: TexEngine
+</span><a href="Reanimate.LaTeX.html#texConfigEngine"><span class="hs-identifier hs-var">texConfigEngine</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="Reanimate.LaTeX.html#XeLaTeX"><span class="hs-identifier hs-var">XeLaTeX</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-297"></span><span>      </span><span class="annot"><span class="annottext">texConfigHeaders :: [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigHeaders"><span class="hs-identifier hs-var">texConfigHeaders</span></a></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-298"></span><span>        </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\usepackage[no-math]{fontspec}&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-299"></span><span>          </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\setmainfont[Mapping=tex-text,Path={&quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679546075"><span class="hs-identifier hs-var">chalkdusterFont</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;/},Extension=.ttf]{Chalkduster}&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-300"></span><span>          </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\usepackage[defaultmathsizes]{mathastext}&quot;</span></span><span>
+</span><span id="line-301"></span><span>        </span><span class="hs-special">]</span><span class="hs-special">,</span><span>
+</span><span id="line-302"></span><span>      </span><span class="annot"><span class="annottext">texConfigPostScript :: [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigPostScript"><span class="hs-identifier hs-var">texConfigPostScript</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-303"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-304"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-305"></span><span>    </span><span id="local-6989586621679546075"><span class="annot"><span class="annottext">chalkdusterFont :: Text
+</span><a href="#local-6989586621679546075"><span class="hs-identifier hs-var hs-var">chalkdusterFont</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-306"></span><span>      </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Text) -&gt; String -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-307"></span><span>        </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><a href="Reanimate.External.html#zipArchive"><span class="hs-identifier hs-var">zipArchive</span></a></span><span>
+</span><span id="line-308"></span><span>          </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;https://www.ffonts.net/Chalkduster.font.zip&quot;</span></span><span>
+</span><span id="line-309"></span><span>          </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Wplv4RjuFiI0hDQnAM5MVHl2evrZqWstRLdVAfBomCM=&quot;</span></span><span>
+</span><span id="line-310"></span><span>
+</span><span id="line-311"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-312"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-313"></span><span class="hs-comment">-- `latexCfg` `calligra` &quot;calligra&quot;</span><span>
+</span><span id="line-314"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-315"></span><span class="hs-comment">--</span><span>
+</span><span id="line-316"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_calligra.gif&gt;&gt;</span><span>
+</span><span id="line-317"></span><span class="annot"><a href="Reanimate.LaTeX.html#calligra"><span class="hs-identifier hs-type">calligra</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-318"></span><span id="calligra"><span class="annot"><span class="annottext">calligra :: TexConfig
+</span><a href="Reanimate.LaTeX.html#calligra"><span class="hs-identifier hs-var hs-var">calligra</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-319"></span><span>  </span><span class="annot"><span class="annottext">TexConfig :: TexEngine -&gt; [Text] -&gt; [Text] -&gt; TexConfig
+</span><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-320"></span><span>    </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">texConfigEngine :: TexEngine
+</span><a href="Reanimate.LaTeX.html#texConfigEngine"><span class="hs-identifier hs-var">texConfigEngine</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="Reanimate.LaTeX.html#LaTeX"><span class="hs-identifier hs-var">LaTeX</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-321"></span><span>      </span><span class="annot"><span class="annottext">texConfigHeaders :: [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigHeaders"><span class="hs-identifier hs-var">texConfigHeaders</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\usepackage{calligra}&quot;</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span>
+</span><span id="line-322"></span><span>      </span><span class="annot"><span class="annottext">texConfigPostScript :: [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigPostScript"><span class="hs-identifier hs-var">texConfigPostScript</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\calligra&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-323"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-324"></span><span>
+</span><span id="line-325"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-326"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-327"></span><span class="hs-comment">-- `latexCfg` `noto` &quot;noto&quot;</span><span>
+</span><span id="line-328"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-329"></span><span class="hs-comment">--</span><span>
+</span><span id="line-330"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_noto.gif&gt;&gt;</span><span>
+</span><span id="line-331"></span><span class="annot"><a href="Reanimate.LaTeX.html#noto"><span class="hs-identifier hs-type">noto</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-332"></span><span id="noto"><span class="annot"><span class="annottext">noto :: TexConfig
+</span><a href="Reanimate.LaTeX.html#noto"><span class="hs-identifier hs-var hs-var">noto</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-333"></span><span>  </span><span class="annot"><span class="annottext">TexConfig :: TexEngine -&gt; [Text] -&gt; [Text] -&gt; TexConfig
+</span><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-334"></span><span>    </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">texConfigEngine :: TexEngine
+</span><a href="Reanimate.LaTeX.html#texConfigEngine"><span class="hs-identifier hs-var">texConfigEngine</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="Reanimate.LaTeX.html#LaTeX"><span class="hs-identifier hs-var">LaTeX</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-335"></span><span>      </span><span class="annot"><span class="annottext">texConfigHeaders :: [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigHeaders"><span class="hs-identifier hs-var">texConfigHeaders</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\usepackage{noto}&quot;</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span>
+</span><span id="line-336"></span><span>      </span><span class="annot"><span class="annottext">texConfigPostScript :: [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigPostScript"><span class="hs-identifier hs-var">texConfigPostScript</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-337"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-338"></span><span>
+</span><span id="line-339"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-340"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-341"></span><span class="hs-comment">-- `latexCfg` `helvet` &quot;helvet&quot;</span><span>
+</span><span id="line-342"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-343"></span><span class="hs-comment">--</span><span>
+</span><span id="line-344"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_helvet.gif&gt;&gt;</span><span>
+</span><span id="line-345"></span><span class="annot"><a href="Reanimate.LaTeX.html#helvet"><span class="hs-identifier hs-type">helvet</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-346"></span><span id="helvet"><span class="annot"><span class="annottext">helvet :: TexConfig
+</span><a href="Reanimate.LaTeX.html#helvet"><span class="hs-identifier hs-var hs-var">helvet</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-347"></span><span>  </span><span class="annot"><span class="annottext">TexConfig :: TexEngine -&gt; [Text] -&gt; [Text] -&gt; TexConfig
+</span><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-348"></span><span>    </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">texConfigEngine :: TexEngine
+</span><a href="Reanimate.LaTeX.html#texConfigEngine"><span class="hs-identifier hs-var">texConfigEngine</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="Reanimate.LaTeX.html#LaTeX"><span class="hs-identifier hs-var">LaTeX</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-349"></span><span>      </span><span class="annot"><span class="annottext">texConfigHeaders :: [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigHeaders"><span class="hs-identifier hs-var">texConfigHeaders</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\usepackage{helvet}&quot;</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span>
+</span><span id="line-350"></span><span>      </span><span class="annot"><span class="annottext">texConfigPostScript :: [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigPostScript"><span class="hs-identifier hs-var">texConfigPostScript</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-351"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-352"></span><span>
+</span><span id="line-353"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-354"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-355"></span><span class="hs-comment">-- `latexCfg` `libertine` &quot;libertine&quot;</span><span>
+</span><span id="line-356"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-357"></span><span class="hs-comment">--</span><span>
+</span><span id="line-358"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_libertine.gif&gt;&gt;</span><span>
+</span><span id="line-359"></span><span class="annot"><a href="Reanimate.LaTeX.html#libertine"><span class="hs-identifier hs-type">libertine</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-360"></span><span id="libertine"><span class="annot"><span class="annottext">libertine :: TexConfig
+</span><a href="Reanimate.LaTeX.html#libertine"><span class="hs-identifier hs-var hs-var">libertine</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-361"></span><span>  </span><span class="annot"><span class="annottext">TexConfig :: TexEngine -&gt; [Text] -&gt; [Text] -&gt; TexConfig
+</span><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-362"></span><span>    </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">texConfigEngine :: TexEngine
+</span><a href="Reanimate.LaTeX.html#texConfigEngine"><span class="hs-identifier hs-var">texConfigEngine</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="Reanimate.LaTeX.html#LaTeX"><span class="hs-identifier hs-var">LaTeX</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-363"></span><span>      </span><span class="annot"><span class="annottext">texConfigHeaders :: [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigHeaders"><span class="hs-identifier hs-var">texConfigHeaders</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\usepackage{libertine}&quot;</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span>
+</span><span id="line-364"></span><span>      </span><span class="annot"><span class="annottext">texConfigPostScript :: [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigPostScript"><span class="hs-identifier hs-var">texConfigPostScript</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-365"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-366"></span><span>
+</span><span id="line-367"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-368"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-369"></span><span class="hs-comment">-- `latexCfg` `biolinum` &quot;biolinum&quot;</span><span>
+</span><span id="line-370"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-371"></span><span class="hs-comment">--</span><span>
+</span><span id="line-372"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_biolinum.gif&gt;&gt;</span><span>
+</span><span id="line-373"></span><span class="annot"><a href="Reanimate.LaTeX.html#biolinum"><span class="hs-identifier hs-type">biolinum</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-374"></span><span id="biolinum"><span class="annot"><span class="annottext">biolinum :: TexConfig
+</span><a href="Reanimate.LaTeX.html#biolinum"><span class="hs-identifier hs-var hs-var">biolinum</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-375"></span><span>  </span><span class="annot"><span class="annottext">TexConfig :: TexEngine -&gt; [Text] -&gt; [Text] -&gt; TexConfig
+</span><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-376"></span><span>    </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">texConfigEngine :: TexEngine
+</span><a href="Reanimate.LaTeX.html#texConfigEngine"><span class="hs-identifier hs-var">texConfigEngine</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="Reanimate.LaTeX.html#LaTeX"><span class="hs-identifier hs-var">LaTeX</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-377"></span><span>      </span><span class="annot"><span class="annottext">texConfigHeaders :: [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigHeaders"><span class="hs-identifier hs-var">texConfigHeaders</span></a></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-378"></span><span>        </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\usepackage{libertine}&quot;</span></span><span>
+</span><span id="line-379"></span><span>        </span><span class="hs-special">,</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\renewcommand{\\familydefault}{\\sfdefault}&quot;</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span>
+</span><span id="line-380"></span><span>      </span><span class="annot"><span class="annottext">texConfigPostScript :: [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigPostScript"><span class="hs-identifier hs-var">texConfigPostScript</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-381"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-382"></span><span>
+</span><span id="line-383"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-384"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-385"></span><span class="hs-comment">-- `latexCfg` `droidSerif` &quot;droidSerif&quot;</span><span>
+</span><span id="line-386"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-387"></span><span class="hs-comment">--</span><span>
+</span><span id="line-388"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_droidSerif.gif&gt;&gt;</span><span>
+</span><span id="line-389"></span><span class="annot"><a href="Reanimate.LaTeX.html#droidSerif"><span class="hs-identifier hs-type">droidSerif</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-390"></span><span id="droidSerif"><span class="annot"><span class="annottext">droidSerif :: TexConfig
+</span><a href="Reanimate.LaTeX.html#droidSerif"><span class="hs-identifier hs-var hs-var">droidSerif</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-391"></span><span>  </span><span class="annot"><span class="annottext">TexConfig :: TexEngine -&gt; [Text] -&gt; [Text] -&gt; TexConfig
+</span><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-392"></span><span>    </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">texConfigEngine :: TexEngine
+</span><a href="Reanimate.LaTeX.html#texConfigEngine"><span class="hs-identifier hs-var">texConfigEngine</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="Reanimate.LaTeX.html#LaTeX"><span class="hs-identifier hs-var">LaTeX</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-393"></span><span>      </span><span class="annot"><span class="annottext">texConfigHeaders :: [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigHeaders"><span class="hs-identifier hs-var">texConfigHeaders</span></a></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-394"></span><span>        </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\usepackage[default]{droidserif}&quot;</span></span><span>
+</span><span id="line-395"></span><span>        </span><span class="hs-special">,</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\let\\varepsilon\\epsilon&quot;</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span>
+</span><span id="line-396"></span><span>      </span><span class="annot"><span class="annottext">texConfigPostScript :: [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigPostScript"><span class="hs-identifier hs-var">texConfigPostScript</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-397"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-398"></span><span>
+</span><span id="line-399"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-400"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-401"></span><span class="hs-comment">-- `latexCfg` `droidSans` &quot;droidSans&quot;</span><span>
+</span><span id="line-402"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-403"></span><span class="hs-comment">--</span><span>
+</span><span id="line-404"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_droidSans.gif&gt;&gt;</span><span>
+</span><span id="line-405"></span><span class="annot"><a href="Reanimate.LaTeX.html#droidSans"><span class="hs-identifier hs-type">droidSans</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-406"></span><span id="droidSans"><span class="annot"><span class="annottext">droidSans :: TexConfig
+</span><a href="Reanimate.LaTeX.html#droidSans"><span class="hs-identifier hs-var hs-var">droidSans</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-407"></span><span>  </span><span class="annot"><span class="annottext">TexConfig :: TexEngine -&gt; [Text] -&gt; [Text] -&gt; TexConfig
+</span><a href="Reanimate.LaTeX.html#TexConfig"><span class="hs-identifier hs-type">TexConfig</span></a></span><span>
+</span><span id="line-408"></span><span>    </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">texConfigEngine :: TexEngine
+</span><a href="Reanimate.LaTeX.html#texConfigEngine"><span class="hs-identifier hs-var">texConfigEngine</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">TexEngine
+</span><a href="Reanimate.LaTeX.html#LaTeX"><span class="hs-identifier hs-var">LaTeX</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-409"></span><span>      </span><span class="annot"><span class="annottext">texConfigHeaders :: [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigHeaders"><span class="hs-identifier hs-var">texConfigHeaders</span></a></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-410"></span><span>        </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\usepackage[default]{droidsans}&quot;</span></span><span>
+</span><span id="line-411"></span><span>        </span><span class="hs-special">,</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\\let\\varepsilon\\epsilon&quot;</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span>
+</span><span id="line-412"></span><span>      </span><span class="annot"><span class="annottext">texConfigPostScript :: [Text]
+</span><a href="Reanimate.LaTeX.html#texConfigPostScript"><span class="hs-identifier hs-var">texConfigPostScript</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-413"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-414"></span></pre></body></html>

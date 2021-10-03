@@ -1,0 +1,105 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Options.Applicative.Help.Pretty</span><span>
+</span><span id="line-2"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="hs-keyword">module</span><span> </span><span class="annot"><span class="hs-identifier">Text.PrettyPrint.ANSI.Leijen</span></span><span>
+</span><span id="line-3"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Options.Applicative.Help.Pretty.html#.%24."><span class="hs-operator">(.$.)</span></a></span><span>
+</span><span id="line-4"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Options.Applicative.Help.Pretty.html#groupOrNestLine"><span class="hs-identifier">groupOrNestLine</span></a></span><span>
+</span><span id="line-5"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Options.Applicative.Help.Pretty.html#altSep"><span class="hs-identifier">altSep</span></a></span><span>
+</span><span id="line-6"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-7"></span><span>
+</span><span id="line-8"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Applicative</span></span><span>
+</span><span id="line-9"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Semigroup</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(&lt;&gt;)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-10"></span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Text.PrettyPrint.ANSI.Leijen</span></span><span> </span><span class="hs-keyword">hiding</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(&lt;$&gt;)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(&lt;&gt;)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">columns</span></span><span class="hs-special">)</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Text.PrettyPrint.ANSI.Leijen.Internal</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Doc</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">flatten</span></span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Text.PrettyPrint.ANSI.Leijen</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">PP</span></span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Prelude</span></span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="annot"><a href="Options.Applicative.Help.Pretty.html#.%24."><span class="hs-operator hs-type">(.$.)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Doc</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Doc</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Doc</span></span><span>
+</span><span id="line-18"></span><span id=".%24."><span class="annot"><span class="annottext">.$. :: Doc -&gt; Doc -&gt; Doc
+</span><a href="Options.Applicative.Help.Pretty.html#.%24."><span class="hs-operator hs-var hs-var">(.$.)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><span class="hs-operator hs-var">(PP.&lt;$&gt;)</span></span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-comment">-- | Apply the function if we're not at the</span><span>
+</span><span id="line-22"></span><span class="hs-comment">--   start of our nesting level.</span><span>
+</span><span id="line-23"></span><span class="annot"><a href="Options.Applicative.Help.Pretty.html#ifNotAtRoot"><span class="hs-identifier hs-type">ifNotAtRoot</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Doc</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Doc</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Doc</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Doc</span></span><span>
+</span><span id="line-24"></span><span id="ifNotAtRoot"><span class="annot"><span class="annottext">ifNotAtRoot :: (Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+</span><a href="Options.Applicative.Help.Pretty.html#ifNotAtRoot"><span class="hs-identifier hs-var hs-var">ifNotAtRoot</span></a></span></span><span> </span><span id="local-6989586621679057073"><span class="annot"><span class="annottext">Doc -&gt; Doc
+</span><a href="#local-6989586621679057073"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679057072"><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679057072"><span class="hs-identifier hs-var">doc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-25"></span><span>  </span><span class="annot"><span class="annottext">(Int -&gt; Doc) -&gt; Doc
+</span><span class="hs-identifier hs-var">Nesting</span></span><span> </span><span class="annot"><span class="annottext">((Int -&gt; Doc) -&gt; Doc) -&gt; (Int -&gt; Doc) -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679057070"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679057070"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-26"></span><span>    </span><span class="annot"><span class="annottext">(Int -&gt; Doc) -&gt; Doc
+</span><span class="hs-identifier hs-var">Column</span></span><span> </span><span class="annot"><span class="annottext">((Int -&gt; Doc) -&gt; Doc) -&gt; (Int -&gt; Doc) -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679057068"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679057068"><span class="hs-identifier hs-var">j</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-27"></span><span>      </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679057070"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679057068"><span class="hs-identifier hs-var">j</span></a></span><span>
+</span><span id="line-28"></span><span>        </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679057072"><span class="hs-identifier hs-var">doc</span></a></span><span>
+</span><span id="line-29"></span><span>        </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc
+</span><a href="#local-6989586621679057073"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679057072"><span class="hs-identifier hs-var">doc</span></a></span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- | Render flattened text on this line, or start</span><span>
+</span><span id="line-33"></span><span class="hs-comment">--   a new line before rendering any text.</span><span>
+</span><span id="line-34"></span><span class="hs-comment">--</span><span>
+</span><span id="line-35"></span><span class="hs-comment">--   This will also nest subsequent lines in the</span><span>
+</span><span id="line-36"></span><span class="hs-comment">--   group.</span><span>
+</span><span id="line-37"></span><span class="annot"><a href="Options.Applicative.Help.Pretty.html#groupOrNestLine"><span class="hs-identifier hs-type">groupOrNestLine</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Doc</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Doc</span></span><span>
+</span><span id="line-38"></span><span id="groupOrNestLine"><span class="annot"><span class="annottext">groupOrNestLine :: Doc -&gt; Doc
+</span><a href="Options.Applicative.Help.Pretty.html#groupOrNestLine"><span class="hs-identifier hs-var hs-var">groupOrNestLine</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-39"></span><span>  </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><span class="hs-identifier hs-var">Union</span></span><span>
+</span><span id="line-40"></span><span>    </span><span class="annot"><span class="annottext">(Doc -&gt; Doc -&gt; Doc) -&gt; (Doc -&gt; Doc) -&gt; Doc -&gt; Doc -&gt; Doc
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc
+</span><span class="hs-identifier hs-var">flatten</span></span><span>
+</span><span id="line-41"></span><span>    </span><span class="annot"><span class="annottext">(Doc -&gt; Doc -&gt; Doc) -&gt; (Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+</span><a href="Options.Applicative.Help.Pretty.html#ifNotAtRoot"><span class="hs-identifier hs-var">ifNotAtRoot</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-identifier hs-var">line</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; Doc) -&gt; (Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Doc -&gt; Doc
+</span><span class="hs-identifier hs-var">nest</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- | Separate items in an alternative with a pipe.</span><span>
+</span><span id="line-45"></span><span class="hs-comment">--</span><span>
+</span><span id="line-46"></span><span class="hs-comment">--   If the first document and the pipe don't fit</span><span>
+</span><span id="line-47"></span><span class="hs-comment">--   on the line, then mandatorily flow the next entry</span><span>
+</span><span id="line-48"></span><span class="hs-comment">--   onto the following line.</span><span>
+</span><span id="line-49"></span><span class="hs-comment">--</span><span>
+</span><span id="line-50"></span><span class="hs-comment">--   The (&lt;//&gt;) softbreak ensures that if the document</span><span>
+</span><span id="line-51"></span><span class="hs-comment">--   does fit on the line, there is at least a space,</span><span>
+</span><span id="line-52"></span><span class="hs-comment">--   but it's possible for y to still appear on the</span><span>
+</span><span id="line-53"></span><span class="hs-comment">--   next line.</span><span>
+</span><span id="line-54"></span><span class="annot"><a href="Options.Applicative.Help.Pretty.html#altSep"><span class="hs-identifier hs-type">altSep</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Doc</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Doc</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Doc</span></span><span>
+</span><span id="line-55"></span><span id="altSep"><span class="annot"><span class="annottext">altSep :: Doc -&gt; Doc -&gt; Doc
+</span><a href="Options.Applicative.Help.Pretty.html#altSep"><span class="hs-identifier hs-var hs-var">altSep</span></a></span></span><span> </span><span id="local-6989586621679057062"><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679057062"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679057061"><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679057061"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-56"></span><span>  </span><span class="annot"><span class="annottext">Doc -&gt; Doc
+</span><span class="hs-identifier hs-var">group</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679057062"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><span class="hs-operator hs-var">&lt;+&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Doc
+</span><span class="hs-identifier hs-var">char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'|'</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-identifier hs-var">line</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><span class="hs-operator hs-var">&lt;//&gt;</span></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679057061"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-57"></span></pre></body></html>

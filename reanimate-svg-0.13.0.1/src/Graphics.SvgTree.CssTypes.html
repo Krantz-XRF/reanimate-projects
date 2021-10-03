@@ -1,0 +1,999 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE DeriveGeneric #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE DeriveAnyClass #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-4"></span><span class="hs-comment">-- | Defines the types used to describes CSS elements</span><span>
+</span><span id="line-5"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Graphics.SvgTree.CssTypes</span><span>
+</span><span id="line-6"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssSelector"><span class="hs-identifier">CssSelector</span></a></span><span class="hs-special">(</span><span> </span><span class="hs-glyph">..</span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssSelectorRule"><span class="hs-identifier">CssSelectorRule</span></a></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssRule"><span class="hs-identifier">CssRule</span></a></span><span class="hs-special">(</span><span> </span><span class="hs-glyph">..</span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDescriptor"><span class="hs-identifier">CssDescriptor</span></a></span><span class="hs-special">(</span><span> </span><span class="hs-glyph">..</span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDeclaration"><span class="hs-identifier">CssDeclaration</span></a></span><span class="hs-special">(</span><span> </span><span class="hs-glyph">..</span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssElement"><span class="hs-identifier">CssElement</span></a></span><span class="hs-special">(</span><span> </span><span class="hs-glyph">..</span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-12"></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssMatcheable"><span class="hs-identifier">CssMatcheable</span></a></span><span class="hs-special">(</span><span> </span><span class="hs-glyph">..</span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssContext"><span class="hs-identifier">CssContext</span></a></span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Dpi"><span class="hs-identifier">Dpi</span></a></span><span>
+</span><span id="line-16"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Number"><span class="hs-identifier">Number</span></a></span><span class="hs-special">(</span><span> </span><span class="hs-glyph">..</span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#serializeNumber"><span class="hs-identifier">serializeNumber</span></a></span><span>
+</span><span id="line-18"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#findMatchingDeclarations"><span class="hs-identifier">findMatchingDeclarations</span></a></span><span>
+</span><span id="line-19"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#toUserUnit"><span class="hs-identifier">toUserUnit</span></a></span><span>
+</span><span id="line-20"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#mapNumber"><span class="hs-identifier">mapNumber</span></a></span><span>
+</span><span id="line-21"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#tserialize"><span class="hs-identifier">tserialize</span></a></span><span>
+</span><span id="line-22"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Hashable</span></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Hashable</span></span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span>              </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">intersperse</span></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>              </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Lazy.Builder</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">TB</span></span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">GHC.Generics</span></span><span>           </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Text.Printf</span></span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Codec.Picture</span></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">PixelRGBA8</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Graphics.SvgTree.Misc.html"><span class="hs-identifier">Graphics.SvgTree.Misc</span></a></span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="hs-comment">-- | Alias describing a &quot;dot per inch&quot; information</span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- used for size calculation (see toUserUnit).</span><span>
+</span><span id="line-37"></span><span class="hs-keyword">type</span><span> </span><span id="Dpi"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Dpi"><span class="hs-identifier hs-var">Dpi</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="hs-comment">-- | Helper typeclass for serialization to Text.</span><span>
+</span><span id="line-40"></span><span class="hs-keyword">class</span><span> </span><span id="TextBuildable"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#TextBuildable"><span class="hs-identifier hs-var">TextBuildable</span></a></span></span><span> </span><span id="local-6989586621679478154"><span class="annot"><a href="#local-6989586621679478154"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-41"></span><span>    </span><span class="hs-comment">-- | Serialize an element to a text builder.</span><span>
+</span><span id="line-42"></span><span>    </span><span id="tserialize"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#tserialize"><span class="hs-identifier hs-type">tserialize</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679478154"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">TB.Builder</span></span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- | Describes an element of a CSS selector. Multiple</span><span>
+</span><span id="line-45"></span><span class="hs-comment">-- elements can be combined in a CssSelector type.</span><span>
+</span><span id="line-46"></span><span class="hs-keyword">data</span><span> </span><span id="CssDescriptor"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDescriptor"><span class="hs-identifier hs-var">CssDescriptor</span></a></span></span><span>
+</span><span id="line-47"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="OfClass"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#OfClass"><span class="hs-identifier hs-var">OfClass</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>    </span><span class="hs-comment">-- ^ .IDENT</span><span>
+</span><span id="line-48"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="OfName"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#OfName"><span class="hs-identifier hs-var">OfName</span></a></span></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>    </span><span class="hs-comment">-- ^ IDENT</span><span>
+</span><span id="line-49"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="OfId"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#OfId"><span class="hs-identifier hs-var">OfId</span></a></span></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>    </span><span class="hs-comment">-- ^ #IDENT</span><span>
+</span><span id="line-50"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="OfPseudoClass"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#OfPseudoClass"><span class="hs-identifier hs-var">OfPseudoClass</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>     </span><span class="hs-comment">-- ^ `:IDENT` (ignore function syntax)</span><span>
+</span><span id="line-51"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="AnyElem"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#AnyElem"><span class="hs-identifier hs-var">AnyElem</span></a></span></span><span>                  </span><span class="hs-comment">-- ^ '*'</span><span>
+</span><span id="line-52"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="WithAttrib"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#WithAttrib"><span class="hs-identifier hs-var">WithAttrib</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-comment">-- ^ ``</span><span>
+</span><span id="line-53"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679478081"><span id="local-6989586621679478083"><span class="annot"><span class="annottext">CssDescriptor -&gt; CssDescriptor -&gt; Bool
+(CssDescriptor -&gt; CssDescriptor -&gt; Bool)
+-&gt; (CssDescriptor -&gt; CssDescriptor -&gt; Bool) -&gt; Eq CssDescriptor
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: CssDescriptor -&gt; CssDescriptor -&gt; Bool
+$c/= :: CssDescriptor -&gt; CssDescriptor -&gt; Bool
+== :: CssDescriptor -&gt; CssDescriptor -&gt; Bool
+$c== :: CssDescriptor -&gt; CssDescriptor -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679478074"><span id="local-6989586621679478076"><span id="local-6989586621679478078"><span class="annot"><span class="annottext">Int -&gt; CssDescriptor -&gt; ShowS
+[CssDescriptor] -&gt; ShowS
+CssDescriptor -&gt; String
+(Int -&gt; CssDescriptor -&gt; ShowS)
+-&gt; (CssDescriptor -&gt; String)
+-&gt; ([CssDescriptor] -&gt; ShowS)
+-&gt; Show CssDescriptor
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [CssDescriptor] -&gt; ShowS
+$cshowList :: [CssDescriptor] -&gt; ShowS
+show :: CssDescriptor -&gt; String
+$cshow :: CssDescriptor -&gt; String
+showsPrec :: Int -&gt; CssDescriptor -&gt; ShowS
+$cshowsPrec :: Int -&gt; CssDescriptor -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-54"></span><span>
+</span><span id="line-55"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#TextBuildable"><span class="hs-identifier hs-type">TextBuildable</span></a></span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDescriptor"><span class="hs-identifier hs-type">CssDescriptor</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-56"></span><span>  </span><span id="local-6989586621679478070"><span class="annot"><span class="annottext">tserialize :: CssDescriptor -&gt; Builder
+</span><a href="#local-6989586621679478070"><span class="hs-identifier hs-var hs-var hs-var hs-var">tserialize</span></a></span></span><span> </span><span id="local-6989586621679478069"><span class="annot"><span class="annottext">CssDescriptor
+</span><a href="#local-6989586621679478069"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">CssDescriptor
+</span><a href="#local-6989586621679478069"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-57"></span><span>      </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#OfClass"><span class="hs-identifier hs-type">OfClass</span></a></span><span> </span><span id="local-6989586621679478068"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478068"><span class="hs-identifier hs-var">c</span></a></span></span><span>       </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679478067"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'.'</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679478066"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478068"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-58"></span><span>      </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#OfName"><span class="hs-identifier hs-type">OfName</span></a></span><span>  </span><span id="local-6989586621679478065"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478065"><span class="hs-identifier hs-var">n</span></a></span></span><span>       </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679478066"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478065"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-59"></span><span>      </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#OfId"><span class="hs-identifier hs-type">OfId</span></a></span><span>    </span><span id="local-6989586621679478064"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478064"><span class="hs-identifier hs-var">i</span></a></span></span><span>       </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679478067"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'#'</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679478066"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478064"><span class="hs-identifier hs-var">i</span></a></span><span>
+</span><span id="line-60"></span><span>      </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#OfPseudoClass"><span class="hs-identifier hs-type">OfPseudoClass</span></a></span><span> </span><span id="local-6989586621679478063"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478063"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679478067"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'#'</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679478066"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478063"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-61"></span><span>      </span><span class="annot"><span class="annottext">CssDescriptor
+</span><a href="Graphics.SvgTree.CssTypes.html#AnyElem"><span class="hs-identifier hs-var">AnyElem</span></a></span><span>         </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679478067"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'*'</span></span><span>
+</span><span id="line-62"></span><span>      </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#WithAttrib"><span class="hs-identifier hs-type">WithAttrib</span></a></span><span> </span><span id="local-6989586621679478062"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478062"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679478061"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478061"><span class="hs-identifier hs-var">b</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[Builder] -&gt; Builder
+forall a. Monoid a =&gt; [a] -&gt; a
+</span><span class="hs-identifier hs-var">mconcat</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679478067"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'['</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679478066"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478062"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679478067"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'='</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679478066"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478061"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679478067"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">']'</span></span><span class="hs-special">]</span><span>
+</span><span id="line-63"></span><span>     </span><span class="hs-keyword">where</span><span>
+</span><span id="line-64"></span><span>      </span><span id="local-6989586621679478066"><span class="annot"><span class="annottext">ft :: Text -&gt; Builder
+</span><a href="#local-6989586621679478066"><span class="hs-identifier hs-var hs-var">ft</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><span class="hs-identifier hs-var">TB.fromText</span></span><span>
+</span><span id="line-65"></span><span>      </span><span id="local-6989586621679478067"><span class="annot"><span class="annottext">si :: Char -&gt; Builder
+</span><a href="#local-6989586621679478067"><span class="hs-identifier hs-var hs-var">si</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><span class="hs-identifier hs-var">TB.singleton</span></span><span>
+</span><span id="line-66"></span><span>
+</span><span id="line-67"></span><span class="hs-comment">-- | Defines complex selector.</span><span>
+</span><span id="line-68"></span><span class="hs-keyword">data</span><span> </span><span id="CssSelector"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssSelector"><span class="hs-identifier hs-var">CssSelector</span></a></span></span><span>
+</span><span id="line-69"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="Nearby"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Nearby"><span class="hs-identifier hs-var">Nearby</span></a></span></span><span>          </span><span class="hs-comment">-- ^ Corresponds to the `+` CSS selector.</span><span>
+</span><span id="line-70"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="DirectChildren"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#DirectChildren"><span class="hs-identifier hs-var">DirectChildren</span></a></span></span><span>  </span><span class="hs-comment">-- ^ Corresponds to the `&gt;` CSS selectro.</span><span>
+</span><span id="line-71"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="AllOf"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#AllOf"><span class="hs-identifier hs-var">AllOf</span></a></span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDescriptor"><span class="hs-identifier hs-type">CssDescriptor</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-comment">-- ^ Grouping construct, all the elements</span><span>
+</span><span id="line-72"></span><span>                          </span><span class="hs-comment">-- of the list must be matched.</span><span>
+</span><span id="line-73"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679478052"><span id="local-6989586621679478054"><span class="annot"><span class="annottext">CssSelector -&gt; CssSelector -&gt; Bool
+(CssSelector -&gt; CssSelector -&gt; Bool)
+-&gt; (CssSelector -&gt; CssSelector -&gt; Bool) -&gt; Eq CssSelector
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: CssSelector -&gt; CssSelector -&gt; Bool
+$c/= :: CssSelector -&gt; CssSelector -&gt; Bool
+== :: CssSelector -&gt; CssSelector -&gt; Bool
+$c== :: CssSelector -&gt; CssSelector -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679478046"><span id="local-6989586621679478048"><span id="local-6989586621679478050"><span class="annot"><span class="annottext">Int -&gt; CssSelector -&gt; ShowS
+[CssSelector] -&gt; ShowS
+CssSelector -&gt; String
+(Int -&gt; CssSelector -&gt; ShowS)
+-&gt; (CssSelector -&gt; String)
+-&gt; ([CssSelector] -&gt; ShowS)
+-&gt; Show CssSelector
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [CssSelector] -&gt; ShowS
+$cshowList :: [CssSelector] -&gt; ShowS
+show :: CssSelector -&gt; String
+$cshow :: CssSelector -&gt; String
+showsPrec :: Int -&gt; CssSelector -&gt; ShowS
+$cshowsPrec :: Int -&gt; CssSelector -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#TextBuildable"><span class="hs-identifier hs-type">TextBuildable</span></a></span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssSelector"><span class="hs-identifier hs-type">CssSelector</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-76"></span><span>  </span><span id="local-6989586621679478044"><span class="annot"><span class="annottext">tserialize :: CssSelector -&gt; Builder
+</span><a href="#local-6989586621679478044"><span class="hs-identifier hs-var hs-var hs-var hs-var">tserialize</span></a></span></span><span> </span><span id="local-6989586621679478043"><span class="annot"><span class="annottext">CssSelector
+</span><a href="#local-6989586621679478043"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">CssSelector
+</span><a href="#local-6989586621679478043"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-77"></span><span>      </span><span class="annot"><span class="annottext">CssSelector
+</span><a href="Graphics.SvgTree.CssTypes.html#Nearby"><span class="hs-identifier hs-var">Nearby</span></a></span><span>         </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679478042"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'+'</span></span><span>
+</span><span id="line-78"></span><span>      </span><span class="annot"><span class="annottext">CssSelector
+</span><a href="Graphics.SvgTree.CssTypes.html#DirectChildren"><span class="hs-identifier hs-var">DirectChildren</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679478042"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&gt;'</span></span><span>
+</span><span id="line-79"></span><span>      </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#AllOf"><span class="hs-identifier hs-type">AllOf</span></a></span><span> </span><span id="local-6989586621679478041"><span class="annot"><span class="annottext">[CssDescriptor]
+</span><a href="#local-6989586621679478041"><span class="hs-identifier hs-var">lst</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[Builder] -&gt; Builder
+forall a. Monoid a =&gt; [a] -&gt; a
+</span><span class="hs-identifier hs-var">mconcat</span></span><span> </span><span class="annot"><span class="annottext">([Builder] -&gt; Builder) -&gt; [Builder] -&gt; Builder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(CssDescriptor -&gt; Builder) -&gt; [CssDescriptor] -&gt; [Builder]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">CssDescriptor -&gt; Builder
+forall a. TextBuildable a =&gt; a -&gt; Builder
+</span><a href="Graphics.SvgTree.CssTypes.html#tserialize"><span class="hs-identifier hs-var">tserialize</span></a></span><span> </span><span class="annot"><span class="annottext">[CssDescriptor]
+</span><a href="#local-6989586621679478041"><span class="hs-identifier hs-var">lst</span></a></span><span>
+</span><span id="line-80"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-81"></span><span>      </span><span id="local-6989586621679478042"><span class="annot"><span class="annottext">si :: Char -&gt; Builder
+</span><a href="#local-6989586621679478042"><span class="hs-identifier hs-var hs-var">si</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><span class="hs-identifier hs-var">TB.singleton</span></span><span>
+</span><span id="line-82"></span><span>
+</span><span id="line-83"></span><span class="hs-comment">-- | A CssSelectorRule is a list of all the elements</span><span>
+</span><span id="line-84"></span><span class="hs-comment">-- that must be met in a depth first search fashion.</span><span>
+</span><span id="line-85"></span><span class="hs-keyword">type</span><span> </span><span id="CssSelectorRule"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssSelectorRule"><span class="hs-identifier hs-var">CssSelectorRule</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssSelector"><span class="hs-identifier hs-type">CssSelector</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-86"></span><span>
+</span><span id="line-87"></span><span class="hs-comment">-- | Represents a CSS selector and the different declarations</span><span>
+</span><span id="line-88"></span><span class="hs-comment">-- to apply to the matched elemens.</span><span>
+</span><span id="line-89"></span><span class="hs-keyword">data</span><span> </span><span id="CssRule"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssRule"><span class="hs-identifier hs-var">CssRule</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="CssRule"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssRule"><span class="hs-identifier hs-var">CssRule</span></a></span></span><span>
+</span><span id="line-90"></span><span>    </span><span class="hs-special">{</span><span> </span><span class="hs-comment">-- | At the first level represents a list of elements</span><span>
+</span><span id="line-91"></span><span>      </span><span class="hs-comment">-- to be matched. If any match is made, you can apply</span><span>
+</span><span id="line-92"></span><span>      </span><span class="hs-comment">-- the declarations. At the second level</span><span>
+</span><span id="line-93"></span><span>      </span><span id="cssRuleSelector"><span class="annot"><span class="annottext">CssRule -&gt; [[CssSelector]]
+</span><a href="Graphics.SvgTree.CssTypes.html#cssRuleSelector"><span class="hs-identifier hs-var hs-var">cssRuleSelector</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-glyph">!</span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssSelectorRule"><span class="hs-identifier hs-type">CssSelectorRule</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-94"></span><span>      </span><span class="hs-comment">-- | Declarations to apply to the matched element.</span><span>
+</span><span id="line-95"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="cssDeclarations"><span class="annot"><span class="annottext">CssRule -&gt; [CssDeclaration]
+</span><a href="Graphics.SvgTree.CssTypes.html#cssDeclarations"><span class="hs-identifier hs-var hs-var">cssDeclarations</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-glyph">!</span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDeclaration"><span class="hs-identifier hs-type">CssDeclaration</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-96"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-97"></span><span>    </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679478034"><span id="local-6989586621679478036"><span class="annot"><span class="annottext">CssRule -&gt; CssRule -&gt; Bool
+(CssRule -&gt; CssRule -&gt; Bool)
+-&gt; (CssRule -&gt; CssRule -&gt; Bool) -&gt; Eq CssRule
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: CssRule -&gt; CssRule -&gt; Bool
+$c/= :: CssRule -&gt; CssRule -&gt; Bool
+== :: CssRule -&gt; CssRule -&gt; Bool
+$c== :: CssRule -&gt; CssRule -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679478028"><span id="local-6989586621679478030"><span id="local-6989586621679478032"><span class="annot"><span class="annottext">Int -&gt; CssRule -&gt; ShowS
+[CssRule] -&gt; ShowS
+CssRule -&gt; String
+(Int -&gt; CssRule -&gt; ShowS)
+-&gt; (CssRule -&gt; String) -&gt; ([CssRule] -&gt; ShowS) -&gt; Show CssRule
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [CssRule] -&gt; ShowS
+$cshowList :: [CssRule] -&gt; ShowS
+show :: CssRule -&gt; String
+$cshow :: CssRule -&gt; String
+showsPrec :: Int -&gt; CssRule -&gt; ShowS
+$cshowsPrec :: Int -&gt; CssRule -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-98"></span><span>
+</span><span id="line-99"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#TextBuildable"><span class="hs-identifier hs-type">TextBuildable</span></a></span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssRule"><span class="hs-identifier hs-type">CssRule</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-100"></span><span>  </span><span id="local-6989586621679478026"><span class="annot"><span class="annottext">tserialize :: CssRule -&gt; Builder
+</span><a href="#local-6989586621679478026"><span class="hs-identifier hs-var hs-var hs-var hs-var">tserialize</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssRule"><span class="hs-identifier hs-type">CssRule</span></a></span><span> </span><span id="local-6989586621679478025"><span class="annot"><span class="annottext">[[CssSelector]]
+</span><a href="#local-6989586621679478025"><span class="hs-identifier hs-var">selectors</span></a></span></span><span> </span><span id="local-6989586621679478024"><span class="annot"><span class="annottext">[CssDeclaration]
+</span><a href="#local-6989586621679478024"><span class="hs-identifier hs-var">decl</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-101"></span><span>      </span><span class="annot"><span class="annottext">[Builder] -&gt; Builder
+forall a. Monoid a =&gt; [a] -&gt; a
+</span><span class="hs-identifier hs-var">mconcat</span></span><span> </span><span class="annot"><span class="annottext">[Builder]
+</span><a href="#local-6989586621679478023"><span class="hs-identifier hs-var">tselectors</span></a></span><span>
+</span><span id="line-102"></span><span>                 </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679478022"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot; {\n&quot;</span></span><span>
+</span><span id="line-103"></span><span>                 </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">[Builder] -&gt; Builder
+forall a. Monoid a =&gt; [a] -&gt; a
+</span><span class="hs-identifier hs-var">mconcat</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(CssDeclaration -&gt; Builder) -&gt; [CssDeclaration] -&gt; [Builder]
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">CssDeclaration -&gt; Builder
+forall a. TextBuildable a =&gt; a -&gt; Builder
+</span><a href="#local-6989586621679478021"><span class="hs-identifier hs-var">tserializeDecl</span></a></span><span> </span><span class="annot"><span class="annottext">[CssDeclaration]
+</span><a href="#local-6989586621679478024"><span class="hs-identifier hs-var">decl</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-104"></span><span>                 </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679478022"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;}\n&quot;</span></span><span>
+</span><span id="line-105"></span><span>     </span><span class="hs-keyword">where</span><span>
+</span><span id="line-106"></span><span>      </span><span id="local-6989586621679478022"><span class="annot"><span class="annottext">ft :: Text -&gt; Builder
+</span><a href="#local-6989586621679478022"><span class="hs-identifier hs-var hs-var">ft</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><span class="hs-identifier hs-var">TB.fromText</span></span><span>
+</span><span id="line-107"></span><span>      </span><span id="local-6989586621679478021"><span class="annot"><span class="annottext">tserializeDecl :: a -&gt; Builder
+</span><a href="#local-6989586621679478021"><span class="hs-identifier hs-var hs-var">tserializeDecl</span></a></span></span><span> </span><span id="local-6989586621679478020"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679478020"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679478022"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;  &quot;</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; Builder
+forall a. TextBuildable a =&gt; a -&gt; Builder
+</span><a href="Graphics.SvgTree.CssTypes.html#tserialize"><span class="hs-identifier hs-var">tserialize</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679478020"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679478022"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;;\n&quot;</span></span><span>
+</span><span id="line-108"></span><span>      </span><span id="local-6989586621679478019"><span class="annot"><span class="annottext">tselector :: [CssSelector] -&gt; Builder
+</span><a href="#local-6989586621679478019"><span class="hs-identifier hs-var hs-var">tselector</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-109"></span><span>          </span><span class="annot"><span class="annottext">[Builder] -&gt; Builder
+forall a. Monoid a =&gt; [a] -&gt; a
+</span><span class="hs-identifier hs-var">mconcat</span></span><span> </span><span class="annot"><span class="annottext">([Builder] -&gt; Builder)
+-&gt; ([CssSelector] -&gt; [Builder]) -&gt; [CssSelector] -&gt; Builder
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; [Builder] -&gt; [Builder]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">intersperse</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679478022"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot; &quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([Builder] -&gt; [Builder])
+-&gt; ([CssSelector] -&gt; [Builder]) -&gt; [CssSelector] -&gt; [Builder]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(CssSelector -&gt; Builder) -&gt; [CssSelector] -&gt; [Builder]
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">CssSelector -&gt; Builder
+forall a. TextBuildable a =&gt; a -&gt; Builder
+</span><a href="Graphics.SvgTree.CssTypes.html#tserialize"><span class="hs-identifier hs-var">tserialize</span></a></span><span>
+</span><span id="line-110"></span><span>      </span><span id="local-6989586621679478023"><span class="annot"><span class="annottext">tselectors :: [Builder]
+</span><a href="#local-6989586621679478023"><span class="hs-identifier hs-var hs-var">tselectors</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-111"></span><span>          </span><span class="annot"><span class="annottext">Builder -&gt; [Builder] -&gt; [Builder]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">intersperse</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679478022"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;,\n&quot;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([Builder] -&gt; [Builder]) -&gt; [Builder] -&gt; [Builder]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">([CssSelector] -&gt; Builder) -&gt; [[CssSelector]] -&gt; [Builder]
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">[CssSelector] -&gt; Builder
+</span><a href="#local-6989586621679478019"><span class="hs-identifier hs-var">tselector</span></a></span><span> </span><span class="annot"><span class="annottext">[[CssSelector]]
+</span><a href="#local-6989586621679478025"><span class="hs-identifier hs-var">selectors</span></a></span><span>
+</span><span id="line-112"></span><span>
+</span><span id="line-113"></span><span class="hs-comment">-- | Interface for elements to be matched against</span><span>
+</span><span id="line-114"></span><span class="hs-comment">-- some CssRule.</span><span>
+</span><span id="line-115"></span><span class="hs-keyword">class</span><span> </span><span id="CssMatcheable"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssMatcheable"><span class="hs-identifier hs-var">CssMatcheable</span></a></span></span><span> </span><span id="local-6989586621679478129"><span class="annot"><a href="#local-6989586621679478129"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-116"></span><span>  </span><span class="hs-comment">-- | For an element, tell its optional ID attribute.</span><span>
+</span><span id="line-117"></span><span>  </span><span id="cssIdOf"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#cssIdOf"><span class="hs-identifier hs-type">cssIdOf</span></a></span></span><span>     </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679478129"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-118"></span><span>  </span><span class="hs-comment">-- | For an element, return all of it's class attributes.</span><span>
+</span><span id="line-119"></span><span>  </span><span id="cssClassOf"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#cssClassOf"><span class="hs-identifier hs-type">cssClassOf</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679478129"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span class="hs-special">]</span><span>
+</span><span id="line-120"></span><span>  </span><span class="hs-comment">-- | Return the name of the tagname of the element</span><span>
+</span><span id="line-121"></span><span>  </span><span id="cssNameOf"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#cssNameOf"><span class="hs-identifier hs-type">cssNameOf</span></a></span></span><span>   </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679478129"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-122"></span><span>  </span><span class="hs-comment">-- | Return a value of a given attribute if present</span><span>
+</span><span id="line-123"></span><span>  </span><span id="cssAttribOf"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#cssAttribOf"><span class="hs-identifier hs-type">cssAttribOf</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679478129"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-124"></span><span>
+</span><span id="line-125"></span><span class="hs-comment">-- | Represents a zipper in depth at the first list</span><span>
+</span><span id="line-126"></span><span class="hs-comment">-- level, and the previous nodes at in the second</span><span>
+</span><span id="line-127"></span><span class="hs-comment">-- list level.</span><span>
+</span><span id="line-128"></span><span class="hs-keyword">type</span><span> </span><span id="CssContext"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssContext"><span class="hs-identifier hs-var">CssContext</span></a></span></span><span> </span><span id="local-6989586621679478013"><span class="annot"><a href="#local-6989586621679478013"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679478013"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-129"></span><span>
+</span><span id="line-130"></span><span id="local-6989586621679478123"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#isDescribedBy"><span class="hs-identifier hs-type">isDescribedBy</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssMatcheable"><span class="hs-identifier hs-type">CssMatcheable</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679478123"><span class="hs-identifier hs-type">a</span></a></span><span>
+</span><span id="line-131"></span><span>              </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679478123"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDescriptor"><span class="hs-identifier hs-type">CssDescriptor</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span></span><span>
+</span><span id="line-132"></span><span id="isDescribedBy"><span class="annot"><span class="annottext">isDescribedBy :: a -&gt; [CssDescriptor] -&gt; Bool
+</span><a href="Graphics.SvgTree.CssTypes.html#isDescribedBy"><span class="hs-identifier hs-var hs-var">isDescribedBy</span></a></span></span><span> </span><span id="local-6989586621679478011"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679478011"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(CssDescriptor -&gt; Bool) -&gt; [CssDescriptor] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; (a -&gt; Bool) -&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">all</span></span><span> </span><span class="annot"><span class="annottext">CssDescriptor -&gt; Bool
+</span><a href="#local-6989586621679478009"><span class="hs-identifier hs-var">tryMatch</span></a></span><span>
+</span><span id="line-133"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-134"></span><span>    </span><span id="local-6989586621679478009"><span class="annot"><span class="annottext">tryMatch :: CssDescriptor -&gt; Bool
+</span><a href="#local-6989586621679478009"><span class="hs-identifier hs-var hs-var">tryMatch</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#OfClass"><span class="hs-identifier hs-type">OfClass</span></a></span><span> </span><span id="local-6989586621679478008"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478008"><span class="hs-identifier hs-var">t</span></a></span></span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478008"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; [Text] -&gt; Bool
+forall (t :: * -&gt; *) a. (Foldable t, Eq a) =&gt; a -&gt; t a -&gt; Bool
+</span><span class="hs-operator hs-var">`elem`</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; [Text]
+forall a. CssMatcheable a =&gt; a -&gt; [Text]
+</span><a href="Graphics.SvgTree.CssTypes.html#cssClassOf"><span class="hs-identifier hs-var">cssClassOf</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679478011"><span class="hs-identifier hs-var">e</span></a></span><span>
+</span><span id="line-135"></span><span>    </span><span class="annot"><a href="#local-6989586621679478009"><span class="hs-identifier hs-var">tryMatch</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#OfId"><span class="hs-identifier hs-type">OfId</span></a></span><span>    </span><span id="local-6989586621679478006"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478006"><span class="hs-identifier hs-var">i</span></a></span></span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Maybe Text
+forall a. CssMatcheable a =&gt; a -&gt; Maybe Text
+</span><a href="Graphics.SvgTree.CssTypes.html#cssIdOf"><span class="hs-identifier hs-var">cssIdOf</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679478011"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Text -&gt; Maybe Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Maybe Text
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478006"><span class="hs-identifier hs-var">i</span></a></span><span>
+</span><span id="line-136"></span><span>    </span><span class="annot"><a href="#local-6989586621679478009"><span class="hs-identifier hs-var">tryMatch</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#OfName"><span class="hs-identifier hs-type">OfName</span></a></span><span>  </span><span id="local-6989586621679478005"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478005"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Text
+forall a. CssMatcheable a =&gt; a -&gt; Text
+</span><a href="Graphics.SvgTree.CssTypes.html#cssNameOf"><span class="hs-identifier hs-var">cssNameOf</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679478011"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478005"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-137"></span><span>    </span><span class="annot"><a href="#local-6989586621679478009"><span class="hs-identifier hs-var">tryMatch</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#OfPseudoClass"><span class="hs-identifier hs-type">OfPseudoClass</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-138"></span><span>    </span><span class="annot"><a href="#local-6989586621679478009"><span class="hs-identifier hs-var">tryMatch</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#WithAttrib"><span class="hs-identifier hs-type">WithAttrib</span></a></span><span> </span><span id="local-6989586621679478004"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478004"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679478003"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478003"><span class="hs-identifier hs-var">v</span></a></span></span><span class="hs-special">)</span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Text -&gt; Maybe Text
+forall a. CssMatcheable a =&gt; a -&gt; Text -&gt; Maybe Text
+</span><a href="Graphics.SvgTree.CssTypes.html#cssAttribOf"><span class="hs-identifier hs-var">cssAttribOf</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679478011"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478004"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Text -&gt; Maybe Text -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Maybe Text
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679478003"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-139"></span><span>    </span><span class="annot"><a href="#local-6989586621679478009"><span class="hs-identifier hs-var">tryMatch</span></a></span><span> </span><span class="annot"><span class="annottext">CssDescriptor
+</span><a href="Graphics.SvgTree.CssTypes.html#AnyElem"><span class="hs-identifier hs-var">AnyElem</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-140"></span><span>
+</span><span id="line-141"></span><span id="local-6989586621679478002"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#isMatching"><span class="hs-identifier hs-type">isMatching</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssMatcheable"><span class="hs-identifier hs-type">CssMatcheable</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679478002"><span class="hs-identifier hs-type">a</span></a></span><span>
+</span><span id="line-142"></span><span>           </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssContext"><span class="hs-identifier hs-type">CssContext</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679478002"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssSelector"><span class="hs-identifier hs-type">CssSelector</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span></span><span>
+</span><span id="line-143"></span><span id="isMatching"><span class="annot"><span class="annottext">isMatching :: CssContext a -&gt; [CssSelector] -&gt; Bool
+</span><a href="Graphics.SvgTree.CssTypes.html#isMatching"><span class="hs-identifier hs-var hs-var">isMatching</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CssContext a -&gt; [CssSelector] -&gt; Bool
+forall a. CssMatcheable a =&gt; [[a]] -&gt; [CssSelector] -&gt; Bool
+</span><a href="#local-6989586621679478000"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-144"></span><span>  </span><span id="local-6989586621679478000"><span class="annot"><span class="annottext">go :: [[a]] -&gt; [CssSelector] -&gt; Bool
+</span><a href="#local-6989586621679478000"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span>  </span><span class="annot"><span class="annottext">[[a]]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-145"></span><span>  </span><span class="annot"><a href="#local-6989586621679478000"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>  </span><span class="annot"><span class="annottext">[CssSelector]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-146"></span><span>  </span><span class="annot"><a href="#local-6989586621679478000"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679477999"><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679477999"><span class="hs-identifier hs-var">near</span></a></span></span><span class="hs-special">)</span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679477998"><span class="annot"><span class="annottext">[[a]]
+</span><a href="#local-6989586621679477998"><span class="hs-identifier hs-var">upper</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CssSelector
+</span><a href="Graphics.SvgTree.CssTypes.html#Nearby"><span class="hs-identifier hs-var">Nearby</span></a></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679477997"><span class="annot"><span class="annottext">[CssSelector]
+</span><a href="#local-6989586621679477997"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[[a]] -&gt; [CssSelector] -&gt; Bool
+</span><a href="#local-6989586621679478000"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679477999"><span class="hs-identifier hs-var">near</span></a></span><span class="annot"><span class="annottext">[a] -&gt; [[a]] -&gt; [[a]]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[[a]]
+</span><a href="#local-6989586621679477998"><span class="hs-identifier hs-var">upper</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[CssSelector]
+</span><a href="#local-6989586621679477997"><span class="hs-identifier hs-var">rest</span></a></span><span>
+</span><span id="line-147"></span><span>  </span><span class="annot"><a href="#local-6989586621679478000"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679477996"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679477996"><span class="hs-identifier hs-var">e</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">[a]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679477995"><span class="annot"><span class="annottext">[[a]]
+</span><a href="#local-6989586621679477995"><span class="hs-identifier hs-var">upper</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CssSelector
+</span><a href="Graphics.SvgTree.CssTypes.html#DirectChildren"><span class="hs-identifier hs-var">DirectChildren</span></a></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#AllOf"><span class="hs-identifier hs-type">AllOf</span></a></span><span> </span><span id="local-6989586621679477994"><span class="annot"><span class="annottext">[CssDescriptor]
+</span><a href="#local-6989586621679477994"><span class="hs-identifier hs-var">descr</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679477993"><span class="annot"><span class="annottext">[CssSelector]
+</span><a href="#local-6989586621679477993"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-148"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">a -&gt; [CssDescriptor] -&gt; Bool
+forall a. CssMatcheable a =&gt; a -&gt; [CssDescriptor] -&gt; Bool
+</span><a href="Graphics.SvgTree.CssTypes.html#isDescribedBy"><span class="hs-identifier hs-var">isDescribedBy</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679477996"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="annot"><span class="annottext">[CssDescriptor]
+</span><a href="#local-6989586621679477994"><span class="hs-identifier hs-var">descr</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[[a]] -&gt; [CssSelector] -&gt; Bool
+</span><a href="#local-6989586621679478000"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">[[a]]
+</span><a href="#local-6989586621679477995"><span class="hs-identifier hs-var">upper</span></a></span><span> </span><span class="annot"><span class="annottext">[CssSelector]
+</span><a href="#local-6989586621679477993"><span class="hs-identifier hs-var">rest</span></a></span><span>
+</span><span id="line-149"></span><span>  </span><span class="annot"><a href="#local-6989586621679478000"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">[[a]]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CssSelector
+</span><a href="Graphics.SvgTree.CssTypes.html#DirectChildren"><span class="hs-identifier hs-var">DirectChildren</span></a></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">[CssSelector]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-150"></span><span>  </span><span class="annot"><a href="#local-6989586621679478000"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679477992"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679477992"><span class="hs-identifier hs-var">e</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">[a]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679477991"><span class="annot"><span class="annottext">[[a]]
+</span><a href="#local-6989586621679477991"><span class="hs-identifier hs-var">upper</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679477990"><span class="annot"><span class="annottext">selectors :: [CssSelector]
+</span><a href="#local-6989586621679477990"><span class="hs-identifier hs-var">selectors</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#AllOf"><span class="hs-identifier hs-type">AllOf</span></a></span><span> </span><span id="local-6989586621679477989"><span class="annot"><span class="annottext">[CssDescriptor]
+</span><a href="#local-6989586621679477989"><span class="hs-identifier hs-var">descr</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679477988"><span class="annot"><span class="annottext">[CssSelector]
+</span><a href="#local-6989586621679477988"><span class="hs-identifier hs-var">rest</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-151"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">a -&gt; [CssDescriptor] -&gt; Bool
+forall a. CssMatcheable a =&gt; a -&gt; [CssDescriptor] -&gt; Bool
+</span><a href="Graphics.SvgTree.CssTypes.html#isDescribedBy"><span class="hs-identifier hs-var">isDescribedBy</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679477992"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="annot"><span class="annottext">[CssDescriptor]
+</span><a href="#local-6989586621679477989"><span class="hs-identifier hs-var">descr</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[[a]] -&gt; [CssSelector] -&gt; Bool
+</span><a href="#local-6989586621679478000"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">[[a]]
+</span><a href="#local-6989586621679477991"><span class="hs-identifier hs-var">upper</span></a></span><span> </span><span class="annot"><span class="annottext">[CssSelector]
+</span><a href="#local-6989586621679477988"><span class="hs-identifier hs-var">rest</span></a></span><span>
+</span><span id="line-152"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[[a]] -&gt; [CssSelector] -&gt; Bool
+</span><a href="#local-6989586621679478000"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">[[a]]
+</span><a href="#local-6989586621679477991"><span class="hs-identifier hs-var">upper</span></a></span><span> </span><span class="annot"><span class="annottext">[CssSelector]
+</span><a href="#local-6989586621679477990"><span class="hs-identifier hs-var">selectors</span></a></span><span>
+</span><span id="line-153"></span><span>  </span><span class="annot"><a href="#local-6989586621679478000"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[a]
+</span><span class="hs-identifier">_</span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679477987"><span class="annot"><span class="annottext">[[a]]
+</span><a href="#local-6989586621679477987"><span class="hs-identifier hs-var">upper</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679477986"><span class="annot"><span class="annottext">[CssSelector]
+</span><a href="#local-6989586621679477986"><span class="hs-identifier hs-var">selector</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[[a]] -&gt; [CssSelector] -&gt; Bool
+</span><a href="#local-6989586621679478000"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">[[a]]
+</span><a href="#local-6989586621679477987"><span class="hs-identifier hs-var">upper</span></a></span><span> </span><span class="annot"><span class="annottext">[CssSelector]
+</span><a href="#local-6989586621679477986"><span class="hs-identifier hs-var">selector</span></a></span><span>
+</span><span id="line-154"></span><span>
+</span><span id="line-155"></span><span class="hs-comment">-- | Given CSS rules, find all the declarations to apply to the</span><span>
+</span><span id="line-156"></span><span class="hs-comment">-- element in a given context.</span><span>
+</span><span id="line-157"></span><span id="local-6989586621679477985"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#findMatchingDeclarations"><span class="hs-identifier hs-type">findMatchingDeclarations</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssMatcheable"><span class="hs-identifier hs-type">CssMatcheable</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679477985"><span class="hs-identifier hs-type">a</span></a></span><span>
+</span><span id="line-158"></span><span>                         </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssRule"><span class="hs-identifier hs-type">CssRule</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssContext"><span class="hs-identifier hs-type">CssContext</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679477985"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDeclaration"><span class="hs-identifier hs-type">CssDeclaration</span></a></span><span class="hs-special">]</span></span><span>
+</span><span id="line-159"></span><span id="findMatchingDeclarations"><span class="annot"><span class="annottext">findMatchingDeclarations :: [CssRule] -&gt; CssContext a -&gt; [CssDeclaration]
+</span><a href="Graphics.SvgTree.CssTypes.html#findMatchingDeclarations"><span class="hs-identifier hs-var hs-var">findMatchingDeclarations</span></a></span></span><span> </span><span id="local-6989586621679477984"><span class="annot"><span class="annottext">[CssRule]
+</span><a href="#local-6989586621679477984"><span class="hs-identifier hs-var">rules</span></a></span></span><span> </span><span id="local-6989586621679477983"><span class="annot"><span class="annottext">CssContext a
+</span><a href="#local-6989586621679477983"><span class="hs-identifier hs-var">context</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-160"></span><span>    </span><span class="annot"><span class="annottext">[[CssDeclaration]] -&gt; [CssDeclaration]
+forall (t :: * -&gt; *) a. Foldable t =&gt; t [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">concat</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">CssRule -&gt; [CssDeclaration]
+</span><a href="Graphics.SvgTree.CssTypes.html#cssDeclarations"><span class="hs-identifier hs-var hs-var">cssDeclarations</span></a></span><span> </span><span class="annot"><span class="annottext">CssRule
+</span><a href="#local-6989586621679477981"><span class="hs-identifier hs-var">rule</span></a></span><span>
+</span><span id="line-161"></span><span>                    </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679477981"><span class="annot"><span class="annottext">CssRule
+</span><a href="#local-6989586621679477981"><span class="hs-identifier hs-var">rule</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[CssRule]
+</span><a href="#local-6989586621679477984"><span class="hs-identifier hs-var">rules</span></a></span><span>
+</span><span id="line-162"></span><span>                    </span><span class="hs-special">,</span><span> </span><span id="local-6989586621679477980"><span class="annot"><span class="annottext">[CssSelector]
+</span><a href="#local-6989586621679477980"><span class="hs-identifier hs-var">selector</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">CssRule -&gt; [[CssSelector]]
+</span><a href="Graphics.SvgTree.CssTypes.html#cssRuleSelector"><span class="hs-identifier hs-var hs-var">cssRuleSelector</span></a></span><span> </span><span class="annot"><span class="annottext">CssRule
+</span><a href="#local-6989586621679477981"><span class="hs-identifier hs-var">rule</span></a></span><span>
+</span><span id="line-163"></span><span>                    </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">CssContext a -&gt; [CssSelector] -&gt; Bool
+forall a. CssMatcheable a =&gt; [[a]] -&gt; [CssSelector] -&gt; Bool
+</span><a href="Graphics.SvgTree.CssTypes.html#isMatching"><span class="hs-identifier hs-var">isMatching</span></a></span><span> </span><span class="annot"><span class="annottext">CssContext a
+</span><a href="#local-6989586621679477983"><span class="hs-identifier hs-var">context</span></a></span><span> </span><span class="annot"><span class="annottext">([CssSelector] -&gt; Bool) -&gt; [CssSelector] -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[CssSelector] -&gt; [CssSelector]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="annot"><span class="annottext">[CssSelector]
+</span><a href="#local-6989586621679477980"><span class="hs-identifier hs-var">selector</span></a></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-164"></span><span>
+</span><span id="line-165"></span><span class="hs-comment">-- | Represents the content to apply to some</span><span>
+</span><span id="line-166"></span><span class="hs-comment">-- CSS matched rules.</span><span>
+</span><span id="line-167"></span><span class="hs-keyword">data</span><span> </span><span id="CssDeclaration"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDeclaration"><span class="hs-identifier hs-var">CssDeclaration</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="CssDeclaration"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDeclaration"><span class="hs-identifier hs-var">CssDeclaration</span></a></span></span><span>
+</span><span id="line-168"></span><span>    </span><span class="hs-special">{</span><span> </span><span class="hs-comment">-- | Property name to change (like font-family or color).</span><span>
+</span><span id="line-169"></span><span>      </span><span id="_cssDeclarationProperty"><span class="annot"><span class="annottext">CssDeclaration -&gt; Text
+</span><a href="Graphics.SvgTree.CssTypes.html#_cssDeclarationProperty"><span class="hs-identifier hs-var hs-var">_cssDeclarationProperty</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-170"></span><span>      </span><span class="hs-comment">-- | List of values</span><span>
+</span><span id="line-171"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="_cssDecarationlValues"><span class="annot"><span class="annottext">CssDeclaration -&gt; [[CssElement]]
+</span><a href="Graphics.SvgTree.CssTypes.html#_cssDecarationlValues"><span class="hs-identifier hs-var hs-var">_cssDecarationlValues</span></a></span></span><span>   </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssElement"><span class="hs-identifier hs-type">CssElement</span></a></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-172"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-173"></span><span>    </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679477972"><span id="local-6989586621679477974"><span class="annot"><span class="annottext">CssDeclaration -&gt; CssDeclaration -&gt; Bool
+(CssDeclaration -&gt; CssDeclaration -&gt; Bool)
+-&gt; (CssDeclaration -&gt; CssDeclaration -&gt; Bool) -&gt; Eq CssDeclaration
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: CssDeclaration -&gt; CssDeclaration -&gt; Bool
+$c/= :: CssDeclaration -&gt; CssDeclaration -&gt; Bool
+== :: CssDeclaration -&gt; CssDeclaration -&gt; Bool
+$c== :: CssDeclaration -&gt; CssDeclaration -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679477966"><span id="local-6989586621679477968"><span id="local-6989586621679477970"><span class="annot"><span class="annottext">Int -&gt; CssDeclaration -&gt; ShowS
+[CssDeclaration] -&gt; ShowS
+CssDeclaration -&gt; String
+(Int -&gt; CssDeclaration -&gt; ShowS)
+-&gt; (CssDeclaration -&gt; String)
+-&gt; ([CssDeclaration] -&gt; ShowS)
+-&gt; Show CssDeclaration
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [CssDeclaration] -&gt; ShowS
+$cshowList :: [CssDeclaration] -&gt; ShowS
+show :: CssDeclaration -&gt; String
+$cshow :: CssDeclaration -&gt; String
+showsPrec :: Int -&gt; CssDeclaration -&gt; ShowS
+$cshowsPrec :: Int -&gt; CssDeclaration -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-174"></span><span>
+</span><span id="line-175"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#TextBuildable"><span class="hs-identifier hs-type">TextBuildable</span></a></span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDeclaration"><span class="hs-identifier hs-type">CssDeclaration</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-176"></span><span>  </span><span id="local-6989586621679477964"><span class="annot"><span class="annottext">tserialize :: CssDeclaration -&gt; Builder
+</span><a href="#local-6989586621679477964"><span class="hs-identifier hs-var hs-var hs-var hs-var">tserialize</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssDeclaration"><span class="hs-identifier hs-type">CssDeclaration</span></a></span><span> </span><span id="local-6989586621679477963"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679477963"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679477962"><span class="annot"><span class="annottext">[[CssElement]]
+</span><a href="#local-6989586621679477962"><span class="hs-identifier hs-var">elems</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-177"></span><span>      </span><span class="annot"><span class="annottext">[Builder] -&gt; Builder
+forall a. Monoid a =&gt; [a] -&gt; a
+</span><span class="hs-identifier hs-var">mconcat</span></span><span> </span><span class="annot"><span class="annottext">([Builder] -&gt; Builder) -&gt; [Builder] -&gt; Builder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679477961"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679477963"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; [Builder] -&gt; [Builder]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679477961"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;: &quot;</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; [Builder] -&gt; [Builder]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; [Builder] -&gt; [Builder]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">intersperse</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679477960"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">' '</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Builder]
+</span><a href="#local-6989586621679477959"><span class="hs-identifier hs-var">finalElems</span></a></span><span>
+</span><span id="line-178"></span><span>     </span><span class="hs-keyword">where</span><span>
+</span><span id="line-179"></span><span>      </span><span id="local-6989586621679477959"><span class="annot"><span class="annottext">finalElems :: [Builder]
+</span><a href="#local-6989586621679477959"><span class="hs-identifier hs-var hs-var">finalElems</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(CssElement -&gt; Builder) -&gt; [CssElement] -&gt; [Builder]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">CssElement -&gt; Builder
+forall a. TextBuildable a =&gt; a -&gt; Builder
+</span><a href="Graphics.SvgTree.CssTypes.html#tserialize"><span class="hs-identifier hs-var">tserialize</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[[CssElement]] -&gt; [CssElement]
+forall (t :: * -&gt; *) a. Foldable t =&gt; t [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">concat</span></span><span> </span><span class="annot"><span class="annottext">[[CssElement]]
+</span><a href="#local-6989586621679477962"><span class="hs-identifier hs-var">elems</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-180"></span><span>      </span><span id="local-6989586621679477961"><span class="annot"><span class="annottext">ft :: Text -&gt; Builder
+</span><a href="#local-6989586621679477961"><span class="hs-identifier hs-var hs-var">ft</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><span class="hs-identifier hs-var">TB.fromText</span></span><span>
+</span><span id="line-181"></span><span>      </span><span id="local-6989586621679477960"><span class="annot"><span class="annottext">si :: Char -&gt; Builder
+</span><a href="#local-6989586621679477960"><span class="hs-identifier hs-var hs-var">si</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><span class="hs-identifier hs-var">TB.singleton</span></span><span>
+</span><span id="line-182"></span><span>
+</span><span id="line-183"></span><span>
+</span><span id="line-184"></span><span class="hs-comment">-- | Encode complex number possibly depending on the current</span><span>
+</span><span id="line-185"></span><span class="hs-comment">-- render size.</span><span>
+</span><span id="line-186"></span><span id="local-6989586621679477957"><span id="local-6989586621679477958"></span></span><span class="hs-keyword">data</span><span> </span><span id="Number"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Number"><span class="hs-identifier hs-var">Number</span></a></span></span><span>
+</span><span id="line-187"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="Num"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Num"><span class="hs-identifier hs-var">Num</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>       </span><span class="hs-comment">-- ^ Simple coordinate in current user coordinate.</span><span>
+</span><span id="line-188"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Px"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Px"><span class="hs-identifier hs-var">Px</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>        </span><span class="hs-comment">-- ^ With suffix &quot;px&quot;</span><span>
+</span><span id="line-189"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Em"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Em"><span class="hs-identifier hs-var">Em</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>        </span><span class="hs-comment">-- ^ Number relative to the current font size.</span><span>
+</span><span id="line-190"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Percent"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Percent"><span class="hs-identifier hs-var">Percent</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>   </span><span class="hs-comment">-- ^ Number relative to the current viewport size.</span><span>
+</span><span id="line-191"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Pc"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Pc"><span class="hs-identifier hs-var">Pc</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-192"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Mm"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Mm"><span class="hs-identifier hs-var">Mm</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>        </span><span class="hs-comment">-- ^ Number in millimeters, relative to DPI.</span><span>
+</span><span id="line-193"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Cm"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Cm"><span class="hs-identifier hs-var">Cm</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>        </span><span class="hs-comment">-- ^ Number in centimeters, relative to DPI.</span><span>
+</span><span id="line-194"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Point"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Point"><span class="hs-identifier hs-var">Point</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>     </span><span class="hs-comment">-- ^ Number in points, relative to DPI.</span><span>
+</span><span id="line-195"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Inches"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Inches"><span class="hs-identifier hs-var">Inches</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>    </span><span class="hs-comment">-- ^ Number in inches, relative to DPI.</span><span>
+</span><span id="line-196"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679477944"><span id="local-6989586621679477946"><span class="annot"><span class="annottext">Number -&gt; Number -&gt; Bool
+(Number -&gt; Number -&gt; Bool)
+-&gt; (Number -&gt; Number -&gt; Bool) -&gt; Eq Number
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: Number -&gt; Number -&gt; Bool
+$c/= :: Number -&gt; Number -&gt; Bool
+== :: Number -&gt; Number -&gt; Bool
+$c== :: Number -&gt; Number -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679477938"><span id="local-6989586621679477940"><span id="local-6989586621679477942"><span class="annot"><span class="annottext">Int -&gt; Number -&gt; ShowS
+[Number] -&gt; ShowS
+Number -&gt; String
+(Int -&gt; Number -&gt; ShowS)
+-&gt; (Number -&gt; String) -&gt; ([Number] -&gt; ShowS) -&gt; Show Number
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Number] -&gt; ShowS
+$cshowList :: [Number] -&gt; ShowS
+show :: Number -&gt; String
+$cshow :: Number -&gt; String
+showsPrec :: Int -&gt; Number -&gt; ShowS
+$cshowsPrec :: Int -&gt; Number -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(forall x. Number -&gt; Rep Number x)
+-&gt; (forall x. Rep Number x -&gt; Number) -&gt; Generic Number
+forall x. Rep Number x -&gt; Number
+forall x. Number -&gt; Rep Number x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep Number x -&gt; Number
+$cfrom :: forall x. Number -&gt; Rep Number x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679477931"><span id="local-6989586621679477933"><span class="annot"><span class="annottext">Int -&gt; Number -&gt; Int
+Number -&gt; Int
+(Int -&gt; Number -&gt; Int) -&gt; (Number -&gt; Int) -&gt; Hashable Number
+forall a. (Int -&gt; a -&gt; Int) -&gt; (a -&gt; Int) -&gt; Hashable a
+hash :: Number -&gt; Int
+$chash :: Number -&gt; Int
+hashWithSalt :: Int -&gt; Number -&gt; Int
+$chashWithSalt :: Int -&gt; Number -&gt; Int
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Hashable</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-197"></span><span>
+</span><span id="line-198"></span><span class="hs-comment">-- | Helper function to modify inner value of a number</span><span>
+</span><span id="line-199"></span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#mapNumber"><span class="hs-identifier hs-type">mapNumber</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Number"><span class="hs-identifier hs-type">Number</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Number"><span class="hs-identifier hs-type">Number</span></a></span><span>
+</span><span id="line-200"></span><span id="mapNumber"><span class="annot"><span class="annottext">mapNumber :: (Double -&gt; Double) -&gt; Number -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#mapNumber"><span class="hs-identifier hs-var hs-var">mapNumber</span></a></span></span><span> </span><span id="local-6989586621679477929"><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679477929"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679477928"><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679477928"><span class="hs-identifier hs-var">nu</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679477928"><span class="hs-identifier hs-var">nu</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-201"></span><span>  </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Num"><span class="hs-identifier hs-type">Num</span></a></span><span> </span><span id="local-6989586621679477927"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477927"><span class="hs-identifier hs-var">n</span></a></span></span><span>     </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Num"><span class="hs-identifier hs-var">Num</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679477929"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477927"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-202"></span><span>  </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Px"><span class="hs-identifier hs-type">Px</span></a></span><span> </span><span id="local-6989586621679477926"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477926"><span class="hs-identifier hs-var">n</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Px"><span class="hs-identifier hs-var">Px</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679477929"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477926"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-203"></span><span>  </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Em"><span class="hs-identifier hs-type">Em</span></a></span><span> </span><span id="local-6989586621679477925"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477925"><span class="hs-identifier hs-var">n</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Em"><span class="hs-identifier hs-var">Em</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679477929"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477925"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-204"></span><span>  </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Percent"><span class="hs-identifier hs-type">Percent</span></a></span><span> </span><span id="local-6989586621679477924"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477924"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Percent"><span class="hs-identifier hs-var">Percent</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679477929"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477924"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-205"></span><span>  </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Pc"><span class="hs-identifier hs-type">Pc</span></a></span><span> </span><span id="local-6989586621679477923"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477923"><span class="hs-identifier hs-var">n</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Pc"><span class="hs-identifier hs-var">Pc</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679477929"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477923"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-206"></span><span>  </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Mm"><span class="hs-identifier hs-type">Mm</span></a></span><span> </span><span id="local-6989586621679477922"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477922"><span class="hs-identifier hs-var">n</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Mm"><span class="hs-identifier hs-var">Mm</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679477929"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477922"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-207"></span><span>  </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Cm"><span class="hs-identifier hs-type">Cm</span></a></span><span> </span><span id="local-6989586621679477921"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477921"><span class="hs-identifier hs-var">n</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Cm"><span class="hs-identifier hs-var">Cm</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679477929"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477921"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-208"></span><span>  </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Point"><span class="hs-identifier hs-type">Point</span></a></span><span> </span><span id="local-6989586621679477920"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477920"><span class="hs-identifier hs-var">n</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Point"><span class="hs-identifier hs-var">Point</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679477929"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477920"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-209"></span><span>  </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Inches"><span class="hs-identifier hs-type">Inches</span></a></span><span> </span><span id="local-6989586621679477919"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477919"><span class="hs-identifier hs-var">n</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Inches"><span class="hs-identifier hs-var">Inches</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+</span><a href="#local-6989586621679477929"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477919"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-210"></span><span>
+</span><span id="line-211"></span><span class="hs-comment">-- | Encode the number to string which can be used in a</span><span>
+</span><span id="line-212"></span><span class="hs-comment">-- CSS or a svg attributes.</span><span>
+</span><span id="line-213"></span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#serializeNumber"><span class="hs-identifier hs-type">serializeNumber</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Number"><span class="hs-identifier hs-type">Number</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-214"></span><span id="serializeNumber"><span class="annot"><span class="annottext">serializeNumber :: Number -&gt; String
+</span><a href="Graphics.SvgTree.CssTypes.html#serializeNumber"><span class="hs-identifier hs-var hs-var">serializeNumber</span></a></span></span><span> </span><span id="local-6989586621679477918"><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679477918"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679477918"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-215"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Num"><span class="hs-identifier hs-type">Num</span></a></span><span> </span><span id="local-6989586621679477917"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477917"><span class="hs-identifier hs-var">c</span></a></span></span><span>     </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; String
+</span><a href="Graphics.SvgTree.Misc.html#ppD"><span class="hs-identifier hs-var">ppD</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477917"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-216"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Px"><span class="hs-identifier hs-type">Px</span></a></span><span> </span><span id="local-6989586621679477915"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477915"><span class="hs-identifier hs-var">c</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall r. PrintfType r =&gt; String -&gt; r
+</span><span class="hs-identifier hs-var">printf</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;%spx&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; String
+</span><a href="Graphics.SvgTree.Misc.html#ppD"><span class="hs-identifier hs-var">ppD</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477915"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-217"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Em"><span class="hs-identifier hs-type">Em</span></a></span><span> </span><span id="local-6989586621679477913"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477913"><span class="hs-identifier hs-var">cc</span></a></span></span><span>     </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall r. PrintfType r =&gt; String -&gt; r
+</span><span class="hs-identifier hs-var">printf</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;%sem&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; String
+</span><a href="Graphics.SvgTree.Misc.html#ppD"><span class="hs-identifier hs-var">ppD</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477913"><span class="hs-identifier hs-var">cc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-218"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Percent"><span class="hs-identifier hs-type">Percent</span></a></span><span> </span><span id="local-6989586621679477912"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477912"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; Int -&gt; String
+forall r. PrintfType r =&gt; String -&gt; r
+</span><span class="hs-identifier hs-var">printf</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;%d%%&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Int
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">floor</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Int) -&gt; Double -&gt; Int
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">100</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477912"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span>
+</span><span id="line-219"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Pc"><span class="hs-identifier hs-type">Pc</span></a></span><span> </span><span id="local-6989586621679477909"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477909"><span class="hs-identifier hs-var">p</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall r. PrintfType r =&gt; String -&gt; r
+</span><span class="hs-identifier hs-var">printf</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;%spc&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; String
+</span><a href="Graphics.SvgTree.Misc.html#ppD"><span class="hs-identifier hs-var">ppD</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477909"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-220"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Mm"><span class="hs-identifier hs-type">Mm</span></a></span><span> </span><span id="local-6989586621679477908"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477908"><span class="hs-identifier hs-var">m</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall r. PrintfType r =&gt; String -&gt; r
+</span><span class="hs-identifier hs-var">printf</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;%smm&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; String
+</span><a href="Graphics.SvgTree.Misc.html#ppD"><span class="hs-identifier hs-var">ppD</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477908"><span class="hs-identifier hs-var">m</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-221"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Cm"><span class="hs-identifier hs-type">Cm</span></a></span><span> </span><span id="local-6989586621679477907"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477907"><span class="hs-identifier hs-var">c</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall r. PrintfType r =&gt; String -&gt; r
+</span><span class="hs-identifier hs-var">printf</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;%scm&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; String
+</span><a href="Graphics.SvgTree.Misc.html#ppD"><span class="hs-identifier hs-var">ppD</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477907"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-222"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Point"><span class="hs-identifier hs-type">Point</span></a></span><span> </span><span id="local-6989586621679477906"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477906"><span class="hs-identifier hs-var">p</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall r. PrintfType r =&gt; String -&gt; r
+</span><span class="hs-identifier hs-var">printf</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;%spt&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; String
+</span><a href="Graphics.SvgTree.Misc.html#ppD"><span class="hs-identifier hs-var">ppD</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477906"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-223"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Inches"><span class="hs-identifier hs-type">Inches</span></a></span><span> </span><span id="local-6989586621679477905"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477905"><span class="hs-identifier hs-var">i</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall r. PrintfType r =&gt; String -&gt; r
+</span><span class="hs-identifier hs-var">printf</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;%sin&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; String
+</span><a href="Graphics.SvgTree.Misc.html#ppD"><span class="hs-identifier hs-var">ppD</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477905"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-224"></span><span>
+</span><span id="line-225"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#TextBuildable"><span class="hs-identifier hs-type">TextBuildable</span></a></span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Number"><span class="hs-identifier hs-type">Number</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-226"></span><span>   </span><span id="local-6989586621679477903"><span class="annot"><span class="annottext">tserialize :: Number -&gt; Builder
+</span><a href="#local-6989586621679477903"><span class="hs-identifier hs-var hs-var hs-var hs-var">tserialize</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><span class="hs-identifier hs-var">TB.fromText</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Builder) -&gt; (Number -&gt; Text) -&gt; Number -&gt; Builder
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Text) -&gt; (Number -&gt; String) -&gt; Number -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Number -&gt; String
+</span><a href="Graphics.SvgTree.CssTypes.html#serializeNumber"><span class="hs-identifier hs-var">serializeNumber</span></a></span><span>
+</span><span id="line-227"></span><span>
+</span><span id="line-228"></span><span class="hs-comment">-- | Value of a CSS property.</span><span>
+</span><span id="line-229"></span><span class="hs-keyword">data</span><span> </span><span id="CssElement"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssElement"><span class="hs-identifier hs-var">CssElement</span></a></span></span><span>
+</span><span id="line-230"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span id="CssIdent"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssIdent"><span class="hs-identifier hs-var">CssIdent</span></a></span></span><span>     </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-231"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="CssString"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssString"><span class="hs-identifier hs-var">CssString</span></a></span></span><span>    </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-232"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="CssReference"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssReference"><span class="hs-identifier hs-var">CssReference</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span>
+</span><span id="line-233"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="CssNumber"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssNumber"><span class="hs-identifier hs-var">CssNumber</span></a></span></span><span>    </span><span class="hs-glyph">!</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Number"><span class="hs-identifier hs-type">Number</span></a></span><span>
+</span><span id="line-234"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="CssColor"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssColor"><span class="hs-identifier hs-var">CssColor</span></a></span></span><span>     </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">PixelRGBA8</span></span><span>
+</span><span id="line-235"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="CssFunction"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssFunction"><span class="hs-identifier hs-var">CssFunction</span></a></span></span><span>  </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">T.Text</span></span><span> </span><span class="hs-glyph">!</span><span class="hs-special">[</span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssElement"><span class="hs-identifier hs-type">CssElement</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-236"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="CssOpComa"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssOpComa"><span class="hs-identifier hs-var">CssOpComa</span></a></span></span><span>
+</span><span id="line-237"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="CssOpSlash"><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssOpSlash"><span class="hs-identifier hs-var">CssOpSlash</span></a></span></span><span>
+</span><span id="line-238"></span><span>    </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679477890"><span id="local-6989586621679477892"><span class="annot"><span class="annottext">CssElement -&gt; CssElement -&gt; Bool
+(CssElement -&gt; CssElement -&gt; Bool)
+-&gt; (CssElement -&gt; CssElement -&gt; Bool) -&gt; Eq CssElement
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: CssElement -&gt; CssElement -&gt; Bool
+$c/= :: CssElement -&gt; CssElement -&gt; Bool
+== :: CssElement -&gt; CssElement -&gt; Bool
+$c== :: CssElement -&gt; CssElement -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679477884"><span id="local-6989586621679477886"><span id="local-6989586621679477888"><span class="annot"><span class="annottext">Int -&gt; CssElement -&gt; ShowS
+[CssElement] -&gt; ShowS
+CssElement -&gt; String
+(Int -&gt; CssElement -&gt; ShowS)
+-&gt; (CssElement -&gt; String)
+-&gt; ([CssElement] -&gt; ShowS)
+-&gt; Show CssElement
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [CssElement] -&gt; ShowS
+$cshowList :: [CssElement] -&gt; ShowS
+show :: CssElement -&gt; String
+$cshow :: CssElement -&gt; String
+showsPrec :: Int -&gt; CssElement -&gt; ShowS
+$cshowsPrec :: Int -&gt; CssElement -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-239"></span><span>
+</span><span id="line-240"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#TextBuildable"><span class="hs-identifier hs-type">TextBuildable</span></a></span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssElement"><span class="hs-identifier hs-type">CssElement</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-241"></span><span>  </span><span id="local-6989586621679477882"><span class="annot"><span class="annottext">tserialize :: CssElement -&gt; Builder
+</span><a href="#local-6989586621679477882"><span class="hs-identifier hs-var hs-var hs-var hs-var">tserialize</span></a></span></span><span> </span><span id="local-6989586621679477881"><span class="annot"><span class="annottext">CssElement
+</span><a href="#local-6989586621679477881"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">CssElement
+</span><a href="#local-6989586621679477881"><span class="hs-identifier hs-var">e</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-242"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssIdent"><span class="hs-identifier hs-type">CssIdent</span></a></span><span>    </span><span id="local-6989586621679477880"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679477880"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679477879"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679477880"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-243"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssString"><span class="hs-identifier hs-type">CssString</span></a></span><span>   </span><span id="local-6989586621679477878"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679477878"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679477877"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&quot;'</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679477879"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679477878"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679477877"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&quot;'</span></span><span>
+</span><span id="line-244"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssReference"><span class="hs-identifier hs-type">CssReference</span></a></span><span> </span><span id="local-6989586621679477876"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679477876"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679477877"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'#'</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679477879"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679477876"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-245"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssNumber"><span class="hs-identifier hs-type">CssNumber</span></a></span><span>   </span><span id="local-6989586621679477875"><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679477875"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Number -&gt; Builder
+forall a. TextBuildable a =&gt; a -&gt; Builder
+</span><a href="Graphics.SvgTree.CssTypes.html#tserialize"><span class="hs-identifier hs-var">tserialize</span></a></span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679477875"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-246"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssColor"><span class="hs-identifier hs-type">CssColor</span></a></span><span>  </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">PixelRGBA8</span></span><span> </span><span id="local-6989586621679477873"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679477873"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span id="local-6989586621679477872"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679477872"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span id="local-6989586621679477871"><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679477871"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-247"></span><span>      </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679477879"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Builder) -&gt; (String -&gt; Text) -&gt; String -&gt; Builder
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Builder) -&gt; String -&gt; Builder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Pixel8 -&gt; Pixel8 -&gt; Pixel8 -&gt; String
+forall r. PrintfType r =&gt; String -&gt; r
+</span><span class="hs-identifier hs-var">printf</span></span><span>  </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;#%02X%02X%02X&quot;</span></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679477873"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679477872"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">Pixel8
+</span><a href="#local-6989586621679477871"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-248"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#CssFunction"><span class="hs-identifier hs-type">CssFunction</span></a></span><span> </span><span id="local-6989586621679477870"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679477870"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679477869"><span class="annot"><span class="annottext">[CssElement]
+</span><a href="#local-6989586621679477869"><span class="hs-identifier hs-var">els</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[Builder] -&gt; Builder
+forall a. Monoid a =&gt; [a] -&gt; a
+</span><span class="hs-identifier hs-var">mconcat</span></span><span> </span><span class="annot"><span class="annottext">([Builder] -&gt; Builder) -&gt; [Builder] -&gt; Builder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679477879"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679477870"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; [Builder] -&gt; [Builder]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679477877"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'('</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; [Builder] -&gt; [Builder]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[Builder]
+</span><a href="#local-6989586621679477868"><span class="hs-identifier hs-var">args</span></a></span><span> </span><span class="annot"><span class="annottext">[Builder] -&gt; [Builder] -&gt; [Builder]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679477877"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">')'</span></span><span class="hs-special">]</span><span>
+</span><span id="line-249"></span><span>        </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679477868"><span class="annot"><span class="annottext">args :: [Builder]
+</span><a href="#local-6989586621679477868"><span class="hs-identifier hs-var hs-var">args</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; [Builder] -&gt; [Builder]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">intersperse</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><a href="#local-6989586621679477879"><span class="hs-identifier hs-var">ft</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;, &quot;</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(CssElement -&gt; Builder) -&gt; [CssElement] -&gt; [Builder]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">CssElement -&gt; Builder
+forall a. TextBuildable a =&gt; a -&gt; Builder
+</span><a href="Graphics.SvgTree.CssTypes.html#tserialize"><span class="hs-identifier hs-var">tserialize</span></a></span><span> </span><span class="annot"><span class="annottext">[CssElement]
+</span><a href="#local-6989586621679477869"><span class="hs-identifier hs-var">els</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-250"></span><span>    </span><span class="annot"><span class="annottext">CssElement
+</span><a href="Graphics.SvgTree.CssTypes.html#CssOpComa"><span class="hs-identifier hs-var">CssOpComa</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679477877"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">','</span></span><span>
+</span><span id="line-251"></span><span>    </span><span class="annot"><span class="annottext">CssElement
+</span><a href="Graphics.SvgTree.CssTypes.html#CssOpSlash"><span class="hs-identifier hs-var">CssOpSlash</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><a href="#local-6989586621679477877"><span class="hs-identifier hs-var">si</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'/'</span></span><span>
+</span><span id="line-252"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-253"></span><span>      </span><span id="local-6989586621679477879"><span class="annot"><span class="annottext">ft :: Text -&gt; Builder
+</span><a href="#local-6989586621679477879"><span class="hs-identifier hs-var hs-var">ft</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><span class="hs-identifier hs-var">TB.fromText</span></span><span>
+</span><span id="line-254"></span><span>      </span><span id="local-6989586621679477877"><span class="annot"><span class="annottext">si :: Char -&gt; Builder
+</span><a href="#local-6989586621679477877"><span class="hs-identifier hs-var hs-var">si</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Builder
+</span><span class="hs-identifier hs-var">TB.singleton</span></span><span>
+</span><span id="line-255"></span><span>
+</span><span id="line-256"></span><span class="hs-comment">-- | This function replaces all device dependant units with user</span><span>
+</span><span id="line-257"></span><span class="hs-comment">-- units given its DPI configuration.</span><span>
+</span><span id="line-258"></span><span class="hs-comment">-- Preserves percentage and &quot;em&quot; notation.</span><span>
+</span><span id="line-259"></span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#toUserUnit"><span class="hs-identifier hs-type">toUserUnit</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Dpi"><span class="hs-identifier hs-type">Dpi</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Number"><span class="hs-identifier hs-type">Number</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Number"><span class="hs-identifier hs-type">Number</span></a></span><span>
+</span><span id="line-260"></span><span id="toUserUnit"><span class="annot"><span class="annottext">toUserUnit :: Int -&gt; Number -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#toUserUnit"><span class="hs-identifier hs-var hs-var">toUserUnit</span></a></span></span><span> </span><span id="local-6989586621679477867"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679477867"><span class="hs-identifier hs-var">dpi</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Number -&gt; Number
+</span><a href="#local-6989586621679477866"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-261"></span><span>  </span><span id="local-6989586621679477866"><span class="annot"><span class="annottext">go :: Number -&gt; Number
+</span><a href="#local-6989586621679477866"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679477865"><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679477865"><span class="hs-identifier hs-var">nu</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679477865"><span class="hs-identifier hs-var">nu</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-262"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Num"><span class="hs-identifier hs-type">Num</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span>     </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679477865"><span class="hs-identifier hs-var">nu</span></a></span><span>
+</span><span id="line-263"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Px"><span class="hs-identifier hs-type">Px</span></a></span><span> </span><span id="local-6989586621679477864"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477864"><span class="hs-identifier hs-var">p</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Number -&gt; Number
+</span><a href="#local-6989586621679477866"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">(Number -&gt; Number) -&gt; Number -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Num"><span class="hs-identifier hs-var">Num</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477864"><span class="hs-identifier hs-var">p</span></a></span><span>
+</span><span id="line-264"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Em"><span class="hs-identifier hs-type">Em</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679477865"><span class="hs-identifier hs-var">nu</span></a></span><span>
+</span><span id="line-265"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Percent"><span class="hs-identifier hs-type">Percent</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Number
+</span><a href="#local-6989586621679477865"><span class="hs-identifier hs-var">nu</span></a></span><span>
+</span><span id="line-266"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Pc"><span class="hs-identifier hs-type">Pc</span></a></span><span> </span><span id="local-6989586621679477863"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477863"><span class="hs-identifier hs-var">n</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Number -&gt; Number
+</span><a href="#local-6989586621679477866"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">(Number -&gt; Number) -&gt; (Double -&gt; Number) -&gt; Double -&gt; Number
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Inches"><span class="hs-identifier hs-var">Inches</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">12</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477863"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">72</span></span><span>
+</span><span id="line-267"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Inches"><span class="hs-identifier hs-type">Inches</span></a></span><span> </span><span id="local-6989586621679477861"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477861"><span class="hs-identifier hs-var">n</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Num"><span class="hs-identifier hs-var">Num</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477861"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Double
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679477867"><span class="hs-identifier hs-var">dpi</span></a></span><span>
+</span><span id="line-268"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Mm"><span class="hs-identifier hs-type">Mm</span></a></span><span> </span><span id="local-6989586621679477860"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477860"><span class="hs-identifier hs-var">n</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Number -&gt; Number
+</span><a href="#local-6989586621679477866"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">(Number -&gt; Number) -&gt; (Double -&gt; Number) -&gt; Double -&gt; Number
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Inches"><span class="hs-identifier hs-var">Inches</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477860"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">25.4</span></span><span>
+</span><span id="line-269"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Cm"><span class="hs-identifier hs-type">Cm</span></a></span><span> </span><span id="local-6989586621679477859"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477859"><span class="hs-identifier hs-var">n</span></a></span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Number -&gt; Number
+</span><a href="#local-6989586621679477866"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">(Number -&gt; Number) -&gt; (Double -&gt; Number) -&gt; Double -&gt; Number
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Inches"><span class="hs-identifier hs-var">Inches</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477859"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2.54</span></span><span>
+</span><span id="line-270"></span><span>    </span><span class="annot"><a href="Graphics.SvgTree.CssTypes.html#Point"><span class="hs-identifier hs-type">Point</span></a></span><span> </span><span id="local-6989586621679477858"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477858"><span class="hs-identifier hs-var">n</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Number -&gt; Number
+</span><a href="#local-6989586621679477866"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">(Number -&gt; Number) -&gt; (Double -&gt; Number) -&gt; Double -&gt; Number
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Number
+</span><a href="Graphics.SvgTree.CssTypes.html#Inches"><span class="hs-identifier hs-var">Inches</span></a></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Number) -&gt; Double -&gt; Number
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679477858"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">72</span></span><span>
+</span><span id="line-271"></span></pre></body></html>

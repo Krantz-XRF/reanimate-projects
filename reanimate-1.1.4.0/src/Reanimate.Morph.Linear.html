@@ -1,0 +1,249 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Copyright   : Written by David Himmelstrup
+License     : Unlicense
+Maintainer  : lemmih@gmail.com
+Stability   : experimental
+Portability : POSIX
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Morph.Linear</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Morph.Linear.html#linear"><span class="hs-identifier">linear</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Morph.Linear.html#rawLinear"><span class="hs-identifier">rawLinear</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Morph.Linear.html#closestLinearCorrespondence"><span class="hs-identifier">closestLinearCorrespondence</span></a></span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Morph.Linear.html#closestLinearCorrespondenceA"><span class="hs-identifier">closestLinearCorrespondenceA</span></a></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Morph.Linear.html#linearTrajectory"><span class="hs-identifier">linearTrajectory</span></a></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Hashable</span></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Vector</span></span><span>            </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">V</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Linear.Vector</span></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.ColorComponents.html"><span class="hs-identifier">Reanimate.ColorComponents</span></a></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Math.Common.html"><span class="hs-identifier">Reanimate.Math.Common</span></a></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Math.Polygon.html"><span class="hs-identifier">Reanimate.Math.Polygon</span></a></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Morph.Cache.html"><span class="hs-identifier">Reanimate.Morph.Cache</span></a></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Morph.Common.html"><span class="hs-identifier">Reanimate.Morph.Common</span></a></span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-comment">-- | Linear interpolation strategy.</span><span>
+</span><span id="line-25"></span><span class="hs-comment">--</span><span>
+</span><span id="line-26"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-27"></span><span class="hs-comment">--</span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-29"></span><span class="hs-comment">-- 'Reanimate.playThenReverseA' $ 'Reanimate.pauseAround' 0.5 0.5 $ 'Reanimate.mkAnimation' 3 $ \\t -&gt;</span><span>
+</span><span id="line-30"></span><span class="hs-comment">--   'Reanimate.withStrokeLineJoin' 'Graphics.SvgTree.JoinRound' $</span><span>
+</span><span id="line-31"></span><span class="hs-comment">--   let src = 'Reanimate.scale' 8 $ 'Reanimate.center' $ 'Reanimate.LaTeX.latex' \&quot;X\&quot;</span><span>
+</span><span id="line-32"></span><span class="hs-comment">--       dst = 'Reanimate.scale' 8 $ 'Reanimate.center' $ 'Reanimate.LaTeX.latex' \&quot;H\&quot;</span><span>
+</span><span id="line-33"></span><span class="hs-comment">--   in 'morph' 'linear' src dst t</span><span>
+</span><span id="line-34"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-35"></span><span class="hs-comment">--</span><span>
+</span><span id="line-36"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_linear.gif&gt;&gt;</span><span>
+</span><span id="line-37"></span><span class="annot"><a href="Reanimate.Morph.Linear.html#linear"><span class="hs-identifier hs-type">linear</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Morph.Common.html#Morph"><span class="hs-identifier hs-type">Morph</span></a></span><span>
+</span><span id="line-38"></span><span id="linear"><span class="annot"><span class="annottext">linear :: Morph
+</span><a href="Reanimate.Morph.Linear.html#linear"><span class="hs-identifier hs-var hs-var">linear</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Morph
+</span><a href="Reanimate.Morph.Linear.html#rawLinear"><span class="hs-identifier hs-var">rawLinear</span></a></span><span>
+</span><span id="line-39"></span><span>  </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">morphPointCorrespondence :: PointCorrespondence
+</span><a href="Reanimate.Morph.Common.html#morphPointCorrespondence"><span class="hs-identifier hs-var">morphPointCorrespondence</span></a></span><span>  </span><span class="hs-glyph">=</span><span>
+</span><span id="line-40"></span><span>      </span><span class="annot"><span class="annottext">Int -&gt; PointCorrespondence -&gt; PointCorrespondence
+</span><a href="Reanimate.Morph.Cache.html#cachePointCorrespondence"><span class="hs-identifier hs-var">cachePointCorrespondence</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Int
+forall a. Hashable a =&gt; a -&gt; Int
+</span><span class="hs-identifier hs-var">hash</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;closest&quot;</span></span><span class="hs-glyph">::</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-41"></span><span>        </span><span class="annot"><span class="annottext">PointCorrespondence
+</span><a href="Reanimate.Morph.Linear.html#closestLinearCorrespondence"><span class="hs-identifier hs-var">closestLinearCorrespondence</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="hs-comment">-- | Linear interpolation strategy without realigning corners.</span><span>
+</span><span id="line-44"></span><span class="hs-comment">--   May give better results if the polygons are already aligned.</span><span>
+</span><span id="line-45"></span><span class="hs-comment">--   Usually gives worse results.</span><span>
+</span><span id="line-46"></span><span class="hs-comment">--</span><span>
+</span><span id="line-47"></span><span class="hs-comment">--   Example:</span><span>
+</span><span id="line-48"></span><span class="hs-comment">--</span><span>
+</span><span id="line-49"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-50"></span><span class="hs-comment">-- 'Reanimate.playThenReverseA' $ 'Reanimate.pauseAround' 0.5 0.5 $ 'Reanimate.mkAnimation' 3 $ \\t -&gt;</span><span>
+</span><span id="line-51"></span><span class="hs-comment">--   'Reanimate.withStrokeLineJoin' 'Graphics.SvgTree.JoinRound' $</span><span>
+</span><span id="line-52"></span><span class="hs-comment">--   let src = 'Reanimate.scale' 8 $ 'Reanimate.center' $ 'Reanimate.LaTeX.latex' \&quot;X\&quot;</span><span>
+</span><span id="line-53"></span><span class="hs-comment">--       dst = 'Reanimate.scale' 8 $ 'Reanimate.center' $ 'Reanimate.LaTeX.latex' \&quot;H\&quot;</span><span>
+</span><span id="line-54"></span><span class="hs-comment">--   in 'morph' 'rawLinear' src dst t</span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-56"></span><span class="hs-comment">--</span><span>
+</span><span id="line-57"></span><span class="hs-comment">--   &lt;&lt;docs/gifs/doc_rawLinear.gif&gt;&gt;</span><span>
+</span><span id="line-58"></span><span class="annot"><a href="Reanimate.Morph.Linear.html#rawLinear"><span class="hs-identifier hs-type">rawLinear</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Morph.Common.html#Morph"><span class="hs-identifier hs-type">Morph</span></a></span><span>
+</span><span id="line-59"></span><span id="rawLinear"><span class="annot"><span class="annottext">rawLinear :: Morph
+</span><a href="Reanimate.Morph.Linear.html#rawLinear"><span class="hs-identifier hs-var hs-var">rawLinear</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Morph :: Double
+-&gt; ColorComponents
+-&gt; PointCorrespondence
+-&gt; Trajectory
+-&gt; ObjectCorrespondence
+-&gt; Morph
+</span><a href="Reanimate.Morph.Common.html#Morph"><span class="hs-identifier hs-type">Morph</span></a></span><span>
+</span><span id="line-60"></span><span>  </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">morphTolerance :: Double
+</span><a href="Reanimate.Morph.Common.html#morphTolerance"><span class="hs-identifier hs-var">morphTolerance</span></a></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.001</span></span><span>
+</span><span id="line-61"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">morphColorComponents :: ColorComponents
+</span><a href="Reanimate.Morph.Common.html#morphColorComponents"><span class="hs-identifier hs-var">morphColorComponents</span></a></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ColorComponents
+</span><a href="Reanimate.ColorComponents.html#labComponents"><span class="hs-identifier hs-var">labComponents</span></a></span><span>
+</span><span id="line-62"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">morphPointCorrespondence :: PointCorrespondence
+</span><a href="Reanimate.Morph.Common.html#morphPointCorrespondence"><span class="hs-identifier hs-var">morphPointCorrespondence</span></a></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">PointCorrespondence
+forall a.
+(Real a, Fractional a, Epsilon a) =&gt;
+APolygon a -&gt; APolygon a -&gt; (APolygon a, APolygon a)
+</span><a href="Reanimate.Morph.Common.html#normalizePolygons"><span class="hs-identifier hs-var">normalizePolygons</span></a></span><span>
+</span><span id="line-63"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">morphTrajectory :: Trajectory
+</span><a href="Reanimate.Morph.Common.html#morphTrajectory"><span class="hs-identifier hs-var">morphTrajectory</span></a></span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Trajectory
+</span><a href="Reanimate.Morph.Linear.html#linearTrajectory"><span class="hs-identifier hs-var">linearTrajectory</span></a></span><span>
+</span><span id="line-64"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">morphObjectCorrespondence :: ObjectCorrespondence
+</span><a href="Reanimate.Morph.Common.html#morphObjectCorrespondence"><span class="hs-identifier hs-var">morphObjectCorrespondence</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ObjectCorrespondence
+</span><a href="Reanimate.Morph.Common.html#splitObjectCorrespondence"><span class="hs-identifier hs-var">splitObjectCorrespondence</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-65"></span><span>
+</span><span id="line-66"></span><span class="hs-comment">-- | Cycle polygons until the sum of the point trajectory path lengths</span><span>
+</span><span id="line-67"></span><span class="hs-comment">--   is smallest.</span><span>
+</span><span id="line-68"></span><span class="annot"><a href="Reanimate.Morph.Linear.html#closestLinearCorrespondence"><span class="hs-identifier hs-type">closestLinearCorrespondence</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Morph.Common.html#PointCorrespondence"><span class="hs-identifier hs-type">PointCorrespondence</span></a></span><span>
+</span><span id="line-69"></span><span id="closestLinearCorrespondence"><span class="annot"><span class="annottext">closestLinearCorrespondence :: PointCorrespondence
+</span><a href="Reanimate.Morph.Linear.html#closestLinearCorrespondence"><span class="hs-identifier hs-var hs-var">closestLinearCorrespondence</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">PointCorrespondence
+forall a.
+(Real a, Fractional a, Epsilon a) =&gt;
+APolygon a -&gt; APolygon a -&gt; (APolygon a, APolygon a)
+</span><a href="Reanimate.Morph.Linear.html#closestLinearCorrespondenceA"><span class="hs-identifier hs-var">closestLinearCorrespondenceA</span></a></span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span class="hs-comment">-- | Cycle polygons until the sum of the point trajectory path lengths</span><span>
+</span><span id="line-72"></span><span class="hs-comment">--   is smallest.</span><span>
+</span><span id="line-73"></span><span id="local-6989586621679545789"><span class="annot"><a href="Reanimate.Morph.Linear.html#closestLinearCorrespondenceA"><span class="hs-identifier hs-type">closestLinearCorrespondenceA</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Real</span></span><span> </span><span class="annot"><a href="#local-6989586621679545789"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Fractional</span></span><span> </span><span class="annot"><a href="#local-6989586621679545789"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Epsilon</span></span><span> </span><span class="annot"><a href="#local-6989586621679545789"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Reanimate.Math.Polygon.html#APolygon"><span class="hs-identifier hs-type">APolygon</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679545789"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Math.Polygon.html#APolygon"><span class="hs-identifier hs-type">APolygon</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679545789"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Math.Polygon.html#APolygon"><span class="hs-identifier hs-type">APolygon</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679545789"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Math.Polygon.html#APolygon"><span class="hs-identifier hs-type">APolygon</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679545789"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-74"></span><span id="closestLinearCorrespondenceA"><span class="annot"><span class="annottext">closestLinearCorrespondenceA :: APolygon a -&gt; APolygon a -&gt; (APolygon a, APolygon a)
+</span><a href="Reanimate.Morph.Linear.html#closestLinearCorrespondenceA"><span class="hs-identifier hs-var hs-var">closestLinearCorrespondenceA</span></a></span></span><span> </span><span id="local-6989586621679545788"><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545788"><span class="hs-identifier hs-var">src'</span></a></span></span><span> </span><span id="local-6989586621679545787"><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545787"><span class="hs-identifier hs-var">dst'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-75"></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545786"><span class="hs-identifier hs-var">src</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">APolygon a -&gt; a -&gt; [APolygon a] -&gt; APolygon a
+</span><a href="#local-6989586621679545785"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545784"><span class="hs-identifier hs-var">dst</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">APolygon a -&gt; a
+</span><a href="#local-6989586621679545783"><span class="hs-identifier hs-var">score</span></a></span><span> </span><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545784"><span class="hs-identifier hs-var">dst</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[APolygon a]
+</span><a href="#local-6989586621679545782"><span class="hs-identifier hs-var">options</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-76"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-77"></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679545786"><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545786"><span class="hs-identifier hs-var">src</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679545784"><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545784"><span class="hs-identifier hs-var">dst</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">APolygon a -&gt; APolygon a -&gt; (APolygon a, APolygon a)
+forall a.
+(Real a, Fractional a, Epsilon a) =&gt;
+APolygon a -&gt; APolygon a -&gt; (APolygon a, APolygon a)
+</span><a href="Reanimate.Morph.Common.html#normalizePolygons"><span class="hs-identifier hs-var">normalizePolygons</span></a></span><span> </span><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545788"><span class="hs-identifier hs-var">src'</span></a></span><span> </span><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545787"><span class="hs-identifier hs-var">dst'</span></a></span><span>
+</span><span id="line-78"></span><span>    </span><span id="local-6989586621679545785"><span class="annot"><span class="annottext">worker :: APolygon a -&gt; a -&gt; [APolygon a] -&gt; APolygon a
+</span><a href="#local-6989586621679545785"><span class="hs-identifier hs-var hs-var">worker</span></a></span></span><span> </span><span id="local-6989586621679545781"><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545781"><span class="hs-identifier hs-var">bestP</span></a></span></span><span> </span><span id="local-6989586621679545780"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545780"><span class="hs-identifier hs-var">_bestPScore</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545781"><span class="hs-identifier hs-var">bestP</span></a></span><span>
+</span><span id="line-79"></span><span>    </span><span class="annot"><a href="#local-6989586621679545785"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span id="local-6989586621679545779"><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545779"><span class="hs-identifier hs-var">bestP</span></a></span></span><span> </span><span id="local-6989586621679545778"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545778"><span class="hs-identifier hs-var">bestPScore</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679545777"><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545777"><span class="hs-identifier hs-var">x</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679545776"><span class="annot"><span class="annottext">[APolygon a]
+</span><a href="#local-6989586621679545776"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-80"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679545775"><span class="annot"><span class="annottext">newScore :: a
+</span><a href="#local-6989586621679545775"><span class="hs-identifier hs-var hs-var">newScore</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">APolygon a -&gt; a
+</span><a href="#local-6989586621679545783"><span class="hs-identifier hs-var">score</span></a></span><span> </span><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545777"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-keyword">in</span><span>
+</span><span id="line-81"></span><span>      </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545775"><span class="hs-identifier hs-var">newScore</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545778"><span class="hs-identifier hs-var">bestPScore</span></a></span><span>
+</span><span id="line-82"></span><span>        </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">APolygon a -&gt; a -&gt; [APolygon a] -&gt; APolygon a
+</span><a href="#local-6989586621679545785"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545777"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545775"><span class="hs-identifier hs-var">newScore</span></a></span><span> </span><span class="annot"><span class="annottext">[APolygon a]
+</span><a href="#local-6989586621679545776"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-83"></span><span>        </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">APolygon a -&gt; a -&gt; [APolygon a] -&gt; APolygon a
+</span><a href="#local-6989586621679545785"><span class="hs-identifier hs-var">worker</span></a></span><span> </span><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545779"><span class="hs-identifier hs-var">bestP</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679545778"><span class="hs-identifier hs-var">bestPScore</span></a></span><span> </span><span class="annot"><span class="annottext">[APolygon a]
+</span><a href="#local-6989586621679545776"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-84"></span><span>    </span><span id="local-6989586621679545782"><span class="annot"><span class="annottext">options :: [APolygon a]
+</span><a href="#local-6989586621679545782"><span class="hs-identifier hs-var hs-var">options</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">APolygon a -&gt; [APolygon a]
+forall a. APolygon a -&gt; [APolygon a]
+</span><a href="Reanimate.Math.Polygon.html#pCycles"><span class="hs-identifier hs-var">pCycles</span></a></span><span> </span><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545784"><span class="hs-identifier hs-var">dst</span></a></span><span>
+</span><span id="line-85"></span><span>    </span><span id="local-6989586621679545783"><span class="annot"><span class="annottext">score :: APolygon a -&gt; a
+</span><a href="#local-6989586621679545783"><span class="hs-identifier hs-var hs-var">score</span></a></span></span><span> </span><span id="local-6989586621679545772"><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545772"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[a] -&gt; a
+forall (t :: * -&gt; *) a. (Foldable t, Num a) =&gt; t a -&gt; a
+</span><span class="hs-identifier hs-var">sum</span></span><span>
+</span><span id="line-86"></span><span>      </span><span class="hs-special">[</span><span> </span><span class="hs-comment">-- approxDist (pAccess src n) (pAccess p n)</span><span>
+</span><span id="line-87"></span><span>        </span><span class="annot"><span class="annottext">V2 a -&gt; V2 a -&gt; a
+forall a. Num a =&gt; V2 a -&gt; V2 a -&gt; a
+</span><a href="Reanimate.Math.Common.html#distSquared"><span class="hs-identifier hs-var">distSquared</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">APolygon a -&gt; Int -&gt; V2 a
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545786"><span class="hs-identifier hs-var">src</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545768"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">APolygon a -&gt; Int -&gt; V2 a
+forall a. APolygon a -&gt; Int -&gt; V2 a
+</span><a href="Reanimate.Math.Polygon.html#pAccess"><span class="hs-identifier hs-var">pAccess</span></a></span><span> </span><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545772"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545768"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-88"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679545768"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679545768"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">..</span><span> </span><span class="annot"><span class="annottext">APolygon a -&gt; Int
+forall a. APolygon a -&gt; Int
+</span><a href="Reanimate.Math.Polygon.html#pSize"><span class="hs-identifier hs-var">pSize</span></a></span><span> </span><span class="annot"><span class="annottext">APolygon a
+</span><a href="#local-6989586621679545786"><span class="hs-identifier hs-var">src</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">]</span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span class="hs-comment">-- | Strategy for moving points in a linear (straight-line) trajectory.</span><span>
+</span><span id="line-91"></span><span class="annot"><a href="Reanimate.Morph.Linear.html#linearTrajectory"><span class="hs-identifier hs-type">linearTrajectory</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Morph.Common.html#Trajectory"><span class="hs-identifier hs-type">Trajectory</span></a></span><span>
+</span><span id="line-92"></span><span id="linearTrajectory"><span class="annot"><span class="annottext">linearTrajectory :: Trajectory
+</span><a href="Reanimate.Morph.Linear.html#linearTrajectory"><span class="hs-identifier hs-var hs-var">linearTrajectory</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679545766"><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545766"><span class="hs-identifier hs-var">src</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679545765"><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545765"><span class="hs-identifier hs-var">dst</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-93"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Int
+forall a. APolygon a -&gt; Int
+</span><a href="Reanimate.Math.Polygon.html#pSize"><span class="hs-identifier hs-var">pSize</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545766"><span class="hs-identifier hs-var">src</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Int
+forall a. APolygon a -&gt; Int
+</span><a href="Reanimate.Math.Polygon.html#pSize"><span class="hs-identifier hs-var">pSize</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545765"><span class="hs-identifier hs-var">dst</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679545764"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545764"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Vector (V2 Rational) -&gt; Polygon
+forall a. PolyCtx a =&gt; Vector (V2 a) -&gt; APolygon a
+</span><a href="Reanimate.Math.Polygon.html#mkPolygon"><span class="hs-identifier hs-var">mkPolygon</span></a></span><span> </span><span class="annot"><span class="annottext">(Vector (V2 Rational) -&gt; Polygon)
+-&gt; Vector (V2 Rational) -&gt; Polygon
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-94"></span><span>    </span><span class="annot"><span class="annottext">(V2 Rational -&gt; V2 Rational -&gt; V2 Rational)
+-&gt; Vector (V2 Rational)
+-&gt; Vector (V2 Rational)
+-&gt; Vector (V2 Rational)
+forall a b c. (a -&gt; b -&gt; c) -&gt; Vector a -&gt; Vector b -&gt; Vector c
+</span><span class="hs-identifier hs-var">V.zipWith</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Rational -&gt; V2 Rational -&gt; V2 Rational -&gt; V2 Rational
+forall (f :: * -&gt; *) a.
+(Additive f, Num a) =&gt;
+a -&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-identifier hs-var">lerp</span></span><span> </span><span class="annot"><span class="annottext">(Rational -&gt; V2 Rational -&gt; V2 Rational -&gt; V2 Rational)
+-&gt; Rational -&gt; V2 Rational -&gt; V2 Rational -&gt; V2 Rational
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Rational
+forall a b. (Real a, Fractional b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">realToFrac</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679545764"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Vector (V2 Rational)
+forall a. APolygon a -&gt; Vector (V2 a)
+</span><a href="Reanimate.Math.Polygon.html#polygonPoints"><span class="hs-identifier hs-var hs-var">polygonPoints</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545765"><span class="hs-identifier hs-var">dst</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Vector (V2 Rational)
+forall a. APolygon a -&gt; Vector (V2 a)
+</span><a href="Reanimate.Math.Polygon.html#polygonPoints"><span class="hs-identifier hs-var hs-var">polygonPoints</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545766"><span class="hs-identifier hs-var">src</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-95"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Double -&gt; Polygon
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Double -&gt; Polygon) -&gt; String -&gt; Double -&gt; Polygon
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Invalid lengths: &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">(Int, Int) -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Polygon -&gt; Int
+forall a. APolygon a -&gt; Int
+</span><a href="Reanimate.Math.Polygon.html#pSize"><span class="hs-identifier hs-var">pSize</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545766"><span class="hs-identifier hs-var">src</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Polygon -&gt; Int
+forall a. APolygon a -&gt; Int
+</span><a href="Reanimate.Math.Polygon.html#pSize"><span class="hs-identifier hs-var">pSize</span></a></span><span> </span><span class="annot"><span class="annottext">Polygon
+</span><a href="#local-6989586621679545765"><span class="hs-identifier hs-var">dst</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-96"></span></pre></body></html>

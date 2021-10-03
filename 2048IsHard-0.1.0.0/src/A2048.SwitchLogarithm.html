@@ -1,0 +1,317 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">{-|
+Module      : A2048.SwitchLogarithm
+Description : Animation for switching config 'A2048.Config.useLogarithm'.
+Copyright   : (c) Xie Ruifeng, 2020
+License     : AGPL-3
+Maintainer  : krantz.xrf@outlook.com
+Stability   : experimental
+Portability : portable
+-}</span><span>
+</span><span id="line-10"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">A2048.SwitchLogarithm</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Reader.Class</span></span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate</span></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate.Morph.Common</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate.Morph.Linear</span></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Reanimate.Transition</span></span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="A2048.Board.html"><span class="hs-identifier">A2048.Board</span></a></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="A2048.Config.html"><span class="hs-identifier">A2048.Config</span></a></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="A2048.Tile.html"><span class="hs-identifier">A2048.Tile</span></a></span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Common.Animation.Effects</span></span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="hs-comment">-- |Create animation for each non-empty grids with the provided function.</span><span>
+</span><span id="line-27"></span><span id="local-6989586621679182807"><span class="annot"><a href="A2048.SwitchLogarithm.html#animateGrids"><span class="hs-identifier hs-type">animateGrids</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A2048.Board.html#Monad2048"><span class="hs-identifier hs-type">Monad2048</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679182807"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Time</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="A2048.Board.html#Game"><span class="hs-identifier hs-type">Game</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">SVG</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679182807"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Animation</span></span></span><span>
+</span><span id="line-28"></span><span id="animateGrids"><span class="annot"><span class="annottext">animateGrids :: (Time -&gt; Int -&gt; Game SVG) -&gt; m Animation
+</span><a href="A2048.SwitchLogarithm.html#animateGrids"><span class="hs-identifier hs-var hs-var">animateGrids</span></a></span></span><span> </span><span id="local-6989586621679182784"><span class="annot"><span class="annottext">Time -&gt; Int -&gt; Game SVG
+</span><a href="#local-6989586621679182784"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-29"></span><span>  </span><span id="local-6989586621679182783"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182783"><span class="hs-identifier hs-var">bd</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Game2048Config -&gt; Game2048Config) -&gt; m SVG -&gt; m SVG
+forall r (m :: * -&gt; *) a. MonadReader r m =&gt; (r -&gt; r) -&gt; m a -&gt; m a
+</span><span class="hs-identifier hs-var">local</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Bool -&gt; Identity Bool)
+-&gt; Game2048Config -&gt; Identity Game2048Config
+forall c. HasGame2048Config c =&gt; Lens' c Bool
+</span><a href="A2048.Config.html#tileShowLabel"><span class="hs-identifier hs-var">tileShowLabel</span></a></span><span> </span><span class="annot"><span class="annottext">((Bool -&gt; Identity Bool)
+ -&gt; Game2048Config -&gt; Identity Game2048Config)
+-&gt; Bool -&gt; Game2048Config -&gt; Game2048Config
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">m SVG
+forall (m :: * -&gt; *). Monad2048 m =&gt; m SVG
+</span><a href="A2048.Board.html#snapshot"><span class="hs-identifier hs-var">snapshot</span></a></span><span>
+</span><span id="line-30"></span><span>  </span><span id="local-6989586621679182778"><span class="annot"><span class="annottext">Time -&gt; [SVG]
+</span><a href="#local-6989586621679182778"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Game [SVG]) -&gt; m (Time -&gt; [SVG])
+forall (m :: * -&gt; *) a.
+Monad2048 m =&gt;
+(Time -&gt; Game a) -&gt; m (Time -&gt; a)
+</span><a href="A2048.Board.html#mkPure"><span class="hs-identifier hs-var">mkPure</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Int -&gt; Game SVG) -&gt; Game [SVG]
+forall (m :: * -&gt; *). Monad2048 m =&gt; (Int -&gt; m SVG) -&gt; m [SVG]
+</span><a href="A2048.Board.html#foreachNonEmptyGrid"><span class="hs-identifier hs-var">foreachNonEmptyGrid</span></a></span><span> </span><span class="annot"><span class="annottext">((Int -&gt; Game SVG) -&gt; Game [SVG])
+-&gt; (Time -&gt; Int -&gt; Game SVG) -&gt; Time -&gt; Game [SVG]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; Int -&gt; Game SVG
+</span><a href="#local-6989586621679182784"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span>  </span><span class="annot"><span class="annottext">Animation -&gt; m Animation
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Animation -&gt; m Animation) -&gt; Animation -&gt; m Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Time -&gt; SVG) -&gt; Animation
+</span><span class="hs-identifier hs-var">animate</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[SVG] -&gt; SVG
+</span><span class="hs-identifier hs-var">mkGroup</span></span><span> </span><span class="annot"><span class="annottext">([SVG] -&gt; SVG) -&gt; (Time -&gt; [SVG]) -&gt; Time -&gt; SVG
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182783"><span class="hs-identifier hs-var">bd</span></a></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; [SVG] -&gt; [SVG]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([SVG] -&gt; [SVG]) -&gt; (Time -&gt; [SVG]) -&gt; Time -&gt; [SVG]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Time -&gt; [SVG]
+</span><a href="#local-6989586621679182778"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="hs-comment">-- |Animation for the board from 'Plain' to 'Exponent'.</span><span>
+</span><span id="line-34"></span><span id="local-6989586621679182772"><span class="annot"><a href="A2048.SwitchLogarithm.html#switchPlainExpo"><span class="hs-identifier hs-type">switchPlainExpo</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A2048.Board.html#Monad2048"><span class="hs-identifier hs-type">Monad2048</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679182772"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679182772"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Animation</span></span></span><span>
+</span><span id="line-35"></span><span id="switchPlainExpo"><span class="annot"><span class="annottext">switchPlainExpo :: m Animation
+</span><a href="A2048.SwitchLogarithm.html#switchPlainExpo"><span class="hs-identifier hs-var hs-var">switchPlainExpo</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Int -&gt; Game SVG) -&gt; m Animation
+forall (m :: * -&gt; *).
+Monad2048 m =&gt;
+(Time -&gt; Int -&gt; Game SVG) -&gt; m Animation
+</span><a href="A2048.SwitchLogarithm.html#animateGrids"><span class="hs-identifier hs-var">animateGrids</span></a></span><span> </span><span class="annot"><span class="annottext">((Time -&gt; Int -&gt; Game SVG) -&gt; m Animation)
+-&gt; (Time -&gt; Int -&gt; Game SVG) -&gt; m Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679182770"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679182770"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679182769"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182769"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-36"></span><span>  </span><span id="local-6989586621679182768"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182768"><span class="hs-identifier hs-var">l0</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Game SVG
+forall c (m :: * -&gt; *).
+(HasGame2048Config c, MonadReader c m) =&gt;
+Int -&gt; m SVG
+</span><a href="A2048.Tile.html#tileLabel"><span class="hs-identifier hs-var">tileLabel</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182769"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-37"></span><span>  </span><span id="local-6989586621679182766"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182766"><span class="hs-identifier hs-var">l1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Game2048Config -&gt; Game2048Config) -&gt; Game SVG -&gt; Game SVG
+forall r (m :: * -&gt; *) a. MonadReader r m =&gt; (r -&gt; r) -&gt; m a -&gt; m a
+</span><span class="hs-identifier hs-var">local</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(TileLabelMode -&gt; Identity TileLabelMode)
+-&gt; Game2048Config -&gt; Identity Game2048Config
+forall c. HasGame2048Config c =&gt; Lens' c TileLabelMode
+</span><a href="A2048.Config.html#tileLabelMode"><span class="hs-identifier hs-var">tileLabelMode</span></a></span><span> </span><span class="annot"><span class="annottext">((TileLabelMode -&gt; Identity TileLabelMode)
+ -&gt; Game2048Config -&gt; Identity Game2048Config)
+-&gt; TileLabelMode -&gt; Game2048Config -&gt; Game2048Config
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">TileLabelMode
+</span><a href="A2048.Config.html#Exponent"><span class="hs-identifier hs-var">Exponent</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Game SVG
+forall c (m :: * -&gt; *).
+(HasGame2048Config c, MonadReader c m) =&gt;
+Int -&gt; m SVG
+</span><a href="A2048.Tile.html#tileLabel"><span class="hs-identifier hs-var">tileLabel</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182769"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679182763"><span class="annot"><span class="annottext">linearDup :: Morph
+</span><a href="#local-6989586621679182763"><span class="hs-identifier hs-var hs-var">linearDup</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Morph
+</span><span class="hs-identifier hs-var">linear</span></span><span class="hs-special">{</span><span class="annot"><span class="annottext">morphObjectCorrespondence :: ObjectCorrespondence
+</span><a href="#local-6989586621679182761"><span class="hs-identifier hs-var">morphObjectCorrespondence</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ObjectCorrespondence
+</span><span class="hs-identifier hs-var">dupObjectCorrespondence</span></span><span class="hs-special">}</span><span>
+</span><span id="line-39"></span><span>  </span><span class="annot"><span class="annottext">SVG -&gt; Game SVG
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Morph -&gt; SVG -&gt; SVG -&gt; Time -&gt; SVG
+</span><span class="hs-identifier hs-var">morph</span></span><span> </span><span class="annot"><span class="annottext">Morph
+</span><a href="#local-6989586621679182763"><span class="hs-identifier hs-var">linearDup</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182768"><span class="hs-identifier hs-var">l0</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182766"><span class="hs-identifier hs-var">l1</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679182770"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span class="hs-comment">-- |Highlight the exponents in 'Exponent'.</span><span>
+</span><span id="line-42"></span><span id="local-6989586621679182758"><span class="annot"><a href="A2048.SwitchLogarithm.html#expoHighlight"><span class="hs-identifier hs-type">expoHighlight</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A2048.Board.html#Monad2048"><span class="hs-identifier hs-type">Monad2048</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679182758"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679182758"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Animation</span></span></span><span>
+</span><span id="line-43"></span><span id="expoHighlight"><span class="annot"><span class="annottext">expoHighlight :: m Animation
+</span><a href="A2048.SwitchLogarithm.html#expoHighlight"><span class="hs-identifier hs-var hs-var">expoHighlight</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Int -&gt; Game SVG) -&gt; m Animation
+forall (m :: * -&gt; *).
+Monad2048 m =&gt;
+(Time -&gt; Int -&gt; Game SVG) -&gt; m Animation
+</span><a href="A2048.SwitchLogarithm.html#animateGrids"><span class="hs-identifier hs-var">animateGrids</span></a></span><span> </span><span class="annot"><span class="annottext">((Time -&gt; Int -&gt; Game SVG) -&gt; m Animation)
+-&gt; (Time -&gt; Int -&gt; Game SVG) -&gt; m Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679182756"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679182756"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679182755"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182755"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-44"></span><span>  </span><span id="local-6989586621679182754"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182754"><span class="hs-identifier hs-var">l1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Game2048Config -&gt; Game2048Config) -&gt; Game SVG -&gt; Game SVG
+forall r (m :: * -&gt; *) a. MonadReader r m =&gt; (r -&gt; r) -&gt; m a -&gt; m a
+</span><span class="hs-identifier hs-var">local</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(TileLabelMode -&gt; Identity TileLabelMode)
+-&gt; Game2048Config -&gt; Identity Game2048Config
+forall c. HasGame2048Config c =&gt; Lens' c TileLabelMode
+</span><a href="A2048.Config.html#tileLabelMode"><span class="hs-identifier hs-var">tileLabelMode</span></a></span><span> </span><span class="annot"><span class="annottext">((TileLabelMode -&gt; Identity TileLabelMode)
+ -&gt; Game2048Config -&gt; Identity Game2048Config)
+-&gt; TileLabelMode -&gt; Game2048Config -&gt; Game2048Config
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">TileLabelMode
+</span><a href="A2048.Config.html#Exponent"><span class="hs-identifier hs-var">Exponent</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Game SVG
+forall c (m :: * -&gt; *).
+(HasGame2048Config c, MonadReader c m) =&gt;
+Int -&gt; m SVG
+</span><a href="A2048.Tile.html#tileLabel"><span class="hs-identifier hs-var">tileLabel</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182755"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-45"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679182753"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182753"><span class="hs-identifier hs-var">two</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[SVG] -&gt; SVG
+</span><span class="hs-identifier hs-var">mkGroup</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span id="local-6989586621679182752"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182752"><span class="hs-identifier hs-var">expo</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="#local-6989586621679182751"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182750"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679182751"><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="#local-6989586621679182751"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">DrawAttributes
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679182750"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182750"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; [(SVG -&gt; SVG, DrawAttributes, SVG)]
+</span><span class="hs-identifier hs-var">svgGlyphs</span></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182754"><span class="hs-identifier hs-var">l1</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-46"></span><span>  </span><span class="annot"><span class="annottext">SVG -&gt; Game SVG
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; Game SVG) -&gt; SVG -&gt; Game SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[SVG] -&gt; SVG
+</span><span class="hs-identifier hs-var">mkGroup</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182753"><span class="hs-identifier hs-var">two</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Effect -&gt; Effect
+</span><span class="hs-identifier hs-var">aroundCenterE</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Time -&gt; Effect
+</span><span class="hs-identifier hs-var">highlightE</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">0.2</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679182756"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182752"><span class="hs-identifier hs-var">expo</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span class="hs-comment">-- |Animation for fading the base 2 in 'Exponent'.</span><span>
+</span><span id="line-49"></span><span id="local-6989586621679182788"><span class="annot"><a href="A2048.SwitchLogarithm.html#expoFadeTwo"><span class="hs-identifier hs-type">expoFadeTwo</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A2048.Board.html#Monad2048"><span class="hs-identifier hs-type">Monad2048</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679182788"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679182788"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Animation</span></span></span><span>
+</span><span id="line-50"></span><span id="expoFadeTwo"><span class="annot"><span class="annottext">expoFadeTwo :: m Animation
+</span><a href="A2048.SwitchLogarithm.html#expoFadeTwo"><span class="hs-identifier hs-var hs-var">expoFadeTwo</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Int -&gt; Game SVG) -&gt; m Animation
+forall (m :: * -&gt; *).
+Monad2048 m =&gt;
+(Time -&gt; Int -&gt; Game SVG) -&gt; m Animation
+</span><a href="A2048.SwitchLogarithm.html#animateGrids"><span class="hs-identifier hs-var">animateGrids</span></a></span><span> </span><span class="annot"><span class="annottext">((Time -&gt; Int -&gt; Game SVG) -&gt; m Animation)
+-&gt; (Time -&gt; Int -&gt; Game SVG) -&gt; m Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679182745"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679182745"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679182744"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182744"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-51"></span><span>  </span><span id="local-6989586621679182743"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182743"><span class="hs-identifier hs-var">l1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Game2048Config -&gt; Game2048Config) -&gt; Game SVG -&gt; Game SVG
+forall r (m :: * -&gt; *) a. MonadReader r m =&gt; (r -&gt; r) -&gt; m a -&gt; m a
+</span><span class="hs-identifier hs-var">local</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(TileLabelMode -&gt; Identity TileLabelMode)
+-&gt; Game2048Config -&gt; Identity Game2048Config
+forall c. HasGame2048Config c =&gt; Lens' c TileLabelMode
+</span><a href="A2048.Config.html#tileLabelMode"><span class="hs-identifier hs-var">tileLabelMode</span></a></span><span> </span><span class="annot"><span class="annottext">((TileLabelMode -&gt; Identity TileLabelMode)
+ -&gt; Game2048Config -&gt; Identity Game2048Config)
+-&gt; TileLabelMode -&gt; Game2048Config -&gt; Game2048Config
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">TileLabelMode
+</span><a href="A2048.Config.html#Exponent"><span class="hs-identifier hs-var">Exponent</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Game SVG
+forall c (m :: * -&gt; *).
+(HasGame2048Config c, MonadReader c m) =&gt;
+Int -&gt; m SVG
+</span><a href="A2048.Tile.html#tileLabel"><span class="hs-identifier hs-var">tileLabel</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182744"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-52"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679182742"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182742"><span class="hs-identifier hs-var">two</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679182741"><span class="annot"><span class="annottext">[SVG]
+</span><a href="#local-6989586621679182741"><span class="hs-identifier hs-var">expos</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="#local-6989586621679182740"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182739"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679182740"><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="#local-6989586621679182740"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">DrawAttributes
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679182739"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182739"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; [(SVG -&gt; SVG, DrawAttributes, SVG)]
+</span><span class="hs-identifier hs-var">svgGlyphs</span></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182743"><span class="hs-identifier hs-var">l1</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-53"></span><span>  </span><span class="annot"><span class="annottext">SVG -&gt; Game SVG
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(SVG -&gt; Game SVG) -&gt; SVG -&gt; Game SVG
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[SVG] -&gt; SVG
+</span><span class="hs-identifier hs-var">mkGroup</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Effect
+</span><span class="hs-identifier hs-var">fadeOutE</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679182745"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182742"><span class="hs-identifier hs-var">two</span></a></span><span> </span><span class="annot"><span class="annottext">SVG -&gt; [SVG] -&gt; [SVG]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[SVG]
+</span><a href="#local-6989586621679182741"><span class="hs-identifier hs-var">expos</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-54"></span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- |Animation for moving the exponent down, forming a 'Logarithm'.</span><span>
+</span><span id="line-56"></span><span id="local-6989586621679182737"><span class="annot"><a href="A2048.SwitchLogarithm.html#expoMoveDown"><span class="hs-identifier hs-type">expoMoveDown</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A2048.Board.html#Monad2048"><span class="hs-identifier hs-type">Monad2048</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679182737"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679182737"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Animation</span></span></span><span>
+</span><span id="line-57"></span><span id="expoMoveDown"><span class="annot"><span class="annottext">expoMoveDown :: m Animation
+</span><a href="A2048.SwitchLogarithm.html#expoMoveDown"><span class="hs-identifier hs-var hs-var">expoMoveDown</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Time -&gt; Int -&gt; Game SVG) -&gt; m Animation
+forall (m :: * -&gt; *).
+Monad2048 m =&gt;
+(Time -&gt; Int -&gt; Game SVG) -&gt; m Animation
+</span><a href="A2048.SwitchLogarithm.html#animateGrids"><span class="hs-identifier hs-var">animateGrids</span></a></span><span> </span><span class="annot"><span class="annottext">((Time -&gt; Int -&gt; Game SVG) -&gt; m Animation)
+-&gt; (Time -&gt; Int -&gt; Game SVG) -&gt; m Animation
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679182735"><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679182735"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679182734"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182734"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-58"></span><span>  </span><span id="local-6989586621679182733"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182733"><span class="hs-identifier hs-var">l1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Game2048Config -&gt; Game2048Config) -&gt; Game SVG -&gt; Game SVG
+forall r (m :: * -&gt; *) a. MonadReader r m =&gt; (r -&gt; r) -&gt; m a -&gt; m a
+</span><span class="hs-identifier hs-var">local</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(TileLabelMode -&gt; Identity TileLabelMode)
+-&gt; Game2048Config -&gt; Identity Game2048Config
+forall c. HasGame2048Config c =&gt; Lens' c TileLabelMode
+</span><a href="A2048.Config.html#tileLabelMode"><span class="hs-identifier hs-var">tileLabelMode</span></a></span><span> </span><span class="annot"><span class="annottext">((TileLabelMode -&gt; Identity TileLabelMode)
+ -&gt; Game2048Config -&gt; Identity Game2048Config)
+-&gt; TileLabelMode -&gt; Game2048Config -&gt; Game2048Config
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">TileLabelMode
+</span><a href="A2048.Config.html#Exponent"><span class="hs-identifier hs-var">Exponent</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Game SVG
+forall c (m :: * -&gt; *).
+(HasGame2048Config c, MonadReader c m) =&gt;
+Int -&gt; m SVG
+</span><a href="A2048.Tile.html#tileLabel"><span class="hs-identifier hs-var">tileLabel</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182734"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-59"></span><span>  </span><span id="local-6989586621679182732"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182732"><span class="hs-identifier hs-var">l2</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Game2048Config -&gt; Game2048Config) -&gt; Game SVG -&gt; Game SVG
+forall r (m :: * -&gt; *) a. MonadReader r m =&gt; (r -&gt; r) -&gt; m a -&gt; m a
+</span><span class="hs-identifier hs-var">local</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(TileLabelMode -&gt; Identity TileLabelMode)
+-&gt; Game2048Config -&gt; Identity Game2048Config
+forall c. HasGame2048Config c =&gt; Lens' c TileLabelMode
+</span><a href="A2048.Config.html#tileLabelMode"><span class="hs-identifier hs-var">tileLabelMode</span></a></span><span> </span><span class="annot"><span class="annottext">((TileLabelMode -&gt; Identity TileLabelMode)
+ -&gt; Game2048Config -&gt; Identity Game2048Config)
+-&gt; TileLabelMode -&gt; Game2048Config -&gt; Game2048Config
+forall s t a b. ASetter s t a b -&gt; b -&gt; s -&gt; t
+</span><span class="hs-operator hs-var">.~</span></span><span> </span><span class="annot"><span class="annottext">TileLabelMode
+</span><a href="A2048.Config.html#Logarithm"><span class="hs-identifier hs-var">Logarithm</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Game SVG
+forall c (m :: * -&gt; *).
+(HasGame2048Config c, MonadReader c m) =&gt;
+Int -&gt; m SVG
+</span><a href="A2048.Tile.html#tileLabel"><span class="hs-identifier hs-var">tileLabel</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679182734"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-60"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span class="annot"><span class="annottext">SVG
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[SVG] -&gt; SVG
+</span><span class="hs-identifier hs-var">mkGroup</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span id="local-6989586621679182730"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182730"><span class="hs-identifier hs-var">expo</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="#local-6989586621679182729"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182728"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679182729"><span class="annot"><span class="annottext">SVG -&gt; SVG
+</span><a href="#local-6989586621679182729"><span class="hs-identifier hs-var">f</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">DrawAttributes
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679182728"><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182728"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">SVG -&gt; [(SVG -&gt; SVG, DrawAttributes, SVG)]
+</span><span class="hs-identifier hs-var">svgGlyphs</span></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182733"><span class="hs-identifier hs-var">l1</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-61"></span><span>  </span><span class="annot"><span class="annottext">SVG -&gt; Game SVG
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SVG -&gt; SVG -&gt; Time -&gt; SVG
+</span><span class="hs-identifier hs-var">lerpSVG</span></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182730"><span class="hs-identifier hs-var">expo</span></a></span><span> </span><span class="annot"><span class="annottext">SVG
+</span><a href="#local-6989586621679182732"><span class="hs-identifier hs-var">l2</span></a></span><span> </span><span class="annot"><span class="annottext">Time
+</span><a href="#local-6989586621679182735"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="hs-comment">-- |Animation for the board from 'Exponent' to 'Logarithm'.</span><span>
+</span><span id="line-64"></span><span id="local-6989586621679182726"><span class="annot"><a href="A2048.SwitchLogarithm.html#switchExpoLog"><span class="hs-identifier hs-type">switchExpoLog</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="A2048.Board.html#Monad2048"><span class="hs-identifier hs-type">Monad2048</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679182726"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679182726"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Animation</span></span></span><span>
+</span><span id="line-65"></span><span id="switchExpoLog"><span class="annot"><span class="annottext">switchExpoLog :: m Animation
+</span><a href="A2048.SwitchLogarithm.html#switchExpoLog"><span class="hs-identifier hs-var hs-var">switchExpoLog</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Time -&gt; Transition -&gt; Transition
+</span><span class="hs-identifier hs-var">overlapT</span></span><span> </span><span class="annot"><span class="annottext">Time
+</span><span class="hs-number">0.5</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Animation -&gt; Animation) -&gt; Transition
+forall a b. a -&gt; b -&gt; a
+</span><span class="hs-identifier hs-var">const</span></span><span> </span><span class="annot"><span class="annottext">Animation -&gt; Animation
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Transition -&gt; m Animation -&gt; m (Animation -&gt; Animation)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">m Animation
+forall (m :: * -&gt; *). Monad2048 m =&gt; m Animation
+</span><a href="A2048.SwitchLogarithm.html#expoFadeTwo"><span class="hs-identifier hs-var">expoFadeTwo</span></a></span><span> </span><span class="annot"><span class="annottext">m (Animation -&gt; Animation) -&gt; m Animation -&gt; m Animation
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="annot"><span class="annottext">m Animation
+forall (m :: * -&gt; *). Monad2048 m =&gt; m Animation
+</span><a href="A2048.SwitchLogarithm.html#expoMoveDown"><span class="hs-identifier hs-var">expoMoveDown</span></a></span><span>
+</span><span id="line-66"></span></pre></body></html>

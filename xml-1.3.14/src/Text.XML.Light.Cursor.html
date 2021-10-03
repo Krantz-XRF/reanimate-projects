@@ -1,0 +1,962 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">--------------------------------------------------------------------</span><span>
+</span><span id="line-2"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-3"></span><span class="hs-comment">-- Module    : Text.XML.Light.Cursor</span><span>
+</span><span id="line-4"></span><span class="hs-comment">-- Copyright : (c) Galois, Inc. 2008</span><span>
+</span><span id="line-5"></span><span class="hs-comment">-- License   : BSD3</span><span>
+</span><span id="line-6"></span><span class="hs-comment">--</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- Maintainer: Iavor S. Diatchki &lt;diatchki@galois.com&gt;</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- Stability : provisional</span><span>
+</span><span id="line-9"></span><span class="hs-comment">-- Portability: portable</span><span>
+</span><span id="line-10"></span><span class="hs-comment">--</span><span>
+</span><span id="line-11"></span><span class="hs-comment">-- XML cursors for working XML content withing the context of</span><span>
+</span><span id="line-12"></span><span class="hs-comment">-- an XML document.  This implementation is based on the general</span><span>
+</span><span id="line-13"></span><span class="hs-comment">-- tree zipper written by Krasimir Angelov and Iavor S. Diatchki.</span><span>
+</span><span id="line-14"></span><span class="hs-comment">--</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.XML.Light.Cursor</span><span>
+</span><span id="line-17"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Tag"><span class="hs-identifier">Tag</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#getTag"><span class="hs-identifier">getTag</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#setTag"><span class="hs-identifier">setTag</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#fromTag"><span class="hs-identifier">fromTag</span></a></span><span>
+</span><span id="line-18"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier">Cursor</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Path"><span class="hs-identifier">Path</span></a></span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span>  </span><span class="annot"><span class="hs-comment">-- * Conversions</span></span><span>
+</span><span id="line-21"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#fromContent"><span class="hs-identifier">fromContent</span></a></span><span>
+</span><span id="line-22"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#fromElement"><span class="hs-identifier">fromElement</span></a></span><span>
+</span><span id="line-23"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#fromForest"><span class="hs-identifier">fromForest</span></a></span><span>
+</span><span id="line-24"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#toForest"><span class="hs-identifier">toForest</span></a></span><span>
+</span><span id="line-25"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#toTree"><span class="hs-identifier">toTree</span></a></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span>  </span><span class="annot"><span class="hs-comment">-- * Moving around</span></span><span>
+</span><span id="line-28"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#parent"><span class="hs-identifier">parent</span></a></span><span>
+</span><span id="line-29"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#root"><span class="hs-identifier">root</span></a></span><span>
+</span><span id="line-30"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#getChild"><span class="hs-identifier">getChild</span></a></span><span>
+</span><span id="line-31"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#firstChild"><span class="hs-identifier">firstChild</span></a></span><span>
+</span><span id="line-32"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#lastChild"><span class="hs-identifier">lastChild</span></a></span><span>
+</span><span id="line-33"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#left"><span class="hs-identifier">left</span></a></span><span>
+</span><span id="line-34"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#right"><span class="hs-identifier">right</span></a></span><span>
+</span><span id="line-35"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#nextDF"><span class="hs-identifier">nextDF</span></a></span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span>  </span><span class="annot"><span class="hs-comment">-- ** Searching</span></span><span>
+</span><span id="line-38"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#findChild"><span class="hs-identifier">findChild</span></a></span><span>
+</span><span id="line-39"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#findLeft"><span class="hs-identifier">findLeft</span></a></span><span>
+</span><span id="line-40"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#findRight"><span class="hs-identifier">findRight</span></a></span><span>
+</span><span id="line-41"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#findRec"><span class="hs-identifier">findRec</span></a></span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span>  </span><span class="annot"><span class="hs-comment">-- * Node classification</span></span><span>
+</span><span id="line-44"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#isRoot"><span class="hs-identifier">isRoot</span></a></span><span>
+</span><span id="line-45"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#isFirst"><span class="hs-identifier">isFirst</span></a></span><span>
+</span><span id="line-46"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#isLast"><span class="hs-identifier">isLast</span></a></span><span>
+</span><span id="line-47"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#isLeaf"><span class="hs-identifier">isLeaf</span></a></span><span>
+</span><span id="line-48"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#isChild"><span class="hs-identifier">isChild</span></a></span><span>
+</span><span id="line-49"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#hasChildren"><span class="hs-identifier">hasChildren</span></a></span><span>
+</span><span id="line-50"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#getNodeIndex"><span class="hs-identifier">getNodeIndex</span></a></span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span>  </span><span class="annot"><span class="hs-comment">-- * Updates</span></span><span>
+</span><span id="line-53"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#setContent"><span class="hs-identifier">setContent</span></a></span><span>
+</span><span id="line-54"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#modifyContent"><span class="hs-identifier">modifyContent</span></a></span><span>
+</span><span id="line-55"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#modifyContentM"><span class="hs-identifier">modifyContentM</span></a></span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span>  </span><span class="annot"><span class="hs-comment">-- ** Inserting content</span></span><span>
+</span><span id="line-58"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#insertLeft"><span class="hs-identifier">insertLeft</span></a></span><span>
+</span><span id="line-59"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#insertRight"><span class="hs-identifier">insertRight</span></a></span><span>
+</span><span id="line-60"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#insertGoLeft"><span class="hs-identifier">insertGoLeft</span></a></span><span>
+</span><span id="line-61"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#insertGoRight"><span class="hs-identifier">insertGoRight</span></a></span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span>  </span><span class="annot"><span class="hs-comment">-- ** Removing content</span></span><span>
+</span><span id="line-64"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#removeLeft"><span class="hs-identifier">removeLeft</span></a></span><span>
+</span><span id="line-65"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#removeRight"><span class="hs-identifier">removeRight</span></a></span><span>
+</span><span id="line-66"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#removeGoLeft"><span class="hs-identifier">removeGoLeft</span></a></span><span>
+</span><span id="line-67"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#removeGoRight"><span class="hs-identifier">removeGoRight</span></a></span><span>
+</span><span id="line-68"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#removeGoUp"><span class="hs-identifier">removeGoUp</span></a></span><span>
+</span><span id="line-69"></span><span>
+</span><span id="line-70"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-71"></span><span>
+</span><span id="line-72"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html"><span class="hs-identifier">Text.XML.Light.Types</span></a></span><span>
+</span><span id="line-73"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">isNothing</span></span><span class="hs-special">)</span><span>
+</span><span id="line-74"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">mplus</span></span><span class="hs-special">)</span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span class="hs-keyword">data</span><span> </span><span id="Tag"><span class="annot"><a href="Text.XML.Light.Cursor.html#Tag"><span class="hs-identifier hs-var">Tag</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Tag"><span class="annot"><a href="Text.XML.Light.Cursor.html#Tag"><span class="hs-identifier hs-var">Tag</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="tagName"><span class="annot"><span class="annottext">Tag -&gt; QName
+</span><a href="Text.XML.Light.Cursor.html#tagName"><span class="hs-identifier hs-var hs-var">tagName</span></a></span></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#QName"><span class="hs-identifier hs-type">QName</span></a></span><span>
+</span><span id="line-77"></span><span>               </span><span class="hs-special">,</span><span> </span><span id="tagAttribs"><span class="annot"><span class="annottext">Tag -&gt; [Attr]
+</span><a href="Text.XML.Light.Cursor.html#tagAttribs"><span class="hs-identifier hs-var hs-var">tagAttribs</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Types.html#Attr"><span class="hs-identifier hs-type">Attr</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-78"></span><span>               </span><span class="hs-special">,</span><span> </span><span id="tagLine"><span class="annot"><span class="annottext">Tag -&gt; Maybe Line
+</span><a href="Text.XML.Light.Cursor.html#tagLine"><span class="hs-identifier hs-var hs-var">tagLine</span></a></span></span><span>    </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Line"><span class="hs-identifier hs-type">Line</span></a></span><span>
+</span><span id="line-79"></span><span>               </span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679045281"><span id="local-6989586621679045283"><span id="local-6989586621679045285"><span class="annot"><span class="annottext">Int -&gt; Tag -&gt; ShowS
+[Tag] -&gt; ShowS
+Tag -&gt; String
+(Int -&gt; Tag -&gt; ShowS)
+-&gt; (Tag -&gt; String) -&gt; ([Tag] -&gt; ShowS) -&gt; Show Tag
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Tag] -&gt; ShowS
+$cshowList :: [Tag] -&gt; ShowS
+show :: Tag -&gt; String
+$cshow :: Tag -&gt; String
+showsPrec :: Int -&gt; Tag -&gt; ShowS
+$cshowsPrec :: Int -&gt; Tag -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#getTag"><span class="hs-identifier hs-type">getTag</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Element"><span class="hs-identifier hs-type">Element</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Tag"><span class="hs-identifier hs-type">Tag</span></a></span><span>
+</span><span id="line-82"></span><span id="getTag"><span class="annot"><span class="annottext">getTag :: Element -&gt; Tag
+</span><a href="Text.XML.Light.Cursor.html#getTag"><span class="hs-identifier hs-var hs-var">getTag</span></a></span></span><span> </span><span id="local-6989586621679045279"><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679045279"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Tag :: QName -&gt; [Attr] -&gt; Maybe Line -&gt; Tag
+</span><a href="Text.XML.Light.Cursor.html#Tag"><span class="hs-identifier hs-type">Tag</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">tagName :: QName
+</span><a href="Text.XML.Light.Cursor.html#tagName"><span class="hs-identifier hs-var">tagName</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Element -&gt; QName
+</span><a href="Text.XML.Light.Types.html#elName"><span class="hs-identifier hs-var hs-var">elName</span></a></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679045279"><span class="hs-identifier hs-var">e</span></a></span><span>
+</span><span id="line-83"></span><span>               </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">tagAttribs :: [Attr]
+</span><a href="Text.XML.Light.Cursor.html#tagAttribs"><span class="hs-identifier hs-var">tagAttribs</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Element -&gt; [Attr]
+</span><a href="Text.XML.Light.Types.html#elAttribs"><span class="hs-identifier hs-var hs-var">elAttribs</span></a></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679045279"><span class="hs-identifier hs-var">e</span></a></span><span>
+</span><span id="line-84"></span><span>               </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">tagLine :: Maybe Line
+</span><a href="Text.XML.Light.Cursor.html#tagLine"><span class="hs-identifier hs-var">tagLine</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Element -&gt; Maybe Line
+</span><a href="Text.XML.Light.Types.html#elLine"><span class="hs-identifier hs-var hs-var">elLine</span></a></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679045279"><span class="hs-identifier hs-var">e</span></a></span><span>
+</span><span id="line-85"></span><span>               </span><span class="hs-special">}</span><span>
+</span><span id="line-86"></span><span>
+</span><span id="line-87"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#setTag"><span class="hs-identifier hs-type">setTag</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Tag"><span class="hs-identifier hs-type">Tag</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Element"><span class="hs-identifier hs-type">Element</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Element"><span class="hs-identifier hs-type">Element</span></a></span><span>
+</span><span id="line-88"></span><span id="setTag"><span class="annot"><span class="annottext">setTag :: Tag -&gt; Element -&gt; Element
+</span><a href="Text.XML.Light.Cursor.html#setTag"><span class="hs-identifier hs-var hs-var">setTag</span></a></span></span><span> </span><span id="local-6989586621679045275"><span class="annot"><span class="annottext">Tag
+</span><a href="#local-6989586621679045275"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679045274"><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679045274"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Tag -&gt; [Content] -&gt; Element
+</span><a href="Text.XML.Light.Cursor.html#fromTag"><span class="hs-identifier hs-var">fromTag</span></a></span><span> </span><span class="annot"><span class="annottext">Tag
+</span><a href="#local-6989586621679045275"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Element -&gt; [Content]
+</span><a href="Text.XML.Light.Types.html#elContent"><span class="hs-identifier hs-var hs-var">elContent</span></a></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679045274"><span class="hs-identifier hs-var">e</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#fromTag"><span class="hs-identifier hs-type">fromTag</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Tag"><span class="hs-identifier hs-type">Tag</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Element"><span class="hs-identifier hs-type">Element</span></a></span><span>
+</span><span id="line-91"></span><span id="fromTag"><span class="annot"><span class="annottext">fromTag :: Tag -&gt; [Content] -&gt; Element
+</span><a href="Text.XML.Light.Cursor.html#fromTag"><span class="hs-identifier hs-var hs-var">fromTag</span></a></span></span><span> </span><span id="local-6989586621679045272"><span class="annot"><span class="annottext">Tag
+</span><a href="#local-6989586621679045272"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679045271"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045271"><span class="hs-identifier hs-var">cs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Element :: QName -&gt; [Attr] -&gt; [Content] -&gt; Maybe Line -&gt; Element
+</span><a href="Text.XML.Light.Types.html#Element"><span class="hs-identifier hs-type">Element</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">elName :: QName
+</span><a href="Text.XML.Light.Types.html#elName"><span class="hs-identifier hs-var">elName</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Tag -&gt; QName
+</span><a href="Text.XML.Light.Cursor.html#tagName"><span class="hs-identifier hs-var hs-var">tagName</span></a></span><span> </span><span class="annot"><span class="annottext">Tag
+</span><a href="#local-6989586621679045272"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-92"></span><span>                       </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">elAttribs :: [Attr]
+</span><a href="Text.XML.Light.Types.html#elAttribs"><span class="hs-identifier hs-var">elAttribs</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Tag -&gt; [Attr]
+</span><a href="Text.XML.Light.Cursor.html#tagAttribs"><span class="hs-identifier hs-var hs-var">tagAttribs</span></a></span><span> </span><span class="annot"><span class="annottext">Tag
+</span><a href="#local-6989586621679045272"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-93"></span><span>                       </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">elLine :: Maybe Line
+</span><a href="Text.XML.Light.Types.html#elLine"><span class="hs-identifier hs-var">elLine</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Tag -&gt; Maybe Line
+</span><a href="Text.XML.Light.Cursor.html#tagLine"><span class="hs-identifier hs-var hs-var">tagLine</span></a></span><span> </span><span class="annot"><span class="annottext">Tag
+</span><a href="#local-6989586621679045272"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-94"></span><span>                       </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">elContent :: [Content]
+</span><a href="Text.XML.Light.Types.html#elContent"><span class="hs-identifier hs-var">elContent</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045271"><span class="hs-identifier hs-var">cs</span></a></span><span>
+</span><span id="line-95"></span><span>                       </span><span class="hs-special">}</span><span>
+</span><span id="line-96"></span><span>
+</span><span id="line-97"></span><span class="hs-keyword">type</span><span> </span><span id="Path"><span class="annot"><a href="Text.XML.Light.Cursor.html#Path"><span class="hs-identifier hs-var">Path</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span class="hs-special">]</span><span class="hs-special">,</span><span class="annot"><a href="Text.XML.Light.Cursor.html#Tag"><span class="hs-identifier hs-type">Tag</span></a></span><span class="hs-special">,</span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-98"></span><span>
+</span><span id="line-99"></span><span class="hs-comment">-- | The position of a piece of content in an XML document.</span><span>
+</span><span id="line-100"></span><span class="hs-keyword">data</span><span> </span><span id="Cursor"><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-var">Cursor</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Cur"><span class="annot"><a href="Text.XML.Light.Cursor.html#Cur"><span class="hs-identifier hs-var">Cur</span></a></span></span><span>
+</span><span id="line-101"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="current"><span class="annot"><span class="annottext">Cursor -&gt; Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var hs-var">current</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span>      </span><span class="hs-comment">-- ^ The currently selected content.</span><span>
+</span><span id="line-102"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="lefts"><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var hs-var">lefts</span></a></span></span><span>   </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span class="hs-special">]</span><span>    </span><span class="hs-comment">-- ^ Siblings on the left, closest first.</span><span>
+</span><span id="line-103"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="rights"><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var hs-var">rights</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span class="hs-special">]</span><span>    </span><span class="hs-comment">-- ^ Siblings on the right, closest first.</span><span>
+</span><span id="line-104"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="parents"><span class="annot"><span class="annottext">Cursor -&gt; Path
+</span><a href="Text.XML.Light.Cursor.html#parents"><span class="hs-identifier hs-var hs-var">parents</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span> </span><span class="hs-comment">-- ^ The contexts of the parent elements of this location.</span><span>
+</span><span id="line-105"></span><span>  </span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679045259"><span id="local-6989586621679045261"><span id="local-6989586621679045263"><span class="annot"><span class="annottext">Int -&gt; Cursor -&gt; ShowS
+[Cursor] -&gt; ShowS
+Cursor -&gt; String
+(Int -&gt; Cursor -&gt; ShowS)
+-&gt; (Cursor -&gt; String) -&gt; ([Cursor] -&gt; ShowS) -&gt; Show Cursor
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Cursor] -&gt; ShowS
+$cshowList :: [Cursor] -&gt; ShowS
+show :: Cursor -&gt; String
+$cshow :: Cursor -&gt; String
+showsPrec :: Int -&gt; Cursor -&gt; ShowS
+$cshowsPrec :: Int -&gt; Cursor -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-106"></span><span>
+</span><span id="line-107"></span><span class="hs-comment">-- Moving around ---------------------------------------------------------------</span><span>
+</span><span id="line-108"></span><span>
+</span><span id="line-109"></span><span class="hs-comment">-- | The parent of the given location.</span><span>
+</span><span id="line-110"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#parent"><span class="hs-identifier hs-type">parent</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-111"></span><span id="parent"><span class="annot"><span class="annottext">parent :: Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#parent"><span class="hs-identifier hs-var hs-var">parent</span></a></span></span><span> </span><span id="local-6989586621679045258"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045258"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-112"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Path
+</span><a href="Text.XML.Light.Cursor.html#parents"><span class="hs-identifier hs-var hs-var">parents</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045258"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-113"></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679045257"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045257"><span class="hs-identifier hs-var">pls</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045256"><span class="annot"><span class="annottext">Tag
+</span><a href="#local-6989586621679045256"><span class="hs-identifier hs-var">v</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045255"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045255"><span class="hs-identifier hs-var">prs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045254"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679045254"><span class="hs-identifier hs-var">ps</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span>
+</span><span id="line-114"></span><span>      </span><span class="annot"><span class="annottext">Cur :: Content -&gt; [Content] -&gt; [Content] -&gt; Path -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#Cur"><span class="hs-identifier hs-type">Cur</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">current :: Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var">current</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Element -&gt; Content
+</span><a href="Text.XML.Light.Types.html#Elem"><span class="hs-identifier hs-var">Elem</span></a></span><span>
+</span><span id="line-115"></span><span>                    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Tag -&gt; [Content] -&gt; Element
+</span><a href="Text.XML.Light.Cursor.html#fromTag"><span class="hs-identifier hs-var">fromTag</span></a></span><span> </span><span class="annot"><span class="annottext">Tag
+</span><a href="#local-6989586621679045256"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-116"></span><span>                    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Content] -&gt; Content -&gt; [Content] -&gt; [Content]
+forall a. [a] -&gt; a -&gt; [a] -&gt; [a]
+</span><a href="Text.XML.Light.Cursor.html#combChildren"><span class="hs-identifier hs-var">combChildren</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var hs-var">lefts</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045258"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var hs-var">current</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045258"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var hs-var">rights</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045258"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-117"></span><span>          </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">lefts :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var">lefts</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045257"><span class="hs-identifier hs-var">pls</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">rights :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var">rights</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045255"><span class="hs-identifier hs-var">prs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">parents :: Path
+</span><a href="Text.XML.Light.Cursor.html#parents"><span class="hs-identifier hs-var">parents</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679045254"><span class="hs-identifier hs-var">ps</span></a></span><span>
+</span><span id="line-118"></span><span>          </span><span class="hs-special">}</span><span>
+</span><span id="line-119"></span><span>    </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Cursor
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-120"></span><span>
+</span><span id="line-121"></span><span>
+</span><span id="line-122"></span><span class="hs-comment">-- | The top-most parent of the given location.</span><span>
+</span><span id="line-123"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#root"><span class="hs-identifier hs-type">root</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-124"></span><span id="root"><span class="annot"><span class="annottext">root :: Cursor -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#root"><span class="hs-identifier hs-var hs-var">root</span></a></span></span><span> </span><span id="local-6989586621679045251"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045251"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; (Cursor -&gt; Cursor) -&gt; Maybe Cursor -&gt; Cursor
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045251"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#root"><span class="hs-identifier hs-var">root</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#parent"><span class="hs-identifier hs-var">parent</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045251"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-125"></span><span>
+</span><span id="line-126"></span><span class="hs-comment">-- | The left sibling of the given location.</span><span>
+</span><span id="line-127"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#left"><span class="hs-identifier hs-type">left</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-128"></span><span id="left"><span class="annot"><span class="annottext">left :: Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#left"><span class="hs-identifier hs-var hs-var">left</span></a></span></span><span> </span><span id="local-6989586621679045249"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045249"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-129"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var hs-var">lefts</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045249"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-130"></span><span>    </span><span id="local-6989586621679045248"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045248"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045247"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045247"><span class="hs-identifier hs-var">ts</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045249"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">current :: Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var">current</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045248"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">lefts :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var">lefts</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045247"><span class="hs-identifier hs-var">ts</span></a></span><span>
+</span><span id="line-131"></span><span>                                    </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">rights :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var">rights</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var hs-var">current</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045249"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="annot"><span class="annottext">Content -&gt; [Content] -&gt; [Content]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var hs-var">rights</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045249"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-132"></span><span>    </span><span class="hs-special">[</span><span class="hs-special">]</span><span>     </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Cursor
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-133"></span><span>
+</span><span id="line-134"></span><span class="hs-comment">-- | The right sibling of the given location.</span><span>
+</span><span id="line-135"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#right"><span class="hs-identifier hs-type">right</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-136"></span><span id="right"><span class="annot"><span class="annottext">right :: Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#right"><span class="hs-identifier hs-var hs-var">right</span></a></span></span><span> </span><span id="local-6989586621679045246"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045246"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-137"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var hs-var">rights</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045246"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-138"></span><span>    </span><span id="local-6989586621679045245"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045245"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045244"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045244"><span class="hs-identifier hs-var">ts</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045246"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">current :: Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var">current</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045245"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">lefts :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var">lefts</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var hs-var">current</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045246"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="annot"><span class="annottext">Content -&gt; [Content] -&gt; [Content]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var hs-var">lefts</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045246"><span class="hs-identifier hs-var">loc</span></a></span><span>
+</span><span id="line-139"></span><span>                                    </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">rights :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var">rights</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045244"><span class="hs-identifier hs-var">ts</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-140"></span><span>    </span><span class="hs-special">[</span><span class="hs-special">]</span><span>     </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Cursor
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-141"></span><span>
+</span><span id="line-142"></span><span class="hs-comment">-- | The first child of the given location.</span><span>
+</span><span id="line-143"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#firstChild"><span class="hs-identifier hs-type">firstChild</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-144"></span><span id="firstChild"><span class="annot"><span class="annottext">firstChild :: Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#firstChild"><span class="hs-identifier hs-var hs-var">firstChild</span></a></span></span><span> </span><span id="local-6989586621679045243"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045243"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-145"></span><span>  </span><span class="hs-keyword">do</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679045242"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045242"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045241"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045241"><span class="hs-identifier hs-var">ts</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679045240"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679045240"><span class="hs-identifier hs-var">ps</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe ([Content], Path)
+</span><a href="Text.XML.Light.Cursor.html#downParents"><span class="hs-identifier hs-var">downParents</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045243"><span class="hs-identifier hs-var">loc</span></a></span><span>
+</span><span id="line-146"></span><span>     </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Cur :: Content -&gt; [Content] -&gt; [Content] -&gt; Path -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#Cur"><span class="hs-identifier hs-type">Cur</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">current :: Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var">current</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045242"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">lefts :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var">lefts</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">rights :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var">rights</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045241"><span class="hs-identifier hs-var">ts</span></a></span><span> </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">parents :: Path
+</span><a href="Text.XML.Light.Cursor.html#parents"><span class="hs-identifier hs-var">parents</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679045240"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-147"></span><span>
+</span><span id="line-148"></span><span class="hs-comment">-- | The last child of the given location.</span><span>
+</span><span id="line-149"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#lastChild"><span class="hs-identifier hs-type">lastChild</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-150"></span><span id="lastChild"><span class="annot"><span class="annottext">lastChild :: Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#lastChild"><span class="hs-identifier hs-var hs-var">lastChild</span></a></span></span><span> </span><span id="local-6989586621679045238"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045238"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-151"></span><span>  </span><span class="hs-keyword">do</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679045237"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045237"><span class="hs-identifier hs-var">ts</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679045236"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679045236"><span class="hs-identifier hs-var">ps</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe ([Content], Path)
+</span><a href="Text.XML.Light.Cursor.html#downParents"><span class="hs-identifier hs-var">downParents</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045238"><span class="hs-identifier hs-var">loc</span></a></span><span>
+</span><span id="line-152"></span><span>     </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">[Content] -&gt; [Content]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045237"><span class="hs-identifier hs-var">ts</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-153"></span><span>       </span><span id="local-6989586621679045234"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045234"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045233"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045233"><span class="hs-identifier hs-var">ls</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Cur :: Content -&gt; [Content] -&gt; [Content] -&gt; Path -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#Cur"><span class="hs-identifier hs-type">Cur</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">current :: Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var">current</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045234"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">lefts :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var">lefts</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045233"><span class="hs-identifier hs-var">ls</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">rights :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var">rights</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-154"></span><span>                                                     </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">parents :: Path
+</span><a href="Text.XML.Light.Cursor.html#parents"><span class="hs-identifier hs-var">parents</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679045236"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-155"></span><span>       </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Cursor
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-156"></span><span>
+</span><span id="line-157"></span><span class="hs-comment">-- | Find the next left sibling that satisfies a predicate.</span><span>
+</span><span id="line-158"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#findLeft"><span class="hs-identifier hs-type">findLeft</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-159"></span><span id="findLeft"><span class="annot"><span class="annottext">findLeft :: (Cursor -&gt; Bool) -&gt; Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#findLeft"><span class="hs-identifier hs-var hs-var">findLeft</span></a></span></span><span> </span><span id="local-6989586621679045232"><span class="annot"><span class="annottext">Cursor -&gt; Bool
+</span><a href="#local-6989586621679045232"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679045231"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045231"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span> </span><span id="local-6989586621679045230"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045230"><span class="hs-identifier hs-var">loc1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#left"><span class="hs-identifier hs-var">left</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045231"><span class="hs-identifier hs-var">loc</span></a></span><span>
+</span><span id="line-160"></span><span>                    </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Bool
+</span><a href="#local-6989586621679045232"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045230"><span class="hs-identifier hs-var">loc1</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045230"><span class="hs-identifier hs-var">loc1</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">(Cursor -&gt; Bool) -&gt; Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#findLeft"><span class="hs-identifier hs-var">findLeft</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Bool
+</span><a href="#local-6989586621679045232"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045230"><span class="hs-identifier hs-var">loc1</span></a></span><span>
+</span><span id="line-161"></span><span>
+</span><span id="line-162"></span><span class="hs-comment">-- | Find the next right sibling that satisfies a predicate.</span><span>
+</span><span id="line-163"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#findRight"><span class="hs-identifier hs-type">findRight</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-164"></span><span id="findRight"><span class="annot"><span class="annottext">findRight :: (Cursor -&gt; Bool) -&gt; Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#findRight"><span class="hs-identifier hs-var hs-var">findRight</span></a></span></span><span> </span><span id="local-6989586621679045229"><span class="annot"><span class="annottext">Cursor -&gt; Bool
+</span><a href="#local-6989586621679045229"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679045228"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045228"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span> </span><span id="local-6989586621679045227"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045227"><span class="hs-identifier hs-var">loc1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#right"><span class="hs-identifier hs-var">right</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045228"><span class="hs-identifier hs-var">loc</span></a></span><span>
+</span><span id="line-165"></span><span>                     </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Bool
+</span><a href="#local-6989586621679045229"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045227"><span class="hs-identifier hs-var">loc1</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045227"><span class="hs-identifier hs-var">loc1</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">(Cursor -&gt; Bool) -&gt; Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#findRight"><span class="hs-identifier hs-var">findRight</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Bool
+</span><a href="#local-6989586621679045229"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045227"><span class="hs-identifier hs-var">loc1</span></a></span><span>
+</span><span id="line-166"></span><span>
+</span><span id="line-167"></span><span class="hs-comment">-- | The first child that satisfies a predicate.</span><span>
+</span><span id="line-168"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#findChild"><span class="hs-identifier hs-type">findChild</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-169"></span><span id="findChild"><span class="annot"><span class="annottext">findChild :: (Cursor -&gt; Bool) -&gt; Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#findChild"><span class="hs-identifier hs-var hs-var">findChild</span></a></span></span><span> </span><span id="local-6989586621679045226"><span class="annot"><span class="annottext">Cursor -&gt; Bool
+</span><a href="#local-6989586621679045226"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679045225"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045225"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-170"></span><span>  </span><span class="hs-keyword">do</span><span> </span><span id="local-6989586621679045224"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045224"><span class="hs-identifier hs-var">loc1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#firstChild"><span class="hs-identifier hs-var">firstChild</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045225"><span class="hs-identifier hs-var">loc</span></a></span><span>
+</span><span id="line-171"></span><span>     </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Bool
+</span><a href="#local-6989586621679045226"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045224"><span class="hs-identifier hs-var">loc1</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045224"><span class="hs-identifier hs-var">loc1</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">(Cursor -&gt; Bool) -&gt; Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#findRight"><span class="hs-identifier hs-var">findRight</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Bool
+</span><a href="#local-6989586621679045226"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045224"><span class="hs-identifier hs-var">loc1</span></a></span><span>
+</span><span id="line-172"></span><span>
+</span><span id="line-173"></span><span class="hs-comment">-- | The next position in a left-to-right depth-first traversal of a document:</span><span>
+</span><span id="line-174"></span><span class="hs-comment">-- either the first child, right sibling, or the right sibling of a parent that</span><span>
+</span><span id="line-175"></span><span class="hs-comment">-- has one.</span><span>
+</span><span id="line-176"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#nextDF"><span class="hs-identifier hs-type">nextDF</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-177"></span><span id="nextDF"><span class="annot"><span class="annottext">nextDF :: Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#nextDF"><span class="hs-identifier hs-var hs-var">nextDF</span></a></span></span><span> </span><span id="local-6989586621679045223"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045223"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#firstChild"><span class="hs-identifier hs-var">firstChild</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045223"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Cursor -&gt; Maybe Cursor -&gt; Maybe Cursor
+forall (m :: * -&gt; *) a. MonadPlus m =&gt; m a -&gt; m a -&gt; m a
+</span><span class="hs-operator hs-var">`mplus`</span></span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+</span><a href="#local-6989586621679045222"><span class="hs-identifier hs-var">up</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045223"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-178"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679045222"><span class="annot"><span class="annottext">up :: Cursor -&gt; Maybe Cursor
+</span><a href="#local-6989586621679045222"><span class="hs-identifier hs-var hs-var">up</span></a></span></span><span> </span><span id="local-6989586621679045221"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045221"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#right"><span class="hs-identifier hs-var">right</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045221"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Cursor -&gt; Maybe Cursor -&gt; Maybe Cursor
+forall (m :: * -&gt; *) a. MonadPlus m =&gt; m a -&gt; m a -&gt; m a
+</span><span class="hs-operator hs-var">`mplus`</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+</span><a href="#local-6989586621679045222"><span class="hs-identifier hs-var">up</span></a></span><span> </span><span class="annot"><span class="annottext">(Cursor -&gt; Maybe Cursor) -&gt; Maybe Cursor -&gt; Maybe Cursor
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; m a -&gt; m b
+</span><span class="hs-operator hs-var">=&lt;&lt;</span></span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#parent"><span class="hs-identifier hs-var">parent</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045221"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-179"></span><span>
+</span><span id="line-180"></span><span class="hs-comment">-- | Perform a depth first search for a descendant that satisfies the</span><span>
+</span><span id="line-181"></span><span class="hs-comment">-- given predicate.</span><span>
+</span><span id="line-182"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#findRec"><span class="hs-identifier hs-type">findRec</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-183"></span><span id="findRec"><span class="annot"><span class="annottext">findRec :: (Cursor -&gt; Bool) -&gt; Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#findRec"><span class="hs-identifier hs-var hs-var">findRec</span></a></span></span><span> </span><span id="local-6989586621679045219"><span class="annot"><span class="annottext">Cursor -&gt; Bool
+</span><a href="#local-6989586621679045219"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679045218"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045218"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Bool
+</span><a href="#local-6989586621679045219"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045218"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045218"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">(Cursor -&gt; Bool) -&gt; Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#findRec"><span class="hs-identifier hs-var">findRec</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Bool
+</span><a href="#local-6989586621679045219"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">(Cursor -&gt; Maybe Cursor) -&gt; Maybe Cursor -&gt; Maybe Cursor
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; m a -&gt; m b
+</span><span class="hs-operator hs-var">=&lt;&lt;</span></span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#nextDF"><span class="hs-identifier hs-var">nextDF</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045218"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-184"></span><span>
+</span><span id="line-185"></span><span class="hs-comment">-- | The child with the given index (starting from 0).</span><span>
+</span><span id="line-186"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#getChild"><span class="hs-identifier hs-type">getChild</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-187"></span><span id="getChild"><span class="annot"><span class="annottext">getChild :: Int -&gt; Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#getChild"><span class="hs-identifier hs-var hs-var">getChild</span></a></span></span><span> </span><span id="local-6989586621679045217"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679045217"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679045216"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045216"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-188"></span><span>  </span><span class="hs-keyword">do</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679045215"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045215"><span class="hs-identifier hs-var">ts</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045214"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679045214"><span class="hs-identifier hs-var">ps</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe ([Content], Path)
+</span><a href="Text.XML.Light.Cursor.html#downParents"><span class="hs-identifier hs-var">downParents</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045216"><span class="hs-identifier hs-var">loc</span></a></span><span>
+</span><span id="line-189"></span><span>     </span><span class="hs-special">(</span><span id="local-6989586621679045213"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045213"><span class="hs-identifier hs-var">ls</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045212"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045212"><span class="hs-identifier hs-var">t</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045211"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045211"><span class="hs-identifier hs-var">rs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Content] -&gt; Int -&gt; Maybe ([Content], Content, [Content])
+forall a. [a] -&gt; Int -&gt; Maybe ([a], a, [a])
+</span><a href="Text.XML.Light.Cursor.html#splitChildren"><span class="hs-identifier hs-var">splitChildren</span></a></span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045215"><span class="hs-identifier hs-var">ts</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679045217"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-190"></span><span>     </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Cur :: Content -&gt; [Content] -&gt; [Content] -&gt; Path -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#Cur"><span class="hs-identifier hs-type">Cur</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">current :: Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var">current</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045212"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">lefts :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var">lefts</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045213"><span class="hs-identifier hs-var">ls</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">rights :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var">rights</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045211"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">parents :: Path
+</span><a href="Text.XML.Light.Cursor.html#parents"><span class="hs-identifier hs-var">parents</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679045214"><span class="hs-identifier hs-var">ps</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-191"></span><span>
+</span><span id="line-192"></span><span>
+</span><span id="line-193"></span><span class="hs-comment">-- | private: computes the parent for &quot;down&quot; operations.</span><span>
+</span><span id="line-194"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#downParents"><span class="hs-identifier hs-type">downParents</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-195"></span><span id="downParents"><span class="annot"><span class="annottext">downParents :: Cursor -&gt; Maybe ([Content], Path)
+</span><a href="Text.XML.Light.Cursor.html#downParents"><span class="hs-identifier hs-var hs-var">downParents</span></a></span></span><span> </span><span id="local-6989586621679045209"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045209"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-196"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var hs-var">current</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045209"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-197"></span><span>    </span><span class="annot"><a href="Text.XML.Light.Types.html#Elem"><span class="hs-identifier hs-type">Elem</span></a></span><span> </span><span id="local-6989586621679045208"><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679045208"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">([Content], Path) -&gt; Maybe ([Content], Path)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">Element -&gt; [Content]
+</span><a href="Text.XML.Light.Types.html#elContent"><span class="hs-identifier hs-var hs-var">elContent</span></a></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679045208"><span class="hs-identifier hs-var">e</span></a></span><span>
+</span><span id="line-198"></span><span>                   </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var hs-var">lefts</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045209"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Element -&gt; Tag
+</span><a href="Text.XML.Light.Cursor.html#getTag"><span class="hs-identifier hs-var">getTag</span></a></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679045208"><span class="hs-identifier hs-var">e</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var hs-var">rights</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045209"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([Content], Tag, [Content]) -&gt; Path -&gt; Path
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Path
+</span><a href="Text.XML.Light.Cursor.html#parents"><span class="hs-identifier hs-var hs-var">parents</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045209"><span class="hs-identifier hs-var">loc</span></a></span><span>
+</span><span id="line-199"></span><span>                   </span><span class="hs-special">)</span><span>
+</span><span id="line-200"></span><span>    </span><span class="annot"><span class="annottext">Content
+</span><span class="hs-identifier">_</span></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe ([Content], Path)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-201"></span><span>
+</span><span id="line-202"></span><span class="hs-comment">-- Conversions -----------------------------------------------------------------</span><span>
+</span><span id="line-203"></span><span>
+</span><span id="line-204"></span><span class="hs-comment">-- | A cursor for the given content.</span><span>
+</span><span id="line-205"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#fromContent"><span class="hs-identifier hs-type">fromContent</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-206"></span><span id="fromContent"><span class="annot"><span class="annottext">fromContent :: Content -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#fromContent"><span class="hs-identifier hs-var hs-var">fromContent</span></a></span></span><span> </span><span id="local-6989586621679045207"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045207"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cur :: Content -&gt; [Content] -&gt; [Content] -&gt; Path -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#Cur"><span class="hs-identifier hs-type">Cur</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">current :: Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var">current</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045207"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">lefts :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var">lefts</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">rights :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var">rights</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">parents :: Path
+</span><a href="Text.XML.Light.Cursor.html#parents"><span class="hs-identifier hs-var">parents</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-207"></span><span>
+</span><span id="line-208"></span><span class="hs-comment">-- | A cursor for the given element.</span><span>
+</span><span id="line-209"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#fromElement"><span class="hs-identifier hs-type">fromElement</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Element"><span class="hs-identifier hs-type">Element</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-210"></span><span id="fromElement"><span class="annot"><span class="annottext">fromElement :: Element -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#fromElement"><span class="hs-identifier hs-var hs-var">fromElement</span></a></span></span><span> </span><span id="local-6989586621679045206"><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679045206"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Content -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#fromContent"><span class="hs-identifier hs-var">fromContent</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Element -&gt; Content
+</span><a href="Text.XML.Light.Types.html#Elem"><span class="hs-identifier hs-var">Elem</span></a></span><span> </span><span class="annot"><span class="annottext">Element
+</span><a href="#local-6989586621679045206"><span class="hs-identifier hs-var">e</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-211"></span><span>
+</span><span id="line-212"></span><span class="hs-comment">-- | The location of the first tree in a forest.</span><span>
+</span><span id="line-213"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#fromForest"><span class="hs-identifier hs-type">fromForest</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-214"></span><span id="fromForest"><span class="annot"><span class="annottext">fromForest :: [Content] -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#fromForest"><span class="hs-identifier hs-var hs-var">fromForest</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679045205"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045205"><span class="hs-identifier hs-var">t</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679045204"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045204"><span class="hs-identifier hs-var">ts</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Cur :: Content -&gt; [Content] -&gt; [Content] -&gt; Path -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#Cur"><span class="hs-identifier hs-type">Cur</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">current :: Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var">current</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045205"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">lefts :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var">lefts</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">rights :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var">rights</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045204"><span class="hs-identifier hs-var">ts</span></a></span><span>
+</span><span id="line-215"></span><span>                                                      </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">parents :: Path
+</span><a href="Text.XML.Light.Cursor.html#parents"><span class="hs-identifier hs-var">parents</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-216"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#fromForest"><span class="hs-identifier hs-var">fromForest</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Cursor
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-217"></span><span>
+</span><span id="line-218"></span><span class="hs-comment">-- | Computes the tree containing this location.</span><span>
+</span><span id="line-219"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#toTree"><span class="hs-identifier hs-type">toTree</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span>
+</span><span id="line-220"></span><span id="toTree"><span class="annot"><span class="annottext">toTree :: Cursor -&gt; Content
+</span><a href="Text.XML.Light.Cursor.html#toTree"><span class="hs-identifier hs-var hs-var">toTree</span></a></span></span><span> </span><span id="local-6989586621679045203"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045203"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var hs-var">current</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#root"><span class="hs-identifier hs-var">root</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045203"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-221"></span><span>
+</span><span id="line-222"></span><span class="hs-comment">-- | Computes the forest containing this location.</span><span>
+</span><span id="line-223"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#toForest"><span class="hs-identifier hs-type">toForest</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-224"></span><span id="toForest"><span class="annot"><span class="annottext">toForest :: Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#toForest"><span class="hs-identifier hs-var hs-var">toForest</span></a></span></span><span> </span><span id="local-6989586621679045202"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045202"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679045201"><span class="annot"><span class="annottext">r :: Cursor
+</span><a href="#local-6989586621679045201"><span class="hs-identifier hs-var hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#root"><span class="hs-identifier hs-var">root</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045202"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">[Content] -&gt; Content -&gt; [Content] -&gt; [Content]
+forall a. [a] -&gt; a -&gt; [a] -&gt; [a]
+</span><a href="Text.XML.Light.Cursor.html#combChildren"><span class="hs-identifier hs-var">combChildren</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var hs-var">lefts</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045201"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var hs-var">current</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045201"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var hs-var">rights</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045201"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-225"></span><span>
+</span><span id="line-226"></span><span>
+</span><span id="line-227"></span><span class="hs-comment">-- Queries ---------------------------------------------------------------------</span><span>
+</span><span id="line-228"></span><span>
+</span><span id="line-229"></span><span class="hs-comment">-- | Are we at the top of the document?</span><span>
+</span><span id="line-230"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#isRoot"><span class="hs-identifier hs-type">isRoot</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-231"></span><span id="isRoot"><span class="annot"><span class="annottext">isRoot :: Cursor -&gt; Bool
+</span><a href="Text.XML.Light.Cursor.html#isRoot"><span class="hs-identifier hs-var hs-var">isRoot</span></a></span></span><span> </span><span id="local-6989586621679045200"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045200"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Path -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; Path
+</span><a href="Text.XML.Light.Cursor.html#parents"><span class="hs-identifier hs-var hs-var">parents</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045200"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-232"></span><span>
+</span><span id="line-233"></span><span class="hs-comment">-- | Are we at the left end of the the document?</span><span>
+</span><span id="line-234"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#isFirst"><span class="hs-identifier hs-type">isFirst</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-235"></span><span id="isFirst"><span class="annot"><span class="annottext">isFirst :: Cursor -&gt; Bool
+</span><a href="Text.XML.Light.Cursor.html#isFirst"><span class="hs-identifier hs-var hs-var">isFirst</span></a></span></span><span> </span><span id="local-6989586621679045198"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045198"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var hs-var">lefts</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045198"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-236"></span><span>
+</span><span id="line-237"></span><span class="hs-comment">-- | Are we at the right end of the document?</span><span>
+</span><span id="line-238"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#isLast"><span class="hs-identifier hs-type">isLast</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-239"></span><span id="isLast"><span class="annot"><span class="annottext">isLast :: Cursor -&gt; Bool
+</span><a href="Text.XML.Light.Cursor.html#isLast"><span class="hs-identifier hs-var hs-var">isLast</span></a></span></span><span> </span><span id="local-6989586621679045197"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045197"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var hs-var">rights</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045197"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-240"></span><span>
+</span><span id="line-241"></span><span class="hs-comment">-- | Are we at the bottom of the document?</span><span>
+</span><span id="line-242"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#isLeaf"><span class="hs-identifier hs-type">isLeaf</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-243"></span><span id="isLeaf"><span class="annot"><span class="annottext">isLeaf :: Cursor -&gt; Bool
+</span><a href="Text.XML.Light.Cursor.html#isLeaf"><span class="hs-identifier hs-var hs-var">isLeaf</span></a></span></span><span> </span><span id="local-6989586621679045196"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045196"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe ([Content], Path) -&gt; Bool
+forall a. Maybe a -&gt; Bool
+</span><span class="hs-identifier hs-var">isNothing</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; Maybe ([Content], Path)
+</span><a href="Text.XML.Light.Cursor.html#downParents"><span class="hs-identifier hs-var">downParents</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045196"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-244"></span><span>
+</span><span id="line-245"></span><span class="hs-comment">-- | Do we have a parent?</span><span>
+</span><span id="line-246"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#isChild"><span class="hs-identifier hs-type">isChild</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-247"></span><span id="isChild"><span class="annot"><span class="annottext">isChild :: Cursor -&gt; Bool
+</span><a href="Text.XML.Light.Cursor.html#isChild"><span class="hs-identifier hs-var hs-var">isChild</span></a></span></span><span> </span><span id="local-6989586621679045195"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045195"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; Bool
+</span><a href="Text.XML.Light.Cursor.html#isRoot"><span class="hs-identifier hs-var">isRoot</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045195"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-248"></span><span>
+</span><span id="line-249"></span><span class="hs-comment">-- | Get the node index inside the sequence of children</span><span>
+</span><span id="line-250"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#getNodeIndex"><span class="hs-identifier hs-type">getNodeIndex</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-251"></span><span id="getNodeIndex"><span class="annot"><span class="annottext">getNodeIndex :: Cursor -&gt; Int
+</span><a href="Text.XML.Light.Cursor.html#getNodeIndex"><span class="hs-identifier hs-var hs-var">getNodeIndex</span></a></span></span><span> </span><span id="local-6989586621679045193"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045193"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content] -&gt; Int
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Int
+</span><span class="hs-identifier hs-var">length</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var hs-var">lefts</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045193"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-252"></span><span>
+</span><span id="line-253"></span><span class="hs-comment">-- | Do we have children?</span><span>
+</span><span id="line-254"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#hasChildren"><span class="hs-identifier hs-type">hasChildren</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-255"></span><span id="hasChildren"><span class="annot"><span class="annottext">hasChildren :: Cursor -&gt; Bool
+</span><a href="Text.XML.Light.Cursor.html#hasChildren"><span class="hs-identifier hs-var hs-var">hasChildren</span></a></span></span><span> </span><span id="local-6989586621679045191"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045191"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; Bool
+</span><a href="Text.XML.Light.Cursor.html#isLeaf"><span class="hs-identifier hs-var">isLeaf</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045191"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-256"></span><span>
+</span><span id="line-257"></span><span>
+</span><span id="line-258"></span><span>
+</span><span id="line-259"></span><span class="hs-comment">-- Updates ---------------------------------------------------------------------</span><span>
+</span><span id="line-260"></span><span>
+</span><span id="line-261"></span><span class="hs-comment">-- | Change the current content.</span><span>
+</span><span id="line-262"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#setContent"><span class="hs-identifier hs-type">setContent</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-263"></span><span id="setContent"><span class="annot"><span class="annottext">setContent :: Content -&gt; Cursor -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#setContent"><span class="hs-identifier hs-var hs-var">setContent</span></a></span></span><span> </span><span id="local-6989586621679045190"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045190"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679045189"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045189"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045189"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">current :: Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var">current</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045190"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-264"></span><span>
+</span><span id="line-265"></span><span class="hs-comment">-- | Modify the current content.</span><span>
+</span><span id="line-266"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#modifyContent"><span class="hs-identifier hs-type">modifyContent</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-267"></span><span id="modifyContent"><span class="annot"><span class="annottext">modifyContent :: (Content -&gt; Content) -&gt; Cursor -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#modifyContent"><span class="hs-identifier hs-var hs-var">modifyContent</span></a></span></span><span> </span><span id="local-6989586621679045188"><span class="annot"><span class="annottext">Content -&gt; Content
+</span><a href="#local-6989586621679045188"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679045187"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045187"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Content -&gt; Cursor -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#setContent"><span class="hs-identifier hs-var">setContent</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Content -&gt; Content
+</span><a href="#local-6989586621679045188"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var hs-var">current</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045187"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045187"><span class="hs-identifier hs-var">loc</span></a></span><span>
+</span><span id="line-268"></span><span>
+</span><span id="line-269"></span><span class="hs-comment">-- | Modify the current content, allowing for an effect.</span><span>
+</span><span id="line-270"></span><span id="local-6989586621679045186"><span class="annot"><a href="Text.XML.Light.Cursor.html#modifyContentM"><span class="hs-identifier hs-type">modifyContentM</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Monad</span></span><span> </span><span class="annot"><a href="#local-6989586621679045186"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679045186"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679045186"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span></span><span>
+</span><span id="line-271"></span><span id="modifyContentM"><span class="annot"><span class="annottext">modifyContentM :: (Content -&gt; m Content) -&gt; Cursor -&gt; m Cursor
+</span><a href="Text.XML.Light.Cursor.html#modifyContentM"><span class="hs-identifier hs-var hs-var">modifyContentM</span></a></span></span><span> </span><span id="local-6989586621679045185"><span class="annot"><span class="annottext">Content -&gt; m Content
+</span><a href="#local-6989586621679045185"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679045184"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045184"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span> </span><span id="local-6989586621679045183"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045183"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Content -&gt; m Content
+</span><a href="#local-6989586621679045185"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var hs-var">current</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045184"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-272"></span><span>                          </span><span class="annot"><span class="annottext">Cursor -&gt; m Cursor
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Content -&gt; Cursor -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#setContent"><span class="hs-identifier hs-var">setContent</span></a></span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045183"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045184"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-273"></span><span>
+</span><span id="line-274"></span><span class="hs-comment">-- | Insert content to the left of the current position.</span><span>
+</span><span id="line-275"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#insertLeft"><span class="hs-identifier hs-type">insertLeft</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-276"></span><span id="insertLeft"><span class="annot"><span class="annottext">insertLeft :: Content -&gt; Cursor -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#insertLeft"><span class="hs-identifier hs-var hs-var">insertLeft</span></a></span></span><span> </span><span id="local-6989586621679045182"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045182"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679045181"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045181"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045181"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">lefts :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var">lefts</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045182"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Content -&gt; [Content] -&gt; [Content]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var hs-var">lefts</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045181"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-277"></span><span>
+</span><span id="line-278"></span><span class="hs-comment">-- | Insert content to the right of the current position.</span><span>
+</span><span id="line-279"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#insertRight"><span class="hs-identifier hs-type">insertRight</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-280"></span><span id="insertRight"><span class="annot"><span class="annottext">insertRight :: Content -&gt; Cursor -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#insertRight"><span class="hs-identifier hs-var hs-var">insertRight</span></a></span></span><span> </span><span id="local-6989586621679045180"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045180"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679045179"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045179"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045179"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">rights :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var">rights</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045180"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Content -&gt; [Content] -&gt; [Content]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var hs-var">rights</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045179"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-281"></span><span>
+</span><span id="line-282"></span><span class="hs-comment">-- | Remove the content on the left of the current position, if any.</span><span>
+</span><span id="line-283"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#removeLeft"><span class="hs-identifier hs-type">removeLeft</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span class="hs-special">,</span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-284"></span><span id="removeLeft"><span class="annot"><span class="annottext">removeLeft :: Cursor -&gt; Maybe (Content, Cursor)
+</span><a href="Text.XML.Light.Cursor.html#removeLeft"><span class="hs-identifier hs-var hs-var">removeLeft</span></a></span></span><span> </span><span id="local-6989586621679045178"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045178"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var hs-var">lefts</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045178"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-285"></span><span>                   </span><span id="local-6989586621679045177"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045177"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045176"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045176"><span class="hs-identifier hs-var">ls</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Content, Cursor) -&gt; Maybe (Content, Cursor)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045177"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045178"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">lefts :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var">lefts</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045176"><span class="hs-identifier hs-var">ls</span></a></span><span> </span><span class="hs-special">}</span><span class="hs-special">)</span><span>
+</span><span id="line-286"></span><span>                   </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe (Content, Cursor)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-287"></span><span>
+</span><span id="line-288"></span><span class="hs-comment">-- | Remove the content on the right of the current position, if any.</span><span>
+</span><span id="line-289"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#removeRight"><span class="hs-identifier hs-type">removeRight</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span class="hs-special">,</span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-290"></span><span id="removeRight"><span class="annot"><span class="annottext">removeRight :: Cursor -&gt; Maybe (Content, Cursor)
+</span><a href="Text.XML.Light.Cursor.html#removeRight"><span class="hs-identifier hs-var hs-var">removeRight</span></a></span></span><span> </span><span id="local-6989586621679045175"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045175"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var hs-var">rights</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045175"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-291"></span><span>                    </span><span id="local-6989586621679045174"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045174"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045173"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045173"><span class="hs-identifier hs-var">ls</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Content, Cursor) -&gt; Maybe (Content, Cursor)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045174"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045175"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">rights :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var">rights</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045173"><span class="hs-identifier hs-var">ls</span></a></span><span> </span><span class="hs-special">}</span><span class="hs-special">)</span><span>
+</span><span id="line-292"></span><span>                    </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe (Content, Cursor)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-293"></span><span>
+</span><span id="line-294"></span><span>
+</span><span id="line-295"></span><span class="hs-comment">-- | Insert content to the left of the current position.</span><span>
+</span><span id="line-296"></span><span class="hs-comment">-- The new content becomes the current position.</span><span>
+</span><span id="line-297"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#insertGoLeft"><span class="hs-identifier hs-type">insertGoLeft</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-298"></span><span id="insertGoLeft"><span class="annot"><span class="annottext">insertGoLeft :: Content -&gt; Cursor -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#insertGoLeft"><span class="hs-identifier hs-var hs-var">insertGoLeft</span></a></span></span><span> </span><span id="local-6989586621679045172"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045172"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679045171"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045171"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045171"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">current :: Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var">current</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045172"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">rights :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var">rights</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var hs-var">current</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045171"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="annot"><span class="annottext">Content -&gt; [Content] -&gt; [Content]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var hs-var">rights</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045171"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-299"></span><span>
+</span><span id="line-300"></span><span class="hs-comment">-- | Insert content to the right of the current position.</span><span>
+</span><span id="line-301"></span><span class="hs-comment">-- The new content becomes the current position.</span><span>
+</span><span id="line-302"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#insertGoRight"><span class="hs-identifier hs-type">insertGoRight</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Types.html#Content"><span class="hs-identifier hs-type">Content</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-303"></span><span id="insertGoRight"><span class="annot"><span class="annottext">insertGoRight :: Content -&gt; Cursor -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#insertGoRight"><span class="hs-identifier hs-var hs-var">insertGoRight</span></a></span></span><span> </span><span id="local-6989586621679045170"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045170"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679045169"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045169"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045169"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">current :: Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var">current</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045170"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">lefts :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var">lefts</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var hs-var">current</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045169"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="annot"><span class="annottext">Content -&gt; [Content] -&gt; [Content]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var hs-var">lefts</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045169"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-304"></span><span>
+</span><span id="line-305"></span><span class="hs-comment">-- | Remove the current element.</span><span>
+</span><span id="line-306"></span><span class="hs-comment">-- The new position is the one on the left.</span><span>
+</span><span id="line-307"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#removeGoLeft"><span class="hs-identifier hs-type">removeGoLeft</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-308"></span><span id="removeGoLeft"><span class="annot"><span class="annottext">removeGoLeft :: Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#removeGoLeft"><span class="hs-identifier hs-var hs-var">removeGoLeft</span></a></span></span><span> </span><span id="local-6989586621679045168"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045168"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var hs-var">lefts</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045168"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-309"></span><span>                     </span><span id="local-6989586621679045167"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045167"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045166"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045166"><span class="hs-identifier hs-var">ls</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045168"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">current :: Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var">current</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045167"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">lefts :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var">lefts</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045166"><span class="hs-identifier hs-var">ls</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-310"></span><span>                     </span><span class="hs-special">[</span><span class="hs-special">]</span><span>     </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Cursor
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-311"></span><span>
+</span><span id="line-312"></span><span class="hs-comment">-- | Remove the current element.</span><span>
+</span><span id="line-313"></span><span class="hs-comment">-- The new position is the one on the right.</span><span>
+</span><span id="line-314"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#removeGoRight"><span class="hs-identifier hs-type">removeGoRight</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-315"></span><span id="removeGoRight"><span class="annot"><span class="annottext">removeGoRight :: Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#removeGoRight"><span class="hs-identifier hs-var hs-var">removeGoRight</span></a></span></span><span> </span><span id="local-6989586621679045165"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045165"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var hs-var">rights</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045165"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-316"></span><span>                     </span><span id="local-6989586621679045164"><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045164"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045163"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045163"><span class="hs-identifier hs-var">ls</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045165"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">current :: Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var">current</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Content
+</span><a href="#local-6989586621679045164"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">rights :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var">rights</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045163"><span class="hs-identifier hs-var">ls</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-317"></span><span>                     </span><span class="hs-special">[</span><span class="hs-special">]</span><span>     </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Cursor
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-318"></span><span>
+</span><span id="line-319"></span><span class="hs-comment">-- | Remove the current element.</span><span>
+</span><span id="line-320"></span><span class="hs-comment">-- The new position is the parent of the old position.</span><span>
+</span><span id="line-321"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#removeGoUp"><span class="hs-identifier hs-type">removeGoUp</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Text.XML.Light.Cursor.html#Cursor"><span class="hs-identifier hs-type">Cursor</span></a></span><span>
+</span><span id="line-322"></span><span id="removeGoUp"><span class="annot"><span class="annottext">removeGoUp :: Cursor -&gt; Maybe Cursor
+</span><a href="Text.XML.Light.Cursor.html#removeGoUp"><span class="hs-identifier hs-var hs-var">removeGoUp</span></a></span></span><span> </span><span id="local-6989586621679045162"><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045162"><span class="hs-identifier hs-var">loc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-323"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Path
+</span><a href="Text.XML.Light.Cursor.html#parents"><span class="hs-identifier hs-var hs-var">parents</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045162"><span class="hs-identifier hs-var">loc</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-324"></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679045161"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045161"><span class="hs-identifier hs-var">pls</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045160"><span class="annot"><span class="annottext">Tag
+</span><a href="#local-6989586621679045160"><span class="hs-identifier hs-var">v</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679045159"><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045159"><span class="hs-identifier hs-var">prs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679045158"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679045158"><span class="hs-identifier hs-var">ps</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; Maybe Cursor
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span>
+</span><span id="line-325"></span><span>      </span><span class="annot"><span class="annottext">Cur :: Content -&gt; [Content] -&gt; [Content] -&gt; Path -&gt; Cursor
+</span><a href="Text.XML.Light.Cursor.html#Cur"><span class="hs-identifier hs-type">Cur</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">current :: Content
+</span><a href="Text.XML.Light.Cursor.html#current"><span class="hs-identifier hs-var">current</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Element -&gt; Content
+</span><a href="Text.XML.Light.Types.html#Elem"><span class="hs-identifier hs-var">Elem</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Tag -&gt; [Content] -&gt; Element
+</span><a href="Text.XML.Light.Cursor.html#fromTag"><span class="hs-identifier hs-var">fromTag</span></a></span><span> </span><span class="annot"><span class="annottext">Tag
+</span><a href="#local-6989586621679045160"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Content] -&gt; [Content]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var hs-var">lefts</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045162"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Content] -&gt; [Content] -&gt; [Content]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">Cursor -&gt; [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var hs-var">rights</span></a></span><span> </span><span class="annot"><span class="annottext">Cursor
+</span><a href="#local-6989586621679045162"><span class="hs-identifier hs-var">loc</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-326"></span><span>          </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">lefts :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#lefts"><span class="hs-identifier hs-var">lefts</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045161"><span class="hs-identifier hs-var">pls</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">rights :: [Content]
+</span><a href="Text.XML.Light.Cursor.html#rights"><span class="hs-identifier hs-var">rights</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Content]
+</span><a href="#local-6989586621679045159"><span class="hs-identifier hs-var">prs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">parents :: Path
+</span><a href="Text.XML.Light.Cursor.html#parents"><span class="hs-identifier hs-var">parents</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679045158"><span class="hs-identifier hs-var">ps</span></a></span><span>
+</span><span id="line-327"></span><span>          </span><span class="hs-special">}</span><span>
+</span><span id="line-328"></span><span>    </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Cursor
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-329"></span><span>
+</span><span id="line-330"></span><span>
+</span><span id="line-331"></span><span class="hs-comment">-- | private: Gets the given element of a list.</span><span>
+</span><span id="line-332"></span><span class="hs-comment">-- Also returns the preceding elements (reversed) and the following elements.</span><span>
+</span><span id="line-333"></span><span id="local-6989586621679045352"><span class="annot"><a href="Text.XML.Light.Cursor.html#splitChildren"><span class="hs-identifier hs-type">splitChildren</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679045352"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679045352"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span class="hs-special">,</span><span class="annot"><a href="#local-6989586621679045352"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">,</span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679045352"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span></span><span>
+</span><span id="line-334"></span><span id="splitChildren"><span class="annot"><span class="annottext">splitChildren :: [a] -&gt; Int -&gt; Maybe ([a], a, [a])
+</span><a href="Text.XML.Light.Cursor.html#splitChildren"><span class="hs-identifier hs-var hs-var">splitChildren</span></a></span></span><span> </span><span class="annot"><span class="annottext">[a]
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679045157"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679045157"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679045157"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe ([a], a, [a])
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-335"></span><span class="annot"><a href="Text.XML.Light.Cursor.html#splitChildren"><span class="hs-identifier hs-var">splitChildren</span></a></span><span> </span><span id="local-6989586621679045155"><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679045155"><span class="hs-identifier hs-var">cs</span></a></span></span><span> </span><span id="local-6989586621679045154"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679045154"><span class="hs-identifier hs-var">pos</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[a] -&gt; [a] -&gt; Int -&gt; Maybe ([a], a, [a])
+forall a a. (Eq a, Num a) =&gt; [a] -&gt; [a] -&gt; a -&gt; Maybe ([a], a, [a])
+</span><a href="#local-6989586621679045153"><span class="hs-identifier hs-var">loop</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679045155"><span class="hs-identifier hs-var">cs</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679045154"><span class="hs-identifier hs-var">pos</span></a></span><span>
+</span><span id="line-336"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679045153"><span class="annot"><span class="annottext">loop :: [a] -&gt; [a] -&gt; a -&gt; Maybe ([a], a, [a])
+</span><a href="#local-6989586621679045153"><span class="hs-identifier hs-var hs-var">loop</span></a></span></span><span> </span><span id="local-6989586621679045152"><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679045152"><span class="hs-identifier hs-var">acc</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679045151"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679045151"><span class="hs-identifier hs-var">x</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679045150"><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679045150"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">([a], a, [a]) -&gt; Maybe ([a], a, [a])
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679045152"><span class="hs-identifier hs-var">acc</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679045151"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679045150"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-337"></span><span>        </span><span class="annot"><a href="#local-6989586621679045153"><span class="hs-identifier hs-var">loop</span></a></span><span> </span><span id="local-6989586621679045149"><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679045149"><span class="hs-identifier hs-var">acc</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679045148"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679045148"><span class="hs-identifier hs-var">x</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679045147"><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679045147"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679045146"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679045146"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[a] -&gt; [a] -&gt; a -&gt; Maybe ([a], a, [a])
+</span><a href="#local-6989586621679045153"><span class="hs-identifier hs-var">loop</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679045148"><span class="hs-identifier hs-var">x</span></a></span><span class="annot"><span class="annottext">a -&gt; [a] -&gt; [a]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679045149"><span class="hs-identifier hs-var">acc</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679045147"><span class="hs-identifier hs-var">xs</span></a></span><span> </span><span class="annot"><span class="annottext">(a -&gt; Maybe ([a], a, [a])) -&gt; a -&gt; Maybe ([a], a, [a])
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$!</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679045146"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">a
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-338"></span><span>        </span><span class="annot"><a href="#local-6989586621679045153"><span class="hs-identifier hs-var">loop</span></a></span><span> </span><span class="annot"><span class="annottext">[a]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">[a]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-identifier">_</span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe ([a], a, [a])
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-339"></span><span>
+</span><span id="line-340"></span><span class="hs-comment">-- | private: combChildren ls x ys = reverse ls ++ [x] ++ ys</span><span>
+</span><span id="line-341"></span><span id="local-6989586621679045364"><span class="annot"><a href="Text.XML.Light.Cursor.html#combChildren"><span class="hs-identifier hs-type">combChildren</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679045364"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679045364"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679045364"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679045364"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span></span><span>
+</span><span id="line-342"></span><span id="combChildren"><span class="annot"><span class="annottext">combChildren :: [a] -&gt; a -&gt; [a] -&gt; [a]
+</span><a href="Text.XML.Light.Cursor.html#combChildren"><span class="hs-identifier hs-var hs-var">combChildren</span></a></span></span><span> </span><span id="local-6989586621679045144"><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679045144"><span class="hs-identifier hs-var">ls</span></a></span></span><span> </span><span id="local-6989586621679045143"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679045143"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679045142"><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679045142"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">([a] -&gt; a -&gt; [a]) -&gt; [a] -&gt; [a] -&gt; [a]
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(a -&gt; [a] -&gt; [a]) -&gt; [a] -&gt; a -&gt; [a]
+forall a b c. (a -&gt; b -&gt; c) -&gt; b -&gt; a -&gt; c
+</span><span class="hs-identifier hs-var">flip</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">:</span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679045143"><span class="hs-identifier hs-var">t</span></a></span><span class="annot"><span class="annottext">a -&gt; [a] -&gt; [a]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679045142"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679045144"><span class="hs-identifier hs-var">ls</span></a></span><span>
+</span><span id="line-343"></span></pre></body></html>

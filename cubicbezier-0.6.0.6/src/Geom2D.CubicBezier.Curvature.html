@@ -1,0 +1,449 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Geom2D.CubicBezier.Curvature</span><span>
+</span><span id="line-2"></span><span>       </span><span class="hs-special">(</span><span class="annot"><a href="Geom2D.CubicBezier.Curvature.html#curvature"><span class="hs-identifier">curvature</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Curvature.html#radiusOfCurvature"><span class="hs-identifier">radiusOfCurvature</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Curvature.html#curvatureExtrema"><span class="hs-identifier">curvatureExtrema</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Curvature.html#findRadius"><span class="hs-identifier">findRadius</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-3"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-4"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Geom2D.html"><span class="hs-identifier">Geom2D</span></a></span><span>
+</span><span id="line-5"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html"><span class="hs-identifier">Geom2D.CubicBezier.Basic</span></a></span><span>
+</span><span id="line-6"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Intersection.html"><span class="hs-identifier">Geom2D.CubicBezier.Intersection</span></a></span><span>
+</span><span id="line-7"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Math.BernsteinPoly.html"><span class="hs-identifier">Math.BernsteinPoly</span></a></span><span>
+</span><span id="line-8"></span><span>
+</span><span id="line-9"></span><span class="hs-comment">-- | Curvature of the Bezier curve.  A negative curvature means the curve</span><span>
+</span><span id="line-10"></span><span class="hs-comment">-- curves to the right.</span><span>
+</span><span id="line-11"></span><span class="annot"><a href="Geom2D.CubicBezier.Curvature.html#curvature"><span class="hs-identifier hs-type">curvature</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html#CubicBezier"><span class="hs-identifier hs-type">CubicBezier</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-12"></span><span id="curvature"><span class="annot"><span class="annottext">curvature :: CubicBezier Double -&gt; Double -&gt; Double
+</span><a href="Geom2D.CubicBezier.Curvature.html#curvature"><span class="hs-identifier hs-var hs-var">curvature</span></a></span></span><span> </span><span id="local-6989586621679239693"><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239693"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span id="local-6989586621679239692"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239692"><span class="hs-identifier hs-var">t</span></a></span></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239692"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CubicBezier Double -&gt; Double
+</span><a href="Geom2D.CubicBezier.Curvature.html#curvature%27"><span class="hs-identifier hs-var">curvature'</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239693"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-14"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239692"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">negate</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double) -&gt; Double -&gt; Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double -&gt; Double
+</span><a href="Geom2D.CubicBezier.Curvature.html#curvature%27"><span class="hs-identifier hs-var">curvature'</span></a></span><span> </span><span class="annot"><span class="annottext">(CubicBezier Double -&gt; Double) -&gt; CubicBezier Double -&gt; Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double -&gt; CubicBezier Double
+forall (b :: * -&gt; *) a. (GenericBezier b, Unbox a) =&gt; b a -&gt; b a
+</span><a href="Geom2D.CubicBezier.Basic.html#reorient"><span class="hs-identifier hs-var">reorient</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239693"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239692"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.5</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CubicBezier Double -&gt; Double
+</span><a href="Geom2D.CubicBezier.Curvature.html#curvature%27"><span class="hs-identifier hs-var">curvature'</span></a></span><span> </span><span class="annot"><span class="annottext">(CubicBezier Double -&gt; Double) -&gt; CubicBezier Double -&gt; Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(CubicBezier Double, CubicBezier Double) -&gt; CubicBezier Double
+forall a b. (a, b) -&gt; b
+</span><span class="hs-identifier hs-var">snd</span></span><span> </span><span class="annot"><span class="annottext">((CubicBezier Double, CubicBezier Double) -&gt; CubicBezier Double)
+-&gt; (CubicBezier Double, CubicBezier Double) -&gt; CubicBezier Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+-&gt; Double -&gt; (CubicBezier Double, CubicBezier Double)
+forall a (b :: * -&gt; *).
+(Unbox a, Fractional a, GenericBezier b) =&gt;
+b a -&gt; a -&gt; (b a, b a)
+</span><a href="Geom2D.CubicBezier.Basic.html#splitBezier"><span class="hs-identifier hs-var">splitBezier</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239693"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239692"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-16"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">negate</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double) -&gt; Double -&gt; Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double -&gt; Double
+</span><a href="Geom2D.CubicBezier.Curvature.html#curvature%27"><span class="hs-identifier hs-var">curvature'</span></a></span><span> </span><span class="annot"><span class="annottext">(CubicBezier Double -&gt; Double) -&gt; CubicBezier Double -&gt; Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double -&gt; CubicBezier Double
+forall (b :: * -&gt; *) a. (GenericBezier b, Unbox a) =&gt; b a -&gt; b a
+</span><a href="Geom2D.CubicBezier.Basic.html#reorient"><span class="hs-identifier hs-var">reorient</span></a></span><span> </span><span class="annot"><span class="annottext">(CubicBezier Double -&gt; CubicBezier Double)
+-&gt; CubicBezier Double -&gt; CubicBezier Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(CubicBezier Double, CubicBezier Double) -&gt; CubicBezier Double
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="annot"><span class="annottext">((CubicBezier Double, CubicBezier Double) -&gt; CubicBezier Double)
+-&gt; (CubicBezier Double, CubicBezier Double) -&gt; CubicBezier Double
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+-&gt; Double -&gt; (CubicBezier Double, CubicBezier Double)
+forall a (b :: * -&gt; *).
+(Unbox a, Fractional a, GenericBezier b) =&gt;
+b a -&gt; a -&gt; (b a, b a)
+</span><a href="Geom2D.CubicBezier.Basic.html#splitBezier"><span class="hs-identifier hs-var">splitBezier</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239693"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239692"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="annot"><a href="Geom2D.CubicBezier.Curvature.html#curvature%27"><span class="hs-identifier hs-type">curvature'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html#CubicBezier"><span class="hs-identifier hs-type">CubicBezier</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-19"></span><span id="curvature%27"><span class="annot"><span class="annottext">curvature' :: CubicBezier Double -&gt; Double
+</span><a href="Geom2D.CubicBezier.Curvature.html#curvature%27"><span class="hs-identifier hs-var hs-var">curvature'</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html#CubicBezier"><span class="hs-identifier hs-type">CubicBezier</span></a></span><span> </span><span id="local-6989586621679239686"><span class="annot"><span class="annottext">Point Double
+</span><a href="#local-6989586621679239686"><span class="hs-identifier hs-var">c0</span></a></span></span><span> </span><span id="local-6989586621679239685"><span class="annot"><span class="annottext">Point Double
+</span><a href="#local-6989586621679239685"><span class="hs-identifier hs-var">c1</span></a></span></span><span> </span><span id="local-6989586621679239684"><span class="annot"><span class="annottext">Point Double
+</span><a href="#local-6989586621679239684"><span class="hs-identifier hs-var">c2</span></a></span></span><span> </span><span id="local-6989586621679239683"><span class="annot"><span class="annottext">Point Double
+</span><a href="#local-6989586621679239683"><span class="hs-identifier hs-var">_c3</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">3</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239680"><span class="hs-identifier hs-var">b</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239679"><span class="hs-identifier hs-var">a</span></a></span><span class="annot"><span class="annottext">Double -&gt; Int -&gt; Double
+forall a b. (Num a, Integral b) =&gt; a -&gt; b -&gt; a
+</span><span class="hs-operator hs-var">^</span></span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-glyph">::</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span>
+</span><span id="line-21"></span><span>    </span><span id="local-6989586621679239679"><span class="annot"><span class="annottext">a :: Double
+</span><a href="#local-6989586621679239679"><span class="hs-identifier hs-var hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Point Double -&gt; Point Double -&gt; Double
+forall a. Floating a =&gt; Point a -&gt; Point a -&gt; a
+</span><a href="Geom2D.html#vectorDistance"><span class="hs-identifier hs-var">vectorDistance</span></a></span><span> </span><span class="annot"><span class="annottext">Point Double
+</span><a href="#local-6989586621679239685"><span class="hs-identifier hs-var">c1</span></a></span><span> </span><span class="annot"><span class="annottext">Point Double
+</span><a href="#local-6989586621679239686"><span class="hs-identifier hs-var">c0</span></a></span><span>
+</span><span id="line-22"></span><span>    </span><span id="local-6989586621679239680"><span class="annot"><span class="annottext">b :: Double
+</span><a href="#local-6989586621679239680"><span class="hs-identifier hs-var hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Point Double
+</span><a href="#local-6989586621679239685"><span class="hs-identifier hs-var">c1</span></a></span><span class="annot"><span class="annottext">Point Double -&gt; Point Double -&gt; Point Double
+forall v. AdditiveGroup v =&gt; v -&gt; v -&gt; v
+</span><span class="hs-operator hs-var">^-^</span></span><span class="annot"><span class="annottext">Point Double
+</span><a href="#local-6989586621679239686"><span class="hs-identifier hs-var">c0</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Point Double -&gt; Point Double -&gt; Double
+forall a. Num a =&gt; Point a -&gt; Point a -&gt; a
+</span><a href="Geom2D.html#vectorCross"><span class="hs-operator hs-var">`vectorCross`</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Point Double
+</span><a href="#local-6989586621679239684"><span class="hs-identifier hs-var">c2</span></a></span><span class="annot"><span class="annottext">Point Double -&gt; Point Double -&gt; Point Double
+forall v. AdditiveGroup v =&gt; v -&gt; v -&gt; v
+</span><span class="hs-operator hs-var">^-^</span></span><span class="annot"><span class="annottext">Point Double
+</span><a href="#local-6989586621679239685"><span class="hs-identifier hs-var">c1</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-comment">-- | Radius of curvature of the Bezier curve.  This</span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- is the reciprocal of the curvature.</span><span>
+</span><span id="line-26"></span><span class="annot"><a href="Geom2D.CubicBezier.Curvature.html#radiusOfCurvature"><span class="hs-identifier hs-type">radiusOfCurvature</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html#CubicBezier"><span class="hs-identifier hs-type">CubicBezier</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-27"></span><span id="radiusOfCurvature"><span class="annot"><span class="annottext">radiusOfCurvature :: CubicBezier Double -&gt; Double -&gt; Double
+</span><a href="Geom2D.CubicBezier.Curvature.html#radiusOfCurvature"><span class="hs-identifier hs-var hs-var">radiusOfCurvature</span></a></span></span><span> </span><span id="local-6989586621679239674"><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239674"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span id="local-6989586621679239673"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239673"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Fractional a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">/</span></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double -&gt; Double -&gt; Double
+</span><a href="Geom2D.CubicBezier.Curvature.html#curvature"><span class="hs-identifier hs-var">curvature</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239674"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239673"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span class="annot"><a href="Geom2D.CubicBezier.Curvature.html#extrema"><span class="hs-identifier hs-type">extrema</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html#CubicBezier"><span class="hs-identifier hs-type">CubicBezier</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Math.BernsteinPoly.html#BernsteinPoly"><span class="hs-identifier hs-type">BernsteinPoly</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-30"></span><span id="extrema"><span class="annot"><span class="annottext">extrema :: CubicBezier Double -&gt; BernsteinPoly Double
+</span><a href="Geom2D.CubicBezier.Curvature.html#extrema"><span class="hs-identifier hs-var hs-var">extrema</span></a></span></span><span> </span><span id="local-6989586621679239671"><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239671"><span class="hs-identifier hs-var">bez</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span>
+</span><span id="line-31"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679239670"><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239670"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679239669"><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239669"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CubicBezier Double -&gt; (BernsteinPoly Double, BernsteinPoly Double)
+forall (b :: * -&gt; *) a.
+(GenericBezier b, Unbox a) =&gt;
+b a -&gt; (BernsteinPoly a, BernsteinPoly a)
+</span><a href="Geom2D.CubicBezier.Basic.html#bezierToBernstein"><span class="hs-identifier hs-var">bezierToBernstein</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239671"><span class="hs-identifier hs-var">bez</span></a></span><span>
+</span><span id="line-32"></span><span>      </span><span id="local-6989586621679239667"><span class="annot"><span class="annottext">x' :: BernsteinPoly Double
+</span><a href="#local-6989586621679239667"><span class="hs-identifier hs-var hs-var">x'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a. (Unbox a, Num a) =&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#bernsteinDeriv"><span class="hs-identifier hs-var">bernsteinDeriv</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239670"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-33"></span><span>      </span><span id="local-6989586621679239665"><span class="annot"><span class="annottext">y' :: BernsteinPoly Double
+</span><a href="#local-6989586621679239665"><span class="hs-identifier hs-var hs-var">y'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a. (Unbox a, Num a) =&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#bernsteinDeriv"><span class="hs-identifier hs-var">bernsteinDeriv</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239669"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-34"></span><span>      </span><span id="local-6989586621679239664"><span class="annot"><span class="annottext">x'' :: BernsteinPoly Double
+</span><a href="#local-6989586621679239664"><span class="hs-identifier hs-var hs-var">x''</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a. (Unbox a, Num a) =&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#bernsteinDeriv"><span class="hs-identifier hs-var">bernsteinDeriv</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239667"><span class="hs-identifier hs-var">x'</span></a></span><span>
+</span><span id="line-35"></span><span>      </span><span id="local-6989586621679239663"><span class="annot"><span class="annottext">y'' :: BernsteinPoly Double
+</span><a href="#local-6989586621679239663"><span class="hs-identifier hs-var hs-var">y''</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a. (Unbox a, Num a) =&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#bernsteinDeriv"><span class="hs-identifier hs-var">bernsteinDeriv</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239665"><span class="hs-identifier hs-var">y'</span></a></span><span>
+</span><span id="line-36"></span><span>      </span><span id="local-6989586621679239662"><span class="annot"><span class="annottext">x''' :: BernsteinPoly Double
+</span><a href="#local-6989586621679239662"><span class="hs-identifier hs-var hs-var">x'''</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a. (Unbox a, Num a) =&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#bernsteinDeriv"><span class="hs-identifier hs-var">bernsteinDeriv</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239664"><span class="hs-identifier hs-var">x''</span></a></span><span>
+</span><span id="line-37"></span><span>      </span><span id="local-6989586621679239661"><span class="annot"><span class="annottext">y''' :: BernsteinPoly Double
+</span><a href="#local-6989586621679239661"><span class="hs-identifier hs-var hs-var">y'''</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a. (Unbox a, Num a) =&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#bernsteinDeriv"><span class="hs-identifier hs-var">bernsteinDeriv</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239663"><span class="hs-identifier hs-var">y''</span></a></span><span>
+</span><span id="line-38"></span><span>  </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239665"><span class="hs-identifier hs-var">y'</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239665"><span class="hs-identifier hs-var">y'</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2B"><span class="hs-operator hs-var">~+</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239667"><span class="hs-identifier hs-var">x'</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239667"><span class="hs-identifier hs-var">x'</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239667"><span class="hs-identifier hs-var">x'</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239661"><span class="hs-identifier hs-var">y'''</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~-"><span class="hs-operator hs-var">~-</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239665"><span class="hs-identifier hs-var">y'</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239662"><span class="hs-identifier hs-var">x'''</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~-"><span class="hs-operator hs-var">~-</span></a></span><span>
+</span><span id="line-39"></span><span>     </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">3</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Num a) =&gt;
+a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#%2A~"><span class="hs-operator hs-var">*~</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239667"><span class="hs-identifier hs-var">x'</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239663"><span class="hs-identifier hs-var">y''</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~-"><span class="hs-operator hs-var">~-</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239665"><span class="hs-identifier hs-var">y'</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239664"><span class="hs-identifier hs-var">x''</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239665"><span class="hs-identifier hs-var">y'</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239663"><span class="hs-identifier hs-var">y''</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2B"><span class="hs-operator hs-var">~+</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239667"><span class="hs-identifier hs-var">x'</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239664"><span class="hs-identifier hs-var">x''</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span class="hs-comment">-- | Find extrema of the curvature, but not inflection points.</span><span>
+</span><span id="line-42"></span><span class="annot"><a href="Geom2D.CubicBezier.Curvature.html#curvatureExtrema"><span class="hs-identifier hs-type">curvatureExtrema</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html#CubicBezier"><span class="hs-identifier hs-type">CubicBezier</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">]</span><span>
+</span><span id="line-43"></span><span id="curvatureExtrema"><span class="annot"><span class="annottext">curvatureExtrema :: CubicBezier Double -&gt; Double -&gt; [Double]
+</span><a href="Geom2D.CubicBezier.Curvature.html#curvatureExtrema"><span class="hs-identifier hs-var hs-var">curvatureExtrema</span></a></span></span><span> </span><span id="local-6989586621679239656"><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239656"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span id="local-6989586621679239655"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239655"><span class="hs-identifier hs-var">eps</span></a></span></span><span>
+</span><span id="line-44"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">CubicBezier Double -&gt; Double -&gt; Bool
+</span><a href="Geom2D.CubicBezier.Basic.html#colinear"><span class="hs-identifier hs-var">colinear</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239656"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239655"><span class="hs-identifier hs-var">eps</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-45"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; Double -&gt; Double -&gt; Double -&gt; [Double]
+</span><a href="Geom2D.CubicBezier.Intersection.html#bezierFindRoot"><span class="hs-identifier hs-var">bezierFindRoot</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CubicBezier Double -&gt; BernsteinPoly Double
+</span><a href="Geom2D.CubicBezier.Curvature.html#extrema"><span class="hs-identifier hs-var">extrema</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239656"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; [Double]) -&gt; Double -&gt; [Double]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-46"></span><span>                </span><span class="annot"><span class="annottext">CubicBezier Double -&gt; Double -&gt; Double
+forall (b :: * -&gt; *).
+GenericBezier b =&gt;
+b Double -&gt; Double -&gt; Double
+</span><a href="Geom2D.CubicBezier.Basic.html#bezierParamTolerance"><span class="hs-identifier hs-var">bezierParamTolerance</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239656"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239655"><span class="hs-identifier hs-var">eps</span></a></span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span class="annot"><a href="Geom2D.CubicBezier.Curvature.html#radiusSquareEq"><span class="hs-identifier hs-type">radiusSquareEq</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html#CubicBezier"><span class="hs-identifier hs-type">CubicBezier</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Math.BernsteinPoly.html#BernsteinPoly"><span class="hs-identifier hs-type">BernsteinPoly</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-49"></span><span id="radiusSquareEq"><span class="annot"><span class="annottext">radiusSquareEq :: CubicBezier Double -&gt; Double -&gt; BernsteinPoly Double
+</span><a href="Geom2D.CubicBezier.Curvature.html#radiusSquareEq"><span class="hs-identifier hs-var hs-var">radiusSquareEq</span></a></span></span><span> </span><span id="local-6989586621679239650"><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239650"><span class="hs-identifier hs-var">bez</span></a></span></span><span> </span><span id="local-6989586621679239649"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239649"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-50"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679239648"><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239648"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679239647"><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239647"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CubicBezier Double -&gt; (BernsteinPoly Double, BernsteinPoly Double)
+forall (b :: * -&gt; *) a.
+(GenericBezier b, Unbox a) =&gt;
+b a -&gt; (BernsteinPoly a, BernsteinPoly a)
+</span><a href="Geom2D.CubicBezier.Basic.html#bezierToBernstein"><span class="hs-identifier hs-var">bezierToBernstein</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239650"><span class="hs-identifier hs-var">bez</span></a></span><span>
+</span><span id="line-51"></span><span>      </span><span id="local-6989586621679239646"><span class="annot"><span class="annottext">x' :: BernsteinPoly Double
+</span><a href="#local-6989586621679239646"><span class="hs-identifier hs-var hs-var">x'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a. (Unbox a, Num a) =&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#bernsteinDeriv"><span class="hs-identifier hs-var">bernsteinDeriv</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239648"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-52"></span><span>      </span><span id="local-6989586621679239645"><span class="annot"><span class="annottext">y' :: BernsteinPoly Double
+</span><a href="#local-6989586621679239645"><span class="hs-identifier hs-var hs-var">y'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a. (Unbox a, Num a) =&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#bernsteinDeriv"><span class="hs-identifier hs-var">bernsteinDeriv</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239647"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-53"></span><span>      </span><span id="local-6989586621679239644"><span class="annot"><span class="annottext">x'' :: BernsteinPoly Double
+</span><a href="#local-6989586621679239644"><span class="hs-identifier hs-var hs-var">x''</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a. (Unbox a, Num a) =&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#bernsteinDeriv"><span class="hs-identifier hs-var">bernsteinDeriv</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239646"><span class="hs-identifier hs-var">x'</span></a></span><span>
+</span><span id="line-54"></span><span>      </span><span id="local-6989586621679239643"><span class="annot"><span class="annottext">y'' :: BernsteinPoly Double
+</span><a href="#local-6989586621679239643"><span class="hs-identifier hs-var hs-var">y''</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a. (Unbox a, Num a) =&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#bernsteinDeriv"><span class="hs-identifier hs-var">bernsteinDeriv</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239645"><span class="hs-identifier hs-var">y'</span></a></span><span>
+</span><span id="line-55"></span><span>      </span><span id="local-6989586621679239642"><span class="annot"><span class="annottext">a :: BernsteinPoly Double
+</span><a href="#local-6989586621679239642"><span class="hs-identifier hs-var hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>  </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239646"><span class="hs-identifier hs-var">x'</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239646"><span class="hs-identifier hs-var">x'</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2B"><span class="hs-operator hs-var">~+</span></a></span><span>  </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239645"><span class="hs-identifier hs-var">y'</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239645"><span class="hs-identifier hs-var">y'</span></a></span><span>
+</span><span id="line-56"></span><span>      </span><span id="local-6989586621679239641"><span class="annot"><span class="annottext">b :: BernsteinPoly Double
+</span><a href="#local-6989586621679239641"><span class="hs-identifier hs-var hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>  </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239646"><span class="hs-identifier hs-var">x'</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239643"><span class="hs-identifier hs-var">y''</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~-"><span class="hs-operator hs-var">~-</span></a></span><span>  </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239644"><span class="hs-identifier hs-var">x''</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239645"><span class="hs-identifier hs-var">y'</span></a></span><span>
+</span><span id="line-57"></span><span>  </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239642"><span class="hs-identifier hs-var">a</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239642"><span class="hs-identifier hs-var">a</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239642"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~-"><span class="hs-operator hs-var">~-</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239649"><span class="hs-identifier hs-var">d</span></a></span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239649"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double -&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Num a) =&gt;
+a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#%2A~"><span class="hs-operator hs-var">*~</span></a></span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239641"><span class="hs-identifier hs-var">b</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+-&gt; BernsteinPoly Double -&gt; BernsteinPoly Double
+forall a.
+(Unbox a, Fractional a) =&gt;
+BernsteinPoly a -&gt; BernsteinPoly a -&gt; BernsteinPoly a
+</span><a href="Math.BernsteinPoly.html#~%2A"><span class="hs-operator hs-var">~*</span></a></span><span class="annot"><span class="annottext">BernsteinPoly Double
+</span><a href="#local-6989586621679239641"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span class="hs-comment">-- | Find points on the curve that have a certain radius of curvature.</span><span>
+</span><span id="line-60"></span><span class="hs-comment">-- Values to the left and to the right of the curve are returned.</span><span>
+</span><span id="line-61"></span><span class="annot"><a href="Geom2D.CubicBezier.Curvature.html#findRadius"><span class="hs-identifier hs-type">findRadius</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Geom2D.CubicBezier.Basic.html#CubicBezier"><span class="hs-identifier hs-type">CubicBezier</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>  </span><span class="hs-comment">-- ^ the curve</span><span>
+</span><span id="line-62"></span><span>           </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>       </span><span class="hs-comment">-- ^ distance</span><span>
+</span><span id="line-63"></span><span>           </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>       </span><span class="hs-comment">-- ^ tolerance</span><span>
+</span><span id="line-64"></span><span>           </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span class="hs-special">]</span><span>     </span><span class="hs-comment">-- ^ result</span><span>
+</span><span id="line-65"></span><span id="findRadius"><span class="annot"><span class="annottext">findRadius :: CubicBezier Double -&gt; Double -&gt; Double -&gt; [Double]
+</span><a href="Geom2D.CubicBezier.Curvature.html#findRadius"><span class="hs-identifier hs-var hs-var">findRadius</span></a></span></span><span> </span><span id="local-6989586621679239640"><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239640"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span id="local-6989586621679239639"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239639"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span id="local-6989586621679239638"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239638"><span class="hs-identifier hs-var">eps</span></a></span></span><span>
+</span><span id="line-66"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">CubicBezier Double -&gt; Double -&gt; Bool
+</span><a href="Geom2D.CubicBezier.Basic.html#colinear"><span class="hs-identifier hs-var">colinear</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239640"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239638"><span class="hs-identifier hs-var">eps</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>  </span><span class="hs-comment">-- either empty or a huge list of t's</span><span>
+</span><span id="line-67"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">BernsteinPoly Double -&gt; Double -&gt; Double -&gt; Double -&gt; [Double]
+</span><a href="Geom2D.CubicBezier.Intersection.html#bezierFindRoot"><span class="hs-identifier hs-var">bezierFindRoot</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CubicBezier Double -&gt; Double -&gt; BernsteinPoly Double
+</span><a href="Geom2D.CubicBezier.Curvature.html#radiusSquareEq"><span class="hs-identifier hs-var">radiusSquareEq</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239640"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239639"><span class="hs-identifier hs-var">d</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">(Double -&gt; [Double]) -&gt; Double -&gt; [Double]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-68"></span><span>                </span><span class="annot"><span class="annottext">CubicBezier Double -&gt; Double -&gt; Double
+forall (b :: * -&gt; *).
+GenericBezier b =&gt;
+b Double -&gt; Double -&gt; Double
+</span><a href="Geom2D.CubicBezier.Basic.html#bezierParamTolerance"><span class="hs-identifier hs-var">bezierParamTolerance</span></a></span><span> </span><span class="annot"><span class="annottext">CubicBezier Double
+</span><a href="#local-6989586621679239640"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679239638"><span class="hs-identifier hs-var">eps</span></a></span><span>
+</span><span id="line-69"></span></pre></body></html>

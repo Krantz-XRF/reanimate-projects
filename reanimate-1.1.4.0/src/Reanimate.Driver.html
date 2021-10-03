@@ -1,0 +1,672 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE RecordWildCards #-}</span><span>
+</span><span id="line-2"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Reanimate.Driver</span><span>
+</span><span id="line-3"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Reanimate.Driver.html#reanimate"><span class="hs-identifier">reanimate</span></a></span><span>
+</span><span id="line-4"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-5"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-6"></span><span>
+</span><span id="line-7"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Applicative</span></span><span>     </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(&lt;|&gt;)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Concurrent</span></span><span>
+</span><span id="line-9"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>
+</span><span id="line-10"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Either</span></span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Paths_reanimate.html"><span class="hs-identifier">Paths_reanimate</span></a></span><span>         </span><span class="hs-special">(</span><span class="annot"><a href="Paths_reanimate.html#getDataFileName"><span class="hs-identifier">getDataFileName</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Animation.html"><span class="hs-identifier">Reanimate.Animation</span></a></span><span>     </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Animation.html#Animation"><span class="hs-identifier">Animation</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#duration"><span class="hs-identifier">duration</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Driver.CLI.html"><span class="hs-identifier">Reanimate.Driver.CLI</span></a></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Driver.Check.html"><span class="hs-identifier">Reanimate.Driver.Check</span></a></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Driver.Daemon.html"><span class="hs-identifier">Reanimate.Driver.Daemon</span></a></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Parameters.html"><span class="hs-identifier">Reanimate.Parameters</span></a></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Reanimate.Render.html"><span class="hs-identifier">Reanimate.Render</span></a></span><span>        </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Render.html#render"><span class="hs-identifier">render</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Render.html#renderSnippets"><span class="hs-identifier">renderSnippets</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Render.html#renderSvgs"><span class="hs-identifier">renderSvgs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Render.html#renderSvgs_"><span class="hs-identifier">renderSvgs_</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-19"></span><span>                                          </span><span class="annot"><a href="Reanimate.Render.html#selectRaster"><span class="hs-identifier">selectRaster</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.Directory</span></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.Exit</span></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.FilePath</span></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">System.IO</span></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Text.Printf</span></span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="annot"><a href="Reanimate.Driver.html#presetFormat"><span class="hs-identifier hs-type">presetFormat</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Preset"><span class="hs-identifier hs-type">Preset</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Render.html#Format"><span class="hs-identifier hs-type">Format</span></a></span><span>
+</span><span id="line-27"></span><span id="presetFormat"><span class="annot"><span class="annottext">presetFormat :: Preset -&gt; Format
+</span><a href="Reanimate.Driver.html#presetFormat"><span class="hs-identifier hs-var hs-var">presetFormat</span></a></span></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#Youtube"><span class="hs-identifier hs-var">Youtube</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderMp4"><span class="hs-identifier hs-var">RenderMp4</span></a></span><span>
+</span><span id="line-28"></span><span class="annot"><a href="Reanimate.Driver.html#presetFormat"><span class="hs-identifier hs-var">presetFormat</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#ExampleGif"><span class="hs-identifier hs-var">ExampleGif</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderGif"><span class="hs-identifier hs-var">RenderGif</span></a></span><span>
+</span><span id="line-29"></span><span class="annot"><a href="Reanimate.Driver.html#presetFormat"><span class="hs-identifier hs-var">presetFormat</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#Quick"><span class="hs-identifier hs-var">Quick</span></a></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderMp4"><span class="hs-identifier hs-var">RenderMp4</span></a></span><span>
+</span><span id="line-30"></span><span class="annot"><a href="Reanimate.Driver.html#presetFormat"><span class="hs-identifier hs-var">presetFormat</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#MediumQ"><span class="hs-identifier hs-var">MediumQ</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderMp4"><span class="hs-identifier hs-var">RenderMp4</span></a></span><span>
+</span><span id="line-31"></span><span class="annot"><a href="Reanimate.Driver.html#presetFormat"><span class="hs-identifier hs-var">presetFormat</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#HighQ"><span class="hs-identifier hs-var">HighQ</span></a></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderMp4"><span class="hs-identifier hs-var">RenderMp4</span></a></span><span>
+</span><span id="line-32"></span><span class="annot"><a href="Reanimate.Driver.html#presetFormat"><span class="hs-identifier hs-var">presetFormat</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#LowFPS"><span class="hs-identifier hs-var">LowFPS</span></a></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderMp4"><span class="hs-identifier hs-var">RenderMp4</span></a></span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span class="annot"><a href="Reanimate.Driver.html#presetFPS"><span class="hs-identifier hs-type">presetFPS</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Preset"><span class="hs-identifier hs-type">Preset</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#FPS"><span class="hs-identifier hs-type">FPS</span></a></span><span>
+</span><span id="line-35"></span><span id="presetFPS"><span class="annot"><span class="annottext">presetFPS :: Preset -&gt; FPS
+</span><a href="Reanimate.Driver.html#presetFPS"><span class="hs-identifier hs-var hs-var">presetFPS</span></a></span></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#Youtube"><span class="hs-identifier hs-var">Youtube</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">60</span></span><span>
+</span><span id="line-36"></span><span class="annot"><a href="Reanimate.Driver.html#presetFPS"><span class="hs-identifier hs-var">presetFPS</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#ExampleGif"><span class="hs-identifier hs-var">ExampleGif</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">25</span></span><span>
+</span><span id="line-37"></span><span class="annot"><a href="Reanimate.Driver.html#presetFPS"><span class="hs-identifier hs-var">presetFPS</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#Quick"><span class="hs-identifier hs-var">Quick</span></a></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">15</span></span><span>
+</span><span id="line-38"></span><span class="annot"><a href="Reanimate.Driver.html#presetFPS"><span class="hs-identifier hs-var">presetFPS</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#MediumQ"><span class="hs-identifier hs-var">MediumQ</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">30</span></span><span>
+</span><span id="line-39"></span><span class="annot"><a href="Reanimate.Driver.html#presetFPS"><span class="hs-identifier hs-var">presetFPS</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#HighQ"><span class="hs-identifier hs-var">HighQ</span></a></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">30</span></span><span>
+</span><span id="line-40"></span><span class="annot"><a href="Reanimate.Driver.html#presetFPS"><span class="hs-identifier hs-var">presetFPS</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#LowFPS"><span class="hs-identifier hs-var">LowFPS</span></a></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">10</span></span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="annot"><a href="Reanimate.Driver.html#presetWidth"><span class="hs-identifier hs-type">presetWidth</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Preset"><span class="hs-identifier hs-type">Preset</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Width"><span class="hs-identifier hs-type">Width</span></a></span><span>
+</span><span id="line-43"></span><span id="presetWidth"><span class="annot"><span class="annottext">presetWidth :: Preset -&gt; FPS
+</span><a href="Reanimate.Driver.html#presetWidth"><span class="hs-identifier hs-var hs-var">presetWidth</span></a></span></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#Youtube"><span class="hs-identifier hs-var">Youtube</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">2560</span></span><span>
+</span><span id="line-44"></span><span class="annot"><a href="Reanimate.Driver.html#presetWidth"><span class="hs-identifier hs-var">presetWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#ExampleGif"><span class="hs-identifier hs-var">ExampleGif</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">320</span></span><span>
+</span><span id="line-45"></span><span class="annot"><a href="Reanimate.Driver.html#presetWidth"><span class="hs-identifier hs-var">presetWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#Quick"><span class="hs-identifier hs-var">Quick</span></a></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">320</span></span><span>
+</span><span id="line-46"></span><span class="annot"><a href="Reanimate.Driver.html#presetWidth"><span class="hs-identifier hs-var">presetWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#MediumQ"><span class="hs-identifier hs-var">MediumQ</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">800</span></span><span>
+</span><span id="line-47"></span><span class="annot"><a href="Reanimate.Driver.html#presetWidth"><span class="hs-identifier hs-var">presetWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#HighQ"><span class="hs-identifier hs-var">HighQ</span></a></span><span>      </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">1920</span></span><span>
+</span><span id="line-48"></span><span class="annot"><a href="Reanimate.Driver.html#presetWidth"><span class="hs-identifier hs-var">presetWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#LowFPS"><span class="hs-identifier hs-var">LowFPS</span></a></span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Preset -&gt; FPS
+</span><a href="Reanimate.Driver.html#presetWidth"><span class="hs-identifier hs-var">presetWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="Reanimate.Driver.CLI.html#HighQ"><span class="hs-identifier hs-var">HighQ</span></a></span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span class="annot"><a href="Reanimate.Driver.html#presetHeight"><span class="hs-identifier hs-type">presetHeight</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Preset"><span class="hs-identifier hs-type">Preset</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Height"><span class="hs-identifier hs-type">Height</span></a></span><span>
+</span><span id="line-51"></span><span id="presetHeight"><span class="annot"><span class="annottext">presetHeight :: Preset -&gt; FPS
+</span><a href="Reanimate.Driver.html#presetHeight"><span class="hs-identifier hs-var hs-var">presetHeight</span></a></span></span><span> </span><span id="local-6989586621679543706"><span class="annot"><span class="annottext">Preset
+</span><a href="#local-6989586621679543706"><span class="hs-identifier hs-var">preset</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Preset -&gt; FPS
+</span><a href="Reanimate.Driver.html#presetWidth"><span class="hs-identifier hs-var">presetWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Preset
+</span><a href="#local-6989586621679543706"><span class="hs-identifier hs-var">preset</span></a></span><span> </span><span class="annot"><span class="annottext">FPS -&gt; FPS -&gt; FPS
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">9</span></span><span> </span><span class="annot"><span class="annottext">FPS -&gt; FPS -&gt; FPS
+forall a. Integral a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">`div`</span></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">16</span></span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="annot"><a href="Reanimate.Driver.html#formatFPS"><span class="hs-identifier hs-type">formatFPS</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Render.html#Format"><span class="hs-identifier hs-type">Format</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#FPS"><span class="hs-identifier hs-type">FPS</span></a></span><span>
+</span><span id="line-54"></span><span id="formatFPS"><span class="annot"><span class="annottext">formatFPS :: Format -&gt; FPS
+</span><a href="Reanimate.Driver.html#formatFPS"><span class="hs-identifier hs-var hs-var">formatFPS</span></a></span></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderMp4"><span class="hs-identifier hs-var">RenderMp4</span></a></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">60</span></span><span>
+</span><span id="line-55"></span><span class="annot"><a href="Reanimate.Driver.html#formatFPS"><span class="hs-identifier hs-var">formatFPS</span></a></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderGif"><span class="hs-identifier hs-var">RenderGif</span></a></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">25</span></span><span>
+</span><span id="line-56"></span><span class="annot"><a href="Reanimate.Driver.html#formatFPS"><span class="hs-identifier hs-var">formatFPS</span></a></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderWebm"><span class="hs-identifier hs-var">RenderWebm</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">60</span></span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span class="annot"><a href="Reanimate.Driver.html#formatWidth"><span class="hs-identifier hs-type">formatWidth</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Render.html#Format"><span class="hs-identifier hs-type">Format</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Width"><span class="hs-identifier hs-type">Width</span></a></span><span>
+</span><span id="line-59"></span><span id="formatWidth"><span class="annot"><span class="annottext">formatWidth :: Format -&gt; FPS
+</span><a href="Reanimate.Driver.html#formatWidth"><span class="hs-identifier hs-var hs-var">formatWidth</span></a></span></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderMp4"><span class="hs-identifier hs-var">RenderMp4</span></a></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">2560</span></span><span>
+</span><span id="line-60"></span><span class="annot"><a href="Reanimate.Driver.html#formatWidth"><span class="hs-identifier hs-var">formatWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderGif"><span class="hs-identifier hs-var">RenderGif</span></a></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">320</span></span><span>
+</span><span id="line-61"></span><span class="annot"><a href="Reanimate.Driver.html#formatWidth"><span class="hs-identifier hs-var">formatWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderWebm"><span class="hs-identifier hs-var">RenderWebm</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">2560</span></span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="annot"><a href="Reanimate.Driver.html#formatHeight"><span class="hs-identifier hs-type">formatHeight</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Render.html#Format"><span class="hs-identifier hs-type">Format</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Height"><span class="hs-identifier hs-type">Height</span></a></span><span>
+</span><span id="line-64"></span><span id="formatHeight"><span class="annot"><span class="annottext">formatHeight :: Format -&gt; FPS
+</span><a href="Reanimate.Driver.html#formatHeight"><span class="hs-identifier hs-var hs-var">formatHeight</span></a></span></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderMp4"><span class="hs-identifier hs-var">RenderMp4</span></a></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">1440</span></span><span>
+</span><span id="line-65"></span><span class="annot"><a href="Reanimate.Driver.html#formatHeight"><span class="hs-identifier hs-var">formatHeight</span></a></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderGif"><span class="hs-identifier hs-var">RenderGif</span></a></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">180</span></span><span>
+</span><span id="line-66"></span><span class="annot"><a href="Reanimate.Driver.html#formatHeight"><span class="hs-identifier hs-var">formatHeight</span></a></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderWebm"><span class="hs-identifier hs-var">RenderWebm</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">1440</span></span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span class="annot"><a href="Reanimate.Driver.html#formatExtension"><span class="hs-identifier hs-type">formatExtension</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Render.html#Format"><span class="hs-identifier hs-type">Format</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-69"></span><span id="formatExtension"><span class="annot"><span class="annottext">formatExtension :: Format -&gt; String
+</span><a href="Reanimate.Driver.html#formatExtension"><span class="hs-identifier hs-var hs-var">formatExtension</span></a></span></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderMp4"><span class="hs-identifier hs-var">RenderMp4</span></a></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;mp4&quot;</span></span><span>
+</span><span id="line-70"></span><span class="annot"><a href="Reanimate.Driver.html#formatExtension"><span class="hs-identifier hs-var">formatExtension</span></a></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderGif"><span class="hs-identifier hs-var">RenderGif</span></a></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;gif&quot;</span></span><span>
+</span><span id="line-71"></span><span class="annot"><a href="Reanimate.Driver.html#formatExtension"><span class="hs-identifier hs-var">formatExtension</span></a></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderWebm"><span class="hs-identifier hs-var">RenderWebm</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;webm&quot;</span></span><span>
+</span><span id="line-72"></span><span>
+</span><span id="line-73"></span><span class="hs-comment">{-|
+Main entry-point for accessing an animation. Creates a program that takes the
+following command-line arguments:
+
+&gt; Usage: PROG [COMMAND]
+&gt;   This program contains an animation which can either be viewed in a web-browser
+&gt;   or rendered to disk.
+&gt;
+&gt; Available options:
+&gt;   -h,--help                Show this help text
+&gt;
+&gt; Available commands:
+&gt;   check                    Run a system's diagnostic and report any missing
+&gt;                            external dependencies.
+&gt;   view                     Play animation in browser window.
+&gt;   render                   Render animation to file.
+
+Neither the \'check\' nor the \'view\' command take any additional arguments.
+Rendering animation can be controlled with these arguments:
+
+&gt; Usage: PROG render [-o|--target FILE] [--fps FPS] [-w|--width PIXELS]
+&gt;                    [-h|--height PIXELS] [--compile] [--format FMT]
+&gt;                    [--preset TYPE]
+&gt;   Render animation to file.
+&gt;
+&gt; Available options:
+&gt;   -o,--target FILE         Write output to FILE
+&gt;   --fps FPS                Set frames per second.
+&gt;   -w,--width PIXELS        Set video width.
+&gt;   -h,--height PIXELS       Set video height.
+&gt;   --compile                Compile source code before rendering.
+&gt;   --format FMT             Video format: mp4, gif, webm
+&gt;   --preset TYPE            Parameter presets: youtube, gif, quick
+&gt;   -h,--help                Show this help text
+-}</span><span>
+</span><span id="line-108"></span><span class="annot"><a href="Reanimate.Driver.html#reanimate"><span class="hs-identifier hs-type">reanimate</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Animation"><span class="hs-identifier hs-type">Animation</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-109"></span><span id="reanimate"><span class="annot"><span class="annottext">reanimate :: Animation -&gt; IO ()
+</span><a href="Reanimate.Driver.html#reanimate"><span class="hs-identifier hs-var hs-var">reanimate</span></a></span></span><span> </span><span id="local-6989586621679543698"><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679543698"><span class="hs-identifier hs-var">animation</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-110"></span><span>  </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Options"><span class="hs-identifier hs-type">Options</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679543696"><span class="annot"><span class="annottext">Command
+optsCommand :: Options -&gt; Command
+optsCommand :: Command
+</span><a href="Reanimate.Driver.CLI.html#optsCommand"><span class="hs-glyph hs-var hs-var">..</span></a></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO Options
+</span><a href="Reanimate.Driver.CLI.html#getDriverOptions"><span class="hs-identifier hs-var">getDriverOptions</span></a></span><span>
+</span><span id="line-111"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Command
+</span><a href="#local-6989586621679543696"><span class="hs-identifier hs-var">optsCommand</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-112"></span><span>    </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Raw"><span class="hs-identifier hs-type">Raw</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679543690"><span id="local-6989586621679543691"><span id="local-6989586621679543692"><span class="annot"><span class="annottext">Bool
+FPS
+String
+rawPrettyPrint :: Command -&gt; Bool
+rawFrameOffset :: Command -&gt; FPS
+rawOutputFolder :: Command -&gt; String
+rawPrettyPrint :: Bool
+rawFrameOffset :: FPS
+rawOutputFolder :: String
+</span><a href="Reanimate.Driver.CLI.html#rawPrettyPrint"><span class="hs-glyph hs-var hs-var hs-var hs-var hs-var hs-var">..</span></a></span></span></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-113"></span><span>      </span><span class="annot"><span class="annottext">FPS -&gt; IO ()
+</span><a href="Reanimate.Parameters.html#setFPS"><span class="hs-identifier hs-var">setFPS</span></a></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">60</span></span><span>
+</span><span id="line-114"></span><span>      </span><span class="annot"><span class="annottext">String -&gt; FPS -&gt; Bool -&gt; Animation -&gt; IO ()
+</span><a href="Reanimate.Render.html#renderSvgs"><span class="hs-identifier hs-var">renderSvgs</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543692"><span class="hs-identifier hs-var">rawOutputFolder</span></a></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543691"><span class="hs-identifier hs-var">rawFrameOffset</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679543690"><span class="hs-identifier hs-var">rawPrettyPrint</span></a></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679543698"><span class="hs-identifier hs-var">animation</span></a></span><span>
+</span><span id="line-115"></span><span>    </span><span class="annot"><span class="annottext">Command
+</span><a href="Reanimate.Driver.CLI.html#Test"><span class="hs-identifier hs-var">Test</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-116"></span><span>      </span><span class="annot"><span class="annottext">Bool -&gt; IO ()
+</span><a href="Reanimate.Parameters.html#setNoExternals"><span class="hs-identifier hs-var">setNoExternals</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-117"></span><span>      </span><span class="hs-comment">-- hSetBinaryMode stdout True</span><span>
+</span><span id="line-118"></span><span>      </span><span class="annot"><span class="annottext">Animation -&gt; IO ()
+</span><a href="Reanimate.Render.html#renderSnippets"><span class="hs-identifier hs-var">renderSnippets</span></a></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679543698"><span class="hs-identifier hs-var">animation</span></a></span><span>
+</span><span id="line-119"></span><span>    </span><span class="annot"><span class="annottext">Command
+</span><a href="Reanimate.Driver.CLI.html#Check"><span class="hs-identifier hs-var">Check</span></a></span><span>       </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">IO ()
+</span><a href="Reanimate.Driver.Check.html#checkEnvironment"><span class="hs-identifier hs-var">checkEnvironment</span></a></span><span>
+</span><span id="line-120"></span><span>    </span><span class="annot"><a href="Reanimate.Driver.CLI.html#View"><span class="hs-identifier hs-type">View</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679543680"><span class="annot"><span class="annottext">Bool
+viewDetach :: Command -&gt; Bool
+viewDetach :: Bool
+</span><a href="Reanimate.Driver.CLI.html#viewDetach"><span class="hs-glyph hs-var hs-var">..</span></a></span></span><span class="hs-special">}</span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Animation -&gt; IO ()
+</span><a href="Reanimate.Driver.html#viewAnimation"><span class="hs-identifier hs-var">viewAnimation</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679543680"><span class="hs-identifier hs-var">viewDetach</span></a></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679543698"><span class="hs-identifier hs-var">animation</span></a></span><span>
+</span><span id="line-121"></span><span>    </span><span class="annot"><a href="Reanimate.Driver.CLI.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="hs-special">{</span><span id="local-6989586621679543667"><span id="local-6989586621679543668"><span id="local-6989586621679543669"><span id="local-6989586621679543670"><span id="local-6989586621679543671"><span id="local-6989586621679543672"><span id="local-6989586621679543673"><span id="local-6989586621679543674"><span id="local-6989586621679543675"><span id="local-6989586621679543676"><span class="annot"><span class="annottext">Bool
+Maybe FPS
+Maybe String
+Maybe Format
+Maybe Preset
+Raster
+renderHash :: Command -&gt; Bool
+renderPartial :: Command -&gt; Bool
+renderRaster :: Command -&gt; Raster
+renderPreset :: Command -&gt; Maybe Preset
+renderFormat :: Command -&gt; Maybe Format
+renderCompile :: Command -&gt; Bool
+renderHeight :: Command -&gt; Maybe FPS
+renderWidth :: Command -&gt; Maybe FPS
+renderFPS :: Command -&gt; Maybe FPS
+renderTarget :: Command -&gt; Maybe String
+renderHash :: Bool
+renderPartial :: Bool
+renderRaster :: Raster
+renderPreset :: Maybe Preset
+renderFormat :: Maybe Format
+renderCompile :: Bool
+renderHeight :: Maybe FPS
+renderWidth :: Maybe FPS
+renderFPS :: Maybe FPS
+renderTarget :: Maybe String
+</span><a href="Reanimate.Driver.CLI.html#renderHash"><span class="hs-glyph hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">..</span></a></span></span></span></span></span></span></span></span></span></span></span><span class="hs-special">}</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-122"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679543656"><span class="annot"><span class="annottext">fmt :: Format
+</span><a href="#local-6989586621679543656"><span class="hs-identifier hs-var hs-var">fmt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-123"></span><span>            </span><span class="annot"><span class="annottext">Maybe Format -&gt; Maybe Format -&gt; Format -&gt; Format
+forall a. Maybe a -&gt; Maybe a -&gt; a -&gt; a
+</span><a href="Reanimate.Driver.html#guessParameter"><span class="hs-identifier hs-var">guessParameter</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Format
+</span><a href="#local-6989586621679543671"><span class="hs-identifier hs-var">renderFormat</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Preset -&gt; Format) -&gt; Maybe Preset -&gt; Maybe Format
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">Preset -&gt; Format
+</span><a href="Reanimate.Driver.html#presetFormat"><span class="hs-identifier hs-var">presetFormat</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Preset
+</span><a href="#local-6989586621679543670"><span class="hs-identifier hs-var">renderPreset</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-124"></span><span>              </span><span class="annot"><span class="annottext">(Format -&gt; Format) -&gt; Format -&gt; Format
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe String
+</span><a href="#local-6989586621679543676"><span class="hs-identifier hs-var">renderTarget</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-125"></span><span>                  </span><span class="hs-comment">-- Format guessed from output</span><span>
+</span><span id="line-126"></span><span>                  </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679543654"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543654"><span class="hs-identifier hs-var">target</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+</span><span class="hs-identifier hs-var">takeExtension</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543654"><span class="hs-identifier hs-var">target</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-127"></span><span>                    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;.mp4&quot;</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderMp4"><span class="hs-identifier hs-var">RenderMp4</span></a></span><span>
+</span><span id="line-128"></span><span>                    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;.gif&quot;</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderGif"><span class="hs-identifier hs-var">RenderGif</span></a></span><span>
+</span><span id="line-129"></span><span>                    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;.webm&quot;</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderWebm"><span class="hs-identifier hs-var">RenderWebm</span></a></span><span>
+</span><span id="line-130"></span><span>                    </span><span class="annot"><span class="annottext">String
+</span><span class="hs-identifier">_</span></span><span>       </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderMp4"><span class="hs-identifier hs-var">RenderMp4</span></a></span><span>
+</span><span id="line-131"></span><span>                  </span><span class="hs-comment">-- Default to mp4 rendering.</span><span>
+</span><span id="line-132"></span><span>                  </span><span class="annot"><span class="annottext">Maybe String
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="Reanimate.Render.html#RenderMp4"><span class="hs-identifier hs-var">RenderMp4</span></a></span><span>
+</span><span id="line-133"></span><span>
+</span><span id="line-134"></span><span>      </span><span id="local-6989586621679543652"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543652"><span class="hs-identifier hs-var">target</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe String
+</span><a href="#local-6989586621679543676"><span class="hs-identifier hs-var">renderTarget</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-135"></span><span>        </span><span class="annot"><span class="annottext">Maybe String
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-136"></span><span>          </span><span id="local-6989586621679543651"><span class="annot"><span class="annottext">Maybe String
+</span><a href="#local-6989586621679543651"><span class="hs-identifier hs-var">mbSelf</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Maybe String -&gt; IO (Maybe String)
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">Maybe String
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-137"></span><span>          </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679543650"><span class="annot"><span class="annottext">ext :: String
+</span><a href="#local-6989586621679543650"><span class="hs-identifier hs-var hs-var">ext</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Format -&gt; String
+</span><a href="Reanimate.Driver.html#formatExtension"><span class="hs-identifier hs-var">formatExtension</span></a></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="#local-6989586621679543656"><span class="hs-identifier hs-var">fmt</span></a></span><span>
+</span><span id="line-138"></span><span>              </span><span id="local-6989586621679543649"><span class="annot"><span class="annottext">self :: String
+</span><a href="#local-6989586621679543649"><span class="hs-identifier hs-var hs-var">self</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Maybe String -&gt; String
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;output&quot;</span></span><span> </span><span class="annot"><span class="annottext">Maybe String
+</span><a href="#local-6989586621679543651"><span class="hs-identifier hs-var">mbSelf</span></a></span><span>
+</span><span id="line-139"></span><span>          </span><span class="annot"><span class="annottext">String -&gt; IO String
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; IO String) -&gt; String -&gt; IO String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+</span><span class="hs-identifier hs-var">replaceExtension</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543649"><span class="hs-identifier hs-var">self</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543650"><span class="hs-identifier hs-var">ext</span></a></span><span>
+</span><span id="line-140"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679543646"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543646"><span class="hs-identifier hs-var">target</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO String
+</span><span class="hs-identifier hs-var">makeAbsolute</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543646"><span class="hs-identifier hs-var">target</span></a></span><span>
+</span><span id="line-141"></span><span>
+</span><span id="line-142"></span><span>      </span><span class="hs-keyword">let</span><span>
+</span><span id="line-143"></span><span>        </span><span id="local-6989586621679543644"><span class="annot"><span class="annottext">fps :: FPS
+</span><a href="#local-6989586621679543644"><span class="hs-identifier hs-var hs-var">fps</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-144"></span><span>          </span><span class="annot"><span class="annottext">Maybe FPS -&gt; Maybe FPS -&gt; FPS -&gt; FPS
+forall a. Maybe a -&gt; Maybe a -&gt; a -&gt; a
+</span><a href="Reanimate.Driver.html#guessParameter"><span class="hs-identifier hs-var">guessParameter</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe FPS
+</span><a href="#local-6989586621679543675"><span class="hs-identifier hs-var">renderFPS</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Preset -&gt; FPS) -&gt; Maybe Preset -&gt; Maybe FPS
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">Preset -&gt; FPS
+</span><a href="Reanimate.Driver.html#presetFPS"><span class="hs-identifier hs-var">presetFPS</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Preset
+</span><a href="#local-6989586621679543670"><span class="hs-identifier hs-var">renderPreset</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(FPS -&gt; FPS) -&gt; FPS -&gt; FPS
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Format -&gt; FPS
+</span><a href="Reanimate.Driver.html#formatFPS"><span class="hs-identifier hs-var">formatFPS</span></a></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="#local-6989586621679543656"><span class="hs-identifier hs-var">fmt</span></a></span><span>
+</span><span id="line-145"></span><span>        </span><span class="hs-special">(</span><span id="local-6989586621679543643"><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543643"><span class="hs-identifier hs-var">width</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679543642"><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543642"><span class="hs-identifier hs-var">height</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(FPS, FPS) -&gt; Maybe (FPS, FPS) -&gt; (FPS, FPS)
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span>
+</span><span id="line-146"></span><span>          </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">FPS -&gt; (Preset -&gt; FPS) -&gt; Maybe Preset -&gt; FPS
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Format -&gt; FPS
+</span><a href="Reanimate.Driver.html#formatWidth"><span class="hs-identifier hs-var">formatWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="#local-6989586621679543656"><span class="hs-identifier hs-var">fmt</span></a></span><span class="hs-special">)</span><span>  </span><span class="annot"><span class="annottext">Preset -&gt; FPS
+</span><a href="Reanimate.Driver.html#presetWidth"><span class="hs-identifier hs-var">presetWidth</span></a></span><span>  </span><span class="annot"><span class="annottext">Maybe Preset
+</span><a href="#local-6989586621679543670"><span class="hs-identifier hs-var">renderPreset</span></a></span><span>
+</span><span id="line-147"></span><span>          </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">FPS -&gt; (Preset -&gt; FPS) -&gt; Maybe Preset -&gt; FPS
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Format -&gt; FPS
+</span><a href="Reanimate.Driver.html#formatHeight"><span class="hs-identifier hs-var">formatHeight</span></a></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="#local-6989586621679543656"><span class="hs-identifier hs-var">fmt</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Preset -&gt; FPS
+</span><a href="Reanimate.Driver.html#presetHeight"><span class="hs-identifier hs-var">presetHeight</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Preset
+</span><a href="#local-6989586621679543670"><span class="hs-identifier hs-var">renderPreset</span></a></span><span>
+</span><span id="line-148"></span><span>          </span><span class="hs-special">)</span><span>
+</span><span id="line-149"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe FPS -&gt; Maybe FPS -&gt; Maybe (FPS, FPS)
+</span><a href="Reanimate.Driver.html#userPreferredDimensions"><span class="hs-identifier hs-var">userPreferredDimensions</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe FPS
+</span><a href="#local-6989586621679543674"><span class="hs-identifier hs-var">renderWidth</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe FPS
+</span><a href="#local-6989586621679543673"><span class="hs-identifier hs-var">renderHeight</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-150"></span><span>
+</span><span id="line-151"></span><span>      </span><span id="local-6989586621679543639"><span class="annot"><span class="annottext">Raster
+</span><a href="#local-6989586621679543639"><span class="hs-identifier hs-var">raster</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span>
+</span><span id="line-152"></span><span>        </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="#local-6989586621679543669"><span class="hs-identifier hs-var">renderRaster</span></a></span><span> </span><span class="annot"><span class="annottext">Raster -&gt; Raster -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterNone"><span class="hs-identifier hs-var">RasterNone</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="#local-6989586621679543669"><span class="hs-identifier hs-var">renderRaster</span></a></span><span> </span><span class="annot"><span class="annottext">Raster -&gt; Raster -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterAuto"><span class="hs-identifier hs-var">RasterAuto</span></a></span><span>  </span><span class="hs-keyword">then</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-153"></span><span>          </span><span id="local-6989586621679543635"><span class="annot"><span class="annottext">Either String String
+</span><a href="#local-6989586621679543635"><span class="hs-identifier hs-var">svgSupport</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO (Either String String)
+</span><a href="Reanimate.Driver.Check.html#hasFFmpegRSvg"><span class="hs-identifier hs-var">hasFFmpegRSvg</span></a></span><span>
+</span><span id="line-154"></span><span>          </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Either String String -&gt; Bool
+forall a b. Either a b -&gt; Bool
+</span><span class="hs-identifier hs-var">isRight</span></span><span> </span><span class="annot"><span class="annottext">Either String String
+</span><a href="#local-6989586621679543635"><span class="hs-identifier hs-var">svgSupport</span></a></span><span>
+</span><span id="line-155"></span><span>            </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Raster -&gt; IO Raster
+</span><a href="Reanimate.Render.html#selectRaster"><span class="hs-identifier hs-var">selectRaster</span></a></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="#local-6989586621679543669"><span class="hs-identifier hs-var">renderRaster</span></a></span><span>
+</span><span id="line-156"></span><span>            </span><span class="hs-keyword">else</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-157"></span><span>              </span><span id="local-6989586621679543632"><span class="annot"><span class="annottext">Raster
+</span><a href="#local-6989586621679543632"><span class="hs-identifier hs-var">raster</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Raster -&gt; IO Raster
+</span><a href="Reanimate.Render.html#selectRaster"><span class="hs-identifier hs-var">selectRaster</span></a></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterAuto"><span class="hs-identifier hs-var">RasterAuto</span></a></span><span>
+</span><span id="line-158"></span><span>              </span><span class="annot"><span class="annottext">Bool -&gt; IO () -&gt; IO ()
+forall (f :: * -&gt; *). Applicative f =&gt; Bool -&gt; f () -&gt; f ()
+</span><span class="hs-identifier hs-var">when</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Raster
+</span><a href="#local-6989586621679543632"><span class="hs-identifier hs-var">raster</span></a></span><span> </span><span class="annot"><span class="annottext">Raster -&gt; Raster -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="Reanimate.Parameters.html#RasterNone"><span class="hs-identifier hs-var">RasterNone</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(IO () -&gt; IO ()) -&gt; IO () -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-159"></span><span>                </span><span class="annot"><span class="annottext">Handle -&gt; String -&gt; IO ()
+</span><span class="hs-identifier hs-var">hPutStrLn</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><span class="hs-identifier hs-var">stderr</span></span><span>
+</span><span id="line-160"></span><span>                  </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Error: your FFmpeg was built without SVG support and no raster engines \
+                  \are available. Please install either inkscape, imagemagick, or rsvg.&quot;</span></span><span>
+</span><span id="line-162"></span><span>                </span><span class="annot"><span class="annottext">ExitCode -&gt; IO ()
+forall a. ExitCode -&gt; IO a
+</span><span class="hs-identifier hs-var">exitWith</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FPS -&gt; ExitCode
+</span><span class="hs-identifier hs-var">ExitFailure</span></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span>
+</span><span id="line-163"></span><span>              </span><span class="annot"><span class="annottext">Raster -&gt; IO Raster
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="#local-6989586621679543632"><span class="hs-identifier hs-var">raster</span></a></span><span>
+</span><span id="line-164"></span><span>        </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Raster -&gt; IO Raster
+</span><a href="Reanimate.Render.html#selectRaster"><span class="hs-identifier hs-var">selectRaster</span></a></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="#local-6989586621679543669"><span class="hs-identifier hs-var">renderRaster</span></a></span><span>
+</span><span id="line-165"></span><span>      </span><span class="annot"><span class="annottext">Raster -&gt; IO ()
+</span><a href="Reanimate.Parameters.html#setRaster"><span class="hs-identifier hs-var">setRaster</span></a></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="#local-6989586621679543639"><span class="hs-identifier hs-var">raster</span></a></span><span>
+</span><span id="line-166"></span><span>      </span><span class="annot"><span class="annottext">FPS -&gt; IO ()
+</span><a href="Reanimate.Parameters.html#setFPS"><span class="hs-identifier hs-var">setFPS</span></a></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543644"><span class="hs-identifier hs-var">fps</span></a></span><span>
+</span><span id="line-167"></span><span>      </span><span class="annot"><span class="annottext">FPS -&gt; IO ()
+</span><a href="Reanimate.Parameters.html#setWidth"><span class="hs-identifier hs-var">setWidth</span></a></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543643"><span class="hs-identifier hs-var">width</span></a></span><span>
+</span><span id="line-168"></span><span>      </span><span class="annot"><span class="annottext">FPS -&gt; IO ()
+</span><a href="Reanimate.Parameters.html#setHeight"><span class="hs-identifier hs-var">setHeight</span></a></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543642"><span class="hs-identifier hs-var">height</span></a></span><span>
+</span><span id="line-169"></span><span>      </span><span class="annot"><span class="annottext">String -&gt; FPS -&gt; FPS -&gt; FPS -&gt; String -&gt; String -&gt; String -&gt; IO ()
+forall r. PrintfType r =&gt; String -&gt; r
+</span><span class="hs-identifier hs-var">printf</span></span><span>
+</span><span id="line-170"></span><span>        </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Animation options:\n\
+              \  fps:    %d\n\
+              \  width:  %d\n\
+              \  height: %d\n\
+              \  fmt:    %s\n\
+              \  target: %s\n\
+              \  raster: %s\n&quot;</span></span><span>
+</span><span id="line-177"></span><span>        </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543644"><span class="hs-identifier hs-var">fps</span></a></span><span>
+</span><span id="line-178"></span><span>        </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543643"><span class="hs-identifier hs-var">width</span></a></span><span>
+</span><span id="line-179"></span><span>        </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543642"><span class="hs-identifier hs-var">height</span></a></span><span>
+</span><span id="line-180"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Format -&gt; String
+</span><a href="Reanimate.Driver.CLI.html#showFormat"><span class="hs-identifier hs-var">showFormat</span></a></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="#local-6989586621679543656"><span class="hs-identifier hs-var">fmt</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-181"></span><span>        </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543652"><span class="hs-identifier hs-var">target</span></a></span><span>
+</span><span id="line-182"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Raster -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="#local-6989586621679543639"><span class="hs-identifier hs-var">raster</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-183"></span><span>
+</span><span id="line-184"></span><span>      </span><span class="annot"><span class="annottext">Animation
+-&gt; String -&gt; Raster -&gt; Format -&gt; FPS -&gt; FPS -&gt; FPS -&gt; Bool -&gt; IO ()
+</span><a href="Reanimate.Render.html#render"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679543698"><span class="hs-identifier hs-var">animation</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543652"><span class="hs-identifier hs-var">target</span></a></span><span> </span><span class="annot"><span class="annottext">Raster
+</span><a href="#local-6989586621679543639"><span class="hs-identifier hs-var">raster</span></a></span><span> </span><span class="annot"><span class="annottext">Format
+</span><a href="#local-6989586621679543656"><span class="hs-identifier hs-var">fmt</span></a></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543643"><span class="hs-identifier hs-var">width</span></a></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543642"><span class="hs-identifier hs-var">height</span></a></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543644"><span class="hs-identifier hs-var">fps</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679543668"><span class="hs-identifier hs-var">renderPartial</span></a></span><span>
+</span><span id="line-185"></span><span>
+</span><span id="line-186"></span><span id="local-6989586621679543770"><span class="annot"><a href="Reanimate.Driver.html#guessParameter"><span class="hs-identifier hs-type">guessParameter</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679543770"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679543770"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679543770"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679543770"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-187"></span><span id="guessParameter"><span class="annot"><span class="annottext">guessParameter :: Maybe a -&gt; Maybe a -&gt; a -&gt; a
+</span><a href="Reanimate.Driver.html#guessParameter"><span class="hs-identifier hs-var hs-var">guessParameter</span></a></span></span><span> </span><span id="local-6989586621679543620"><span class="annot"><span class="annottext">Maybe a
+</span><a href="#local-6989586621679543620"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679543619"><span class="annot"><span class="annottext">Maybe a
+</span><a href="#local-6989586621679543619"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span id="local-6989586621679543618"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679543618"><span class="hs-identifier hs-var">def</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; Maybe a -&gt; a
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679543618"><span class="hs-identifier hs-var">def</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe a
+</span><a href="#local-6989586621679543620"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe a -&gt; Maybe a -&gt; Maybe a
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Maybe a
+</span><a href="#local-6989586621679543619"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-188"></span><span>
+</span><span id="line-189"></span><span>
+</span><span id="line-190"></span><span class="hs-comment">-- If user specifies exactly one dimension explicitly, calculate the other</span><span>
+</span><span id="line-191"></span><span class="annot"><a href="Reanimate.Driver.html#userPreferredDimensions"><span class="hs-identifier hs-type">userPreferredDimensions</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Width"><span class="hs-identifier hs-type">Width</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Height"><span class="hs-identifier hs-type">Height</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Reanimate.Parameters.html#Width"><span class="hs-identifier hs-type">Width</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Reanimate.Parameters.html#Height"><span class="hs-identifier hs-type">Height</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-192"></span><span id="userPreferredDimensions"><span class="annot"><span class="annottext">userPreferredDimensions :: Maybe FPS -&gt; Maybe FPS -&gt; Maybe (FPS, FPS)
+</span><a href="Reanimate.Driver.html#userPreferredDimensions"><span class="hs-identifier hs-var hs-var">userPreferredDimensions</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679543617"><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543617"><span class="hs-identifier hs-var">width</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679543616"><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543616"><span class="hs-identifier hs-var">height</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(FPS, FPS) -&gt; Maybe (FPS, FPS)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543617"><span class="hs-identifier hs-var">width</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543616"><span class="hs-identifier hs-var">height</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-193"></span><span class="annot"><a href="Reanimate.Driver.html#userPreferredDimensions"><span class="hs-identifier hs-var">userPreferredDimensions</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679543615"><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543615"><span class="hs-identifier hs-var">width</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe FPS
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-194"></span><span>  </span><span class="annot"><span class="annottext">(FPS, FPS) -&gt; Maybe (FPS, FPS)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543615"><span class="hs-identifier hs-var">width</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">FPS -&gt; FPS
+</span><a href="Reanimate.Driver.html#makeEven"><span class="hs-identifier hs-var">makeEven</span></a></span><span> </span><span class="annot"><span class="annottext">(FPS -&gt; FPS) -&gt; FPS -&gt; FPS
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543615"><span class="hs-identifier hs-var">width</span></a></span><span> </span><span class="annot"><span class="annottext">FPS -&gt; FPS -&gt; FPS
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">9</span></span><span> </span><span class="annot"><span class="annottext">FPS -&gt; FPS -&gt; FPS
+forall a. Integral a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">`div`</span></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">16</span></span><span class="hs-special">)</span><span>
+</span><span id="line-195"></span><span class="annot"><a href="Reanimate.Driver.html#userPreferredDimensions"><span class="hs-identifier hs-var">userPreferredDimensions</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe FPS
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679543613"><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543613"><span class="hs-identifier hs-var">height</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-196"></span><span>  </span><span class="annot"><span class="annottext">(FPS, FPS) -&gt; Maybe (FPS, FPS)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FPS -&gt; FPS
+</span><a href="Reanimate.Driver.html#makeEven"><span class="hs-identifier hs-var">makeEven</span></a></span><span> </span><span class="annot"><span class="annottext">(FPS -&gt; FPS) -&gt; FPS -&gt; FPS
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543613"><span class="hs-identifier hs-var">height</span></a></span><span> </span><span class="annot"><span class="annottext">FPS -&gt; FPS -&gt; FPS
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">16</span></span><span> </span><span class="annot"><span class="annottext">FPS -&gt; FPS -&gt; FPS
+forall a. Integral a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">`div`</span></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">9</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543613"><span class="hs-identifier hs-var">height</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-197"></span><span class="annot"><a href="Reanimate.Driver.html#userPreferredDimensions"><span class="hs-identifier hs-var">userPreferredDimensions</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe FPS
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="annot"><span class="annottext">Maybe FPS
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (FPS, FPS)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-198"></span><span>
+</span><span id="line-199"></span><span class="hs-comment">-- Avoid ffmpeg failures &quot;height not divisible by 2&quot;</span><span>
+</span><span id="line-200"></span><span class="annot"><a href="Reanimate.Driver.html#makeEven"><span class="hs-identifier hs-type">makeEven</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-201"></span><span id="makeEven"><span class="annot"><span class="annottext">makeEven :: FPS -&gt; FPS
+</span><a href="Reanimate.Driver.html#makeEven"><span class="hs-identifier hs-var hs-var">makeEven</span></a></span></span><span> </span><span id="local-6989586621679543612"><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543612"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">FPS -&gt; Bool
+forall a. Integral a =&gt; a -&gt; Bool
+</span><span class="hs-identifier hs-var">even</span></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543612"><span class="hs-identifier hs-var">x</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543612"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-202"></span><span>           </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543612"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">FPS -&gt; FPS -&gt; FPS
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-203"></span><span>
+</span><span id="line-204"></span><span class="annot"><a href="Reanimate.Driver.html#sanityCheck"><span class="hs-identifier hs-type">sanityCheck</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-205"></span><span id="sanityCheck"><span class="annot"><span class="annottext">sanityCheck :: IO ()
+</span><a href="Reanimate.Driver.html#sanityCheck"><span class="hs-identifier hs-var hs-var">sanityCheck</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-206"></span><span>  </span><span id="local-6989586621679543609"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543609"><span class="hs-identifier hs-var">url</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO String
+</span><a href="Paths_reanimate.html#getDataFileName"><span class="hs-identifier hs-var">getDataFileName</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;viewer-elm/dist/index.html&quot;</span></span><span>
+</span><span id="line-207"></span><span>  </span><span id="local-6989586621679543608"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679543608"><span class="hs-identifier hs-var">hasClient</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO Bool
+</span><span class="hs-identifier hs-var">doesFileExist</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543609"><span class="hs-identifier hs-var">url</span></a></span><span>
+</span><span id="line-208"></span><span>  </span><span class="annot"><span class="annottext">Bool -&gt; IO () -&gt; IO ()
+forall (f :: * -&gt; *). Applicative f =&gt; Bool -&gt; f () -&gt; f ()
+</span><span class="hs-identifier hs-var">unless</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679543608"><span class="hs-identifier hs-var">hasClient</span></a></span><span> </span><span class="annot"><span class="annottext">(IO () -&gt; IO ()) -&gt; IO () -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-209"></span><span>    </span><span class="annot"><span class="annottext">Handle -&gt; String -&gt; IO ()
+</span><span class="hs-identifier hs-var">hPutStrLn</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><span class="hs-identifier hs-var">stderr</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; IO ()) -&gt; String -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Couldn't find web client at: &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543609"><span class="hs-identifier hs-var">url</span></a></span><span>
+</span><span id="line-210"></span><span>    </span><span class="annot"><span class="annottext">Handle -&gt; String -&gt; IO ()
+</span><span class="hs-identifier hs-var">hPutStrLn</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><span class="hs-identifier hs-var">stderr</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; IO ()) -&gt; String -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;You may need to run:&quot;</span></span><span>
+</span><span id="line-211"></span><span>    </span><span class="annot"><span class="annottext">Handle -&gt; String -&gt; IO ()
+</span><span class="hs-identifier hs-var">hPutStrLn</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><span class="hs-identifier hs-var">stderr</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; IO ()) -&gt; String -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;  $ export reanimate_datadir=`pwd`&quot;</span></span><span>
+</span><span id="line-212"></span><span>    </span><span class="annot"><span class="annottext">Handle -&gt; String -&gt; IO ()
+</span><span class="hs-identifier hs-var">hPutStrLn</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><span class="hs-identifier hs-var">stderr</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; IO ()) -&gt; String -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;For more information, see this cabal issue: https://github.com/haskell/cabal/issues/6235&quot;</span></span><span>
+</span><span id="line-213"></span><span>    </span><span class="annot"><span class="annottext">IO ()
+forall a. IO a
+</span><span class="hs-identifier hs-var">exitFailure</span></span><span>
+</span><span id="line-214"></span><span>
+</span><span id="line-215"></span><span class="hs-comment">-- serve viewVerbose viewGHCPath viewGHCOpts viewOrigin</span><span>
+</span><span id="line-216"></span><span class="annot"><a href="Reanimate.Driver.html#viewAnimation"><span class="hs-identifier hs-type">viewAnimation</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Reanimate.Animation.html#Animation"><span class="hs-identifier hs-type">Animation</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-217"></span><span id="viewAnimation"><span class="annot"><span class="annottext">viewAnimation :: Bool -&gt; Animation -&gt; IO ()
+</span><a href="Reanimate.Driver.html#viewAnimation"><span class="hs-identifier hs-var hs-var">viewAnimation</span></a></span></span><span> </span><span id="local-6989586621679543604"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679543604"><span class="hs-identifier hs-var">_detach</span></a></span></span><span> </span><span id="local-6989586621679543603"><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679543603"><span class="hs-identifier hs-var">animation</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-218"></span><span>  </span><span class="annot"><span class="annottext">IO ()
+</span><a href="Reanimate.Driver.html#sanityCheck"><span class="hs-identifier hs-var">sanityCheck</span></a></span><span>
+</span><span id="line-219"></span><span>  </span><span id="local-6989586621679543602"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679543602"><span class="hs-identifier hs-var">detached</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO Bool
+</span><a href="Reanimate.Driver.Daemon.html#ensureDaemon"><span class="hs-identifier hs-var">ensureDaemon</span></a></span><span>
+</span><span id="line-220"></span><span>
+</span><span id="line-221"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679543600"><span class="annot"><span class="annottext">rate :: Duration
+</span><a href="#local-6989586621679543600"><span class="hs-identifier hs-var hs-var">rate</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Duration
+</span><span class="hs-number">60</span></span><span>
+</span><span id="line-222"></span><span>      </span><span id="local-6989586621679543599"><span class="annot"><span class="annottext">count :: FPS
+</span><a href="#local-6989586621679543599"><span class="hs-identifier hs-var hs-var">count</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Duration -&gt; FPS
+forall a b. (RealFrac a, Integral b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">round</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Animation -&gt; Duration
+</span><a href="Reanimate.Animation.html#duration"><span class="hs-identifier hs-var">duration</span></a></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679543603"><span class="hs-identifier hs-var">animation</span></a></span><span> </span><span class="annot"><span class="annottext">Duration -&gt; Duration -&gt; Duration
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Duration
+</span><a href="#local-6989586621679543600"><span class="hs-identifier hs-var">rate</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-223"></span><span>  </span><span class="annot"><span class="annottext">DaemonCommand -&gt; IO ()
+</span><a href="Reanimate.Driver.Daemon.html#sendCommand"><span class="hs-identifier hs-var">sendCommand</span></a></span><span> </span><span class="annot"><span class="annottext">(DaemonCommand -&gt; IO ()) -&gt; DaemonCommand -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">FPS -&gt; DaemonCommand
+</span><a href="Reanimate.Driver.Daemon.html#DaemonCount"><span class="hs-identifier hs-var">DaemonCount</span></a></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543599"><span class="hs-identifier hs-var">count</span></a></span><span>
+</span><span id="line-224"></span><span>  </span><span class="annot"><span class="annottext">Animation -&gt; (FPS -&gt; String -&gt; IO ()) -&gt; IO ()
+</span><a href="Reanimate.Render.html#renderSvgs_"><span class="hs-identifier hs-var">renderSvgs_</span></a></span><span> </span><span class="annot"><span class="annottext">Animation
+</span><a href="#local-6989586621679543603"><span class="hs-identifier hs-var">animation</span></a></span><span> </span><span class="annot"><span class="annottext">((FPS -&gt; String -&gt; IO ()) -&gt; IO ())
+-&gt; (FPS -&gt; String -&gt; IO ()) -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679543595"><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543595"><span class="hs-identifier hs-var">nth</span></a></span></span><span> </span><span id="local-6989586621679543594"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543594"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-225"></span><span>    </span><span class="annot"><span class="annottext">DaemonCommand -&gt; IO ()
+</span><a href="Reanimate.Driver.Daemon.html#sendCommand"><span class="hs-identifier hs-var">sendCommand</span></a></span><span> </span><span class="annot"><span class="annottext">(DaemonCommand -&gt; IO ()) -&gt; DaemonCommand -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">FPS -&gt; String -&gt; DaemonCommand
+</span><a href="Reanimate.Driver.Daemon.html#DaemonFrame"><span class="hs-identifier hs-var">DaemonFrame</span></a></span><span> </span><span class="annot"><span class="annottext">FPS
+</span><a href="#local-6989586621679543595"><span class="hs-identifier hs-var">nth</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679543594"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-226"></span><span>
+</span><span id="line-227"></span><span>  </span><span class="annot"><span class="annottext">Bool -&gt; IO () -&gt; IO ()
+forall (f :: * -&gt; *). Applicative f =&gt; Bool -&gt; f () -&gt; f ()
+</span><span class="hs-identifier hs-var">unless</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679543602"><span class="hs-identifier hs-var">detached</span></a></span><span> </span><span class="annot"><span class="annottext">(IO () -&gt; IO ()) -&gt; IO () -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-228"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; IO ()
+</span><span class="hs-identifier hs-var">putStrLn</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Daemon mode. Hit ctrl-c to terminate.&quot;</span></span><span>
+</span><span id="line-229"></span><span>    </span><span class="annot"><span class="annottext">IO () -&gt; IO ()
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">forever</span></span><span> </span><span class="annot"><span class="annottext">(IO () -&gt; IO ()) -&gt; IO () -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">FPS -&gt; IO ()
+</span><span class="hs-identifier hs-var">threadDelay</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">10</span></span><span class="annot"><span class="annottext">FPS -&gt; FPS -&gt; FPS
+forall a b. (Num a, Integral b) =&gt; a -&gt; b -&gt; a
+</span><span class="hs-operator hs-var">^</span></span><span class="hs-special">(</span><span class="annot"><span class="annottext">FPS
+</span><span class="hs-number">6</span></span><span class="hs-glyph">::</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-230"></span><span>
+</span><span id="line-231"></span></pre></body></html>
